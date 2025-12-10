@@ -1,6 +1,6 @@
-** Release Notes
+## Release Notes
 
-*** Development Version
+### Development Version
 
 - Initializing context and tools for the session.
 - Removed gg.py and gui_files/ directory.
