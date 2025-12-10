@@ -1,4 +1,3 @@
-# Webpage for gpaw-tools
+# Webpage for Pint
 
-* This website is using just-the-docs which is a Jekyll theme for GitHub Pages. 
-You can find it at: (https://github.com/pmarsceill/just-the-docs)
+* This is future space for website of Pint.
