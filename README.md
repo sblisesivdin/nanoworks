@@ -7,18 +7,18 @@
 [![Commits:](https://img.shields.io/github/commit-activity/m/sblisesivdin/pint)](https://github.com/sblisesivdin/pint/commits/main)
 [![Last Commit:](https://img.shields.io/github/last-commit/sblisesivdin/pint)](https://github.com/sblisesivdin/pint/commits/main)
 ## Introduction
-*Pint* is a powerful and user-friendly UI/GUI tool for conducting Density Functional Theory (DFT) and molecular dynamics (MD) calculations. Our goal is to make DFT and MD calculations more accessible and easy to use for individuals and small groups, by providing a simple command-line interface and graphical user interface.
+*Pint* is a powerful and user-friendly UI/GUI tool for conducting Density Functional Theory (DFT) and molecular dynamics (MD) calculations. Our goal is to make DFT and MD calculations more accessible and easy to use for individuals and small groups by providing a simple command-line interface.
 
-The *Pint* package is built on top of the ASE, ASAP3, KIM-API, PHONOPY, and GPAW libraries, which are well-established and widely used in the scientific community. It allows users to simulate the properties of materials, optimize structures, investigate chemical reactions, and processes, and perform calculations on systems with many atoms. With Pint, researchers, students, and engineers in various fields, including materials science, chemistry, physics, and engineering, can easily conduct DFT and MD calculations and explore the electronic, optical, and phonon structure of material systems. We are constantly working to improve and expand the capabilities of *Pint*, and we welcome feedback and contributions from the community.
+The *Pint* package is built on top of the ASE, ASAP3, KIM-API, PHONOPY, and GPAW libraries, which are well-established and widely used in the scientific community. It allows users to simulate the properties of materials, optimize structures, investigate chemical reactions and processes, and perform calculations on systems with many atoms. With Pint, researchers, students, and engineers in various fields, including materials science, chemistry, physics, and engineering, can easily conduct DFT and MD calculations and explore the electronic, optical, and phonon structure of material systems. We are constantly working to improve and expand the capabilities of *Pint*, and we welcome feedback and contributions from the community.
 
-`Pint` have:
-1. The main solver code `dftsolve.py` can run in PW or LCAO mode. It can perform structure optimization, equation of state and elastic tensor calculations, use several different XCs (as well as hybrid XCs) for spin-polarized DOS and band structure calculations, electron densities, phonon calculations, and optical properties (RPA and BSE). In addition to calculations, it can draw DOS and band structures, save all data, and figure in an ordered way.
+`Pint` has:
+1. The main solver code `dftsolve.py` can run in PW or LCAO mode. It can perform structure optimization, equation of state, and elastic tensor calculations, use several different XCs (as well as hybrid XCs) for spin-polarized DOS and band structure calculations, electron densities, phonon calculations, and optical properties (RPA and BSE). In addition to calculations, it can draw DOS and band structures, save all data, and present the results in an ordered way.
 2. A force-field quick optimization script `mdsolve.py` for MD calculations using ASAP3 with OpenKIM potentials.
 3. To choose better cut-off energy, lattice parameter, and k-points, there are 4 scripts called `optimize_cutoff.py`, `optimize_kpoints.py`, `optimize_kptsdensity.py`, and `optimize_latticeparam.py`.
 
 ## Usage
 ### Installation
-You need to install many packages to run `Pint` successfully. Please refer to the main [installation](https://sblisesivdin.github.io/pint/installation) web page for more.
+-
 
 ### dftsolve.py
 This is the main code for easy and ordered PW/LCAO Calculations with ASE/GPAW. It can run as a command.
@@ -28,19 +28,18 @@ Command line usage: `dftsolve.py -v -e -d -h -i <inputfile.py> -g <geometryfile.
 Argument list:
 ```
 -g, --geometry    : Use a CIF file for geometry
--i, --input       : Use an input file for variables (input.py) If you do not use this argument, parameters 
+-i, --input       : Use an input file for variables (input.py). If you do not use this argument, parameters 
                     will be taken from the related lines of dftsolve.py. Visit the "Input File Keywords" webpage for more.
 -e, --energymeas  : Energy consumption measurement. This feature only works with Intel CPUs after the Sandy Bridge generation.
                     Results will be written in a file in the results folder (as kWh!).
 -h, --help        : Help
--d, --drawfigures : Draws DOS and band structure figures at the end of the calculation.
 -v, --version     : Version information of running code and the latest stable code. Also gives a download link.
 ```
 
-Instead of using a geometry file, you can put an ASE Atoms object into your input file for the geometry. As an example please note the example at: `examples\Bulk-GaAs-noCIF` folder.
+Instead of using a geometry file, you can put an ASE Atoms object into your input file for the geometry. As an example, please note the example at: `examples\Bulk-GaAs-noCIF` folder.
  
  #### How to run?
- Change `<core_number>` with core numbers to use. For getting maximum performance from your PC you can use `total number of cores - 1` or `total RAM/2Gb` as a `<core_number>`. For CPUs supporting hyperthreading, users can use more than one instance of `dftsolve.py` to achieve maximum efficiency. 
+ Change `<core_number>` with the core numbers to use. To get maximum performance from your PC, you can use `total number of cores - 1` or `total RAM/2Gb` as a `<core_number>`. For CPUs supporting hyperthreading, users can use more than one instance of `dftsolve.py` to achieve maximum efficiency. 
 
 Usage:
 `$ mpirun -np <core_number> dftsolve.py <args>`
@@ -49,22 +48,10 @@ or
 
 `$ gpaw -P<core_number> python /path/to/dftsolve.py -- <args>`
 
-#### Calculation selector (Not complete, not up-to-date information)
-
-| Method | XCs                 | Structure optim. | Spin polarized | Ground | Elastic | DOS | DFT+U | Band | Electron Density | Optical |
-| ------ | ------------------- | ---------------- | -------------- | ------ | ------- | --- | ----- | ---- | ---------------- | ------- |
-|   PW   | Local and LibXC     | Yes              | Yes            | Yes    | Yes     | Yes | Yes   | Yes  | Yes              | Yes     |
-|   PW   | GLLBSC / M          | No               | Yes            | Yes    | Yes     | Yes | No    | Yes  | Yes              | Yes     |
-|   PW   | HSE03, HSE06        | No               | Yes            | Yes    | n/a     | Yes | No    | No   | No               | No      |
-| PW-G0W0| Local and LibXC     | No               | No             | Yes    | No      | No  | No    | Some | No               | No      |
-|  LCAO  | Local and LibXC     | No               | Yes            | Yes    | Yes     | Yes | Yes   | Yes  | Yes              | No      |
-
-*: Just some ground state energy calculations.
-
 ### mdsolve.py
-The inter-atomic potential is a useful tool to perform a quick geometric optimization of the studied system before starting a precise DFT calculation. The `mdsolve.py` script is written for geometric optimizations with inter-atomic potentials. The bulk configuration of atoms can be provided by the user given as a CIF file. A general potential is given for any calculation. However, the user can provide the necessary OpenKIM potential by changing the related line in the input file.
+The inter-atomic potential is a useful tool to perform a quick geometric optimization of the studied system before starting a precise DFT calculation. The `mdsolve.py` script is written for geometric optimizations with inter-atomic potentials. The bulk configuration of atoms can be provided by the user, given as a CIF file. A general potential is given for any calculation. However, the user can provide the necessary OpenKIM potential by changing the related line in the input file.
 
-Mainly, `mdsolve.py` is not related to GPAW. However, it is dependent on ASAP3/OpenKIM and Kimpy. Therefore, the user must install the necessary libraries before using the script. Please refer to [related page](https://sblisesivdin.github.io/pint/installation/ubuntu/#installation-of-asap-and-kim-for-quick-optimization) for the installation needs.
+Mainly, `mdsolve.py` is not related to GPAW. However, it is dependent on ASAP3/OpenKIM and Kimpy.
 
 The main usage is:
 
@@ -97,13 +84,13 @@ Users must provide an ASE Atoms object and simply insert the object inside these
 There are [some example calculations](https://github.com/sblisesivdin/pint/tree/main/examples) given with different usage scenarios. Please send us more calculations to include in this folder.
 
 ## Input File Keywords
-Many keywords can be used in input files. You can find more at [here](https://sblisesivdin.github.io/pint/development/inputfilekeywords/)
+-
 
 ## Release notes
-Release notes are listed [here](https://sblisesivdin.github.io/pint/development/releasenotes/).
+Release notes are listed [here](https://github.com/sblisesivdin/pint/blob/main/RELEASE_NOTES.md).
 
 ## Citing
-Please do not forget that Pint is UI/GUI software. For the main DFT calculations, it uses ASE and GPAW. It also uses the Elastic python package for elastic tensor solutions and ASAP with the KIM database for interatomic interaction calculations and Phonopy for the phonon calculations. Therefore, you must know what you use, and cite them properly. Here, the basic citation information of each package is given.
+Please do not forget that Pint is UI/GUI software. For the main DFT calculations, it uses ASE and GPAW. It also uses the Elastic Python package for elastic tensor solutions and ASAP with the KIM database for interatomic interaction calculations, and Phonopy for the phonon calculations. Therefore, you must know what you use and cite them properly. Here, the basic citation information of each package is given.
 
 ### ASE 
 * Ask Hjorth Larsen et al. "[The Atomic Simulation Environment—A Python library for working with atoms](https://doi.org/10.1088/1361-648X/aa680e)" J. Phys.: Condens. Matter Vol. 29 273002, 2017.
