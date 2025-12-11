@@ -39,7 +39,7 @@ scalapack = True
 libraries = ['xc', 'blas', 'fftw3', 'scalapack-openmpi']
 EOL
 
-# Install GPAW and setup datasets
+# Install GPAW and set up datasets
 echo "Installing GPAW..."
 pip3 install --upgrade gpaw
 
@@ -47,13 +47,13 @@ echo "Setting up PAW datasets..."
 mkdir -p "$GPAW_SETUP_DIR"
 gpaw install-data "$GPAW_SETUP_DIR/"
 
-# Download and set up gpaw-tools
-echo "Setting up gpaw-tools..."
+echo "Setting up Pint..."
 
-# Add gpaw-tools directory to PATH in .bashrc
-echo "Adding gpaw-tools to PATH in .bashrc..."
-echo "export PATH=$HOME/gpaw-tools-main:\$PATH" >> ~/.bashrc
+# Add Pint directory to PATH in .bashrc
+echo "Adding Pint to PATH in .bashrc..."
+echo "export PATH=$HOME/pint-main:\$PATH" >> ~/.bashrc
+source ~/.bashrc
 
 # Final message
-echo "Installation complete! Please close this window or run 'source ~/.bashrc' to apply PATH changes."
+echo "Installation complete!"
 
