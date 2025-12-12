@@ -17,9 +17,60 @@ except ImportError:
     sys.exit("Error: ASE is required. Install with: pip install ase")
 
 
+# ---------------------------------------------------------
+# Calculators
+# ---------------------------------------------------------
+
+def get_ml_calculator(model_type, device="cpu", **kwargs):
+    """
+    Future ML calculators.
+    Does not load actual models yet.
+    """
+    model_type = model_type.lower()
+
+    print(f"\n[Calculator Factory] Requested model: {model_type}, device: {device}")
+
+    if model_type not in ("mace", "chgnet", "sevennet"):
+        print("  Unknown model type. Returning None.")
+        return None
+
+    print("  ML calculator support not implemented yet.")
+    return None
+
+
+# ---------------------------------------------------------
+# Task Functions
+# ---------------------------------------------------------
+
+def run_static(atoms, config):
+    print("\n--- Running static calculation ---")
+    calc = get_ml_calculator(config["model"], config["device"], **config)
+
+    if calc is None:
+        print("No ML calculator available.")
+        print("Static calculation will be implemented in later commits.")
+    else:
+        print("Calculator attached (future behavior).")
+
+
+def run_optimize(atoms, config):
+    print("\n--- Running geometry optimization ---")
+    calc = get_ml_calculator(config["model"], config["device"], **config)
+
+    if calc is None:
+        print("No ML calculator available.")
+        print("Relaxation will be implemented in later commits.")
+    else:
+        print("Calculator attached (future behavior).")
+
+
+# ---------------------------------------------------------
+# Argument Parsing
+# ---------------------------------------------------------
+
 def parse_arguments():
     parser = argparse.ArgumentParser(
-        description="MLSolve: geometry + task scaffolding."
+        description="MLSolve: geometry + configuration + calculator"
     )
     parser.add_argument(
         "-g", "--geometry",
@@ -31,24 +82,14 @@ def parse_arguments():
         "-i", "--input",
         required=False,
         type=str,
-        help="Configuration dictionary as a string, e.g. \"{'task': 'static'}\""
+        help="Configuration dictionary as a string, e.g. \"{'model': 'mace'}\""
     )
     return parser.parse_args()
 
 
-def run_static(atoms, config):
-    """Placeholder for the future static calculation."""
-    print("\n--- Running static calculation (placeholder) ---")
-    print("No ML calculator attached yet.")
-    print("This will compute energy & forces.")
-
-
-def run_optimize(atoms, config):
-    """Placeholder for the future geometry optimization."""
-    print("\n--- Running geometry optimization (placeholder) ---")
-    print("No optimizer or ML calculator yet.")
-    print("This will perform relaxation.")
-
+# ---------------------------------------------------------
+# Main
+# ---------------------------------------------------------
 
 def main():
     args = parse_arguments()
@@ -63,7 +104,7 @@ def main():
     except Exception as e:
         sys.exit(f"Error reading geometry file: {e}")
 
-    # Parse user configuration dictionary
+    # Parse -i config
     user_config = {}
     if args.input:
         try:
@@ -73,14 +114,13 @@ def main():
         except Exception:
             sys.exit("Error: -i must be a valid Python dictionary string.")
 
-    # Default configuration grows slowly as we evolve
+    # Default config continues to evolve
     config = {
         "model": "mace",
         "task": "static",
         "device": "cpu"
     }
 
-    # Merge user config
     config.update(user_config)
 
     print("MLSolve")
@@ -92,7 +132,7 @@ def main():
     for k, v in config.items():
         print(f"  {k}: {v}")
 
-    # --- Task dispatching ---
+    # Task dispatcher
     task = config.get("task", "static").lower()
 
     if task == "static":
@@ -100,8 +140,7 @@ def main():
     elif task == "optimize":
         run_optimize(atoms, config)
     else:
-        print(f"\nError: unknown task '{task}'.")
-        print("Supported tasks: static, optimize")
+        print(f"\nError: unknown task '{task}'. Supported: static, optimize.")
         sys.exit(1)
 
 
