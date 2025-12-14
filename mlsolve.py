@@ -12,62 +12,46 @@ import ast
 from pathlib import Path
 
 try:
-    from ase.io import read
+    from ase.io import read, write
+    from ase.optimize import BFGS
 except ImportError:
     sys.exit("Error: ASE is required. Install with: pip install ase")
 
 
 # ---------------------------------------------------------
-# Calculators
+# Calculator Factory
 # ---------------------------------------------------------
 
 def get_ml_calculator(model_type, device="cpu", **kwargs):
-    """
-    Initializes an ML calculator.
-    Now supports:
-      - MACE (basic)
-      - CHGNet (basic)
-    """
     model_type = model_type.lower()
 
-    print(f"\n[Calculators] Requested model: {model_type}, device: {device}")
+    print(f"\n[Calculator Factory] Model: {model_type}, device: {device}")
 
-    # ----------------------
-    # MACE Support
-    # ----------------------
     if model_type == "mace":
         try:
             from mace.calculators import mace_mp
         except ImportError:
-            sys.exit("Error: MACE is not installed. Install with: pip install mace-torch")
-
-        print("  Loading basic MACE model.")
+            sys.exit("Error: MACE not installed. pip install mace-torch")
         return mace_mp(model="medium", device=device)
 
-    # ----------------------
-    # CHGNet Support
-    # ----------------------
     elif model_type == "chgnet":
         try:
             from chgnet.model import CHGNet
             from chgnet.model.model import CHGNetCalculator
         except ImportError:
-            sys.exit("Error: CHGNet is not installed. Install with: pip install chgnet")
-
-        print("  Loading CHGNet model.")
+            sys.exit("Error: CHGNet not installed. pip install chgnet")
         model = CHGNet.load()
         return CHGNetCalculator(model=model, use_device=device)
 
-    # ----------------------
-    # SevenNet Placeholder
-    # ----------------------
     elif model_type == "sevennet":
-        print("  SevenNet not implemented yet.")
-        return None
+        try:
+            from sevenn.sevennet_calculator import SevenNetCalculator
+        except ImportError:
+            sys.exit("Error: SevenNet not installed. pip install sevenn")
+        return SevenNetCalculator(model="7net-0", device=device)
 
     else:
-        print("  Unknown model type. Returning None.")
-        return None
+        sys.exit(f"Error: unknown model '{model_type}'")
 
 
 # ---------------------------------------------------------
@@ -75,28 +59,34 @@ def get_ml_calculator(model_type, device="cpu", **kwargs):
 # ---------------------------------------------------------
 
 def run_static(atoms, config):
-    print("\n--- Running static calculation ---")
-    calc = get_ml_calculator(config["model"], config["device"], **config)
-    atoms.calc = calc
-
-    if calc is None:
-        print("No ML calculator available. Static calculation not performed.")
-        return
+    print("\n--- Static calculation ---")
+    atoms.calc = get_ml_calculator(config["model"], config["device"], **config)
 
     try:
-        pe = atoms.get_potential_energy()
+        energy = atoms.get_potential_energy()
         forces = atoms.get_forces()
-        print(f"Potential energy: {pe:.6f} eV")
+        print(f"Potential energy: {energy:.6f} eV")
         print(f"Max force: {forces.max():.6f} eV/Å")
     except Exception as e:
-        print(f"Calculation error: {e}")
+        print(f"Static calculation failed: {e}")
 
 
 def run_optimize(atoms, config):
-    print("\n--- Running geometry optimization ---")
-    print("Optimization not yet implemented.")
-    calc = get_ml_calculator(config["model"], config["device"], **config)
-    atoms.calc = calc
+    print("\n--- Geometry optimization ---")
+    atoms.calc = get_ml_calculator(config["model"], config["device"], **config)
+
+    fmax = config.get("fmax", 0.05)
+    steps = config.get("steps", 200)
+
+    dyn = BFGS(atoms)
+    try:
+        dyn.run(fmax=fmax, steps=steps)
+        write("optimized.cif", atoms)
+        print("Optimization finished.")
+        print(f"Final energy: {atoms.get_potential_energy():.6f} eV")
+        print("Output written to optimized.cif")
+    except Exception as e:
+        print(f"Optimization failed: {e}")
 
 
 # ---------------------------------------------------------
@@ -105,20 +95,10 @@ def run_optimize(atoms, config):
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
-        description="MLSolve with MACE + CHGNet integration."
+        description="MLSolve: unified ML force-field solver."
     )
-    parser.add_argument(
-        "-g", "--geometry",
-        required=True,
-        type=str,
-        help="Path to input geometry file"
-    )
-    parser.add_argument(
-        "-i", "--input",
-        required=False,
-        type=str,
-        help="Configuration dictionary as a string"
-    )
+    parser.add_argument("-g", "--geometry", required=True, type=str)
+    parser.add_argument("-i", "--input", required=False, type=str)
     return parser.parse_args()
 
 
@@ -136,9 +116,8 @@ def main():
     try:
         atoms = read(geom_path)
     except Exception as e:
-        sys.exit(f"Error reading geometry file: {e}")
+        sys.exit(f"Error reading geometry: {e}")
 
-    # Parse config
     user_config = {}
     if args.input:
         try:
@@ -146,33 +125,28 @@ def main():
             if not isinstance(user_config, dict):
                 raise ValueError
         except Exception:
-            sys.exit("Error: -i must be a valid Python dictionary string.")
+            sys.exit("Error: -i must be a valid dictionary")
 
     config = {
         "model": "mace",
         "task": "static",
         "device": "cpu",
+        "fmax": 0.05,
+        "steps": 200,
     }
     config.update(user_config)
 
     print("MLSolve")
-    print(f"Loaded structure : {atoms.get_chemical_formula()}")
-    print(f"Number of atoms  : {len(atoms)}")
-    print(f"Cell parameters  : {atoms.cell.cellpar().round(3)}")
+    print(f"Structure: {atoms.get_chemical_formula()}")
+    print(f"Atoms: {len(atoms)}")
 
-    print("\nFinal configuration:")
-    for k, v in config.items():
-        print(f"  {k}: {v}")
-
-    task = config.get("task", "static").lower()
-
+    task = config["task"].lower()
     if task == "static":
         run_static(atoms, config)
     elif task == "optimize":
         run_optimize(atoms, config)
     else:
-        print(f"\nError: unknown task '{task}'. Supported: static, optimize.")
-        sys.exit(1)
+        sys.exit(f"Error: unknown task '{task}'")
 
 
 if __name__ == "__main__":
