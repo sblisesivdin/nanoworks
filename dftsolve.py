@@ -7,7 +7,7 @@ More information: $ dftsolve.py -h
 
 Description = f'''
  Usage:
- $ mpirun -np <corenumbers> dftolve.py <args>
+ $ mpirun -np <corenumbers> dftsolve.py <args>
 '''
 
 import getopt, sys, os, time, shutil
