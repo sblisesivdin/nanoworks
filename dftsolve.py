@@ -315,11 +315,9 @@ class dftsolve:
                 else:
                     bulk_configuration.set_calculator(calc)
                     bulk_configuration.get_potential_energy()
-                if Density_calc == True:
-                    #This line makes huge GPW files. Therefore it is better to use this if else
-                    calc.write(struct+'-1-Result-Ground.gpw', mode="all")
-                else:
-                    calc.write(struct+'-1-Result-Ground.gpw')
+                #This line makes huge GPW files. Therefore, it is better to use this if-else
+                calc.write(struct+'-1-Result-Ground.gpw', mode="all")
+
                 # Writes final configuration as CIF file
                 write_cif(struct+'-Final.cif', bulk_configuration)
             else:
@@ -449,11 +447,9 @@ class dftsolve:
                 #relax = LBFGS(bulk_configuration, maxstep=Max_step, alpha=Alpha, damping=Damping, trajectory=struct+'-1-Result-Ground.traj')
                 #relax.run(fmax=Max_F_tolerance)  # Consider much tighter fmax!
                 #bulk_configuration.get_potential_energy()
-                if Density_calc == True:
-                    #This line makes huge GPW files. Therefore it is better to use this if else
-                    calc.write(struct+'-1-Result-Ground.gpw', mode="all")
-                else:
-                    calc.write(struct+'-1-Result-Ground.gpw')
+                #This line makes huge GPW files. Therefore it is better to use this if else
+                calc.write(struct+'-1-Result-Ground.gpw', mode="all")
+
                 # Writes final configuration as CIF file
                 write_cif(struct+'-Final.cif', bulk_configuration)
                 # Print final spacegroup information
