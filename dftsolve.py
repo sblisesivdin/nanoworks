@@ -1038,15 +1038,15 @@ class dftsolve:
         # Start Band calc
         time31 = time.time()
         parprint("Starting band structure calculation...")
-        if XC_calc in ['HSE06', 'HSE03','B3LYP', 'PBE0','EXX']:
-            calc = GPAW(struct+'-1-Result-Ground.gpw', symmetry='off',kpts={'path': Band_path, 'npoints': Band_npoints},
-                      parallel={'band':1, 'kpt':1}, occupations = Occupation,
-                      txt=struct+'-3-Log-Band.txt', convergence=Band_convergence)
+        if self.XC_calc in ['HSE06', 'HSE03','B3LYP', 'PBE0','EXX']:
+            calc = GPAW(self.struct+'-1-Result-Ground.gpw', symmetry='off',kpts={'path': self.Band_path, 'npoints': self.Band_npoints},
+                      parallel={'band':1, 'kpt':1}, occupations = self.Occupation,
+                      txt=self.struct+'-3-Log-Band.txt', convergence=self.Band_convergence)
             ef=0.0
 
         else:
-            calc = GPAW(struct+'-1-Result-Ground.gpw').fixed_density(kpts={'path': Band_path, 'npoints': Band_npoints},
-                      txt=struct+'-3-Log-Band.txt', symmetry='off', occupations = Occupation, convergence=Band_convergence)
+            calc = GPAW(self.struct+'-1-Result-Ground.gpw').fixed_density(kpts={'path': self.Band_path, 'npoints': self.Band_npoints},
+                      txt=self.struct+'-3-Log-Band.txt', symmetry='off', occupations = self.Occupation, convergence=self.Band_convergence)
             ef = calc.get_fermi_level()
 
         calc.get_potential_energy()
@@ -1056,29 +1056,29 @@ class dftsolve:
         parprint('Num of bands:'+str(Band_num_of_bands))
 
         # No need to write an additional gpaw file. Use json file to use with ase band-structure command
-        #calc.write(struct+'-3-Result-Band.gpw')
-        bs.write(struct+'-3-Result-Band.json')
+        #calc.write(self.struct+'-3-Result-Band.gpw')
+        bs.write(self.struct+'-3-Result-Band.json')
 
-        if Spin_calc == True:
+        if self.Spin_calc == True:
             eps_skn = np.array([[calc.get_eigenvalues(k,s)
-                                for k in range(Band_npoints)]
+                                for k in range(self.Band_npoints)]
                                 for s in range(2)]) - ef
             parprint(eps_skn.shape)
-            with paropen(struct+'-3-Result-Band-Down.dat', 'w') as f1:
+            with paropen(self.struct+'-3-Result-Band-Down.dat', 'w') as f1:
                 for n1 in range(Band_num_of_bands):
-                    for k1 in range(Band_npoints):
+                    for k1 in range(self.Band_npoints):
                         print(k1, eps_skn[0, k1, n1], end="\n", file=f1)
                     print (end="\n", file=f1)
 
-            with paropen(struct+'-3-Result-Band-Up.dat', 'w') as f2:
+            with paropen(self.struct+'-3-Result-Band-Up.dat', 'w') as f2:
                 for n2 in range(Band_num_of_bands):
-                    for k2 in range(Band_npoints):
+                    for k2 in range(self.Band_npoints):
                         print(k2, eps_skn[1, k2, n2], end="\n", file=f2)
                     print (end="\n", file=f2)
 
             # Thanks to Andrej Kesely (https://stackoverflow.com/users/10035985/andrej-kesely) for helping the problem of general XYYY writer
             currentd, all_groupsd = [], []
-            with open(struct+'-3-Result-Band-Down.dat', 'r') as f_in1:
+            with open(self.struct+'-3-Result-Band-Down.dat', 'r') as f_in1:
                 for line in map(str.strip, f_in1):
                     if line == "" and currentd:
                         all_groupsd.append(currentd)
@@ -1090,7 +1090,7 @@ class dftsolve:
                 all_groupsd.append(currentd)
 
             try:
-                with paropen(struct+'-3-Result-Band-Down-XYYY.dat', 'w') as f1:
+                with paropen(self.struct+'-3-Result-Band-Down-XYYY.dat', 'w') as f1:
                     for g in zip(*all_groupsd):
                         print('{} {} {}'.format(g[0][0], g[0][1], ' '.join(v for _, v in g[1:])), file=f1)
             except Exception as e:
@@ -1099,18 +1099,18 @@ class dftsolve:
                 pass  # Continue execution after encountering an exception
 
             currentu, all_groupsu = [], []
-            with open(struct+'-3-Result-Band-Up.dat', 'r') as f_in2:
+            with open(self.struct+'-3-Result-Band-Up.dat', 'r') as f_in2:
                 for line in map(str.strip, f_in2):
                     if line == "" and currentu:
                         all_groupsu.append(currentu)
                         currentu = []
                     else:
-                    currentu.append(line.split(maxsplit=1))
+                        currentu.append(line.split(maxsplit=1))
 
             if currentu:
                 all_groupsu.append(currentu)
             try:
-                with paropen(struct+'-3-Result-Band-Up-XYYY.dat', 'w') as f2:
+                with paropen(self.struct+'-3-Result-Band-Up-XYYY.dat', 'w') as f2:
                     for g in zip(*all_groupsu):
                         print('{} {} {}'.format(g[0][0], g[0][1], ' '.join(v for _, v in g[1:])), file=f2)
             except Exception as e:
@@ -1120,17 +1120,17 @@ class dftsolve:
 
         else:
             eps_skn = np.array([[calc.get_eigenvalues(k,s)
-                                for k in range(Band_npoints)]
+                                for k in range(self.Band_npoints)]
                                 for s in range(1)]) - ef
-            with paropen(struct+'-3-Result-Band.dat', 'w') as f:
+            with paropen(self.struct+'-3-Result-Band.dat', 'w') as f:
                 for n in range(Band_num_of_bands):
-                    for k in range(Band_npoints):
+                    for k in range(self.Band_npoints):
                         print(k, eps_skn[0, k, n], end="\n", file=f)
                     print (end="\n", file=f)
 
             # Thanks to Andrej Kesely (https://stackoverflow.com/users/10035985/andrej-kesely) for helping the problem of general XYYY writer
             current, all_groups = [], []
-            with open(struct+'-3-Result-Band.dat', 'r') as f_in:
+            with open(self.struct+'-3-Result-Band.dat', 'r') as f_in:
                 for line in map(str.strip, f_in):
                     if line == "" and current:
                         all_groups.append(current)
@@ -1141,7 +1141,7 @@ class dftsolve:
             if current:
                 all_groups.append(current)
             try:
-                with paropen(struct+'-3-Result-Band-XYYY.dat', 'w') as f1:
+                with paropen(self.struct+'-3-Result-Band-XYYY.dat', 'w') as f1:
                     for g in zip(*all_groups):
                         print('{} {} {}'.format(g[0][0], g[0][1], ' '.join(v for _, v in g[1:])), file=f1)
             except Exception as e:
@@ -1152,18 +1152,18 @@ class dftsolve:
             # Projected Band
             Projected_band = False
             if Projected_band == True:                
-                with paropen(struct+'-3-Result-ProjectedBand.dat', 'w') as f3:
+                with paropen(self.struct+'-3-Result-ProjectedBand.dat', 'w') as f3:
                     for i in range(len(sym_ang_mom_i)):
                         print('----------------------'+sym_ang_mom_i[i]+'---------------------------', end="\n", file=f3)
                         for n in range(Band_num_of_bands):
-                            for k in range(Band_npoints):
+                            for k in range(self.Band_npoints):
                                 print(k, projector_weight_skni[0, k, n, i], end="\n", file=f3)
                             print (end="\n", file=f3)
                 
         # Finish Band calc
         time32 = time.time()
         # Write timings of calculation
-        with paropen(struct+'-7-Result-Log-Timings.txt', 'a') as f1:
+        with paropen(self.struct+'-7-Result-Log-Timings.txt', 'a') as f1:
             print('Band calculation: ', round((time32-time31),2), end="\n", file=f1)
 
         # Write or draw figures
@@ -1171,12 +1171,12 @@ class dftsolve:
             # Draw graphs only on master node
             if world.rank == 0:
                 # Band Structure
-                bs.plot(filename=struct+'-3-Graph-Band.png', show=True, emax=Energy_max + bs.reference, emin=Energy_min + bs.reference, ylabel=band_ylabel[Localisation])
+                bs.plot(filename=self.struct+'-3-Graph-Band.png', show=True, emax=self.Energy_max + bs.reference, emin=self.Energy_min + bs.reference, ylabel=self.band_ylabel[self.Localisation])
         else:
             # Draw graphs only on master node
             if world.rank == 0:
                 # Band Structure
-                bs.plot(filename=struct+'-3-Graph-Band.png', show=False, emax=Energy_max + bs.reference, emin=Energy_min + bs.reference, ylabel=band_ylabel[Localisation])
+                bs.plot(filename=self.struct+'-3-Graph-Band.png', show=False, emax=self.Energy_max + bs.reference, emin=self.Energy_min + bs.reference, ylabel=self.band_ylabel[self.Localisation])
 
     def densitycalc(self):
         """
