@@ -15,6 +15,8 @@ import textwrap
 import requests
 import pickle
 from argparse import ArgumentParser, HelpFormatter
+from dataclasses import dataclass, field
+from typing import Optional, Dict, List, Any
 from ase import *
 from ase.spacegroup import get_spacegroup
 from ase.dft.kpoints import get_special_points
@@ -45,42 +47,174 @@ import pandas as pd
 import warnings
 warnings.filterwarnings('ignore')
 
+@dataclass
+class DFTConfig:
+    """Configuration dataclass to hold all DFT calculation parameters.
+    
+    This dataclass replaces the previous global variable approach, providing:
+    - Type hints for better code clarity
+    - Default values in one centralized location
+    - Easier testing and parameter management
+    - Reduced global namespace pollution
+    
+    All parameters that were previously global variables are now encapsulated
+    in this dataclass. The dftsolve class receives a DFTConfig instance and
+    exposes its attributes for backward compatibility.
+    """
+    # Mode and calculation flags
+    Mode: str = 'PW'
+    Ground_calc: bool = False
+    Geo_optim: bool = False
+    Elastic_calc: bool = False
+    DOS_calc: bool = False
+    Band_calc: bool = False
+    Density_calc: bool = False
+    Phonon_calc: bool = False
+    Optical_calc: bool = False
+    
+    # Geometry optimization parameters
+    Optimizer: str = 'QuasiNewton'
+    Max_F_tolerance: float = 0.05
+    Max_step: float = 0.1
+    Alpha: float = 60.0
+    Damping: float = 1.0
+    Fix_symmetry: bool = False
+    Relax_cell: List[bool] = field(default_factory=lambda: [False, False, False, False, False, False])
+    Hydrostatic_pressure: float = 0.0
+    
+    # Ground state parameters
+    Cut_off_energy: float = 340
+    Ground_kpts_density: Optional[float] = None
+    Ground_kpts_x: int = 5
+    Ground_kpts_y: int = 5
+    Ground_kpts_z: int = 5
+    Ground_gpts_density: Optional[float] = None
+    Ground_gpts_x: int = 8
+    Ground_gpts_y: int = 8
+    Ground_gpts_z: int = 8
+    Setup_params: Dict = field(default_factory=dict)
+    XC_calc: str = 'LDA'
+    Ground_convergence: Dict = field(default_factory=dict)
+    Occupation: Dict = field(default_factory=lambda: {'name': 'fermi-dirac', 'width': 0.05})
+    Mixer_type: Any = None
+    Spin_calc: bool = False
+    Magmom_per_atom: float = 1.0
+    Magmom_single_atom: Optional[List] = None
+    Total_charge: float = 0.0
+    
+    # DOS parameters
+    DOS_npoints: int = 501
+    DOS_width: float = 0.1
+    DOS_convergence: Dict = field(default_factory=dict)
+    
+    # Band structure parameters
+    Gamma: bool = True
+    Band_path: str = 'LGL'
+    Band_npoints: int = 61
+    Energy_max: float = 5
+    Energy_min: float = -5
+    Band_convergence: Dict = field(default_factory=lambda: {'bands': 8})
+    
+    # Electron density parameters
+    Refine_grid: int = 4
+    
+    # Phonon parameters
+    Phonon_PW_cutoff: float = 400
+    Phonon_kpts_x: int = 3
+    Phonon_kpts_y: int = 3
+    Phonon_kpts_z: int = 3
+    Phonon_supercell: Any = None
+    Phonon_displacement: float = 1e-3
+    Phonon_path: str = 'LGL'
+    Phonon_npoints: int = 61
+    Phonon_acoustic_sum_rule: bool = True
+    
+    # Optical parameters
+    Opt_calc_type: str = 'BSE'
+    Opt_shift_en: float = 0.0
+    Opt_BSE_valence: Any = None
+    Opt_BSE_conduction: Any = None
+    Opt_BSE_min_en: float = 0.0
+    Opt_BSE_max_en: float = 20.0
+    Opt_BSE_num_of_data: int = 1001
+    Opt_num_of_bands: int = 8
+    Opt_FD_smearing: float = 0.05
+    Opt_eta: float = 0.05
+    Opt_domega0: float = 0.05
+    Opt_omega2: float = 5.0
+    Opt_cut_of_energy: float = 100
+    Opt_nblocks: Any = None
+    
+    # General parameters
+    MPI_cores: int = 4
+    Localisation: str = "en_UK"
+    Outdirname: str = ''
+    
+    # Bulk configuration
+    bulk_configuration: Any = None
+    
+    # Localization labels
+    dos_xlabel: Dict = field(default_factory=dict)
+    dos_ylabel: Dict = field(default_factory=dict)
+    band_ylabel: Dict = field(default_factory=dict)
+    
+    def __post_init__(self):
+        """Initialize default values that depend on other objects."""
+        if self.Mixer_type is None:
+            self.Mixer_type = MixerSum(0.1, 3, 50)
+        if self.Phonon_supercell is None:
+            self.Phonon_supercell = np.diag([2, 2, 2])
+        if self.Opt_BSE_valence is None:
+            self.Opt_BSE_valence = range(0, 3)
+        if self.Opt_BSE_conduction is None:
+            self.Opt_BSE_conduction = range(4, 7)
+        if self.Opt_nblocks is None:
+            self.Opt_nblocks = world.size
+
 class RawFormatter(HelpFormatter):
     """To print Description variable with argparse"""
     def _fill_text(self, text, width, indent):
         return "\n".join([textwrap.fill(line, width) for line in textwrap.indent(textwrap.dedent(text), indent).splitlines()])
 
 def struct_from_file(inputfile, geometryfile):
-    """Load variables from parse function"""
-    global bulk_configuration
+    """Load variables from parse function and return DFTConfig instance."""
     # Works like from FILE import *
     inputf = __import__(Path(inputfile).stem, globals(), locals(), ['*'])
+    
+    # Create a config object with loaded parameters
+    config_dict = {}
     for k in dir(inputf):
-        # Still can not get rid of global variable usage :(
-        globals()[k] = getattr(inputf, k)
+        if not k.startswith('_'):
+            config_dict[k] = getattr(inputf, k)
+            # Also set as globals for backward compatibility with methods that haven't been refactored yet
+            globals()[k] = getattr(inputf, k)
+    
+    # Create DFTConfig instance
+    config = DFTConfig(**{k: v for k, v in config_dict.items() if k in DFTConfig.__dataclass_fields__})
+    
     # If there is a CIF input, use it. Otherwise use the bulk configuration provided above.
     if geometryfile is None:
-        if Outdirname !='':
-            struct = Outdirname
+        if config.Outdirname != '':
+            struct = config.Outdirname
         else:
             struct = 'results' # All files will get their names from this file
     else:
         struct = Path(geometryfile).stem
-        bulk_configuration = read(geometryfile, index='-1')
-        parprint("Number of atoms imported from CIF file:"+str(bulk_configuration.get_global_number_of_atoms()))
-        parprint("Spacegroup of CIF file:",get_spacegroup(bulk_configuration, symprec=1e-2))
-        parprint("Special Points usable for this spacegroup:",get_special_points(bulk_configuration.get_cell()))
+        config.bulk_configuration = read(geometryfile, index='-1')
+        parprint("Number of atoms imported from CIF file:"+str(config.bulk_configuration.get_global_number_of_atoms()))
+        parprint("Spacegroup of CIF file:",get_spacegroup(config.bulk_configuration, symprec=1e-2))
+        parprint("Special Points usable for this spacegroup:",get_special_points(config.bulk_configuration.get_cell()))
 
     # Output directory
-    if Outdirname != '':
-        structpath = os.path.join(os.getcwd(),Outdirname)
+    if config.Outdirname != '':
+        structpath = os.path.join(os.getcwd(), config.Outdirname)
     else:
-        structpath = os.path.join(os.getcwd(),struct)
+        structpath = os.path.join(os.getcwd(), struct)
 
     if not os.path.isdir(structpath):
         os.makedirs(structpath, exist_ok=True)
-    struct = os.path.join(structpath,struct)
-    return struct
+    struct = os.path.join(structpath, struct)
+    return struct, config
 
 def autoscale_y(ax,margin=0.1):
     """This function rescales the y-axis based on the data that is visible given the current xlim of the axis.
@@ -114,83 +248,111 @@ class dftsolve:
     The dftsolve class is a high-level interaction script for GPAW calculations.
     It handles various types of calculations such as ground state, structure optimization,
     elastic properties, density of states, band structure, density, and optical properties.
-    The class takes input parameters from a configuration file and performs the calculations
+    The class takes input parameters from a DFTConfig instance and performs the calculations
     accordingly.
     """
-    def __init__(self, struct):
-        global np
-        self.Mode = Mode
-        self.Geo_optim = Geo_optim
-        self.Elastic_calc = Elastic_calc
-        self.DOS_calc = DOS_calc
-        self.Band_calc = Band_calc
-        self.Density_calc = Density_calc
-        self.Optical_calc = Optical_calc
-        self.Optimizer = Optimizer
-        self.Max_F_tolerance = Max_F_tolerance
-        self.Max_step = Max_step
-        self.Alpha = Alpha
-        self.Damping = Damping
-        self.Fix_symmetry = Fix_symmetry
-        self.Relax_cell = Relax_cell
-        self.Hydrostatic_pressure = Hydrostatic_pressure
-        self.Cut_off_energy = Cut_off_energy
-        self.Ground_kpts_density = Ground_kpts_density
-        self.Ground_kpts_x = Ground_kpts_x
-        self.Ground_kpts_y = Ground_kpts_y
-        self.Ground_kpts_z = Ground_kpts_z
-        self.Ground_gpts_density = Ground_gpts_density
-        self.Ground_gpts_x = Ground_gpts_x
-        self.Ground_gpts_y = Ground_gpts_y
-        self.Ground_gpts_z = Ground_gpts_z
-        self.Setup_params = Setup_params
-        self.XC_calc = XC_calc
-        self.Ground_convergence = Ground_convergence
-        self.Occupation = Occupation
-        self.Mixer_type = Mixer_type
-        self.Spin_calc = Spin_calc
-        self.Magmom_per_atom = Magmom_per_atom
-        self.Magmom_single_atom = Magmom_single_atom
-        self.DOS_npoints = DOS_npoints
-        self.DOS_width = DOS_width
-        self.DOS_convergence = DOS_convergence
-        self.Gamma = Gamma
-        self.Band_path = Band_path
-        self.Band_npoints = Band_npoints
-        self.Energy_max = Energy_max
-        self.Energy_min = Energy_min
-        self.Band_convergence = Band_convergence
-        self.Refine_grid = Refine_grid
-        self.Phonon_PW_cutoff = Phonon_PW_cutoff
-        self.Phonon_kpts_x = Phonon_kpts_x
-        self.Phonon_kpts_y = Phonon_kpts_y
-        self.Phonon_kpts_z = Phonon_kpts_z
-        self.Phonon_supercell = Phonon_supercell
-        self.Phonon_displacement = Phonon_displacement
-        self.Phonon_path = Phonon_path
-        self.Phonon_npoints = Phonon_npoints
-        self.Phonon_acoustic_sum_rule = Phonon_acoustic_sum_rule
-        self.Opt_calc_type = Opt_calc_type
-        self.Opt_shift_en = Opt_shift_en
-        self.Opt_BSE_valence = Opt_BSE_valence
-        self.Opt_BSE_conduction = Opt_BSE_conduction
-        self.Opt_BSE_min_en = Opt_BSE_min_en
-        self.Opt_BSE_max_en = Opt_BSE_max_en
-        self.Opt_BSE_num_of_data = Opt_BSE_num_of_data
-        self.Opt_num_of_bands = Opt_num_of_bands
-        self.Opt_FD_smearing = Opt_FD_smearing
-        self.Opt_eta = Opt_eta
-        self.Opt_domega0 = Opt_domega0
-        self.Opt_omega2 = Opt_omega2
-        self.Opt_cut_of_energy = Opt_cut_of_energy
-        self.Opt_nblocks = Opt_nblocks
-        self.MPI_cores = MPI_cores
-        self.Localisation = Localisation
-        self.bulk_configuration = bulk_configuration
+    def __init__(self, struct: str, config: DFTConfig):
+        """Initialize dftsolve with struct path and configuration.
+        
+        Args:
+            struct: Path to structure files
+            config: DFTConfig instance containing all calculation parameters
+        """
         self.struct = struct
-        self.dos_xlabel = dos_xlabel
-        self.dos_ylabel = dos_ylabel
-        self.band_ylabel = band_ylabel
+        self.config = config
+        
+        # For backward compatibility, expose config attributes as instance attributes
+        self.Mode = config.Mode
+        self.Geo_optim = config.Geo_optim
+        self.Elastic_calc = config.Elastic_calc
+        self.DOS_calc = config.DOS_calc
+        self.Band_calc = config.Band_calc
+        self.Density_calc = config.Density_calc
+        self.Optical_calc = config.Optical_calc
+        self.Optimizer = config.Optimizer
+        self.Max_F_tolerance = config.Max_F_tolerance
+        self.Max_step = config.Max_step
+        self.Alpha = config.Alpha
+        self.Damping = config.Damping
+        self.Fix_symmetry = config.Fix_symmetry
+        self.Relax_cell = config.Relax_cell
+        self.Hydrostatic_pressure = config.Hydrostatic_pressure
+        self.Cut_off_energy = config.Cut_off_energy
+        self.Ground_kpts_density = config.Ground_kpts_density
+        self.Ground_kpts_x = config.Ground_kpts_x
+        self.Ground_kpts_y = config.Ground_kpts_y
+        self.Ground_kpts_z = config.Ground_kpts_z
+        self.Ground_gpts_density = config.Ground_gpts_density
+        self.Ground_gpts_x = config.Ground_gpts_x
+        self.Ground_gpts_y = config.Ground_gpts_y
+        self.Ground_gpts_z = config.Ground_gpts_z
+        self.Setup_params = config.Setup_params
+        self.XC_calc = config.XC_calc
+        self.Ground_convergence = config.Ground_convergence
+        self.Occupation = config.Occupation
+        self.Mixer_type = config.Mixer_type
+        self.Spin_calc = config.Spin_calc
+        self.Magmom_per_atom = config.Magmom_per_atom
+        self.Magmom_single_atom = config.Magmom_single_atom
+        self.Total_charge = config.Total_charge
+        self.DOS_npoints = config.DOS_npoints
+        self.DOS_width = config.DOS_width
+        self.DOS_convergence = config.DOS_convergence
+        self.Gamma = config.Gamma
+        self.Band_path = config.Band_path
+        self.Band_npoints = config.Band_npoints
+        self.Energy_max = config.Energy_max
+        self.Energy_min = config.Energy_min
+        self.Band_convergence = config.Band_convergence
+        self.Refine_grid = config.Refine_grid
+        self.Phonon_PW_cutoff = config.Phonon_PW_cutoff
+        self.Phonon_kpts_x = config.Phonon_kpts_x
+        self.Phonon_kpts_y = config.Phonon_kpts_y
+        self.Phonon_kpts_z = config.Phonon_kpts_z
+        self.Phonon_supercell = config.Phonon_supercell
+        self.Phonon_displacement = config.Phonon_displacement
+        self.Phonon_path = config.Phonon_path
+        self.Phonon_npoints = config.Phonon_npoints
+        self.Phonon_acoustic_sum_rule = config.Phonon_acoustic_sum_rule
+        self.Opt_calc_type = config.Opt_calc_type
+        self.Opt_shift_en = config.Opt_shift_en
+        self.Opt_BSE_valence = config.Opt_BSE_valence
+        self.Opt_BSE_conduction = config.Opt_BSE_conduction
+        self.Opt_BSE_min_en = config.Opt_BSE_min_en
+        self.Opt_BSE_max_en = config.Opt_BSE_max_en
+        self.Opt_BSE_num_of_data = config.Opt_BSE_num_of_data
+        self.Opt_num_of_bands = config.Opt_num_of_bands
+        self.Opt_FD_smearing = config.Opt_FD_smearing
+        self.Opt_eta = config.Opt_eta
+        self.Opt_domega0 = config.Opt_domega0
+        self.Opt_omega2 = config.Opt_omega2
+        self.Opt_cut_of_energy = config.Opt_cut_of_energy
+        self.Opt_nblocks = config.Opt_nblocks
+        self.MPI_cores = config.MPI_cores
+        self.Localisation = config.Localisation
+        self.bulk_configuration = config.bulk_configuration
+        self.dos_xlabel = config.dos_xlabel
+        self.dos_ylabel = config.dos_ylabel
+        self.band_ylabel = config.band_ylabel
+        
+        if not self.dos_xlabel:
+            self.dos_xlabel.update({
+                'en_UK':'Energy [eV]', 'tr_TR':'Enerji [eV]', 'de_DE':'Energie [eV]', 
+                'fr_FR':'Énergie [eV]', 'ru_RU':'Энергия [эВ]', 'zh_CN':'能量 [eV]', 
+                'ko_KR':'에너지 [eV]', 'ja_JP':'エネルギー [eV]'
+            })
+        if not self.dos_ylabel:
+            self.dos_ylabel.update({
+                'en_UK':'DOS [1/eV]', 'tr_TR':'Durum Yoğunluğu [1/eV]', 'de_DE':'Zustandsdichte [1/eV]',
+                'fr_FR':'DOS [1/eV]', 'ru_RU':'Плотность состояний [1/эВ]', 'zh_CN':'态密度 [1/eV]',
+                'ko_KR':'상태 밀도 [1/eV]', 'ja_JP':'状態密度 [1/eV]'
+            })
+        if not self.band_ylabel:
+            self.band_ylabel.update({
+                'en_UK':'Energy [eV]', 'tr_TR':'Enerji [eV]', 'de_DE':'Energie [eV]',
+                'fr_FR':'Énergie [eV]', 'ru_RU':'Энергия [эВ]', 'zh_CN':'能量 [eV]',
+                'ko_KR':'에너지 [eV]', 'ja_JP':'エネルギー [eV]'
+            })
         
 
     def structurecalc(self):
