@@ -1999,59 +1999,6 @@ if __name__ == "__main__":
         cell=[(4.936, 0.0, 0.0), (-2.467999999999999, 4.274701393079989, 0.0), (0.0, 0.0, 20.0)],
         pbc=True,
         )
-    # ------------------ Localisation Tables. You can add your language below --------------------------
-    dos_xlabel = dict(en_UK='', tr_TR='', de_DE='', fr_FR='', ru_RU='', zh_CN='', ko_KR='', ja_JP='')
-    dos_ylabel = dict(en_UK='', tr_TR='', de_DE='', fr_FR='', ru_RU='', zh_CN='', ko_KR='', ja_JP='')
-    band_ylabel = dict(en_UK='', tr_TR='', de_DE='', fr_FR='', ru_RU='', zh_CN='', ko_KR='', ja_JP='')
-    
-    # ENGLISH (en_UK) - by S.B. Lisesivdin
-    ## Figures
-    dos_xlabel["en_UK"]='Energy [eV]'
-    dos_ylabel["en_UK"]='DOS [1/eV]'
-    band_ylabel["en_UK"]='Energy [eV]'
-
-    # TURKISH (tr_TR) - by S.B. Lisesivdin
-    ## Figures
-    dos_xlabel["tr_TR"]='Enerji [eV]'
-    dos_ylabel["tr_TR"]='Durum Yoğunluğu [1/eV]'
-    band_ylabel["tr_TR"]='Enerji [eV]'
-    
-    # GERMAN (de_DE) - created with AI
-    ## Figures
-    dos_xlabel["de_DE"]='Energie [eV]'
-    dos_ylabel["de_DE"]='Zustandsdichte [1/eV]'
-    band_ylabel["de_DE"]='Energie [eV]'
-
-    # FRENCH (fr_FR) - created with AI
-    ## Figures
-    dos_xlabel["fr_FR"]='Énergie [eV]'
-    dos_ylabel["fr_FR"]='DOS [1/eV]'
-    band_ylabel["fr_FR"]='Énergie [eV]'
-
-    # RUSSIAN (ru_RU) - created with AI
-    ## Figures
-    dos_xlabel["ru_RU"]='Энергия [эВ]'
-    dos_ylabel["ru_RU"]='Плотность состояний [1/эВ]'
-    band_ylabel["ru_RU"]='Энергия [эВ]'
-
-    # CHINESE (zh_CN) - created with AI
-    ## Figures
-    dos_xlabel["zh_CN"]='能量 [eV]'
-    dos_ylabel["zh_CN"]='态密度 [1/eV]'
-    band_ylabel["zh_CN"]='能量 [eV]'
-
-    # KOREAN (ko_KR) - created with AI
-    ## Figures
-    dos_xlabel["ko_KR"]='에너지 [eV]'
-    dos_ylabel["ko_KR"]='상태 밀도 [1/eV]'
-    band_ylabel["ko_KR"]='에너지 [eV]'
-
-    # JAPANESE (ja_JP) - created with AI
-    ## Figures
-    dos_xlabel["ja_JP"]='エネルギー [eV]'
-    dos_ylabel["ja_JP"]='状態密度 [1/eV]'
-    band_ylabel["ja_JP"]='エネルギー [eV]'
-        
     # ------------------ End of Localisation Tables --------------------------
     
     # Version
@@ -2148,41 +2095,41 @@ if __name__ == "__main__":
     # Start time
     time0 = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time.time()))
 
-    # Load struct
-    struct = struct_from_file(inputfile = configpath, geometryfile = inFile)
+    # Load struct and config
+    struct, config = struct_from_file(inputfile = configpath, geometryfile = inFile)
 
     # Write timings of calculation
     with paropen(struct+'-7-Result-Log-Timings.txt', 'a') as f1:
         print("dftsolve.py execution timings (seconds):", end="\n", file=f1)
         print("Execution started:", time0, end="\n", file=f1)
 
-    # Load dftsolve() class
-    dftsolver = dftsolve(struct)
+    # Load dftsolve() class with config
+    dftsolver = dftsolve(struct, config)
 
     # Run structure calculation
     dftsolver.structurecalc()
 
-    if Optical_calc == False:
+    if config.Optical_calc == False:
         # Run ground state calculation
         dftsolver.groundcalc()
 
-        if Elastic_calc == True:
+        if config.Elastic_calc == True:
             # Run elastic calculation
             dftsolver.elasticcalc(drawfigs = drawfigs)
 
-        if DOS_calc == True:
+        if config.DOS_calc == True:
             # Run DOS calculation
             dftsolver.doscalc(drawfigs = drawfigs)
 
-        if Band_calc == True:
+        if config.Band_calc == True:
             # Run band calculation
             dftsolver.bandcalc(drawfigs = drawfigs)
 
-        if Density_calc == True:
+        if config.Density_calc == True:
             # Run all-electron density calculation
             dftsolver.densitycalc()    
 
-        if Phonon_calc == True:
+        if config.Phonon_calc == True:
             # Run phonon calculation
             dftsolver.phononcalc()  
     else:
