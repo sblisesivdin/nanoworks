@@ -1243,56 +1243,56 @@ class dftsolve:
         time51 = time.time()
         parprint("Starting phonon calculation.(\033[93mWARNING:\033[0mNOT TESTED FEATURE, PLEASE CONTROL THE RESULTS)")
 
-        calc = GPAW(struct+'-1-Result-Ground.gpw')
-        bulk_configuration.calc = calc
+        calc = GPAW(self.struct+'-1-Result-Ground.gpw')
+        self.bulk_configuration.calc = calc
 
         # Pre-process
-        bulk_configuration_ph = convert_atoms_to_phonopy(bulk_configuration)
-        phonon = Phonopy(bulk_configuration_ph, Phonon_supercell, log_level=1)
-        phonon.generate_displacements(distance=Phonon_displacement)
-        with paropen(struct+'-5-Log-Phonon-Phonopy.txt', 'a') as f2:
+        bulk_configuration_ph = convert_atoms_to_phonopy(self.bulk_configuration)
+        phonon = Phonopy(bulk_configuration_ph, self.Phonon_supercell, log_level=1)
+        phonon.generate_displacements(distance=self.Phonon_displacement)
+        with paropen(self.struct+'-5-Log-Phonon-Phonopy.txt', 'a') as f2:
             print("[Phonopy] Atomic displacements:", end="\n", file=f2)
             disps = phonon.displacements
             for d in disps:
                 print("[Phonopy] %d %s" % (d[0], d[1:]), end="\n", file=f2)
 
         # FIX THIS PART
-        calc = GPAW(mode=PW(Phonon_PW_cutoff),
-               kpts={'size': (Phonon_kpts_x, Phonon_kpts_y, Phonon_kpts_z)}, txt=struct+'-5-Log-Phonon-GPAW.txt')
+        calc = GPAW(mode=PW(self.Phonon_PW_cutoff),
+               kpts={'size': (self.Phonon_kpts_x, self.Phonon_kpts_y, self.Phonon_kpts_z)}, txt=self.struct+'-5-Log-Phonon-GPAW.txt')
 
-        bulk_configuration.calc = calc
+        self.bulk_configuration.calc = calc
 
-        path = get_band_path(bulk_configuration, Phonon_path, Phonon_npoints)
+        path = get_band_path(self.bulk_configuration, self.Phonon_path, self.Phonon_npoints)
 
-        phonon_path = struct+'5-Results-force-constants.npy'
-        sum_rule=Phonon_acoustic_sum_rule
+        phonon_path = self.struct+'5-Results-force-constants.npy'
+        sum_rule=self.Phonon_acoustic_sum_rule
 
         if os.path.exists(phonon_path):
-            with paropen(struct+'-5-Log-Phonon-Phonopy.txt', 'a') as f2:
+            with paropen(self.struct+'-5-Log-Phonon-Phonopy.txt', 'a') as f2:
                 print('Reading FCs from {!r}'.format(phonon_path), end="\n", file=f2)
             phonon.force_constants = np.load(phonon_path)
 
         else:
-            with paropen(struct+'-5-Log-Phonon-Phonopy.txt', 'a') as f2:
+            with paropen(self.struct+'-5-Log-Phonon-Phonopy.txt', 'a') as f2:
                 print('Computing FCs',end="\n", file=f2)
                 #os.makedirs('force-sets', exist_ok=True)
             supercells = list(phonon.supercells_with_displacements)
-            fnames = [struct+'5-Results-sc-{:04}.npy'.format(i) for i in range(len(supercells))]
+            fnames = [self.struct+'5-Results-sc-{:04}.npy'.format(i) for i in range(len(supercells))]
             set_of_forces = [
                 load_or_compute_force(fname, calc, supercell)
                 for (fname, supercell) in zip(fnames, supercells)
             ]
-            with paropen(struct+'-5-Log-Phonon-Phonopy.txt', 'a') as f2:
+            with paropen(self.struct+'-5-Log-Phonon-Phonopy.txt', 'a') as f2:
                 print('Building FC matrix', end="\n", file=f2)
             phonon.produce_force_constants(forces=set_of_forces, calculate_full_force_constants=False)
             if sum_rule:
                 phonon.symmetrize_force_constants()
-            with paropen(struct+'-5-Log-Phonon-Phonopy.txt', 'a') as f2:
+            with paropen(self.struct+'-5-Log-Phonon-Phonopy.txt', 'a') as f2:
                 print('Writing FCs to {!r}'.format(phonon_path), end="\n", file=f2)
             np.save(phonon_path, phonon.force_constants)
             #shutil.rmtree('force-sets')
 
-        with paropen(struct+'-5-Log-Phonon-Phonopy.txt', 'a') as f2:
+        with paropen(self.struct+'-5-Log-Phonon-Phonopy.txt', 'a') as f2:
             print('', end="\n", file=f2)
             print("[Phonopy] Phonon frequencies at Gamma:", end="\n", file=f2)
             for i, freq in enumerate(phonon.get_frequencies((0, 0, 0))):
@@ -1363,11 +1363,11 @@ class dftsolve:
         # phonon.run_mesh([20, 20, 20], with_eigenvectors=True, is_mesh_symmetry=False)
         # fig = phonon.plot_band_structure_and_dos(pdoc_indices=[[0], [1]])
 
-        fig.savefig(struct+'-5-Result-Phonon.png', dpi=300)
+        fig.savefig(self.struct+'-5-Result-Phonon.png', dpi=300)
 
         time52 = time.time()
         # Write timings of calculation
-        with paropen(struct+'-7-Result-Log-Timings.txt', 'a') as f1:
+        with paropen(self.struct+'-7-Result-Log-Timings.txt', 'a') as f1:
             print('Phonon calculation: ', round((time52-time51),2), end="\n", file=f1)
 
     def opticalcalc(self):
