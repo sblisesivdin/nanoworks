@@ -1192,42 +1192,42 @@ class dftsolve:
         #Start Density calc
         time41 = time.time()
         parprint("Starting All-electron density calculation...")
-        calc = GPAW(struct+'-1-Result-Ground.gpw', txt=struct+'-4-Log-ElectronDensity.txt')
-        bulk_configuration.calc = calc
-        if Spin_calc == True:
+        calc = GPAW(self.struct+'-1-Result-Ground.gpw', txt=self.struct+'-4-Log-ElectronDensity.txt')
+        self.bulk_configuration.calc = calc
+        if self.Spin_calc == True:
             np = calc.get_pseudo_density()
-            n = calc.get_all_electron_density(gridrefinement=Refine_grid)
+            n = calc.get_all_electron_density(gridrefinement=self.Refine_grid)
             # For spins
             npdown = calc.get_pseudo_density(spin=0)
-            ndown = calc.get_all_electron_density(spin=0, gridrefinement=Refine_grid)
+            ndown = calc.get_all_electron_density(spin=0, gridrefinement=self.Refine_grid)
             npup = calc.get_pseudo_density(spin=1)
-            nup = calc.get_all_electron_density(spin=1, gridrefinement=Refine_grid)
+            nup = calc.get_all_electron_density(spin=1, gridrefinement=self.Refine_grid)
             # Zeta
             nzeta = (nup - ndown) / (nup + ndown)
             npzeta = (npup - npdown) / (npup + npdown)
             # Writing spin down pseudo and all electron densities to cube file with Bohr unit
-            write(struct+'-4-Result-All-electron_nall-Down.cube', bulk_configuration, data=ndown * Bohr**3)
-            write(struct+'-4-Result-All-electron_npseudo-Down.cube', bulk_configuration, data=npdown * Bohr**3)
+            write(self.struct+'-4-Result-All-electron_nall-Down.cube', self.bulk_configuration, data=ndown * Bohr**3)
+            write(self.struct+'-4-Result-All-electron_npseudo-Down.cube', self.bulk_configuration, data=npdown * Bohr**3)
             # Writing spin up pseudo and all electron densities to cube file with Bohr unit
-            write(struct+'-4-Result-All-electron_nall-Up.cube', bulk_configuration, data=nup * Bohr**3)
-            write(struct+'-4-Result-All-electron_npseudo-Up.cube', bulk_configuration, data=npup * Bohr**3)
+            write(self.struct+'-4-Result-All-electron_nall-Up.cube', self.bulk_configuration, data=nup * Bohr**3)
+            write(self.struct+'-4-Result-All-electron_npseudo-Up.cube', self.bulk_configuration, data=npup * Bohr**3)
             # Writing total pseudo and all electron densities to cube file with Bohr unit
-            write(struct+'-4-Result-All-electron_nall-Total.cube', bulk_configuration, data=n * Bohr**3)
-            write(struct+'-4-Result-All-electron_npseudo-Total.cube', bulk_configuration, data=np * Bohr**3)
+            write(self.struct+'-4-Result-All-electron_nall-Total.cube', self.bulk_configuration, data=n * Bohr**3)
+            write(self.struct+'-4-Result-All-electron_npseudo-Total.cube', self.bulk_configuration, data=np * Bohr**3)
             # Writing zeta pseudo and all electron densities to cube file with Bohr unit
-            write(struct+'-4-Result-All-electron_nall-Zeta.cube', bulk_configuration, data=nzeta * Bohr**3)
-            write(struct+'-4-Result-All-electron_npseudo-Zeta.cube', bulk_configuration, data=npzeta * Bohr**3)
+            write(self.struct+'-4-Result-All-electron_nall-Zeta.cube', self.bulk_configuration, data=nzeta * Bohr**3)
+            write(self.struct+'-4-Result-All-electron_npseudo-Zeta.cube', self.bulk_configuration, data=npzeta * Bohr**3)
         else:
             np = calc.get_pseudo_density()
-            n = calc.get_all_electron_density(gridrefinement=Refine_grid)
+            n = calc.get_all_electron_density(gridrefinement=self.Refine_grid)
             # Writing pseudo and all electron densities to cube file with Bohr unit
-            write(struct+'-4-Result-All-electron_nall-Total.cube', bulk_configuration, data=n * Bohr**3)
-            write(struct+'-4-Result-All-electron_npseudo-Total.cube', bulk_configuration, data=np * Bohr**3)
+            write(self.struct+'-4-Result-All-electron_nall-Total.cube', self.bulk_configuration, data=n * Bohr**3)
+            write(self.struct+'-4-Result-All-electron_npseudo-Total.cube', self.bulk_configuration, data=np * Bohr**3)
             
         # Finish Density calc
         time42 = time.time()
         # Write timings of calculation
-        with paropen(struct+'-7-Result-Log-Timings.txt', 'a') as f1:
+        with paropen(self.struct+'-7-Result-Log-Timings.txt', 'a') as f1:
             print('Density calculation: ', round((time42-time41),2), end="\n", file=f1)
 
     def phononcalc(self):
