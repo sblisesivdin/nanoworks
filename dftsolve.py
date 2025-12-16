@@ -2004,7 +2004,7 @@ if __name__ == "__main__":
     # Version
     __version__ = "v25.10.1b1"
 
-    parser = ArgumentParser(prog ='gpawtools.py', description=Description, formatter_class=RawFormatter)
+    parser = ArgumentParser(prog ='dftsolve.py', description=Description, formatter_class=RawFormatter)
     parser.add_argument("-i", "--input", dest = "inputfile", help="Use input file for calculation variables (also you can insert geometry)")
     parser.add_argument("-g", "--geometry",dest ="geometryfile", help="Use CIF file for geometry")
     parser.add_argument("-v", "--version", dest="version", action='store_true')
