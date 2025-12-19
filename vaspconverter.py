@@ -18,8 +18,12 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional
+import logging
 
 from ase.io import read, write
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
@@ -71,25 +75,25 @@ def parse_incar(path: Path, natoms: int) -> IncarSettings:
         try:
             settings.encut = float(raw["ENCUT"].split()[0])
         except ValueError:
-            pass
+            _LOGGER.warning("Failed to parse ENCUT value '%s' from INCAR; leaving encut unset.", raw["ENCUT"])
 
     if "ISPIN" in raw:
         try:
             settings.ispin = int(raw["ISPIN"].split()[0])
         except ValueError:
-            pass
+            _LOGGER.warning("Failed to parse ISPIN value '%s' from INCAR; leaving ispin unset.", raw["ISPIN"])
 
     if "SIGMA" in raw:
         try:
             settings.sigma = float(raw["SIGMA"].split()[0])
         except ValueError:
-            pass
+            _LOGGER.warning("Failed to parse SIGMA value '%s' from INCAR; leaving sigma unset.", raw["SIGMA"])
 
     if "ISMEAR" in raw:
         try:
             settings.ismear = int(raw["ISMEAR"].split()[0])
         except ValueError:
-            pass
+            _LOGGER.warning("Failed to parse ISMEAR value '%s' from INCAR; leaving ismear unset.", raw["ISMEAR"])
 
     if "MAGMOM" in raw:
         expanded = _expand_star_notation(raw["MAGMOM"]) or []
@@ -100,19 +104,19 @@ def parse_incar(path: Path, natoms: int) -> IncarSettings:
         try:
             settings.nsw = int(raw["NSW"].split()[0])
         except ValueError:
-            pass
+            _LOGGER.warning("Failed to parse NSW value '%s' from INCAR; leaving nsw unset.", raw["NSW"])
 
     if "IBRION" in raw:
         try:
             settings.ibrion = int(raw["IBRION"].split()[0])
         except ValueError:
-            pass
+            _LOGGER.warning("Failed to parse IBRION value '%s' from INCAR; leaving ibrion unset.", raw["IBRION"])
 
     if "EDIFF" in raw:
         try:
             settings.ediff = float(raw["EDIFF"].split()[0])
         except ValueError:
-            pass
+            _LOGGER.warning("Failed to parse EDIFF value '%s' from INCAR; leaving ediff unset.", raw["EDIFF"])
 
     xc_candidates = (
         raw.get("GGA"),
