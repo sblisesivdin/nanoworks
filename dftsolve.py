@@ -1096,7 +1096,6 @@ class dftsolve:
             except Exception as e:
                 print("\033[93mWARNING:\033[0m A problem occurred during writing XYYY formatted spin down Band file. Mostly, the file is created without any problem.")
                 print(e)
-                pass  # Continue execution after encountering an exception
 
             currentu, all_groupsu = [], []
             with open(self.struct+'-3-Result-Band-Up.dat', 'r') as f_in2:
@@ -1116,7 +1115,6 @@ class dftsolve:
             except Exception as e:
                 print("\033[93mWARNING:\033[0m A problem occurred during writing XYYY formatted spin up Band file. Mostly, the file is created without any problem.")
                 print(e)
-                pass  # Continue execution after encountering an exception
 
         else:
             eps_skn = np.array([[calc.get_eigenvalues(k,s)
@@ -1147,7 +1145,6 @@ class dftsolve:
             except Exception as e:
                 print("\033[93mWARNING:\033[0m A problem occurred during writing XYYY formatted Band file. Mostly, the file is created without any problem.")
                 print(e)
-                pass  # Continue execution after encountering an exception
                 
             # Projected Band
             Projected_band = False
