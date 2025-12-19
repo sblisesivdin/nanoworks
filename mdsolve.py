@@ -291,13 +291,16 @@ except KeyError as exc:
 OpenKIM_potential = resolved_potential
 namespace['OpenKIM_potential'] = OpenKIM_potential
 
-if MD_cycles <= 0:
+md_cycles = int(namespace.get('MD_cycles', MD_cycles))
+if md_cycles <= 0:
     print('MD_cycles must be a positive integer.')
     sys.exit(1)
-
-if MD_steps_per_cycle <= 0:
+md_steps_per_cycle = int(namespace.get('MD_steps_per_cycle', MD_steps_per_cycle))
+if md_steps_per_cycle <= 0:
     print('MD_steps_per_cycle must be a positive integer.')
     sys.exit(1)
+namespace['MD_cycles'] = md_cycles
+namespace['MD_steps_per_cycle'] = md_steps_per_cycle
 
 # Geometry input is mandatory
 if inFile is None:
