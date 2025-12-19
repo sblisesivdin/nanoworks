@@ -8,9 +8,11 @@ layout: default
 
 **[Pint](http://sblisesivdin.github.io/pint)** is a powerful and user-friendly user interface (UI) tool for conducting Density Functional Theory (DFT) and molecular dynamics (MD) calculations. In the near future, machine learning features will be added.
 
-`gpaw-tools` is transitioning to `Pint`.
+*gpaw-tools** has evolved and is now called **Pint**!
 
-When it first started, `gpaw-tools` was based on GPAW, but today it uses many Python libraries, including ASE, Elastic, Phonopy, ASAP3, OpenKIM, and others. In the near future, it will be enriched with many Python libraries such as SevenNet, CHGNet, and MACE-torch. At this point, we have embarked on a new naming convention to better define the software. After this stage, it will be called `Pint`, which stands for Pythonic Interface for Nanoscale Tasks. The `gpaw-tools` project has moved to [Pint's new home](https://github.com/sblisesivdin/pint) to achieve a more comprehensive, modern, and ML-supported structure.
+The **gpaw-tools** project started as a script that only used ASE and GPAW, but over 4 years, it became code that uses many libraries such as ASAP3, Phonopy, Elastic, OpenKIM, and others. It is now being rewritten to incorporate modern Machine Learning capabilities (MACE, CHGNet, SevenNet) into its structure.
+
+At this point, we have embarked on a new naming convention to better define the software. After this stage, it will be called `Pint`, which stands for Pythonic Interface for Nanoscale Tasks. The `gpaw-tools` project has moved to [Pint's new home](https://github.com/sblisesivdin/pint) to achieve a more comprehensive, modern, and ML-supported structure.
 
 What does this mean for you?
 
@@ -21,4 +23,4 @@ What does this mean for you?
 **IMPORTANT INFORMATION: Pint is in a beta phase. Please continue to use gpaw-tools until further notice. You can view the development at [Release Notes](https://github.com/sblisesivdin/pint/blob/main/RELEASE_NOTES.md)** 
 
 
-Pint and gpaw-tools, are distributed with [MIT license](https://github.com/sblisesivdin/pint/blob/main/LICENSE.md).
+Pint and gpaw-tools are distributed with [MIT license](https://github.com/sblisesivdin/pint/blob/main/LICENSE.md).
