@@ -206,14 +206,15 @@ def struct_from_file(inputfile, geometryfile):
         parprint("Special Points usable for this spacegroup:",get_special_points(config.bulk_configuration.get_cell()))
 
     # Output directory
+    input_dir = Path(inputfile).parent
     if config.Outdirname != '':
-        structpath = os.path.join(os.getcwd(), config.Outdirname)
+        structpath = input_dir / config.Outdirname
     else:
-        structpath = os.path.join(os.getcwd(), struct)
+        structpath = input_dir / struct
 
     if not os.path.isdir(structpath):
         os.makedirs(structpath, exist_ok=True)
-    struct = os.path.join(structpath, struct)
+    struct = os.path.join(str(structpath), struct)
     return struct, config
 
 def autoscale_y(ax,margin=0.1):
