@@ -11,3 +11,5 @@
 - Simplify GPW file writing logic (Always mode="all")
 - A major refactorization of global variable usage to dataclass! This change ensures type safety, centralized configuration, reduced global namespace pollution, and improved code organization with total backward compatibility.
 - In addition to the refactorization of global variable usage, more than 30 security warnings have been fixed.
+- An easy example for machine learning capabilities is added as examples/Graphene-ML
+- Behavior of output folder creation and writing in that directory is now same for dftsolve.py, mdsolve.py and mlsolve.py
