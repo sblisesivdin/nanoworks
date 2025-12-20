@@ -98,7 +98,12 @@ def config_from_file(inputfile, geometryfile):
 
     if not os.path.isdir(structpath):
         os.makedirs(structpath, exist_ok=True)
-    struct = os.path.join(structpath, struct)
+
+    # Update file paths in config to be inside the output directory
+    config.out_file = os.path.join(structpath, config.out_file)
+    config.trajectory = os.path.join(structpath, config.trajectory)
+    config.logfile = os.path.join(structpath, config.logfile)
+
     return struct, config
 
 # -----------------------------------------------------------------------------
