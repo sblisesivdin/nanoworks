@@ -10,8 +10,8 @@ You can run this example with:
     
 or
 
-    gpaw -P4 python ~/path-to-pint/dftsolve.py -- -i Si-with-HSE.py -g Si_mp-149_primitive.cif
+    gpaw -P4 python ~/path-to-nanoworks/dftsolve.py -- -i Si-with-HSE.py -g Si_mp-149_primitive.cif
 
-Here, ~/path-to-pint shows a full path your Pint folder.
+Here, ~/path-to-nanoworks shows a full path your nanoworks folder.
 	
 Normally, prior to HSE calculations, you can prefer to do PBE calculations with structure optimization. Then you can continue to use HSE.

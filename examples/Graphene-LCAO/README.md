@@ -6,9 +6,9 @@ This example has input files. For calculating the pristine graphene with MPI 4 c
     
 or
 
-    gpaw -P4 python ~/path-to-pint/dftsolve.py -- -i graphene.py -g graphene4x4.cif
+    gpaw -P4 python ~/path-to-nanoworks/dftsolve.py -- -i graphene.py -g graphene4x4.cif
 
-Here, ~/path-to-pint shows a full path your Pint folder.
+Here, ~/path-to-nanoworks shows a full path your nanoworks folder.
 	
 And then for the calculation of graphene with defect, firstly dod not forget to close graphs of the first calculation,then execute the second command as
 
@@ -16,4 +16,4 @@ And then for the calculation of graphene with defect, firstly dod not forget to 
     
 or
 
-    gpaw -P4 python ~/path-to-pint/dftsolve.py -- -i graphene.py -g graphene4x4withdefect.cif
+    gpaw -P4 python ~/path-to-nanoworks/dftsolve.py -- -i graphene.py -g graphene4x4withdefect.cif

@@ -4,8 +4,8 @@
 
 - Initializing context and tools for the session.
 - Removed gg.py and gui_files/ directory.
-- Renaming project and its files as: gpaw-tools -> Pint, gpawsolve.py -> dftsolve.py, and asapsolve -> mdsolve.py
-- Replace the gpaw-tools setup with the Pint setup
+- Renaming project and its files as: gpaw-tools -> Nanoworks, gpawsolve.py -> dftsolve.py, and asapsolve -> mdsolve.py
+- Replace the gpaw-tools setup with the Nanoworks setup
 - Implement an ML solver script: mlsolve.py
 - Remove GW calculations and related parameters from dftsolve.py
 - Simplify GPW file writing logic (Always mode="all")

@@ -47,11 +47,11 @@ echo "Setting up PAW datasets..."
 mkdir -p "$GPAW_SETUP_DIR"
 gpaw install-data "$GPAW_SETUP_DIR/"
 
-echo "Setting up Pint..."
+echo "Setting up Nanoworks..."
 
-# Add Pint directory to PATH in .bashrc
-echo "Adding Pint to PATH in .bashrc..."
-echo "export PATH=$HOME/pint-main:\$PATH" >> ~/.bashrc
+# Add Nanoworks directory to PATH in .bashrc
+echo "Adding Nanoworks to PATH in .bashrc..."
+echo "export PATH=$HOME/nanoworks-main:\$PATH" >> ~/.bashrc
 source ~/.bashrc
 
 # Final message

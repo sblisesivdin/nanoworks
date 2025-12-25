@@ -6,7 +6,7 @@ Ground, Elastic, DOS and Band calculations of Rocksalt TiC. PW with 600 eV cutof
     
 or
 
-    gpaw -P4 python ~/path-to-pint/dftsolve.py -- -i TiC.py -g TiC_mp-631_primitive-Final.cif
+    gpaw -P4 python ~/path-to-nanoworks/dftsolve.py -- -i TiC.py -g TiC_mp-631_primitive-Final.cif
 
-Here, ~/path-to-pint shows a full path your Pint folder.
+Here, ~/path-to-nanoworks shows a full path your nanoworks folder.
 	

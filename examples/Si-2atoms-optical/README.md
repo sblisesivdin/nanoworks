@@ -8,9 +8,9 @@ To run the first step of calculation with MPI please execute the following comma
     
 or
 
-    gpaw -P4 python ~/path-to-pint/dftsolve.py -- -i Si-Step1-ground_dos_band.py -g Si_mp-149_primitive_Example.cif
+    gpaw -P4 python ~/path-to-nanoworks/dftsolve.py -- -i Si-Step1-ground_dos_band.py -g Si_mp-149_primitive_Example.cif
 
-Here, ~/path-to-pint shows a full path your Pint folder.
+Here, ~/path-to-nanoworks shows a full path your nanoworks folder.
 	
 And then for the second step, there are two possibilities. Real and imaginary parts of dielectric function are usually calculated with random phase approximation (RPA). With GPAW, we can go beyond the RPA using the Bethe-Salpeter equation (BSE).
 
@@ -29,8 +29,8 @@ To use more cores to calculate, firstly observe your calculation's RAM usage wit
    
 or
 
-    gpaw -P4 python ~/path-to-pint/dftsolve.py -- -i Si-Step2-optical-RPA.py -g Si_mp-149_primitive_Example.cif
-    gpaw -P4 python ~/path-to-pint/dftsolve.py -- -i Si-Step3-optical-BSE.py -g Si_mp-149_primitive_Example.cif
+    gpaw -P4 python ~/path-to-nanoworks/dftsolve.py -- -i Si-Step2-optical-RPA.py -g Si_mp-149_primitive_Example.cif
+    gpaw -P4 python ~/path-to-nanoworks/dftsolve.py -- -i Si-Step3-optical-BSE.py -g Si_mp-149_primitive_Example.cif
 
 But for this example, it will be completed in a few seconds even with a single core. 
 

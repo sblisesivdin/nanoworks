@@ -6,9 +6,9 @@ Ground, DOS and Band calculations of Bulk GaAs. PW with 300 eV cutoff, 2.5 kpoin
 
 or
 
-    gpaw -P4 python ~/path-to-pint/dftsolve.py -- -i bulk_gaas.py
+    gpaw -P4 python ~/path-to-nanoworks/dftsolve.py -- -i bulk_gaas.py
 
-Here, ~/path-to-pint shows a full path your Pint folder.
+Here, ~/path-to-nanoworks shows a full path your nanoworks folder.
 	
 When you use Atoms object inside configuration file, please note that you must add
 

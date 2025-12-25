@@ -1,23 +1,23 @@
 > [!IMPORTANT]
-> **gpaw-tools** has evolved and is now called **Pint**!
+> **gpaw-tools** has evolved and is now called **Nanoworks**!
 > The **gpaw-tools** project began as a script that utilized only ASE and GPAW. Still, over the course of four years, it evolved into code that leverages multiple libraries, including ASAP3, Phonopy, Elastic, OpenKIM, and others. It is now being rewritten to > incorporate modern Machine Learning capabilities (MACE, CHGNet, SevenNet) into its structure.
 > 
-> **Pint** is still in beta. Please continue to use **gpaw-tools** until further notice.
+> **Nanoworks** is still in beta. Please continue to use **gpaw-tools** until further notice.
 
-# Pint
+# Nanoworks
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
-[![Issues:](https://img.shields.io/github/issues/sblisesivdin/pint)](https://github.com/sblisesivdin/pint/issues)
-[![Pull requests:](https://img.shields.io/github/issues-pr/sblisesivdin/pint)](https://github.com/sblisesivdin/pint/pulls)
-[![Latest version:](https://img.shields.io/github/v/release/sblisesivdin/pint)](https://github.com/sblisesivdin/pint/releases/)
-![Release date:](https://img.shields.io/github/release-date/sblisesivdin/pint)
-[![Commits:](https://img.shields.io/github/commit-activity/m/sblisesivdin/pint)](https://github.com/sblisesivdin/pint/commits/main)
-[![Last Commit:](https://img.shields.io/github/last-commit/sblisesivdin/pint)](https://github.com/sblisesivdin/pint/commits/main)
+[![Issues:](https://img.shields.io/github/issues/sblisesivdin/nanoworks)](https://github.com/sblisesivdin/nanoworks/issues)
+[![Pull requests:](https://img.shields.io/github/issues-pr/sblisesivdin/nanoworks)](https://github.com/sblisesivdin/nanoworks/pulls)
+[![Latest version:](https://img.shields.io/github/v/release/sblisesivdin/nanoworks)](https://github.com/sblisesivdin/nanoworks/releases/)
+![Release date:](https://img.shields.io/github/release-date/sblisesivdin/nanoworks)
+[![Commits:](https://img.shields.io/github/commit-activity/m/sblisesivdin/nanoworks)](https://github.com/sblisesivdin/nanoworks/commits/main)
+[![Last Commit:](https://img.shields.io/github/last-commit/sblisesivdin/nanoworks)](https://github.com/sblisesivdin/nanoworks/commits/main)
 ## Introduction
-*Pint* is a powerful and user-friendly UI/GUI tool for conducting Density Functional Theory (DFT) and molecular dynamics (MD) calculations. Our goal is to make DFT and MD calculations more accessible and easy to use for individuals and small groups by providing a simple command-line interface.
+*Nanoworks* is a powerful and user-friendly python command-line user interface tool for conducting Density Functional Theory (DFT) and molecular dynamics (MD) calculations. Our goal is to make DFT and MD calculations more accessible and easy to use for individuals and small groups by providing a simple command-line interface.
 
-The *Pint* package is built on top of the ASE, ASAP3, KIM-API, PHONOPY, and GPAW libraries, which are well-established and widely used in the scientific community. It allows users to simulate the properties of materials, optimize structures, investigate chemical reactions and processes, and perform calculations on systems with many atoms. With Pint, researchers, students, and engineers in various fields, including materials science, chemistry, physics, and engineering, can easily conduct DFT and MD calculations and explore the electronic, optical, and phonon structure of material systems. We are constantly working to improve and expand the capabilities of *Pint*, and we welcome feedback and contributions from the community.
+The *Nanoworks* package is built on top of the ASE, ASAP3, KIM-API, PHONOPY, and GPAW libraries, which are well-established and widely used in the scientific community. It allows users to simulate the properties of materials, optimize structures, investigate chemical reactions and processes, and perform calculations on systems with many atoms. With Nanoworks, researchers, students, and engineers in various fields, including materials science, chemistry, physics, and engineering, can easily conduct DFT and MD calculations and explore the electronic, optical, and phonon structure of material systems. We are constantly working to improve and expand the capabilities of *Nanoworks*, and we welcome feedback and contributions from the community.
 
-`Pint` has:
+`Nanoworks` has:
 1. The main solver code `dftsolve.py` can run in PW or LCAO mode. It can perform structure optimization, equation of state, and elastic tensor calculations, use several different XCs (as well as hybrid XCs) for spin-polarized DOS and band structure calculations, electron densities, phonon calculations, and optical properties (RPA and BSE). In addition to calculations, it can draw DOS and band structures, save all data, and present the results in an ordered way.
 2. A force-field quick optimization script `mdsolve.py` for MD calculations using ASAP3 with OpenKIM potentials.
 3. To choose better cut-off energy, lattice parameter, and k-points, there are 4 scripts called `optimize_cutoff.py`, `optimize_kpoints.py`, `optimize_kptsdensity.py`, and `optimize_latticeparam.py`.
@@ -87,16 +87,16 @@ Users must provide an ASE Atoms object and simply insert the object inside these
 `optimize_latticeparam.py` can perform simultaneous calculation for lattice parameters a and c. And can also draw a 3D contour graph for Energy versus lattice parameters (a and c).
 
 ## examples/
-There are [some example calculations](https://github.com/sblisesivdin/pint/tree/main/examples) given with different usage scenarios. Please send us more calculations to include in this folder.
+There are [some example calculations](https://github.com/sblisesivdin/nanoworks/tree/main/examples) given with different usage scenarios. Please send us more calculations to include in this folder.
 
 ## Input File Keywords
 -
 
 ## Release notes
-Release notes are listed [here](https://github.com/sblisesivdin/pint/blob/main/RELEASE_NOTES.md).
+Release notes are listed [here](https://github.com/sblisesivdin/nanoworks/blob/main/RELEASE_NOTES.md).
 
 ## Citing
-Please do not forget that Pint is UI/GUI software. For the main DFT calculations, it uses ASE and GPAW. It also uses the Elastic Python package for elastic tensor solutions and ASAP with the KIM database for interatomic interaction calculations, and Phonopy for the phonon calculations. Therefore, you must know what you use and cite them properly. Here, the basic citation information of each package is given.
+Please do not forget that Nanoworks is an user interface software. For the main DFT calculations, it uses ASE and GPAW. It also uses the Elastic Python package for elastic tensor solutions and ASAP with the KIM database for interatomic interaction calculations, and Phonopy for the phonon calculations. Therefore, you must know what you use and cite them properly. Here, the basic citation information of each package is given.
 
 ### ASE 
 * Ask Hjorth Larsen et al. "[The Atomic Simulation Environment—A Python library for working with atoms](https://doi.org/10.1088/1361-648X/aa680e)" J. Phys.: Condens. Matter Vol. 29 273002, 2017.
@@ -109,7 +109,7 @@ Please do not forget that Pint is UI/GUI software. For the main DFT calculations
 ### Phonopy
 * A. Togo "[First-principles Phonon Calculations with Phonopy and Phono3py](https://doi.org/10.7566/JPSJ.92.012001)", Journal of the Physical Society of Japan, 92(1), 012001 (2023).
 
-And for `Pint` usage, please use the following citation:
+And for `Nanoworks` usage, please use the following citation:
 
 * S.B. Lisesivdin, B. Sarikavak-Lisesivdin "[gpaw-tools – higher-level user interaction scripts for GPAW calculations and interatomic potential based structure optimization](https://doi.org/10.1016/j.commatsci.2022.111201)" Comput. Mater. Sci. 204, 111201 (2022).
 

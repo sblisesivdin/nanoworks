@@ -8,9 +8,9 @@ To run the calculation with MPI on 4 cores please execute the following command 
     
 or
 
-    gpaw -P4 python ~/path-to-pint/dftsolve.py -- -i ZnO_withHubbard.py
+    gpaw -P4 python ~/path-to-nanoworks/dftsolve.py -- -i ZnO_withHubbard.py
 
-Here, ~/path-to-pint shows a full path your Pint folder.
+Here, ~/path-to-nanoworks shows a full path your nanoworks folder.
 
 or calculation with drawing band and DOS at the end:
 

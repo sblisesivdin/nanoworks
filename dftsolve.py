@@ -1882,9 +1882,9 @@ if __name__ == "__main__":
             import ase
             import phonopy
             try:
-                response = requests.get("https://api.github.com/repos/sblisesivdin/pint/releases/latest", timeout=5)
+                response = requests.get("https://api.github.com/repos/sblisesivdin/nanoworks/releases/latest", timeout=5)
                 parprint('-----------------------------------------------------------------------------')
-                parprint('\033[95mpint:\033[0m Version information: '+str(__version__))
+                parprint('\033[95mnanoworks:\033[0m Version information: '+str(__version__))
                 parprint('  uses GPAW '+gpaw.__version__+', ASE '+ase.__version__+' and PHONOPY '+phonopy.__version__)
                 parprint('-----------------------------------------------------------------------------')
                 parprint('The latest STABLE release is '+response.json()["tag_name"]+',')
@@ -1893,10 +1893,10 @@ if __name__ == "__main__":
                 parprint('You can download the latest STABLE tarball, zipball or DEVELOPMENT zipball:')
                 parprint(response.json()["tarball_url"])
                 parprint(response.json()["zipball_url"])
-                parprint('https://github.com/sblisesivdin/pint/archive/refs/heads/main.zip')
+                parprint('https://github.com/sblisesivdin/nanoworks/archive/refs/heads/main.zip')
             except (requests.ConnectionError, requests.Timeout) as exception:
                 parprint('-----------------------------------------------------------------------------')
-                parprint('\033[95mpint:\033[0m Version information: '+str(__version__))
+                parprint('\033[95mnanoworks:\033[0m Version information: '+str(__version__))
                 parprint('  uses GPAW '+gpaw.__version__+', ASE '+ase.__version__+' and PHONOPY '+phonopy.__version__)
                 parprint('-----------------------------------------------------------------------------')
                 parprint('No internet connection available.')

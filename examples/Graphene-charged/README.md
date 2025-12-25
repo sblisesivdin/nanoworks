@@ -6,9 +6,9 @@ This example has two input files. For calculating the neutral defected graphene 
     
 or
 
-    gpaw -P4 python ~/path-to-pint/dftsolve.py -- -i graphene-neutral.py -g graphene4x4withdefect.cif
+    gpaw -P4 python ~/path-to-nanoworks/dftsolve.py -- -i graphene-neutral.py -g graphene4x4withdefect.cif
 
-Here, ~/path-to-pint shows a full path your Pint folder. Results will be saved to "Neutral" folder.
+Here, ~/path-to-nanoworks shows a full path your nanoworks folder. Results will be saved to "Neutral" folder.
 	
 And then for the calculation of charged defected graphene, execute the second command as
 
@@ -16,6 +16,6 @@ And then for the calculation of charged defected graphene, execute the second co
     
 or
 
-    gpaw -P4 python ~/path-to-pint/dftsolve.py -- -i graphene-charged.py -g graphene4x4withdefect.cif
+    gpaw -P4 python ~/path-to-nanoworks/dftsolve.py -- -i graphene-charged.py -g graphene4x4withdefect.cif
     
 Results will be saved to "Charged" folder.

@@ -8,8 +8,8 @@ To run with MPI for 4 cores please execute the following command.
     
 or
 
-    gpaw -P4 python ~/path-to-pint/dftsolve.py -- -i Cr2O.py -g Cr2O_mp-1206821_primitive.cif
+    gpaw -P4 python ~/path-to-nanoworks/dftsolve.py -- -i Cr2O.py -g Cr2O_mp-1206821_primitive.cif
 
-Here, ~/path-to-pint shows a full path your Pint folder.
+Here, ~/path-to-nanoworks shows a full path your nanoworks folder.
 	
 To visualize the electron-densities, you can use the result cube files `Cr2O_mp-1206821_primitive-4-Result-All-electron_n.cube` and `Cr2O_mp-1206821_primitive-4-Result-All-electron_np.cube` with Vesta.

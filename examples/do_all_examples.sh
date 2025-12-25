@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-echo "Pint: "
+echo "Nanoworks: "
 echo "Adding all examples to tsp queue. Please use tsp after running this."
 CORENUMBER=4
 SCRIPT=`realpath $0`
