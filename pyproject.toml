@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["nanoworks"]
+
+[project]
+name = "nanoworks"
+version = "0.0.1"
+description = " Nanoworks:Nanoscale Python scripts for DFT, MD and ML works"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [{name = "Sefer Bora Lisesivdin" }, {name = "Beyza Sarikavak-Lisesivdin"}]

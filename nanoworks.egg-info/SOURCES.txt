@@ -1,0 +1,8 @@
+LICENSE.md
+README.md
+pyproject.toml
+nanoworks/__init__.py
+nanoworks.egg-info/PKG-INFO
+nanoworks.egg-info/SOURCES.txt
+nanoworks.egg-info/dependency_links.txt
+nanoworks.egg-info/top_level.txt
