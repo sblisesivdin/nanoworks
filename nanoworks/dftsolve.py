@@ -466,7 +466,7 @@ class dftsolve:
                 else:
                     self.bulk_configuration.set_calculator(calc)
                     self.bulk_configuration.get_potential_energy()
-                #This line makes huge GPW files. Therefore, it is better to use this if-else
+                
                 calc.write(self.struct+'-1-Result-Ground.gpw', mode="all")
 
                 # Writes final configuration as CIF file
@@ -536,7 +536,7 @@ class dftsolve:
                 #relax = LBFGS(self.bulk_configuration, maxstep=self.Max_step, alpha=self.Alpha, damping=self.Damping, trajectory=self.struct+'-1-Result-Ground.traj')
                 #relax.run(fmax=self.Max_F_tolerance)  # Consider much tighter fmax!
                 #self.bulk_configuration.get_potential_energy()
-                #This line makes huge GPW files. Therefore it is better to use this if else
+                
                 calc.write(self.struct+'-1-Result-Ground.gpw', mode="all")
 
                 # Writes final configuration as CIF file
