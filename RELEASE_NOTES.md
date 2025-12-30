@@ -15,3 +15,4 @@
 - Behavior of output folder creation and writing in that directory is now same for dftsolve.py, mdsolve.py and mlsolve.py
 - Drawing to screen -d argument is removed.
 - pip install nanoworks works.
+- Website is moved to https://nanoworks.readthedocs.io
