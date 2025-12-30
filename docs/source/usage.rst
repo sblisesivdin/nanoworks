@@ -27,4 +27,4 @@ Then install nanoworks wit pip
 
 .. code-block:: console
    
-   (nwenv) $ pip install lumache
+   (nwenv) $ pip install nanoworks
