@@ -35,3 +35,4 @@ Contents
 
    about
    usage
+   input-file-keywords
