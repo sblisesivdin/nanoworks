@@ -35,3 +35,7 @@ Contents
 
    about
    usage
+   contributing
+   code_of_conduct
+   release_notes
+   license
