@@ -39,3 +39,4 @@ Contents
    code_of_conduct
    release_notes
    license
+   input-file-keywords
