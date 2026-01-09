@@ -16,3 +16,7 @@
 - Drawing to screen -d argument is removed.
 - pip install nanoworks works.
 - Website is moved to https://nanoworks.readthedocs.io
+- dftsolve.py: work as system-wide command "dftsolve"
+- mdsolve.py: work as system-wide command "mdsolve"
+- mlsolve.py: work as system-wide command "mlsolve"
+- New command: "nanoworks" command is added. Just giving important information for now.
