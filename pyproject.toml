@@ -18,3 +18,5 @@ authors = [{name = "Sefer Bora Lisesivdin" }, {name = "Beyza Sarikavak-Lisesivdi
 dftsolve = "nanoworks.dftsolve:main"
 mdsolve = "nanoworks.mdsolve:main"
 mlsolve = "nanoworks.mlsolve:main"
+qeconverter = "nanoworks.qeconverter:main"
+vaspconverter = "nanoworks.vaspconverter:main"

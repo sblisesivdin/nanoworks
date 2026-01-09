@@ -8,7 +8,7 @@ parameters and lattice/atomic structure, then produces:
 
 Example
 -------
-python converters/qeconverter.py --input si.scf.in --output-dir example_folder --system-name SiliconQE
+qeconverter --input si.scf.in --output-dir example_folder --system-name SiliconQE
 """
 
 from __future__ import annotations

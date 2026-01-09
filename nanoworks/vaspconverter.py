@@ -8,7 +8,7 @@ parameters) and KPOINTS files and gives:
 
 Example
 -------
-python vaspconverter.py --poscar POSCAR --incar INCAR --kpoints KPOINTS --output-dir example_folder --system-name Silicon
+vaspconverter --poscar POSCAR --incar INCAR --kpoints KPOINTS --output-dir example_folder --system-name Silicon
 """
 
 from __future__ import annotations

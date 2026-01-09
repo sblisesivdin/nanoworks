@@ -1,10 +1,11 @@
 # Silicon VASP Conversion Example
 
-This example has a minimal VASP input set for silicon to convert configuration to dftsolve.py's input file by using `converters/vaspconverter.py`.
+This example has a minimal VASP input set for silicon to convert configuration to dftsolve.py's input file by using `vaspconverter`.
 
-To reproduce the generated files run:
-
-    vaspconverter.py --poscar POSCAR --incar INCAR --kpoints KPOINTS --output-dir Si-vasp --system-name Silicon
+Run:
+```bash
+vaspconverter --poscar POSCAR --incar INCAR --kpoints KPOINTS --output-dir Si-vasp --system-name Silicon
+```
 
 Then execute `dftsolve.py` using the produced files:
 
