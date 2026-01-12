@@ -1,6 +1,6 @@
-## Release Notes
+## Nanoworks Release Notes
 
-### NANOWORKS Development Version
+### Development Version
 
 - Initializing context and tools for the session.
 - Removed gg.py and gui_files/ directory.
@@ -20,6 +20,8 @@
 - mdsolve.py: works as a system-wide command "mdsolve".
 - mlsolve.py: works as a system-wide command "mlsolve".
 - New command: "nanoworks" command is added. Just giving important information for now.
+
+## gpaw-tools Release Notes
 
 ### Version 25.10.0 - Oct 1, 2025
 
