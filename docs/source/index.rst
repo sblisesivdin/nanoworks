@@ -1,42 +1,58 @@
 Nanoworks
 =========
 
-`Nanoworks <https://nanoworks.readthedocs.io/>`_ is a powerful and user-friendly user interface (UI) tool for conducting Density Functional Theory (DFT) and molecular dynamics (MD) calculations. In the near future, machine learning features will be added.
+**Nanoworks** is a unified, high-level Python interface for conducting Density Functional Theory (DFT), Molecular Dynamics (MD), and Machine Learning (ML) potential calculations.
 
-**gpaw-tools** has evolved and is now called **Nanoworks**!
+It acts as a wrapper and orchestrator for several powerful scientific libraries, making advanced materials simulation accessible through simple command-line tools.
 
-The **gpaw-tools** project began as a script that utilized only ASE and GPAW. Still, over the course of four years, it evolved into code that leverages multiple libraries, including ASAP3, Phonopy, Elastic, OpenKIM, and others. It is now being rewritten to incorporate modern Machine Learning capabilities (MACE, CHGNet, SevenNet) into its structure.
+.. important::
 
-At this point, we have embarked on a new naming convention to better define the software. After this stage, it will be called `Nanoworks`. The `gpaw-tools` project has moved to `Nanoworks' new GitHub repository <https://github.com/sblisesivdin/nanoworks>`_ to achieve a more comprehensive, modern, and ML-supported structure.
+    **gpaw-tools** has evolved and is now called **Nanoworks**!
 
-What does this mean for you?
+    The **gpaw-tools** project began as a script that utilized only ASE and GPAW. Over the course of four years, it evolved into a comprehensive suite leveraging multiple libraries, including ASAP3, Phonopy, Elastic, OpenKIM, and now modern Machine Learning Potentials (MACE, CHGNet, SevenNet).
 
-`gpaw-tools (v25.x)`: Has been placed in maintenance mode. No new features will be added except for critical bug fixes.
+Core Modules
+------------
 
-`Nanoworks (v26.x)`: Includes all the capabilities of gpaw-tools (excluding gg.py), but offers them as a modern Python package (pip install). It also incorporates modern machine learning capabilities such as MACE and CHGNet.
+Nanoworks simplifies complex simulation workflows by providing three specialized solvers:
 
-.. note::
-
-   Nanoworks is in a beta phase. Please continue to use gpaw-tools until further notice. You can view the development at `Release Notes <https://github.com/sblisesivdin/nanoworks/blob/main/RELEASE_NOTES.md>`_
-
-
-Nanoworks and gpaw-tools are distributed with `MIT license <https://github.com/sblisesivdin/nanoworks/blob/main/LICENSE.md>`_.
-
-Check out the :doc:`usage` section for further information, including how to :ref:`installation` the project.
+*   **dftsolve**: A robust driver for DFT calculations (PW/LCAO) via GPAW. It handles structure optimization, equations of state, elastic tensors, spin-polarized DOS/Band structure, electron densities, phonon calculations, and optical properties (RPA/BSE).
+*   **mdsolve**: A fast solver for molecular dynamics and geometric optimization using interatomic potentials via ASAP3 and OpenKIM.
+*   **mlsolve**: A next-generation solver leveraging machine learning force fields (MACE, CHGNet, SevenNet) for efficient, high-accuracy simulations.
 
 .. note::
+   
+   This project is currently under heavy development. Please continue to use gpaw-tools until further notice.
 
-   This project is under active development.
-
-Contents
---------
+Documentation
+-------------
 
 .. toctree::
+   :maxdepth: 2
+   :caption: Getting Started
 
    about
+   installation
    usage
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Reference
+
+   input_file_keywords
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Project Info
+
    contributing
    code_of_conduct
    release_notes
    license
-   input_file_keywords
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
