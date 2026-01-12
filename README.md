@@ -1,8 +1,9 @@
 > [!IMPORTANT]
 > **gpaw-tools** has evolved and is now called **Nanoworks**!
-> The **gpaw-tools** project began as a script that utilized only ASE and GPAW. Still, over the course of four years, it evolved into code that leverages multiple libraries, including ASAP3, Phonopy, Elastic, OpenKIM, and others. It is now being rewritten to > incorporate modern Machine Learning capabilities (MACE, CHGNet, SevenNet) into its structure.
-> 
-> **Nanoworks** is still in beta. Please continue to use **gpaw-tools** until further notice.
+> The **gpaw-tools** project began as a script that utilized only ASE and GPAW. Over the course of four years, it evolved into a comprehensive suite leveraging multiple libraries, including ASAP3, Phonopy, Elastic, OpenKIM, and now modern Machine Learning Potentials (MACE, CHGNet, SevenNet).
+ 
+> [!IMPORTANT]
+> **Nanoworks** is currently under heavy development. Please continue to use `gpaw-tools` until new notice. 
 
 # Nanoworks
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
@@ -12,91 +13,115 @@
 ![Release date:](https://img.shields.io/github/release-date/sblisesivdin/nanoworks)
 [![Commits:](https://img.shields.io/github/commit-activity/m/sblisesivdin/nanoworks)](https://github.com/sblisesivdin/nanoworks/commits/main)
 [![Last Commit:](https://img.shields.io/github/last-commit/sblisesivdin/nanoworks)](https://github.com/sblisesivdin/nanoworks/commits/main)
+
 ## Introduction
-*Nanoworks* is a powerful and user-friendly python command-line user interface tool for conducting Density Functional Theory (DFT) and molecular dynamics (MD) calculations. Our goal is to make DFT and MD calculations more accessible and easy to use for individuals and small groups by providing a simple command-line interface.
+**Nanoworks** is a unified, high-level Python interface for conducting Density Functional Theory (DFT), Molecular Dynamics (MD), and Machine Learning (ML) potential calculations. 
 
-The *Nanoworks* package is built on top of the ASE, ASAP3, KIM-API, PHONOPY, and GPAW libraries, which are well-established and widely used in the scientific community. It allows users to simulate the properties of materials, optimize structures, investigate chemical reactions and processes, and perform calculations on systems with many atoms. With Nanoworks, researchers, students, and engineers in various fields, including materials science, chemistry, physics, and engineering, can easily conduct DFT and MD calculations and explore the electronic, optical, and phonon structure of material systems. We are constantly working to improve and expand the capabilities of *Nanoworks*, and we welcome feedback and contributions from the community.
+It acts as a wrapper and orchestrator for several powerful scientific libraries, making advanced materials simulation accessible through simple command-line tools.
 
-`Nanoworks` has:
-1. The main solver code `dftsolve.py` can run in PW or LCAO mode. It can perform structure optimization, equation of state, and elastic tensor calculations, use several different XCs (as well as hybrid XCs) for spin-polarized DOS and band structure calculations, electron densities, phonon calculations, and optical properties (RPA and BSE). In addition to calculations, it can draw DOS and band structures, save all data, and present the results in an ordered way.
-2. A force-field quick optimization script `mdsolve.py` for MD calculations using ASAP3 with OpenKIM potentials.
-3. To choose better cut-off energy, lattice parameter, and k-points, there are 4 scripts called `optimize_cutoff.py`, `optimize_kpoints.py`, `optimize_kptsdensity.py`, and `optimize_latticeparam.py`.
+**Core Capabilities:**
+1.  **DFT (via GPAW & ASE):**  The `dftsolve` tool runs PW or LCAO mode calculations. It handles structure optimization, equations of state, elastic tensors, spin-polarized DOS/Band structure, electron densities, phonon calculations, and optical properties (RPA/BSE).
+2.  **MD (via ASAP3 & OpenKIM):** The `mdsolve` tool provides quick geometric optimization and molecular dynamics using interatomic potentials from OpenKIM.
+3.  **ML Potentials (New!):** The `mlsolve` tool enables geometry optimization and static calculations using state-of-the-art Machine Learning Force Fields (MLFF), including **MACE**, **CHGNet**, and **SevenNet**.
 
-## Usage
-### Installation
--
+## Installation
 
-### dftsolve.py
-This is the main code for easy and ordered PW/LCAO Calculations with ASE/GPAW. It can run as a command.
+Nanoworks is a Python package. You can install it with pip. However, because you need many other system libraries and python libraries to be installed, it is better to look at the [Nanoworks Installation](https://nanoworks.readthedocs.io/en/latest/installation.html) webpage for more detailed installation and usage instructions.
 
-Command line usage: `dftsolve.py -v -e -d -h -i <inputfile.py> -g <geometryfile.cif>`
+## Tools & Usage
 
-Argument list:
-```
--g, --geometry    : Use a CIF file for geometry
--i, --input       : Use an input file for variables (input.py). If you do not use this argument, parameters 
-                    will be taken from the related lines of dftsolve.py. Visit the "Input File Keywords" webpage for more.
--e, --energymeas  : Energy consumption measurement. This feature only works with Intel CPUs after the Sandy Bridge generation.
-                    Results will be written in a file in the results folder (as kWh!).
--h, --help        : Help
--v, --version     : Version information of running code and the latest stable code. Also gives a download link.
+After installation, the following commands will be available in your terminal:
+
+### 1. dftsolve (formerly gpawsolve.py)
+The main driver for DFT calculations using GPAW.
+
+**Usage:**
+```bash
+dftsolve -g <geometry.cif> -i <input.py> [options]
 ```
 
-Instead of using a geometry file, you can put an ASE Atoms object into your input file for the geometry. As an example, please note the example at: `examples\Bulk-GaAs-noCIF` folder.
- 
- #### How to run?
- Change `<core_number>` with the core numbers to use. To get maximum performance from your PC, you can use `total number of cores - 1` or `total RAM/2Gb` as a `<core_number>`. For CPUs supporting hyperthreading, users can use more than one instance of `dftsolve.py` to achieve maximum efficiency. 
+**Arguments:**
+*   `-g, --geometry`: Path to the geometry file (CIF format).
+*   `-i, --input`: Path to the python input file defining calculation parameters.
+*   `-e, --energy`: (Optional) Measure energy consumption (Intel CPUs only).
+*   `-v, --version`: Version information.
 
-Usage:
-`$ mpirun -np <core_number> dftsolve.py <args>`
-
-or
-
-`$ gpaw -P<core_number> python /path/to/dftsolve.py -- <args>`
-
-### mdsolve.py
-The inter-atomic potential is a useful tool to perform a quick geometric optimization of the studied system before starting a precise DFT calculation. The `mdsolve.py` script is written for geometric optimizations with inter-atomic potentials. The bulk configuration of atoms can be provided by the user, given as a CIF file. A general potential is given for any calculation. However, the user can provide the necessary OpenKIM potential by changing the related line in the input file.
-
-Mainly, `mdsolve.py` is not related to GPAW. However, it is dependent on ASAP3/OpenKIM and Kimpy.
-
-The main usage is:
-
-`$ mdsolve.py <args>`
-
-#### Arguments
-
-`mdsolve.py -v -h -i <inputfile.py> -g <geometryfile.cif>`
-
-Argument list:
-```
--g, --geometry   : Use a CIF file for geometry
--i, --input      : Use an input file for variables (input.py) 
-
--h --help        : Help
--v --version     : Version information of running code and the latest stable code. It also gives a download link.
+**Parallel Execution:**
+For maximum efficiency, run with MPI:
+```bash
+mpirun -np <cores> dftsolve -g structure.cif -i input.py
 ```
 
-### optimizations/optimize_cutoff (and kpoints)(and kptsdensity)(and latticeparam).py
-Users must provide an ASE Atoms object and simply insert the object inside these scripts. With the scripts, the user can do convergence tests for cut-off energy, k-points, and k-point density and can calculate the energy-dependent lattice parameter values. These codes are mainly based on Prof. J. Kortus, and R. Wirnata's Electr. Structure & Properties of Solids course notes and GPAW's tutorials. Scripts can easily be called with MPI:
+### 2. mdsolve (formerly asapsolve.py)
+Perform quick geometric optimizations or MD runs using classical potentials via ASAP3 and OpenKIM.
 
-    gpaw -P<core_number> python optimize_cutoff.py -- Structure.cif
-    gpaw -P<core_number> python optimize_kpoints.py -- Structure.cif
-    gpaw -P<core_number> python optimize_kptsdensity.py -- Structure.cif
-    gpaw -P<core_number> python optimize_latticeparam.py -- Structure.cif
-    
-`optimize_latticeparam.py` can perform simultaneous calculation for lattice parameters a and c. And can also draw a 3D contour graph for Energy versus lattice parameters (a and c).
+**Usage:**
+```bash
+mdsolve -g <geometry.cif> -i <input.py>
+```
 
-## examples/
-There are [some example calculations](https://github.com/sblisesivdin/nanoworks/tree/main/examples) given with different usage scenarios. Please send us more calculations to include in this folder.
+**Arguments:**
+*   `-g, --geometry`: Path to the geometry file.
+*   `-i, --input`: Path to the input file overriding default parameters (e.g., potential selection).
 
-## Input File Keywords
--
+### 3. mlsolve (New!)
+Run geometry optimizations or static calculations using Machine Learning Force Fields.
 
-## Release notes
-Release notes are listed [here](https://github.com/sblisesivdin/nanoworks/blob/main/RELEASE_NOTES.md).
+**Usage:**
+```bash
+mlsolve -g <geometry.cif> -i "<configuration_dict>"
+```
+
+**Arguments:**
+*   `-g, --geometry`: Input geometry file (cif, xyz, POSCAR, etc.).
+*   `-i, --input`: A string containing a Python dictionary with configuration parameters.
+
+**Example:**
+```bash
+# Optimize a structure using MACE
+mlsolve -g structure.cif -i "{'model': 'mace', 'task': 'optimize', 'fmax': 0.01}"
+
+# Static calculation using CHGNet
+mlsolve -g structure.cif -i "{'model': 'chgnet', 'task': 'static'}"
+```
+
+**Supported Models:** `mace`, `chgnet`, `sevennet`
+
+### 4. nanoworks
+A helper CLI to locate package resources like examples and optimization scripts. For now, it is only showing helpful information. In future, it will be equipped with more 
+
+```bash
+$ nanoworks
+Welcome to Nanoworks!
+Version: 0.0.1
+Optimizations folder: /path/to/site-packages/nanoworks/optimizations
+Examples folder: /path/to/site-packages/nanoworks/examples
+```
+
+### 5. qeconverter and vaspconverter
+Command for creating nanoworks input and geometry files from QE and/or VASP files.
+
+```bash
+$ qeconverter --input si.scf.in --output-dir example_folder --system-name SiliconQE
+```
+
+```bash
+$ vaspconverter --poscar POSCAR --incar INCAR --kpoints KPOINTS --output-dir example_folder --system-name Silicon
+```
+
+### Helper Scripts
+Nanoworks includes several optimization scripts (found via the `nanoworks` command) to help converge DFT parameters:
+*   `optimize_cutoff.py`
+*   `optimize_kpoints.py`
+*   `optimize_kptsdensity.py`
+*   `optimize_latticeparam.py`
+
+## Examples
+
+The package includes an `examples/` directory covering various scenarios. You can find the location of these examples by running the `nanoworks` command.
 
 ## Citing
-Please do not forget that Nanoworks is an user interface software. For the main DFT calculations, it uses ASE and GPAW. It also uses the Elastic Python package for elastic tensor solutions and ASAP with the KIM database for interatomic interaction calculations, and Phonopy for the phonon calculations. Therefore, you must know what you use and cite them properly. Here, the basic citation information of each package is given.
+Please do not forget that Nanoworks is an user interface software. For the main DFT calculations, it uses ASE and GPAW. It also uses the Elastic python package for elastic tensor solutions and ASAP with the KIM database for interatomic interaction calculations and Phonopy for the phonon calculations. Therefore, you must know what you use, and cite them properly. Here, the basic citation information of each package is given.
 
 ### ASE 
 * Ask Hjorth Larsen et al. "[The Atomic Simulation Environment—A Python library for working with atoms](https://doi.org/10.1088/1361-648X/aa680e)" J. Phys.: Condens. Matter Vol. 29 273002, 2017.
@@ -108,6 +133,13 @@ Please do not forget that Nanoworks is an user interface software. For the main 
 * P.T. Jochym, K. Parlinski and M. Sternik "[TiC lattice dynamics from ab initio calculations](https://doi.org/10.1007/s100510050823)", European Physical Journal B; 10, 9 (1999).
 ### Phonopy
 * A. Togo "[First-principles Phonon Calculations with Phonopy and Phono3py](https://doi.org/10.7566/JPSJ.92.012001)", Journal of the Physical Society of Japan, 92(1), 012001 (2023).
+
+### MACE
+* Batatia, Ilyes, et al. "[MACE: Higher order equivariant message passing neural networks for fast and accurate force fields.](https://arxiv.org/abs/2206.07697)" arXiv preprint arXiv:2206.07697 (2022).
+### CHGNet
+* Deng, Bowen, et al. "[CHGNet as a pretrained universal graph neural network for charge-informed atomistic modeling.](https://doi.org/10.1038/s42256-023-00716-3)" Nature Machine Intelligence 5.9: 1031-1041 (2023).
+### SevenNet
+* Park, Yurum, et al. "[SevenNet: A Scalable Equivariant Neural Network for Universal Atomistic Modeling.](https://doi.org/10.1021/acs.jctc.4c00190)" Journal of Chemical Theory and Computation (2024).
 
 And for `Nanoworks` usage, please use the following citation:
 
