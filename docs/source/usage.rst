@@ -24,6 +24,7 @@ The main driver for DFT calculations using GPAW.
    $ dftsolve -g <geometry.cif> -i <input.py> [options]
 
 **Arguments:**
+
 * -g, --geometry: Path to the geometry file (CIF format).
 * -i, --input: Path to the python input file defining calculation parameters.
 * -e, --energy: (Optional) Measure energy consumption (Intel CPUs only).
@@ -47,6 +48,7 @@ Perform quick geometric optimizations or MD runs using classical potentials via 
    $ mdsolve -g <geometry.cif> -i <input.py>
 
 **Arguments:**
+
 * -g, --geometry: Path to the geometry file.
 * -i, --input: Path to the input file overriding default parameters (e.g., potential selection).
 
@@ -60,6 +62,7 @@ Run geometry optimizations or static calculations using Machine Learning Force F
    $ mlsolve -g <geometry.cif> -i "<configuration_dict>"
 
 **Arguments:**
+
 * -g, --geometry: Input geometry file (cif, xyz, POSCAR, etc.).
 * -i, --input: A string containing a Python dictionary with configuration parameters.
 
@@ -116,6 +119,7 @@ Helper Scripts
 --------------
 
 Nanoworks includes several optimization scripts (found via the `nanoworks` command) to help converge DFT parameters:
+
 * optimize_cutoff.py
 * optimize_kpoints.py
 * optimize_kptsdensity.py
