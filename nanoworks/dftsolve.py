@@ -14,6 +14,7 @@ import getopt, sys, os, time, shutil
 import textwrap
 import requests
 import pickle
+import nanoworks
 from argparse import ArgumentParser, HelpFormatter
 from dataclasses import dataclass, field
 from typing import Optional, Dict, List, Any
@@ -1849,7 +1850,7 @@ def projected_weights(calc):
 # End of Projected Band Structure related functions----------------
 
 # Version
-__version__ = "v25.10.1b1"
+__version__ = nanoworks.__version__
 
 def main():
     parser = ArgumentParser(prog ='gpawtools.py', description=Description, formatter_class=RawFormatter)
