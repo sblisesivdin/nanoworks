@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional
 import logging
+import nanoworks
 
 from ase.io import read, write
 
@@ -49,7 +50,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Convert VASP input files into dftsolve.py inputs.",
     )
-    parser.add_argument("--poscar", required=True, type=Path, help="Path to POSCAR/CONTCAR file")
+    parser.add_argument("--poscar", type=Path, help="Path to POSCAR/CONTCAR file")
     parser.add_argument("--incar", type=Path, help="Path to INCAR file")
     parser.add_argument("--kpoints", type=Path, help="Path to KPOINTS file")
     parser.add_argument("--output-dir", type=Path, default=Path.cwd(), help="Directory to place generated files")
@@ -57,6 +58,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--input-filename", help="Optional override for the generated dftsolve.py input filename")
     parser.add_argument("--outdirname", help="Override for Outdirname inside the generated gpawsolve input")
     parser.add_argument("--xc", help="Fallback XC functional if not specified in INCAR (default: PBE)")
+    parser.add_argument("-v", "--version", action='store_true', help="Show version information")
     return parser.parse_args()
 
 
@@ -292,6 +294,14 @@ def build_config_lines(
 
 def main() -> None:
     args = parse_args()
+    if args.version:
+        print(f"nanoworks: vaspconverter.py version: {nanoworks.__version__}")
+        return
+
+    if not args.poscar:
+        print("Error: the following arguments are required: --poscar")
+        return
+
     poscar_path = args.poscar.resolve()
     if not poscar_path.exists():
         raise FileNotFoundError(f"POSCAR file not found: {poscar_path}")
