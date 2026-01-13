@@ -29,6 +29,7 @@ import argparse
 import ast
 import time
 import warnings
+import nanoworks
 import numpy as np
 from pathlib import Path
 import os
@@ -185,6 +186,9 @@ def get_ml_calculator(model_type, device='cpu', **kwargs):
 # SECTION 2: ARGUMENT PARSING & MAIN LOGIC
 # -----------------------------------------------------------------------------
 
+# Version
+__version__ = nanoworks.__version__
+
 def main():
     # Start time
     t0 = time.time()
@@ -193,12 +197,20 @@ def main():
         description="MLSolve: Unified Interface for MACE, CHGNet, and SevenNet",
         formatter_class=argparse.RawTextHelpFormatter
     )
-    parser.add_argument('-g', '--geometry', type=str, required=True, 
+    parser.add_argument('-g', '--geometry', type=str, 
                         help='Path to input geometry file (cif, xyz, poscar, traj etc.)')
-    parser.add_argument('-i', '--input', type=str, required=True, 
+    parser.add_argument('-i', '--input', type=str, 
                         help="Configuration dictionary (as a string).\n"
                              "Example: \"{'model': 'mace', 'fmax': 0.05, 'task': 'optimize'}\"")
+    parser.add_argument("-v", "--version", dest="version", action='store_true', help="Show version information")
     args = parser.parse_args()
+
+    if args.version:
+        print(f"nanoworks: mlsolve.py version: {__version__}")
+        sys.exit(0)
+
+    if not args.geometry or not args.input:
+        parser.error("the following arguments are required: -g/--geometry, -i/--input")
 
     # Load struct and config
     struct, config = config_from_file(inputfile=args.input, geometryfile=args.geometry)
