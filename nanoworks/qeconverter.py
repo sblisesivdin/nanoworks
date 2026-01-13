@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 import logging
+import nanoworks
 
 from ase.io import read, write
 
@@ -46,12 +47,13 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Convert Quantum ESPRESSO pw.x input into dftsolve.py inputs.",
     )
-    parser.add_argument("--input", required=True, type=Path, help="Path to pw.x input file")
+    parser.add_argument("--input", type=Path, help="Path to pw.x input file")
     parser.add_argument("--output-dir", type=Path, default=Path.cwd(), help="Directory for generated files")
     parser.add_argument("--system-name", help="System name used for file stems and Outdirname")
     parser.add_argument("--outdirname", help="Override Outdirname value inside the generated input")
     parser.add_argument("--input-filename", help="Override dftsolve.py input filename")
     parser.add_argument("--xc", help="Optional XC functional override (default PBE)")
+    parser.add_argument("-v", "--version", action='store_true', help="Show version information")
     return parser.parse_args()
 
 
@@ -239,6 +241,14 @@ def build_config_lines(
 
 def main() -> None:
     args = parse_args()
+    if args.version:
+        print(f"nanoworks: qeconverter.py version: {nanoworks.__version__}")
+        return
+
+    if not args.input:
+        print("Error: the following arguments are required: --input")
+        return
+
     input_path = args.input.resolve()
     if not input_path.exists():
         raise FileNotFoundError(f"Quantum ESPRESSO input not found: {input_path}")
