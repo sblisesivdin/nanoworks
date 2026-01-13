@@ -1,4 +1,5 @@
 import sys
+import argparse
 from pathlib import Path
 import nanoworks
 
@@ -31,6 +32,11 @@ def find_package_folder(folder_name):
     return None
 
 def main():
+    parser = argparse.ArgumentParser(prog='nanoworks', description='Nanoworks CLI tool')
+    parser.add_argument('-v', '--version', action='version', version=f'nanoworks {nanoworks.__version__}')
+    # Use parse_known_args to avoid exiting on unknown arguments if this is used as a wrapper
+    parser.parse_args()
+
     print("Welcome to Nanoworks!")
     print(f"Version: {nanoworks.__version__}")
     
