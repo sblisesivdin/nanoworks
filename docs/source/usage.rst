@@ -6,9 +6,15 @@ Usage
 Usage
 -----
 
+When you need to use Nanoworks and its commands, you must activate the Python Environment that you created during the installation:
+
+.. code-block:: console
+
+   $ source ~/.venv_nw/bin/activate
+
 After installation, the following commands will be available in your terminal:
 
-1. dftsolve (formerly gpawsolve.py)
+dftsolve (formerly gpawsolve.py)
 -----------------------------------
 
 The main driver for DFT calculations using GPAW.
@@ -18,10 +24,10 @@ The main driver for DFT calculations using GPAW.
    $ dftsolve -g <geometry.cif> -i <input.py> [options]
 
 **Arguments:**
-*   `-g, --geometry`: Path to the geometry file (CIF format).
-*   `-i, --input`: Path to the python input file defining calculation parameters.
-*   `-e, --energy`: (Optional) Measure energy consumption (Intel CPUs only).
-*   `-v, --version`: Version information.
+* -g, --geometry: Path to the geometry file (CIF format).
+* -i, --input: Path to the python input file defining calculation parameters.
+* -e, --energy: (Optional) Measure energy consumption (Intel CPUs only).
+* -v, --version: Version information.
 
 **Parallel Execution:**
 For maximum efficiency, run with MPI:
@@ -31,7 +37,7 @@ For maximum efficiency, run with MPI:
    $ mpirun -np <cores> dftsolve -g structure.cif -i input.py
 
 
-2. mdsolve (formerly asapsolve.py)
+mdsolve (formerly asapsolve.py)
 ----------------------------------
 
 Perform quick geometric optimizations or MD runs using classical potentials via ASAP3 and OpenKIM.
@@ -41,10 +47,10 @@ Perform quick geometric optimizations or MD runs using classical potentials via 
    $ mdsolve -g <geometry.cif> -i <input.py>
 
 **Arguments:**
-*   `-g, --geometry`: Path to the geometry file.
-*   `-i, --input`: Path to the input file overriding default parameters (e.g., potential selection).
+* -g, --geometry: Path to the geometry file.
+* -i, --input: Path to the input file overriding default parameters (e.g., potential selection).
 
-3. mlsolve (New!)
+mlsolve (New!)
 -----------------
 
 Run geometry optimizations or static calculations using Machine Learning Force Fields.
@@ -54,8 +60,8 @@ Run geometry optimizations or static calculations using Machine Learning Force F
    $ mlsolve -g <geometry.cif> -i "<configuration_dict>"
 
 **Arguments:**
-*   `-g, --geometry`: Input geometry file (cif, xyz, POSCAR, etc.).
-*   `-i, --input`: A string containing a Python dictionary with configuration parameters.
+* -g, --geometry: Input geometry file (cif, xyz, POSCAR, etc.).
+* -i, --input: A string containing a Python dictionary with configuration parameters.
 
 **Example:**
 
@@ -74,7 +80,7 @@ Static calculation using CHGNet
 
 **Supported Models:** `mace`, `chgnet`, `sevennet`
 
-4. nanoworks
+nanoworks
 ------------
 
 A helper CLI to locate package resources like examples and optimization scripts. For now, it is only showing helpful information. In future, it will be equipped with more 
@@ -87,29 +93,33 @@ A helper CLI to locate package resources like examples and optimization scripts.
    Optimizations folder: /path/to/site-packages/nanoworks/optimizations
    Examples folder: /path/to/site-packages/nanoworks/examples
 
-5. qeconverter and vaspconverter
---------------------------------
+qeconverter 
+-----------
 
-Command for creating nanoworks input and geometry files from QE and/or VASP files.
+Command for creating nanoworks input and geometry files from QE files
 
 .. code-block:: console
 
    $ qeconverter --input si.scf.in --output-dir example_folder --system-name SiliconQE
 
+vaspconverter
+-------------
+
+Command for creating nanoworks input and geometry files from VASP files
 
 .. code-block:: console
 
-$ vaspconverter --poscar POSCAR --incar INCAR --kpoints KPOINTS --output-dir example_folder --system-name Silicon
+   $ vaspconverter --poscar POSCAR --incar INCAR --kpoints KPOINTS --output-dir example_folder --system-name Silicon
 
 
 Helper Scripts
 --------------
 
 Nanoworks includes several optimization scripts (found via the `nanoworks` command) to help converge DFT parameters:
-*   `optimize_cutoff.py`
-*   `optimize_kpoints.py`
-*   `optimize_kptsdensity.py`
-*   `optimize_latticeparam.py`
+* optimize_cutoff.py
+* optimize_kpoints.py
+* optimize_kptsdensity.py
+* optimize_latticeparam.py
 
 Examples
 --------
