@@ -31,7 +31,6 @@ Documentation
    :maxdepth: 2
    :caption: Getting Started
 
-   about
    installation
    usage
 
@@ -45,6 +44,7 @@ Documentation
    :maxdepth: 1
    :caption: Project Info
 
+   about
    contributing
    code_of_conduct
    release_notes
