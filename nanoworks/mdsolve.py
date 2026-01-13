@@ -25,6 +25,7 @@ import os
 import time
 import textwrap
 import requests
+import nanoworks
 from argparse import ArgumentParser, HelpFormatter
 from pathlib import Path
 from numbers import Number
@@ -212,7 +213,7 @@ bulk_configuration = Atoms(
 # ///////   YOU DO NOT NEED TO CHANGE ANYTHING BELOW    \\\\\\\
 # -------------------------------------------------------------
 # Version
-__version__ = "v25.10.1b1"
+__version__ = nanoworks.__version__
 
 def main():
     # Start time
@@ -238,7 +239,8 @@ def main():
         try:
             response = requests.get("https://api.github.com/repos/sblisesivdin/nanoworks/releases/latest", timeout=5)
             print('-------------------------------------------------------------------------------------------------------')
-            print('\033[95mnanoworks:\033[0m This is mdsolve.py uses ASAP3 '+asap3.__version__+', and ASE '+ase.__version__)
+            print('\033[95mnanoworks:\033[0m Version information: '+str(__version__))
+            print('  uses ASAP3 '+asap3.__version__+', and ASE '+ase.__version__)
             print('-------------------------------------------------------------------------------------------------------')
             print('The latest STABLE release was '+response.json()["tag_name"]+', which is published at '+response.json()["published_at"])
             print('Download the latest STABLE tarball release at: '+response.json()["tarball_url"])
@@ -246,7 +248,8 @@ def main():
             print('Download the latest DEV zipball release at: https://github.com/sblisesivdin/nanoworks/archive/refs/heads/main.zip')
         except (requests.ConnectionError, requests.Timeout):
             print('-------------------------------------------------------------------------------------------------------')
-            print('nanoworks: This is mdsolve.py uses ASAP3 '+asap3.__version__+', ASE '+ase.__version__)
+            print('\033[95mnanoworks:\033[0m Version information: '+str(__version__))
+            print('  uses ASAP3 '+asap3.__version__+', and ASE '+ase.__version__)
             print('-------------------------------------------------------------------------------------------------------')
             print('No internet connection available.')
         sys.exit(0)
