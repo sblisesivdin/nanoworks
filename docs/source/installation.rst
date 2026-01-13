@@ -9,7 +9,7 @@ Installation of Linux System Configuration
 Debian-based distributions (also Windows 11 with WSL)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-You can also use the same commands on a pure Debian-based Linux system or Windows systems with WSL. If you do not know how to install Linux on Windows 11 with WSL, you can view [this video](https://www.youtube.com/watch?v=zZf4YH4WiZo). On the WSL system, you can use either Debian or Ubuntu. We suggest Ubuntu because of the support given by Microsoft. First, install the required system files:
+You can also use the same commands on a pure Debian-based Linux system or Windows systems with WSL. If you do not know how to install Linux on Windows 11 with WSL, you can view `this video <https://www.youtube.com/watch?v=zZf4YH4WiZo>`_. On the WSL system, you can use either Debian or Ubuntu. We recommend Ubuntu due to the support provided by Microsoft. First, install the required system files:
 
 .. code-block:: console
 
@@ -29,7 +29,7 @@ First, install the required system files:
    $ sudo dnf update
    $ sudo dnf install openblas-devel libxc-devel scalapack-openmpi-devel fftw-devel pkgconf
 
-You also must install `kim-api`, `kim-api-devel`, and `openkim-models`. At the time of writing these instructions, packages of these packages can not be installed remotely for Fedora 43. Therefore, we must download them, then install them with dnf locally. The order is important:
+You also must install `kim-api`, `kim-api-devel`, and `openkim-models`. At the time of writing these instructions, packages for Fedora 43 cannot be installed remotely. Therefore, we must download them, then install them with dnf locally. The order is important:
 
 .. code-block:: console
 
@@ -57,7 +57,7 @@ For `dftsolve`, `mdsolve`, and `mlsolve` commands, we need to install many Pytho
 ASE and GPAW for dftsolve
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-After preparing your Linux system and environment, you must have the `ase` and `gpaw` codes on your computer. You can find more information about installing [ASE](https://wiki.fysik.dtu.dk/ase/install.html) and [GPAW](https://wiki.fysik.dtu.dk/gpaw/install.html) from their related sites.
+After preparing your Linux system and environment, you must have the `ase` and `gpaw` codes on your computer. You can find more information about installing `ASE <https://wiki.fysik.dtu.dk/ase/install.html>`_ and `GPAW <https://wiki.fysik.dtu.dk/gpaw/install.html>`_ from their related sites.
 
 .. code-block:: console
 
@@ -92,7 +92,7 @@ Use `gpaw info` to see installation information. However, PAW datasets are not i
 Installation of ASAP and KIM for mdsolve
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-For quick optimization, we need simple interatomic modeling. For this, we need [ASAP3](https://wiki.fysik.dtu.dk/asap/) for ASE, then we must use [KIM](https://openkim.org/kim-api/) with [OpenKIM](https://openkim.org/) models and [kimpy](https://github.com/openkim/kimpy) libraries.
+For quick optimization, we need simple interatomic modeling. For this, we need `ASAP3 <https://wiki.fysik.dtu.dk/asap/>`_ for ASE, then we must use `KIM <https://openkim.org/kim-api/>`_ with `OpenKIM <https://openkim.org/>`_ models and `kimpy <https://github.com/openkim/kimpy>`_ libraries.
 
 .. code-block:: console
 
@@ -102,7 +102,7 @@ For quick optimization, we need simple interatomic modeling. For this, we need [
 Installation of Machine Learning libraries for mlsolve
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-For machine learning features, we must install the following libraries:
+For machine learning features, we must install the libraries related with `PyTorch <https://pytorch.org/>`_, `MACE (Multi-Atomic Cluster Expansion) <https://github.com/ACEsuit/mace>`_, `CHGNet (Charge-Informed Graph Neural Network) <https://github.com/CederGroupHub/chgnet>`_, `SevenNet (Scalable Equivariance Enabled Neural Network) <https://github.com/MDIL-SNU/SevenNet>`_:
 
 .. code-block:: console
 
