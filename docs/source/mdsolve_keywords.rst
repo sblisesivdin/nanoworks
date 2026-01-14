@@ -1,136 +1,74 @@
+.. _mdsolve_keywords:
+
 mdsolve Keyword List
--------------------------
-.. _mdsolve-keyword-list:
+====================
 
-MD Keywords
-^^^^^^^^^^^
+The ``mdsolve`` tool uses a Python script as an input file. Below are the supported variables that can be defined in this file.
 
-OpenKIM_potential
-~~~~~~~~~~~~~~~~~
-:Keyword type: String
+General Parameters
+------------------
 
-:Description:
+.. describe:: OpenKIM_potential
+
+    :Type: ``str``
+    :Default: ``'LJ_ElliottAkerson_2015_Universal__MO_959249795837_003'``
+
     Interatomic potential used in calculation.
 
-:Default:
-    ``'LJ_ElliottAkerson_2015_Universal__MO_959249795837_003'``
 
-:Example:
+.. describe:: Temperature
 
-.. code-block:: python
-
-    OpenKIM_potential = 'LJ_ElliottAkerson_2015_Universal__MO_959249795837_003'
-
-
-Temperature
-~~~~~~~~~~~
-:Keyword type: Integer
-
-:Description:
+    :Type: ``int``
+    :Default: ``1``
+    :Unit: K
+    
     Temperature used in calculation (Kelvin).
 
-:Default: ``1``
 
-:Example:
+.. describe:: Time
 
-.. code-block:: python
+    :Type: ``float``
+    :Default: ``5``
+    :Unit: fs
 
-    Temperature = 300  # K
-
-
-Time
-~~~~
-:Keyword type: Float
-
-:Description:
     Timestep used in calculation (femtosecond).
 
-:Default: ``5``
 
-:Example:
+.. describe:: Friction
 
-.. code-block:: python
-
-    Time = 10  # fs
-
-
-Friction
-~~~~~~~~
-:Keyword type: Float
-
-:Description:
+    :Type: ``float``
+    :Default: ``0.05``
+    
     Friction used in the calculation.
 
-:Default: ``0.05``
 
-:Example:
+.. describe:: Scaled
 
-.. code-block:: python
+    :Type: ``boolean``
+    :Default: ``False``
 
-    Friction = 0.1
-
-
-Scaled
-~~~~~~
-:Keyword type: Boolean
-
-:Description:
     Use scaled or cartesian coordinates.
 
-:Default: ``False``
 
-:Example:
+.. describe:: Manual_PBC
+    :Type: ``boolean``
+    :Default: ``False``
 
-.. code-block:: python
-
-    Scaled = True
-
-
-Manual_PBC
-~~~~~~~~~~
-:Keyword type: Boolean
-
-:Description:
     Use manual constraint axis. If ``True``, ``PBC_constraints`` must be used.
+    
 
-:Default: ``False``
+.. describe:: PBC_constraints
+    :Type: ``Python List of Logical Values``
+    :Default: ``[True, True, False]``
 
-:Example:
-
-.. code-block:: python
-
-    Manual_PBC = True
-
-
-PBC_constraints
-~~~~~~~~~~~~~~~
-:Keyword type: Python List of Logical Values
-
-:Description:
     Controls which axes components are constrained (X, Y, Z). ``True`` = constrained, ``False`` = not constrained.
     Only works when ``Manual_PBC = True``.
 
-:Default: ``[True, True, False]``
 
-:Example:
+.. describe:: Solve_double_element_problem
+    :Type: ``boolean``
+    :Default: ``True``
 
-.. code-block:: python
-
-    PBC_constraints = [True, False, False]
-
-
-Solve_double_element_problem
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-:Keyword type: Boolean
-
-:Description:
     Use this if you have double the number of elements in your final file; set to ``True`` to fix.
 
-:Default: ``True``
-
-:Example:
-
-.. code-block:: python
-
-    Solve_double_element_problem = False
 
