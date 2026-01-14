@@ -5,489 +5,329 @@ dftsolve Keyword List
 General Keywords
 ^^^^^^^^^^^^^^^^
 
-Mode
-~~~~
-:Keyword type: String
+.. describe:: Mode
 
-:Description:
-    This keyword controls the running mode of the GPAW. Available options are:
+    :Type: ``string``
+    :Default: ``PW``
 
-    * ``PW``
-    * ``LCAO``
-
-:Default: ``PW``
-
-:Example:
+    This keyword controls the running mode of the GPAW.
 
 .. code-block:: python
 
     Mode = 'PW'
 
+.. describe:: Geo_optim
 
-Geo_optim
-~~~~~~~~~
-:Keyword type: Logical
+    :Type: ``boolean``
+    :Default: ``True``
 
-:Description:
-    Controls execution of geometric optimization. Available options are ``True`` or ``False``.
-
-    Users can implement a filter for optimization of supercells and atoms with the keyword ``Relax_cell`` (see :ref:`relax-cell`).
-
-:Default: ``True``
-
-:Example:
+    Controls execution of geometric optimization.
 
 .. code-block:: python
 
     Geo_optim = False
 
+.. describe:: Elastic_calc
 
-Elastic_calc
-~~~~~~~~~~~~
-:Keyword type: Logical
+    :Type: ``boolean``
+    :Default: ``False``
 
-:Description:
-    Whether Elastic calculations are performed (``True``/``False``).
-
-:Default: ``False``
-
-:Example:
+    Whether Elastic calculations are performed or not.
 
 .. code-block:: python
 
     Elastic_calc = True
 
+.. describe:: DOS_calc
 
-DOS_calc
-~~~~~~~~
-:Keyword type: Logical
+    :Type: ``boolean``
+    :Default: ``False``
 
-:Description:
-    Whether DOS calculations are performed (``True``/``False``).
-
-:Default: ``False``
-
-:Example:
+    Whether DOS calculations are performed or not.
 
 .. code-block:: python
 
     DOS_calc = True
 
+.. describe:: Band_calc
 
-Band_calc
-~~~~~~~~~
-:Keyword type: Logical
+    :Type: ``boolean``
+    :Default: ``False``
 
-:Description:
-    Whether Band calculations are performed (``True``/``False``).
-
-:Default: ``False``
-
-:Example:
+    Whether Band calculations are performed or not.
 
 .. code-block:: python
 
     Band_calc = False
 
+.. describe:: Density_calc
 
-Density_calc
-~~~~~~~~~~~~
-:Keyword type: Logical
+    :Type: ``boolean``
+    :Default: ``False``
 
-:Description:
-    Whether electron density calculations are performed (``True``/``False``).
-
-:Default: ``False``
-
-:Example:
+    Whether electron density calculations are performed or not.
 
 .. code-block:: python
 
     Density_calc = True
 
+.. describe:: Optical_calc
 
-Optical_calc
-~~~~~~~~~~~~
-:Keyword type: Logical
+    :Type: ``boolean``
+    :Default: ``False``
 
-:Description:
-    Whether optical calculations are performed. Must be used independently from DOS_calc, Band_calc, and Density_calc. See examples directory.
-
-:Default: ``False``
-
-:Example:
+    Whether optical calculations are performed or not. Must be used independently from DOS_calc, Band_calc, and Density_calc. See examples directory.
 
 .. code-block:: python
 
     Optical_calc = False
 
+.. describe:: Energy_min
 
-MPI_cores
-~~~~~~~~~
-:Keyword type: Integer
+    :Type: ``int``
+    :Default: ``-5``
+    :Unit: eV
 
-:Description:
-    Number of cores used in the calculation. This parameter is not used with ``gpawsolve.py``; it is only needed for ``gg.py``. Note about ``gg.py``/mpirun usage and hyperthreading.
-
-:Default: ``4``
-
-:Example:
-
-.. code-block:: python
-
-    MPI_cores = 4
-
-
-Energy_min
-~~~~~~~~~~
-:Keyword type: Integer
-
-:Description:
-    Minimum energy value for plotted band structure and DOS figures (eV).
-
-:Default: ``-5``
-
-:Example:
+    Minimum energy value for plotted band structure and DOS figures.
 
 .. code-block:: python
 
     Energy_min = -10  # eV
 
+.. describe:: Energy_max
 
-Energy_max
-~~~~~~~~~~
-:Keyword type: Integer
+    :Type: ``int``
+    :Default: ``5``
+    :Unit: eV
 
-:Description:
-    Maximum energy value for plotted band structure and DOS figures (eV).
-
-:Default: ``5``
-
-:Example:
+    Maximum energy value for plotted band structure and DOS figures.
 
 .. code-block:: python
 
     Energy_max = 10  # eV
 
+.. describe:: Localisation
 
-Localisation
-~~~~~~~~~~~~
-:Keyword type: String
+    :Type: ``str``
+    :Default: ``en_UK``
 
-:Description:
     Language used in figures. Supported: English, Turkish, German, French, Russian, Chinese, Korean, Japanese.
-
-:Default: ``en_UK``
-
-:Example:
 
 .. code-block:: python
 
     Localisation = "tr_TR"
 
-
 Geometric Optimization Keywords
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Optimizer
-~~~~~~~~~
-:Keyword type: String
+.. describe:: Optimizer
 
-:Description:
+    :Type: ``str``
+    :Default: ``LBFGS``
+    :Options: ``LBFGS``, ``FIRE``
+    
     Energy minimization algorithm for geometry optimization. Options: ``LBFGS``, ``FIRE``.
-
-:Default: ``LBFGS``
-
-:Example:
 
 .. code-block:: python
 
     Optimizer = 'FIRE'
 
+.. describe:: Max_F_tolerance
 
-Max_F_tolerance
-~~~~~~~~~~~~~~~
-:Keyword type: Float
+    :Type: ``float``
+    :Default: ``0.05``
+    :Unit: eV/Å
 
-:Description:
-    Maximum force tolerance in BFGS-style geometry optimization (eV/Ang).
-
-:Default: ``0.05``
-
-:Example:
+    Maximum force tolerance in BFGS-style geometry optimization.
 
 .. code-block:: python
 
-    Max_F_tolerance = 0.05  # eV/Ang
+    Max_F_tolerance = 0.05  # eV/Å
 
+.. describe:: Max_step
 
-Max_step
-~~~~~~~~
-:Keyword type: Float
-
-:Description:
-    Maximum allowed movement for a single atom (Angstrom).
-
-:Default: ``0.2``
-
-:Example:
+    :Type: ``float``
+    :Default: ``0.2``
+    :Unit: Å
+    
+    Maximum allowed movement for a single atom.
 
 .. code-block:: python
 
     Max_step = 0.2  # Ang
 
+.. describe:: Alpha
 
-Alpha
-~~~~~
-:Keyword type: Float
+    :Type: ``float``
+    :Default: ``70.0``
 
-:Description:
     Initial guess for the Hessian (curvature of the energy surface).
-
-:Default: ``70.0``
-
-:Example:
 
 .. code-block:: python
 
     Alpha = 70.0
 
+.. describe:: Damping
 
-Damping
-~~~~~~~
-:Keyword type: Float
+    :Type: ``float``
+    :Default: ``1.0``
 
-:Description:
     Calculated step is multiplied by this number before updating positions.
-
-:Default: ``1.0``
-
-:Example:
 
 .. code-block:: python
 
     Damping = 1.0
 
+.. describe:: Fix_symmetry
 
-Fix_symmetry
-~~~~~~~~~~~~
-:Keyword type: Logical
+    :Type: ``boolean``
+    :Default: ``False``
 
-:Description:
-    Preserve spacegroup symmetry during optimization (``True``/``False``).
-
-:Default: ``False``
-
-:Example:
+    Preserve spacegroup symmetry during optimization.
 
 .. code-block:: python
 
     Fix_symmetry = True
 
+.. describe:: Relax_cell
 
-Relax_cell
-~~~~~~~~~~
-.. _relax-cell:
+    :Type: ``list``
+    :Default: ``[False, False, False, False, False, False]``
 
-:Keyword type:
-    Python List of Logical Values
-
-:Description:
     Controls which components of strain will be relaxed (six components: EpsilonX, EpsilonY, EpsilonZ, ShearYZ, ShearXZ, ShearXY).
-    ``True`` = relax to zero; ``False`` = fixed.
-
-    **IMPORTANT:** Only works when ``Geo_optim = True`` and under ``PW`` mode (not implemented in LCAO).
-
-:Default: ``[False, False, False, False, False, False]``
-
-:Example:
 
 .. code-block:: python
 
     Relax_cell = [True, True, False, False, False, False]  # For an x-y 2D nanosheet
 
-
 Electronic Calculations Keywords
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Cut_off_energy
-~~~~~~~~~~~~~~
-:Keyword type: Integer
+.. describe:: Cut_off_energy
 
-:Description:
-    Plane wave cut-off energy value (eV). Used in PW mode.
+    :Type: ``integer``
+    :Default: ``340``
+    :Unit: eV
 
-:Default: ``340``
-
-:Example:
+    Plane wave cut-off energy value. Used in PW mode.
 
 .. code-block:: python
 
     Cut_off_energy = 500  # eV
 
+.. describe:: Ground_kpts_density
 
-Ground_kpts_density
-~~~~~~~~~~~~~~~~~~~
-:Keyword type: Float
-
-:Description:
-    k-point density (pts per Å^-1). If present, ``Ground_kpts_x/y/z`` are ignored (Monkhorst-Pack mesh used otherwise).
-
-:Default: Not used by default.
-
-:Example:
+    :Type: ``float``
+    :Default: ``Not used by default.``
+    :Unit: pts per Å^-1
+    
+    k-point density. If present, ``Ground_kpts_x/y/z`` are ignored (Monkhorst-Pack mesh used otherwise).
 
 .. code-block:: python
 
     Ground_kpts_density = 2.5  # pts per Å^-1
 
+.. describe:: Ground_kpts_x | Ground_kpts_y | Ground_kpts_z
 
-Ground_kpts_x / Ground_kpts_y / Ground_kpts_z
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-:Keyword type: Integer
+    :Type: ``int``
+    :Default: ``5``
 
-:Description:
     Number of k-points in x, y, z directions. Ignored if ``Ground_kpts_density`` is supplied.
 
-:Default:
-    Ground_kpts_x = 5
-    Ground_kpts_y = 5
-    Ground_kpts_z = 5
-
-:Example:
-
 .. code-block:: python
 
     Ground_kpts_x = 5
     Ground_kpts_y = 5
     Ground_kpts_z = 5
 
+.. describe:: Ground_gpts_density 
 
-Ground_gpts_density / Ground_gpts_x / Ground_gpts_y / Ground_gpts_z
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-:Keyword type:
-    ``Ground_gpts_density`` - Float (LCAO only)
-    ``Ground_gpts_x/y/z`` - Integer (LCAO only)
+    :Type: ``float``
+    :Default: ``Not used by default.``
 
-:Description:
-    Controls g-point/grid density for LCAO mode. If ``Ground_gpts_density`` is included, ``Ground_gpts_x/y/z`` are ignored.
-
-:Default:
-    Ground_gpts_density = 0.2
-    Ground_gpts_x = 8
-    Ground_gpts_y = 8
-    Ground_gpts_z = 8
-
-:Example:
+    Controls grid density for LCAO mode
 
 .. code-block:: python
 
     Ground_gpts_density = 0.2
+
+.. describe:: Ground_gpts_x | Ground_gpts_y | Ground_gpts_z
+
+    :Type: ``int``
+    :Default: ``8``
+
+    Controls g-point numbers for LCAO mode. If ``Ground_gpts_density`` is included, ``Ground_gpts_x/y/z`` are ignored.
+
+
+.. code-block:: python
+
     Ground_gpts_x = 8
     Ground_gpts_y = 8
     Ground_gpts_z = 8
 
+.. describe:: Gamma
 
-Gamma
-~~~~~
-:Keyword type: Logical
+    :Type: ``boolean``
+    :Default: ``True``
 
-:Description:
-    Include Gamma point in band calculations (``True``/``False``).
-
-:Default: ``True``
-
-:Example:
+    Include Gamma point in band calculations.
 
 .. code-block:: python
 
     Gamma = False
 
+.. describe:: Band_path
 
-Band_path
-~~~~~~~~~
-:Keyword type: String
+    :Type: ``str``
+    :Default: ``'LGL'``
 
-:Description:
     Path of high-symmetry points in the band-structure diagram. Use ``G`` for Gamma.
-
-:Default: ``'LGL'``
-
-:Example:
 
 .. code-block:: python
 
     Band_path = 'GMKG'
 
+.. describe:: Band_npoints
 
-Band_npoints
-~~~~~~~~~~~~
-:Keyword type: Integer
+    :Type: ``int``
+    :Default: ``61``
 
-:Description:
     Number of points between first and last high-symmetry points.
-
-:Default: ``61``
-
-:Example:
 
 .. code-block:: python
 
     Band_npoints = 51
 
+.. describe:: Setup_params
 
-Setup_params
-~~~~~~~~~~~~
-:Keyword type: Python dictionary
+    :Type: ``python dictionary``
+    :Default: ``{}``
 
-:Description:
     Setup parameters for related orbitals/elements. For none, use ``{}``. See GPAW manual on manual setups.
-
-:Default: ``{}``
-
-:Example:
 
 .. code-block:: python
 
     Setup_params = {'N': ':p,6.0'}  # eV
 
+.. describe:: XC_calc
 
-XC_calc
-~~~~~~~
-:Keyword type: String
+    :Type: ``string``
+    :Default: ``LDA``
+    :Options: ``LDA``, ``PBE``, ``GLLBSC``, ``revPBE``, ``RPBE``, ``HSE03``, ``HSE06``, ``B3LYP``, ``PBE0``
 
-:Description:
-    Exchange-correlation functional. Options (tested with gpaw-tools):
-
-    * ``LDA``
-    * ``PBE``
-    * ``GLLBSC`` (-)
-    * ``revPBE``
-    * ``RPBE``
-    * ``HSE03`` (-)
-    * ``HSE06`` (-)
-    * ``B3LYP``
-    * ``PBE0``
-
-    ``(-)`` indicates ``Relax_cell`` must be ``[False, False, False, False, False, False]``.
-
-:Default: ``LDA``
-
-:Example:
+    Exchange-correlation functional. Relax_cell keyword must be [False, False, False, False, False, False] with GLLBSC, HSE03 and HSE06.
 
 .. code-block:: python
 
     XC_calc = 'PBE'
 
+.. describe:: Ground_convergence
 
-Ground_convergence
-~~~~~~~~~~~~~~~~~~
-:Keyword type: Python dictionary
+    :Type: ``python dictionary``
+    :Default:
+    .. code-block:: python
 
-:Description:
     Convergence parameters for ground-state calculations. Use ``{}`` for defaults.
-
-:Default:
 
 .. code-block:: python
 
@@ -500,84 +340,51 @@ Ground_convergence
         'maximum iterations': None
     }
 
-:Example:
+.. describe:: Band_convergence
 
-.. code-block:: python
+    :Type: ``python dictionary``
+    :Default: ``{'bands': 8}``
 
-    Ground_convergence = {'energy': 0.005}  # eV
-
-
-Band_convergence
-~~~~~~~~~~~~~~~~
-:Keyword type: Python dictionary
-
-:Description:
     Convergence parameters for band calculations.
-
-:Default: ``{'bands': 8}``
-
-:Example:
 
 .. code-block:: python
 
     Band_convergence = {'bands': 8, 'eigenstates': 1.0e-8}
 
+.. describe:: DOS_convergence
 
-DOS_convergence
-~~~~~~~~~~~~~~
-:Keyword type: Python dictionary
+    :Type: ``python dictionary``
+    :Default: ``{}``
 
-:Description:
     Convergence parameters for DOS calculations.
-
-:Default: ``{}``
-
-:Example:
 
 .. code-block:: python
 
     DOS_convergence = {'maximum iterations': 100}
 
+.. describe:: Occupations
 
-Occupations
-~~~~~~~~~~~
-:Keyword type: Python dictionary
+    :Type: ``python dictionary``
+    :Default: ``{}``
+        
+.. code-block:: python
 
-:Description:
     Smearing of the occupation numbers. Options:
-
-    * ``improved-tetrahedron-method``
-    * ``tetrahedron-method``
-    * ``fermi-dirac``
-    * ``marzari-vanderbilt``
-
-:Default:
 
 .. code-block:: python
 
     Occupations = {'name': 'fermi-dirac', 'width': 0.05}
 
-:Example:
-
 .. code-block:: python
 
     Occupations = {'name': 'marzari-vanderbilt', 'width': 0.2}
 
+.. describe:: Mixer_type
 
-Mixer_type
-~~~~~~~~~~
-:Keyword type: Python import
+    :Type: ``python import``
+    :Default: ``MixerSum(0.1,3,50)``
 
-:Description:
-    Density mixing options. See GPAW documentation on density mixing.
-
-    Available types:
-
-    * ``Mixer()``
-    * ``MixerSum()``
-    * ``MixerDif()``
-
-    Import in input file as:
+    Density mixing options. See GPAW documentation on density mixing. Example values correspond to (beta, nmaxold, weight). If you have convergence problems try (0.02, 5, 100) or (0.05, 5, 50).
 
 .. code-block:: python
 
@@ -587,130 +394,88 @@ Mixer_type
     # or
     from gpaw import MixerDif
 
-    Example values correspond to (beta, nmaxold, weight). If you have convergence problems try (0.02, 5, 100) or (0.05, 5, 50).
-
-:Default:
-
-.. code-block:: python
-
-    MixerSum(0.1, 3, 50)
-
-:Example:
-
 .. code-block:: python
 
     Mixer_type = Mixer(0.02, 5, 100)
 
+.. describe:: DOS_npoints
 
-DOS_npoints
-~~~~~~~~~~~
-:Keyword type: Integer
+    :Type: ``int``
+    :Default: ``501``
 
-:Description:
     Number of data points for DOS.
-
-:Default: ``501``
-
-:Example:
 
 .. code-block:: python
 
     DOS_npoints = 1001
 
+.. describe:: DOS_width
 
-DOS_width
-~~~~~~~~~
-:Keyword type: Float
+    :Type: ``float``
+    :Default: ``0.1``
 
-:Description:
     Width of Gaussian smearing in DOS calculation. Use ``0.0`` for linear tetrahedron interpolation.
-
-:Default: ``0.1``
-
-:Example:
 
 .. code-block:: python
 
     DOS_width = 0.0  # Using tetrahedron interpolation
 
+.. describe:: Spin_calc
 
-Spin_calc
-~~~~~~~~~
-:Keyword type: Logical
+    :Type: ``boolean``
+    :Default: ``False``
 
-:Description:
-    Include spin-based calculations (``True``/``False``). Set ``Magmom_per_atom`` if ``True``.
-
-:Default: ``False``
-
-:Example:
+    Include spin-based calculations. Set ``Magmom_per_atom`` if ``True``.
 
 .. code-block:: python
 
     Spin_calc = True
 
+.. describe:: Magmom_per_atom
 
-Magmom_per_atom
-~~~~~~~~~~~~~~~
-:Keyword type: Float
+    :Type: ``float``
+    :Default: ``1.0``
+    :Unit: µB
 
-:Description:
-    Magnetic moment per atom (µB). Only relevant when ``Spin_calc = True``.
-
-:Default: ``1.0``
-
-:Example:
+    Magnetic moment per atom. Only relevant when ``Spin_calc = True``.
 
 .. code-block:: python
 
     Magmom_per_atom = 1.0
 
+.. describe:: Total_charge
 
-Total_charge
-~~~~~~~~~~~~
-:Keyword type: Float
+    :Type: ``float``
+    :Default: ``0.0``
+    :Unit: electron charge unit
 
-:Description:
-    Total charge of the system (electron charge units). Can be positive or negative.
-
-:Default: ``0.0``
-
-:Example:
+    Total charge of the system. Can be positive or negative.
 
 .. code-block:: python
 
     Total_charge = 0.0
 
-
 Phonon Calculations Keywords
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Phonon_PW_cutoff
-~~~~~~~~~~~~~~~~~
-:Keyword type: Integer
+.. describe:: Phonon_PW_cutoff
 
-:Description:
-    Cut-off energy for phonon calculations (eV).
+    :Type: ``int``
+    :Default: ``400``
+    :Unit: eV
 
-:Default: ``400``
-
-:Example:
+    Cut-off energy for phonon calculations.
 
 .. code-block:: python
 
     Phonon_PW_cutoff = 350  # eV
 
+.. describe:: Phonon_kpts_x | Phonon_kpts_y | Phonon_kpts_z
 
-Phonon_kpts_x / Phonon_kpts_y / Phonon_kpts_z
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-:Keyword type: Integer
-
-:Description:
+    :Type: ``int``
+    :Default: ``3``
+    
     Number of k-points in x / y / z directions for phonon calculations.
-
-:Default: ``3`` for each (x, y, z)
-
-:Example:
 
 .. code-block:: python
 
@@ -718,287 +483,221 @@ Phonon_kpts_x / Phonon_kpts_y / Phonon_kpts_z
     Phonon_kpts_y = 5
     Phonon_kpts_z = 5
 
+.. describe:: Phonon_supercell
 
-Phonon_supercell
-~~~~~~~~~~~~~~~~
-:Keyword type: NumPy Array
-
-:Description:
+    :Type: ``numpy array``
+    :Default: ``np.diag([2, 2, 2])``
+    
     Supercell used in phonon calculations.
-
-:Default:
-
-.. code-block:: python
-
-    Phonon_supercell = np.diag([2, 2, 2])
-
-:Example:
 
 .. code-block:: python
 
     Phonon_supercell = np.diag([3, 2, 2])  # 3 units in x, 2 in y and z
 
+.. describe:: Phonon_displacement
 
-Phonon_displacement
-~~~~~~~~~~~~~~~~~~~
-:Keyword type: Float
+    :Type: ``float``
+    :Default: ``1e-3``
+    :Unit: Å
 
-:Description:
-    Displacement introduced to the supercell (Angstrom).
-
-:Default: ``1e-3``
-
-:Example:
+    Displacement introduced to the supercell.
 
 .. code-block:: python
 
     Phonon_displacement = 5e-3  # Angstrom
 
+.. describe:: Phonon_path
 
-Phonon_path
-~~~~~~~~~~
-:Keyword type: String
+    :Type: ``str``
+    :Default: ``LGL``
 
-:Description:
     Band path for phonon calculations.
-
-:Default: ``LGL``
-
-:Example:
 
 .. code-block:: python
 
     Phonon_path = 'XGLG'
 
+.. describe:: Phonon_npoints
 
-Phonon_npoints
-~~~~~~~~~~~~~~
-:Keyword type: Integer
+    :Type: ``int``
+    :Default: ``61``
 
-:Description:
     Number of points between high-symmetry points for phonon calculations.
-
-:Default: ``61``
-
-:Example:
 
 .. code-block:: python
 
     Phonon_npoints = 301
 
+.. describe:: Phonon_acoustic_sum_rule
 
-Phonon_acoustic_sum_rule
-~~~~~~~~~~~~~~~~~~~~~~~~~
-:Keyword type: Boolean
+    :Type: ``boolean``
+    :Default: ``True``
 
-:Description:
-    Apply acoustic sum rule for phonon calculations (``True``/``False``).
-
-:Default: ``True``
-
-:Example:
+    Apply acoustic sum rule for phonon calculations.
 
 .. code-block:: python
 
     Phonon_acoustic_sum_rule = True
 
-
 Optical Calculations Keywords
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Opt_calc_type
-~~~~~~~~~~~~~
-:Keyword type: String
+.. describe:: Opt_calc_type
 
-:Description:
+    :Type: ``str``
+    :Default: ``BSE``
+
     Optical calculation type: random phase approximation (RPA) or Bethe-Salpeter Equation (BSE).
-
-:Default: ``BSE``
-
-:Example:
 
 .. code-block:: python
 
     Opt_calc_type = 'BSE'
 
+.. describe:: Opt_shift_en
 
-Opt_shift_en
-~~~~~~~~~~~~
-:Keyword type: Float
+    :Type: ``float``
+    :Default: ``0.0``
+    :Unit: eV
 
-:Description:
-    Shift added to energy values (eV). Works on BSE calculations only.
-
-:Default: ``0.0``
-
-:Example:
+    Shift added to energy values. Works on BSE calculations only.
 
 .. code-block:: python
 
     Opt_shift_en = 1.0  # eV
 
+.. describe:: Opt_BSE_valence 
 
-Opt_BSE_valence / Opt_BSE_conduction
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-:Keyword type: Sequence of integers
+    :Type: ``Sequence of integers``
+    :Default: ``range(0,3)``
 
-:Description:
-    Valence and conduction bands used in BSE calculation.
-
-:Default:
-    Opt_BSE_valence = range(0,3)
-    Opt_BSE_conduction = range(4,7)
-
-:Example:
+    Valence bands used in BSE calculation.
 
 .. code-block:: python
 
     Opt_BSE_valence = range(120,124)
+
+.. describe:: Opt_BSE_conduction
+
+    :Type: ``Sequence of integers``
+    :Default: `` range(4,7)``
+    
+    Conduction bands used in BSE calculation.
+    
+.. code-block:: python
+
     Opt_BSE_conduction = range(124,128)
+    
+.. describe:: Opt_BSE_min_en
 
-
-Opt_BSE_min_en / Opt_BSE_max_en
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-:Keyword type: Float
-
-:Description:
-    Start and end energy values for result data used in BSE calculation (eV).
-
-:Default:
-    Opt_BSE_min_en = 0.0
-    Opt_BSE_max_en = 20.0
-
-:Example:
+    :Type: ``float``
+    :Default: ``0.0``
+    :Unit: eV
+    
+    Start energy value for result data used in BSE calculation.
 
 .. code-block:: python
 
     Opt_BSE_min_en = 0.0
+
+.. describe:: Opt_BSE_max_en
+
+    :Type: ``float``
+    :Default: ``20.0``
+    :Unit: eV
+    
+    End energy value for result data used in BSE calculation.
+    
+.. code-block:: python
+
     Opt_BSE_max_en = 10.0
 
+.. describe:: Opt_BSE_num_of_data
 
-Opt_BSE_num_of_data
-~~~~~~~~~~~~~~~~~~~
-:Keyword type: Integer
+    :Type: ``int``
+    :Default: ``1001``
 
-:Description:
     Number of data points in BSE calculation.
-
-:Default: ``1001``
-
-:Example:
 
 .. code-block:: python
 
     Opt_BSE_num_of_data = 401
 
+.. describe:: Opt_num_of_bands
 
-Opt_num_of_bands
-~~~~~~~~~~~~~~~~
-:Keyword type: Integer
+    :Type: ``int``
+    :Default: ``16``
 
-:Description:
     Number of bands used in optical calculations.
-
-:Default: ``16``
-
-:Example:
 
 .. code-block:: python
 
     Opt_num_of_bands = 8
 
+.. describe:: Opt_FD_smearing
 
-Opt_FD_smearing
-~~~~~~~~~~~~~~
-:Keyword type: Float
+    :Type: ``float``
+    :Default: ``0.05``
 
-:Description:
     Fermi-Dirac smearing for optical calculations.
-
-:Default: ``0.05``
-
-:Example:
 
 .. code-block:: python
 
     Opt_FD_smearing = 0.02
 
+.. describe:: Opt_eta
 
-Opt_eta
-~~~~~~~
-:Keyword type: Float
+    :Type: ``float``
+    :Default: ``0.2``
 
-:Description:
     Broadening parameter ``eta`` used in dielectric function calculations (eV).
-
-:Default: ``0.2``
-
-:Example:
 
 .. code-block:: python
 
     Opt_eta = 0.1
 
+.. describe:: Opt_domega0
 
-Opt_domega0
-~~~~~~~~~~~
-:Keyword type: Float
+    :Type: ``float``
+    :Default: ``0.1``
+    :Options: ``Δω0``
 
-:Description:
     ``Δω0`` parameter for the non-linear frequency grid in dielectric function calculations (eV). See GPAW docs.
-
-:Default: ``0.1``
-
-:Example:
 
 .. code-block:: python
 
     Opt_domega0 = 0.05  # eV
 
+.. describe:: Opt_omega2
 
-Opt_omega2
-~~~~~~~~~~
-:Keyword type: Float
+    :Type: ``float``
+    :Default: ``10.0``
+    :Options: ``ω2``
 
-:Description:
     ``ω2`` parameter for non-linear frequency grid in dielectric function calculations (eV). See GPAW docs.
-
-:Default: ``10.0``
-
-:Example:
 
 .. code-block:: python
 
     Opt_omega2 = 2.0  # eV
 
+.. describe:: Opt_cut_of_energy
 
-Opt_cut_of_energy
-~~~~~~~~~~~~~~~~~
-:Keyword type: Float
+    :Type: ``float``
+    :Default: ``10.0``
 
-:Description:
     Plane-wave energy cutoff in dielectric function calculations (eV). Determines dielectric matrix size.
-
-:Default: ``10.0``
-
-:Example:
 
 .. code-block:: python
 
     Opt_cut_of_energy = 20.0  # eV
 
+.. describe:: Opt_nblocks
 
-Opt_nblocks
-~~~~~~~~~~~
-:Keyword type: Integer
+    :Type: ``int``
+    :Default: ``4``
 
-:Description:
     Controls splitting matrices into blocks and distribution of G-vectors/frequencies over processes.
-
-:Default: ``4``
-
-:Example:
 
 .. code-block:: python
 
     Opt_nblocks = 4
+
