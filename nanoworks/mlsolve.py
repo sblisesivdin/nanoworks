@@ -26,7 +26,6 @@ License: MIT
 
 import sys
 import argparse
-import ast
 import time
 import warnings
 import nanoworks
@@ -200,8 +199,7 @@ def main():
     parser.add_argument('-g', '--geometry', type=str, 
                         help='Path to input geometry file (cif, xyz, poscar, traj etc.)')
     parser.add_argument('-i', '--input', type=str, 
-                        help="Configuration dictionary (as a string).\n"
-                             "Example: \"{'model': 'mace', 'fmax': 0.05, 'task': 'optimize'}\"")
+                        help="Path to the python input file defining calculation parameters (e.g. ml_input.py).")
     parser.add_argument("-v", "--version", dest="version", action='store_true', help="Show version information")
     args = parser.parse_args()
 

@@ -59,26 +59,20 @@ Run geometry optimizations or static calculations using Machine Learning Force F
 
 .. code-block:: console
 
-   $ mlsolve -g <geometry.cif> -i "<configuration_dict>"
+   $ mlsolve -g <geometry.cif> -i <input.py>
 
 **Arguments:**
 
 * -g, --geometry: Input geometry file (cif, xyz, POSCAR, etc.).
-* -i, --input: A string containing a Python dictionary with configuration parameters.
+* -i, --input: Path to the python input file defining calculation parameters.
 
 **Example:**
 
-Optimize a structure using MACE
+Optimize a structure using MACE (assuming parameters are in `ml_input.py`)
 
 .. code-block:: console
 
-   $ mlsolve -g structure.cif -i "{'model': 'mace', 'task': 'optimize', 'fmax': 0.01}"
-
-Static calculation using CHGNet
-
-.. code-block:: console
-
-   $ mlsolve -g structure.cif -i "{'model': 'chgnet', 'task': 'static'}"
+   $ mlsolve -g structure.cif -i ml_input.py
 
 
 **Supported Models:** `mace`, `chgnet`, `sevennet`
