@@ -20,6 +20,11 @@
 - `mdsolve.py`: works as a system-wide command `mdsolve`.
 - `mlsolve.py`: works as a system-wide command `mlsolve`.
 - New command: `nanoworks` command is added. Just giving important information for now.
+- All keywords for `dftsolve`, `mdsolve` and `mlsolve` are rewritten for better representation on webpage
+- `mlsolve` is working with input files from now on, not with a Python dictionary.
+- New `install_scripts` directory.
+- Version information is taken from `__init__.py` for all commands.
+- Better installation and usage guides.
 
 ### Version 25.10.0 - Oct 1, 2025 (The last gpaw-tools version)
 
