@@ -27,7 +27,7 @@ First, install the required system files:
 .. code-block:: console
 
    $ sudo dnf update
-   $ sudo dnf install openblas-devel libxc-devel scalapack-openmpi-devel fftw-devel pkgconf
+   $ sudo dnf install python3-devel openblas-devel libxc-devel scalapack-openmpi-devel fftw-devel pkgconf
 
 You also must install `kim-api`, `kim-api-devel`, and `openkim-models`. At the time of writing these instructions, packages for Fedora 43 cannot be installed remotely. Therefore, we must download them, then install them with dnf locally. The order is important:
 
@@ -76,7 +76,7 @@ Creating a `siteconfig.py` file is important. You can use any text editor. Here,
    libraries = ['xc', 'blas', 'fftw3', 'scalapack-openmpi']
    ^D
 
-Then install gpaw
+If you have problems with libraries fftw, scalapack, you can remove them from `siteconfig.py` file. They are simply optional. Then continue to install gpaw
 
 .. code-block:: console
 
@@ -114,4 +114,4 @@ Then, lastly, install nanoworks:
 
 .. code-block:: console
    
-   (.venv_nw) $ pip install nanoworks
+   (.venv_nw) $ pip3 install nanoworks
