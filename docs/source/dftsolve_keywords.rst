@@ -325,7 +325,6 @@ Electronic Calculations Keywords
 
     :Type: ``python dictionary``
     :Default:
-    .. code-block:: python
 
     Convergence parameters for ground-state calculations. Use ``{}`` for defaults.
 
@@ -367,8 +366,6 @@ Electronic Calculations Keywords
     :Type: ``python dictionary``
     :Default: ``{}``
         
-.. code-block:: python
-
     Smearing of the occupation numbers. Options:
 
 .. code-block:: python
