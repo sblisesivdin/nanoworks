@@ -242,7 +242,7 @@ def build_config_lines(
 def main() -> None:
     args = parse_args()
     if args.version:
-        print(f"nanoworks: qeconverter.py version: {nanoworks.__version__}")
+        print(f"nanoworks: qeconverter: version: {nanoworks.__version__}")
         return
 
     if not args.input:

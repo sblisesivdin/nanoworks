@@ -38,8 +38,9 @@ try:
     from ase import Atoms
     from ase.io import read, write
     from ase.optimize import BFGS, FIRE, LBFGS
-    from ase.constraints import ExpCellFilter, UnitCellFilter
-except ImportError:
+    from ase.filters import ExpCellFilter, UnitCellFilter
+except ImportError as err:
+    print(repr(err))
     sys.exit("Error: ASE (Atomic Simulation Environment) library not found.")
 
 # Suppress warnings (clean output)
@@ -204,7 +205,7 @@ def main():
     args = parser.parse_args()
 
     if args.version:
-        print(f"nanoworks: mlsolve.py version: {__version__}")
+        print(f"nanoworks: mlsolve: version: {nanoworks.__version__}")
         sys.exit(0)
 
     if not args.geometry or not args.input:

@@ -1849,9 +1849,6 @@ def projected_weights(calc):
 
 # End of Projected Band Structure related functions----------------
 
-# Version
-__version__ = nanoworks.__version__
-
 def main():
     parser = ArgumentParser(prog ='gpawtools.py', description=Description, formatter_class=RawFormatter)
     parser.add_argument("-i", "--input", dest = "inputfile", help="Use input file for calculation variables (also you can insert geometry)")
@@ -1879,28 +1876,7 @@ def main():
 
     try:
         if args.version == True:
-            import gpaw
-            import ase
-            import phonopy
-            try:
-                response = requests.get("https://api.github.com/repos/sblisesivdin/nanoworks/releases/latest", timeout=5)
-                parprint('-----------------------------------------------------------------------------')
-                parprint('\033[95mnanoworks:\033[0m Version information: '+str(__version__))
-                parprint('  uses GPAW '+gpaw.__version__+', ASE '+ase.__version__+' and PHONOPY '+phonopy.__version__)
-                parprint('-----------------------------------------------------------------------------')
-                parprint('The latest STABLE release is '+response.json()["tag_name"]+',')
-                parprint('which is released at '+response.json()["published_at"]+'.')
-                parprint('-----------------------------------------------------------------------------')
-                parprint('You can download the latest STABLE tarball, zipball or DEVELOPMENT zipball:')
-                parprint(response.json()["tarball_url"])
-                parprint(response.json()["zipball_url"])
-                parprint('https://github.com/sblisesivdin/nanoworks/archive/refs/heads/main.zip')
-            except (requests.ConnectionError, requests.Timeout) as exception:
-                parprint('-----------------------------------------------------------------------------')
-                parprint('\033[95mnanoworks:\033[0m Version information: '+str(__version__))
-                parprint('  uses GPAW '+gpaw.__version__+', ASE '+ase.__version__+' and PHONOPY '+phonopy.__version__)
-                parprint('-----------------------------------------------------------------------------')
-                parprint('No internet connection available.')
+            parprint(f"nanoworks: dftsolve: version: {nanoworks.__version__}")
             quit()
 
         if args.inputfile is not None:

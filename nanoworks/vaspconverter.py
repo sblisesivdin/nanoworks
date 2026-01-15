@@ -295,7 +295,7 @@ def build_config_lines(
 def main() -> None:
     args = parse_args()
     if args.version:
-        print(f"nanoworks: vaspconverter.py version: {nanoworks.__version__}")
+        print(f"nanoworks: vaspconverter: version: {nanoworks.__version__}")
         return
 
     if not args.poscar:

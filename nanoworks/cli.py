@@ -33,13 +33,21 @@ def find_package_folder(folder_name):
 
 def main():
     parser = argparse.ArgumentParser(prog='nanoworks', description='Nanoworks CLI tool')
-    parser.add_argument('-v', '--version', action='version', version=f'nanoworks {nanoworks.__version__}')
+    parser.add_argument('-v', '--version', action='version', version=f'nanoworks: nanoworks: version {nanoworks.__version__}')
     # Use parse_known_args to avoid exiting on unknown arguments if this is used as a wrapper
     parser.parse_args()
-
+    import ase
+    import gpaw
+    import phonopy
+    import asap3
+    
+    print("----------------------------------")
     print("Welcome to Nanoworks!")
     print(f"Version: {nanoworks.__version__}")
-    
+    print("----------------------------------")
+    print("Libraries used:") 
+    print(f"ASE: {ase.__version__}, GPAW: {gpaw.__version__}, Phonopy: {phonopy.__version__}, ASAP3: {asap3.__version__}")
+    print("----------------------------------")
     folders = ["optimizations", "examples"]
     for folder in folders:
         path = find_package_folder(folder)

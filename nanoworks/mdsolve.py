@@ -212,8 +212,6 @@ bulk_configuration = Atoms(
 # -------------------------------------------------------------
 # ///////   YOU DO NOT NEED TO CHANGE ANYTHING BELOW    \\\\\\\
 # -------------------------------------------------------------
-# Version
-__version__ = nanoworks.__version__
 
 def main():
     # Start time
@@ -234,25 +232,8 @@ def main():
     args = parser.parse_args()
 
     if args.version:
-        import asap3
-        import ase
-        try:
-            response = requests.get("https://api.github.com/repos/sblisesivdin/nanoworks/releases/latest", timeout=5)
-            print('-------------------------------------------------------------------------------------------------------')
-            print('\033[95mnanoworks:\033[0m Version information: '+str(__version__))
-            print('  uses ASAP3 '+asap3.__version__+', and ASE '+ase.__version__)
-            print('-------------------------------------------------------------------------------------------------------')
-            print('The latest STABLE release was '+response.json()["tag_name"]+', which is published at '+response.json()["published_at"])
-            print('Download the latest STABLE tarball release at: '+response.json()["tarball_url"])
-            print('Download the latest STABLE zipball release at: '+response.json()["zipball_url"])
-            print('Download the latest DEV zipball release at: https://github.com/sblisesivdin/nanoworks/archive/refs/heads/main.zip')
-        except (requests.ConnectionError, requests.Timeout):
-            print('-------------------------------------------------------------------------------------------------------')
-            print('\033[95mnanoworks:\033[0m Version information: '+str(__version__))
-            print('  uses ASAP3 '+asap3.__version__+', and ASE '+ase.__version__)
-            print('-------------------------------------------------------------------------------------------------------')
-            print('No internet connection available.')
-        sys.exit(0)
+        print(f"nanoworks: mdsolve: version: {nanoworks.__version__}")
+        quit()
 
     if not args.inputfile or not args.geometryfile:
         print('ERROR: Please provide both input (-i) and geometry (-g) files.')
