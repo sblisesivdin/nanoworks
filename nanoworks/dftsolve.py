@@ -1246,7 +1246,7 @@ class dftsolve:
             supercells = list(phonon.supercells_with_displacements)
             fnames = [self.struct+'5-Results-sc-{:04}.npy'.format(i) for i in range(len(supercells))]
             set_of_forces = [
-                load_or_compute_force(fname, calc, supercell)
+                self.load_or_compute_force(fname, calc, supercell)
                 for (fname, supercell) in zip(fnames, supercells)
             ]
             with paropen(self.struct+'-5-Log-Phonon-Phonopy.txt', 'a') as f2:
@@ -1636,6 +1636,31 @@ class dftsolve:
         with paropen(self.struct+'-7-Result-Log-Timings.txt', 'a') as f1:
             print('Optical calculation: ', round((time62-time61),2), end="\n", file=f1)
 
+    def run_gpaw(self, calc, cell):
+        cell = convert_atoms_to_ase(cell)
+        cell.set_calculator(calc)
+        forces = cell.get_forces()
+        drift_force = forces.sum(axis=0)
+        with paropen(self.struct+'-5-Log-Phonon-Phonopy.txt', 'a') as f2:
+            print(("[Phonopy] Drift force:" + "%11.5f" * 3) % tuple(drift_force), end="\n", file=f2)
+        # Simple translational invariance
+        for force in forces:
+            force -= drift_force / forces.shape[0]
+        return forces
+
+    def load_or_compute_force(self, path, calc, atoms):
+        if os.path.exists(path):
+            with paropen(self.struct+'-5-Log-Phonon-Phonopy.txt', 'a') as f2:
+                print('Reading {!r}'.format(path), end="\n", file=f2)
+            return np.load(path)
+
+        else:
+            with paropen(self.struct+'-5-Log-Phonon-Phonopy.txt', 'a') as f2:
+                print('Computing {!r}'.format(path), end="\n", file=f2)
+            force_set = self.run_gpaw(calc, atoms)
+            np.save(path, force_set)
+            return force_set
+
 # Elastic related functions
 from ase.spacegroup import get_spacegroup
 import numpy as np
@@ -1742,46 +1767,21 @@ def get_band_path(atoms, path_str, npoints, path_frac=None, labels=None):
     qpoints, connections = get_band_qpoints_and_path_connections(path_frac, npoints=npoints)
     return qpoints, labels, connections
 
-def run_gpaw_all(calc, phonon):
-    return [ run_gpaw(calc, supercell) for supercell in phonon.supercells_with_displacements ]
-
-def run_gpaw(calc, cell):
-    cell = convert_atoms_to_ase(cell)
-    cell.set_calculator(calc)
-    forces = cell.get_forces()
-    drift_force = forces.sum(axis=0)
-    with paropen(struct+'-5-Log-Phonon-Phonopy.txt', 'a') as f2:
-        print(("[Phonopy] Drift force:" + "%11.5f" * 3) % tuple(drift_force), end="\n", file=f2)
-    # Simple translational invariance
-    for force in forces:
-        force -= drift_force / forces.shape[0]
-    return forces
-
-#--------------------------------------------------------------------
-
-
-def load_or_compute_force(path, calc, atoms):
-    if os.path.exists(path):
-        with paropen(struct+'-5-Log-Phonon-Phonopy.txt', 'a') as f2:
-            print('Reading {!r}'.format(path), end="\n", file=f2)
-        return np.load(path)
-
-    else:
-        with paropen(struct+'-5-Log-Phonon-Phonopy.txt', 'a') as f2:
-            print('Computing {!r}'.format(path), end="\n", file=f2)
-        force_set = run_gpaw(calc, atoms)
-        np.save(path, force_set)
-        return force_set
-
-#--------------------------------------------------------------------
-
 def convert_atoms_to_ase(atoms):
-    return Atoms(
-        symbols=atoms.get_chemical_symbols(),
-        scaled_positions=atoms.get_scaled_positions(),
-        cell=atoms.get_cell(),
-        pbc=True
-    )
+    if hasattr(atoms, 'get_chemical_symbols'):
+        return Atoms(
+            symbols=atoms.get_chemical_symbols(),
+            scaled_positions=atoms.get_scaled_positions(),
+            cell=atoms.get_cell(),
+            pbc=True
+        )
+    else:
+        return Atoms(
+            symbols=atoms.symbols,
+            scaled_positions=atoms.scaled_positions,
+            cell=atoms.cell,
+            pbc=True
+        )
 
 def convert_atoms_to_phonopy(atoms):
     return PhonopyAtoms(
