@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 
 '''
-dftsolve.py: High-level Interaction Script for GPAW
-More information: $ dftsolve.py -h
+dftsolve: High-level Interaction Script for GPAW
+More information: $ dftsolve -h
 '''
 
 Description = f'''
  Usage:
- $ mpirun -np <corenumbers> dftsolve.py <args>
+ $ mpirun -np <corenumbers> dftsolve <args>
 '''
 
 import getopt, sys, os, time, shutil
