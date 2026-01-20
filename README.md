@@ -33,11 +33,11 @@ Nanoworks is a Python package. You can install it with pip. However, because you
 After installation, the following commands will be available in your terminal:
 
 ### 1. dftsolve (formerly gpawsolve.py)
-The main driver for DFT calculations using GPAW.
+The main driver for DFT calculations using GPAW. Uses many cores with -p argument.
 
 **Usage:**
 ```bash
-dftsolve -g <geometry.cif> -i <input.py> [options]
+dftsolve -p <cores> -g <geometry.cif> -i <input.py> [options]
 ```
 
 **Arguments:**
@@ -45,11 +45,9 @@ dftsolve -g <geometry.cif> -i <input.py> [options]
 *   `-i, --input`: Path to the Python input file defining calculation parameters.
 *   `-e, --energy`: (Optional) Measure energy consumption (Intel CPUs only).
 *   `-v, --version`: Version information.
-*   `-p, --parallel`: Number of cores to run in parallel
+*   `-p, --parallel`: Number of cores to run in parallel.
+*   `-a, --auto`: Auto mode. Automatically generate input parameters based on geometry.
 
-**Parallel Execution:**
-```bash
-dftsolve -p <cores> -g structure.cif -i input.py
 ```
 
 ### 2. mdsolve (formerly asapsolve.py)

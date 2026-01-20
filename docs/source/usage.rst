@@ -17,11 +17,17 @@ After installation, the following commands will be available in your terminal:
 dftsolve (formerly gpawsolve.py)
 -----------------------------------
 
-The main driver for DFT calculations using GPAW.
+The main driver for DFT calculations using GPAW. Can calculate with many cores using -p argument.
 
 .. code-block:: console
 
-   $ dftsolve -g <geometry.cif> -i <input.py> [options]
+   $ dftsolve -p <cores> -g <geometry.cif> -i <input.py> [options]
+   
+or with auto mode.
+
+.. code-block:: console
+
+   $ dftsolve -p <cores-a -g <geometry.cif> [options]
 
 **Arguments:**
 
@@ -30,12 +36,7 @@ The main driver for DFT calculations using GPAW.
 * -e, --energy: (Optional) Measure energy consumption (Intel CPUs only).
 * -v, --version: Version information.
 * -p, --parallel: Number of cores to run in parallel
-
-**Parallel Execution:**
-
-.. code-block:: console
-
-   $ dftsolve -p <cores> -g structure.cif -i input.py
+* -a, --auto: Auto mode. Automatically generate input parameters based on geometry.
 
 
 mdsolve (formerly asapsolve.py)
