@@ -270,6 +270,111 @@ def struct_from_file(inputfile, geometryfile):
     struct = os.path.join(str(structpath), struct)
     return struct, config
 
+def struct_from_auto(geometryfile):
+    """Generate configuration automatically from geometry file."""
+    struct_path = Path(geometryfile)
+    struct_name = struct_path.stem
+    
+    # Generate Auto Config
+    atoms = read(geometryfile)
+    config = DFTConfig()
+    config.Mode = 'PW'
+    config.Ground_calc = True
+    config.XC_calc = 'PBE'
+    config.Cut_off_energy = 450
+    config.Gamma = True
+    config.Optimizer = 'LBFGS' 
+    
+    # ---------------------------------------------------------
+    # 1. Magnetism Detection
+    # ---------------------------------------------------------
+    mag_elements = ['Cr', 'Mn', 'Fe', 'Co', 'Ni']
+    symbols = set(atoms.get_chemical_symbols())
+    
+    if any(s in mag_elements for s in symbols):
+        config.Spin_calc = True
+        config.Magmom_per_atom = 2.0 
+
+    # ---------------------------------------------------------
+    # 2. Dimensionality & K-points (Vacuum detection)
+    # ---------------------------------------------------------
+    # We want to avoid many k-points in vacuum directions.
+    # Heuristic: If cell length is large (>12 A) and atoms occupy < 50% of it, it's vacuum.
+    
+    atoms_an = atoms.copy()
+    atoms_an.center() # Center atoms to get correct span
+    positions = atoms_an.get_positions()
+    if len(atoms) > 0:
+        spans = np.max(positions, axis=0) - np.min(positions, axis=0)
+    else:
+        spans = np.zeros(3)
+    cell_lengths = atoms.cell.lengths()
+    
+    # Target density (pts/A^-1)
+    target_density = 3.0
+    kpts = [1, 1, 1]
+    
+    is_vacuum = [False, False, False]
+    
+    for i in range(3):
+        # Check for vacuum
+        if cell_lengths[i] > 12.0 and spans[i] < (cell_lengths[i] * 0.5):
+            is_vacuum[i] = True
+            kpts[i] = 1
+        else:
+            # Calculate k-points based on density
+            # density = N * 2pi / L  => N = density * L / 2pi
+            # We add 0.5 to round nearest, and ensure at least 1
+            n_k = int(target_density * cell_lengths[i] / (2 * np.pi) + 0.5)
+            kpts[i] = max(1, n_k)
+            
+    config.Ground_kpts_x = kpts[0]
+    config.Ground_kpts_y = kpts[1]
+    config.Ground_kpts_z = kpts[2]
+    config.Ground_kpts_density = None # Use explicit kpts
+    
+    # Enable other calculations
+    config.DOS_calc = True
+    config.Band_calc = True
+    
+    config.bulk_configuration = atoms
+    
+    # Determine output path
+    input_dir = struct_path.parent
+    structpath = input_dir / struct_name
+    
+    if not os.path.isdir(structpath):
+        os.makedirs(structpath, exist_ok=True)
+    struct = os.path.join(str(structpath), struct_name)
+    
+    # Write input file for future use
+    input_filename = struct + '_input.py'
+    with open(input_filename, 'w') as f:
+        f.write("from ase.io import read\n")
+        f.write("import numpy as np\n\n")
+        f.write(f"Mode = '{config.Mode}'\n")
+        f.write(f"Ground_calc = {config.Ground_calc}\n")
+        f.write(f"XC_calc = '{config.XC_calc}'\n")
+        f.write(f"Cut_off_energy = {config.Cut_off_energy}\n")
+        f.write(f"Gamma = {config.Gamma}\n")
+        f.write(f"Optimizer = '{config.Optimizer}'\n")
+        f.write(f"Spin_calc = {config.Spin_calc}\n")
+        if config.Spin_calc:
+            f.write(f"Magmom_per_atom = {config.Magmom_per_atom}\n")
+        f.write(f"Ground_kpts_x = {config.Ground_kpts_x}\n")
+        f.write(f"Ground_kpts_y = {config.Ground_kpts_y}\n")
+        f.write(f"Ground_kpts_z = {config.Ground_kpts_z}\n")
+        f.write(f"DOS_calc = {config.DOS_calc}\n")
+        f.write(f"Band_calc = {config.Band_calc}\n")
+        f.write(f"\n# Geometry is handled via command line -g or loaded here if needed\n")
+
+    parprint(f"Auto-configured for {struct_name}: PBE, 450eV, Spin={config.Spin_calc}")
+    parprint(f"Geometry analysis: Cell {cell_lengths}, Spans {spans}")
+    parprint(f"Vacuum detected: {is_vacuum} -> K-points set to {kpts}")
+    parprint(f"Generated input file: {input_filename}")
+    
+    return struct, config
+
 def autoscale_y(ax,margin=0.1):
     """This function rescales the y-axis based on the data that is visible given the current xlim of the axis.
     ax -- a matplotlib axes object
@@ -1906,6 +2011,7 @@ def main():
     parser = ArgumentParser(prog ='dftsolve.py', description=Description, formatter_class=RawFormatter)
     parser.add_argument("-i", "--input", dest = "inputfile", help="Use input file for calculation variables (also you can insert geometry)")
     parser.add_argument("-g", "--geometry",dest ="geometryfile", help="Use CIF file for geometry")
+    parser.add_argument("-a", "--auto", dest="auto", action='store_true', help="Automatically generate input parameters based on geometry")
     parser.add_argument("-v", "--version", dest="version", action='store_true')
     parser.add_argument("-e", "--energy", dest="energymeas", action='store_true')
     parser.add_argument("-p", "--parallel", dest="parallel", type=int, help="Number of cores to run in parallel")
@@ -1933,11 +2039,16 @@ def main():
             parprint(f"nanoworks: dftsolve: version: {nanoworks.__version__}")
             quit()
 
-        if args.inputfile is not None:
+        if args.auto:
+            if args.geometryfile is None:
+                parprint("\033[91mERROR:\033[0m Auto mode (-a) requires a geometry file (-g).")
+                quit()
+            inFile = os.path.join(os.getcwd(), args.geometryfile)
+        elif args.inputfile is not None:
             configpath = os.path.join(os.getcwd(),args.inputfile)
             sys.path.append(os.getcwd())
         else:
-            parprint("\033[91mERROR:\033[0m Please use an input file with -i argument.")
+            parprint("\033[91mERROR:\033[0m Please use an input file with -i argument or use auto mode -a.")
             quit()
 
 
@@ -1969,7 +2080,10 @@ def main():
     time0 = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time.time()))
 
     # Load struct and config
-    struct, config = struct_from_file(inputfile = configpath, geometryfile = inFile)
+    if args.auto:
+        struct, config = struct_from_auto(inFile)
+    else:
+        struct, config = struct_from_file(inputfile = configpath, geometryfile = inFile)
 
     # Write timings of calculation
     with paropen(struct+'-7-Result-Log-Timings.txt', 'a') as f1:
