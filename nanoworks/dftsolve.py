@@ -1,16 +1,68 @@
 #!/usr/bin/env python
 
 '''
-dftsolve: High-level Interaction Script for GPAW
+dftsolve: High-level Wrapper Script for GPAW
 More information: $ dftsolve -h
 '''
 
 Description = f'''
  Usage:
- $ mpirun -np <corenumbers> dftsolve <args>
+ $ dftsolve -p <corenumbers> <args>
 '''
 
-import getopt, sys, os, time, shutil
+import sys
+import os
+import shutil
+import subprocess
+
+# Parallel execution logic (Must be before other imports to avoid MPI initialization issues)
+def check_parallel_restart():
+    parallel = None
+    filtered_args = []
+    i = 1
+    while i < len(sys.argv):
+        arg = sys.argv[i]
+        if arg in ['-p', '--parallel']:
+            if i + 1 < len(sys.argv):
+                parallel = sys.argv[i+1]
+                i += 2
+            else:
+                print("Error: -p/--parallel requires an argument")
+                sys.exit(1)
+        elif arg.startswith('-p'):
+            parallel = arg[2:]
+            i += 1
+        elif arg.startswith('--parallel='):
+            parallel = arg.split('=', 1)[1]
+            i += 1
+        else:
+            filtered_args.append(arg)
+            i += 1
+            
+    if parallel:
+        gpaw_exe = shutil.which('gpaw')
+        script_path = os.path.abspath(__file__)
+        
+        if gpaw_exe:
+            # Use gpaw -P <cores> python <script> -- <args>
+            cmd = [gpaw_exe, '-P', str(parallel), 'python', script_path, '--'] + filtered_args
+        else:
+            # Fallback to mpirun -np <cores> python <script> <args>
+            mpirun_exe = shutil.which('mpirun')
+            if mpirun_exe:
+                cmd = [mpirun_exe, '-np', str(parallel), 'python', script_path] + filtered_args
+            else:
+                print("Error: Neither gpaw nor mpirun found for parallel execution.")
+                sys.exit(1)
+        
+        print(f"Restarting with {parallel} cores: {' '.join(cmd)}")
+        sys.stdout.flush()
+        # Use execvp to replace the current process
+        os.execvp(cmd[0], cmd)
+
+check_parallel_restart()
+
+import getopt, time
 import textwrap
 import requests
 import pickle
@@ -1851,11 +1903,12 @@ def projected_weights(calc):
 # End of Projected Band Structure related functions----------------
 
 def main():
-    parser = ArgumentParser(prog ='gpawtools.py', description=Description, formatter_class=RawFormatter)
+    parser = ArgumentParser(prog ='dftsolve.py', description=Description, formatter_class=RawFormatter)
     parser.add_argument("-i", "--input", dest = "inputfile", help="Use input file for calculation variables (also you can insert geometry)")
     parser.add_argument("-g", "--geometry",dest ="geometryfile", help="Use CIF file for geometry")
     parser.add_argument("-v", "--version", dest="version", action='store_true')
     parser.add_argument("-e", "--energy", dest="energymeas", action='store_true')
+    parser.add_argument("-p", "--parallel", dest="parallel", type=int, help="Number of cores to run in parallel")
 
     args = None
 
