@@ -2,11 +2,4 @@
 
 Ground, Elastic, DOS and Band calculations of Rocksalt TiC. PW with 600 eV cutoff, 7x7x7 kpoints as done in. To run the calculation with MPI on 4 cores please execute the following command in this folder.
 
-    mpirun -np 4 dftsolve.py -i TiC.py -g TiC_mp-631_primitive-Final.cif
-    
-or
-
-    gpaw -P4 python ~/path-to-nanoworks/dftsolve.py -- -i TiC.py -g TiC_mp-631_primitive-Final.cif
-
-Here, ~/path-to-nanoworks shows a full path your nanoworks folder.
-	
+    dftsolve -p 4 -i TiC.py -g TiC_mp-631_primitive-Final.cif

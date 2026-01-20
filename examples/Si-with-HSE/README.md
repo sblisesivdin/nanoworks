@@ -6,12 +6,6 @@ Please use proper convergence values and always use HPC for your HSE calculation
 
 You can run this example with:
 
-    mpirun -np 4 dftsolve.py -i Si-with-HSE.py -g Si_mp-149_primitive.cif
-    
-or
+    dftsolve -p 4 -i Si-with-HSE.py -g Si_mp-149_primitive.cif
 
-    gpaw -P4 python ~/path-to-nanoworks/dftsolve.py -- -i Si-with-HSE.py -g Si_mp-149_primitive.cif
-
-Here, ~/path-to-nanoworks shows a full path your nanoworks folder.
-	
 Normally, prior to HSE calculations, you can prefer to do PBE calculations with structure optimization. Then you can continue to use HSE.

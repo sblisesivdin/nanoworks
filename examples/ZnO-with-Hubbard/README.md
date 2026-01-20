@@ -4,22 +4,12 @@ Ground, DOS and Band calculations of Wurtzite bulk ZnO. PW with 340 eV cutoff, 5
 
 To run the calculation with MPI on 4 cores please execute the following command in this folder.
 
-    mpirun -np 4 dftsolve.py -i ZnO_withHubbard.py
-    
-or
+    dftsolve -p 4 -i ZnO_withHubbard.py
 
-    gpaw -P4 python ~/path-to-nanoworks/dftsolve.py -- -i ZnO_withHubbard.py
-
-Here, ~/path-to-nanoworks shows a full path your nanoworks folder.
-
-or calculation with drawing band and DOS at the end:
-
-	mpirun -np 4 dftsolve.py -d -i ZnO_withHubbard.py
-
-and,
-
-    Outdirname = 'ZnO-withHubbard-results'
+and, results will be saved to folder: 'ZnO-withHubbard-results'
 
 There is also a without Hubbard configuration file to compare:
 
-	mpirun -np 4 dftsolve.py -d -i ZnO_withHubbard.py
+    dftsolve -p 4 -i ZnO_woHubbard.py
+
+and, results will be saved to folder: 'ZnO-woHubbard-results'

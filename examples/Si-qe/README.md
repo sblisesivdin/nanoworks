@@ -3,11 +3,11 @@
 This directory provides a minimal Quantum ESPRESSO `pw.x` input for silicon to convert configuration to dftolve.py's input file by using `qeconverter`.
 
 Run:
-```bash
-qecoverter --input si.scf.in --output-dir Si-qe --system-name Silicon
-```
 
-Then execute `dftsolve.py` using the produced files:
+    qecoverter --input si.scf.in --output-dir Si-qe --system-name Silicon
 
-    mpirun -np 4 dftsolve.py -i Silicon.py -g Silicon.cif
+
+Then execute `dftsolve` using the produced files:
+
+    dftsolve -p 4  -i Silicon.py -g Silicon.cif
 

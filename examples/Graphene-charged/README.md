@@ -2,20 +2,12 @@
 
 This example has two input files. For calculating the neutral defected graphene with MPI 4 cores:
 
-    mpirun -np 4 dftsolve.py -i graphene-neutral.py -g graphene4x4withdefect.cif
+    dftsolve -p 4 -i graphene-neutral.py -g graphene4x4withdefect.cif
     
-or
+Results will be saved to "Neutral" folder.
 
-    gpaw -P4 python ~/path-to-nanoworks/dftsolve.py -- -i graphene-neutral.py -g graphene4x4withdefect.cif
-
-Here, ~/path-to-nanoworks shows a full path your nanoworks folder. Results will be saved to "Neutral" folder.
-	
 And then for the calculation of charged defected graphene, execute the second command as
 
-    mpirun -np 4 dftsolve.py -i graphene-charged.py -g graphene4x4withdefect.cif
-    
-or
+    dftsolve -p 4 -i graphene-charged.py -g graphene4x4withdefect.cif
 
-    gpaw -P4 python ~/path-to-nanoworks/dftsolve.py -- -i graphene-charged.py -g graphene4x4withdefect.cif
-    
 Results will be saved to "Charged" folder.
