@@ -3,7 +3,7 @@
 > The **gpaw-tools** project began as a script that utilized only ASE and GPAW. Over the course of four years, it evolved into a comprehensive suite leveraging multiple libraries, including ASAP3, Phonopy, Elastic, OpenKIM, and now modern Machine Learning Potentials (MACE, CHGNet, SevenNet).
  
 > [!IMPORTANT]
-> **Nanoworks** is currently under heavy development. Please continue to use `gpaw-tools` until new notice. 
+> **Nanoworks** is currently under heavy development. Please continue to use `gpaw-tools` until further announcement. 
 
 # Nanoworks
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
@@ -26,7 +26,7 @@ It acts as a wrapper and orchestrator for several powerful scientific libraries,
 
 ## Installation
 
-Nanoworks is a Python package. You can install it with pip. However, because you need many other system libraries and python libraries to be installed, it is better to look at the [Nanoworks Installation](https://nanoworks.readthedocs.io/en/latest/installation.html) webpage for more detailed installation and usage instructions.
+Nanoworks is a Python package. You can install it with pip. However, because you need many other system libraries and Python libraries to be installed, it is better to look at the [Nanoworks Installation](https://nanoworks.readthedocs.io/en/latest/installation.html) webpage for more detailed installation and usage instructions.
 
 ## Tools & Usage
 
@@ -42,14 +42,15 @@ dftsolve -g <geometry.cif> -i <input.py> [options]
 
 **Arguments:**
 *   `-g, --geometry`: Path to the geometry file (CIF format).
-*   `-i, --input`: Path to the python input file defining calculation parameters.
+*   `-i, --input`: Path to the Python input file defining calculation parameters.
 *   `-e, --energy`: (Optional) Measure energy consumption (Intel CPUs only).
 *   `-v, --version`: Version information.
+*   `-p, --parallel: Number of cores to run in parallel
 
 **Parallel Execution:**
 For maximum efficiency, run with MPI:
 ```bash
-mpirun -np <cores> dftsolve -g structure.cif -i input.py
+dftsolve -p <cores> -g structure.cif -i input.py
 ```
 
 ### 2. mdsolve (formerly asapsolve.py)
@@ -74,7 +75,7 @@ mlsolve -g <geometry.cif> -i <input.py>
 
 **Arguments:**
 *   `-g, --geometry`: Input geometry file (cif, xyz, POSCAR, etc.).
-*   `-i, --input`: Path to the python input file defining calculation parameters.
+*   `-i, --input`: Path to the Python input file defining calculation parameters.
 
 **Example:**
 ```bash
@@ -82,10 +83,10 @@ mlsolve -g <geometry.cif> -i <input.py>
 mlsolve -g structure.cif -i ml_input.py
 ```
 
-**Supported Models:** `mace`, `chgnet`, `sevennet`
+**Supported Models:** `mace`, `chgnet`, `sevennet`.
 
 ### 4. nanoworks
-A helper CLI to locate package resources like examples and optimization scripts. For now, it is only showing helpful information. In future, it will be equipped with more 
+A helper CLI to locate package resources like examples and optimization scripts. For now, it is only showing helpful information. In the future, it will be equipped with more 
 
 ```bash
 $ nanoworks
@@ -118,7 +119,7 @@ Nanoworks includes several optimization scripts (found via the `nanoworks` comma
 The package includes an `examples/` directory covering various scenarios. You can find the location of these examples by running the `nanoworks` command.
 
 ## Citing
-Please do not forget that Nanoworks is an user interface software. For the main DFT calculations, it uses ASE and GPAW. It also uses the Elastic python package for elastic tensor solutions and ASAP with the KIM database for interatomic interaction calculations and Phonopy for the phonon calculations. Therefore, you must know what you use, and cite them properly. Here, the basic citation information of each package is given.
+Please do not forget that Nanoworks is a user interface software. For the main DFT calculations, it uses ASE and GPAW. It also uses the Elastic Python package for elastic tensor solutions and ASAP with the KIM database for interatomic interaction calculations and Phonopy for the phonon calculations. Therefore, you must know what you use and cite them properly. Here, the basic citation information of each package is given.
 
 ### ASE 
 * Ask Hjorth Larsen et al. "[The Atomic Simulation Environment—A Python library for working with atoms](https://doi.org/10.1088/1361-648X/aa680e)" J. Phys.: Condens. Matter Vol. 29 273002, 2017.
