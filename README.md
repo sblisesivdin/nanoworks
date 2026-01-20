@@ -48,8 +48,6 @@ dftsolve -p <cores> -g <geometry.cif> -i <input.py> [options]
 *   `-p, --parallel`: Number of cores to run in parallel.
 *   `-a, --auto`: Auto mode. Automatically generate input parameters based on geometry.
 
-```
-
 ### 2. mdsolve (formerly asapsolve.py)
 Perform quick geometric optimizations or MD runs using classical potentials via ASAP3 and OpenKIM.
 
