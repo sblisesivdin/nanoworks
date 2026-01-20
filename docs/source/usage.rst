@@ -21,13 +21,13 @@ The main driver for DFT calculations using GPAW. Can calculate with many cores u
 
 .. code-block:: console
 
-   $ dftsolve -p <cores> -g <geometry.cif> -i <input.py> [options]
+   $ dftsolve -p <cores> -g <geometry.cif> -i <input.py>
    
 or with auto mode.
 
 .. code-block:: console
 
-   $ dftsolve -p <cores-a -g <geometry.cif> [options]
+   $ dftsolve -p <cores> -g <geometry.cif> -a
 
 **Arguments:**
 
