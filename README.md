@@ -45,7 +45,7 @@ dftsolve -g <geometry.cif> -i <input.py> [options]
 *   `-i, --input`: Path to the Python input file defining calculation parameters.
 *   `-e, --energy`: (Optional) Measure energy consumption (Intel CPUs only).
 *   `-v, --version`: Version information.
-*   `-p, --parallel: Number of cores to run in parallel
+*   `-p, --parallel`: Number of cores to run in parallel
 
 **Parallel Execution:**
 ```bash
