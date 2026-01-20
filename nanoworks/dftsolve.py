@@ -265,6 +265,7 @@ class dftsolve:
         
         # For backward compatibility, expose config attributes as instance attributes
         self.Mode = config.Mode
+        self.Ground_calc = config.Ground_calc
         self.Geo_optim = config.Geo_optim
         self.Elastic_calc = config.Elastic_calc
         self.DOS_calc = config.DOS_calc
