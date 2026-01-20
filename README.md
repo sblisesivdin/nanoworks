@@ -37,7 +37,12 @@ The main driver for DFT calculations using GPAW. Uses many cores with -p argumen
 
 **Usage:**
 ```bash
-dftsolve -p <cores> -g <geometry.cif> -i <input.py> [options]
+dftsolve -p <cores> -g <geometry.cif> -i <input.py> 
+```
+
+**Usage in auto mode:**
+```bash
+dftsolve -p <cores> -g <geometry.cif> -a 
 ```
 
 **Arguments:**
