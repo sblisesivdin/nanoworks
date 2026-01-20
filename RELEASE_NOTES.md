@@ -25,6 +25,7 @@
 - New `install_scripts` directory.
 - Version information is taken from `__init__.py` for all commands.
 - Better installation and usage guides.
+- New argument for `dftsolve`: -p for parallel processing. Without using gpaw -P or mpirun -np arguments, users can run parallel processing with this new argument.
 
 ### Version 25.10.0 - Oct 1, 2025 (The last gpaw-tools version)
 
