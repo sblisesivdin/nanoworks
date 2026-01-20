@@ -29,13 +29,13 @@ The main driver for DFT calculations using GPAW.
 * -i, --input: Path to the python input file defining calculation parameters.
 * -e, --energy: (Optional) Measure energy consumption (Intel CPUs only).
 * -v, --version: Version information.
+* -p, --parallel: Number of cores to run in parallel
 
 **Parallel Execution:**
-For maximum efficiency, run with MPI:
 
 .. code-block:: console
 
-   $ mpirun -np <cores> dftsolve -g structure.cif -i input.py
+   $ dftsolve -p <cores> -g structure.cif -i input.py
 
 
 mdsolve (formerly asapsolve.py)
