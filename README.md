@@ -48,7 +48,6 @@ dftsolve -g <geometry.cif> -i <input.py> [options]
 *   `-p, --parallel: Number of cores to run in parallel
 
 **Parallel Execution:**
-For maximum efficiency, run with MPI:
 ```bash
 dftsolve -p <cores> -g structure.cif -i input.py
 ```
