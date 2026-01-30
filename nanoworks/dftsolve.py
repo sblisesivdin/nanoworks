@@ -730,12 +730,15 @@ class dftsolve:
         - thickness: Effective thickness for 2D materials (Angstrom).
         """
         # -------------------------------------------------------------
-        # Step 1.5 - ELASTIC CALCULATION
+        # ELASTIC CALCULATION
         # -------------------------------------------------------------
+        
+        # Start Elastic calc
+        time151 = time.time()
         
         # Load the optimized (reference) structure
         bulk_atoms = self.bulk_configuration
-        ref_calc = GPAW(self.struct + '-1-Result-Ground.gpw')
+        ref_calc = GPAW(self.struct + '-GROUND-Result-State.gpw')
         bulk_atoms.set_calculator(ref_calc)
         parprint('Optimized (reference) structure is loaded.')
         try:
@@ -887,6 +890,13 @@ class dftsolve:
                 print(f"Shear modulus (Hill avg): {G_hill:.2f} GPa", file=fd)
                 print(f"Young's modulus (Hill avg): {E_hill:.2f} GPa", file=fd)
                 print(f"Poisson's ratio (Hill avg): {nu_hill:.3f}", file=fd)
+        
+        # Finish elastic timing
+        time152 = time.time()
+
+        # Write timings of calculation
+        with paropen(self.struct+'-TIMINGS-Log-Timings.txt', 'a') as f1:
+            print('Elastic Calculation: ', round((time152-time151),2), end="\n", file=f1)
 
 
     def doscalc(self):
