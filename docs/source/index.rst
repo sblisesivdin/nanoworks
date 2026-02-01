@@ -20,10 +20,6 @@ Nanoworks simplifies complex simulation workflows by providing three specialized
 *   **mdsolve**: A fast solver for molecular dynamics and geometric optimization using interatomic potentials via ASAP3 and OpenKIM.
 *   **mlsolve**: A next-generation solver leveraging machine learning force fields (MACE, CHGNet, SevenNet) for efficient, high-accuracy simulations.
 
-.. note::
-   
-   This project is currently under heavy development. Please continue to use gpaw-tools until further notice.
-
 Documentation
 -------------
 
