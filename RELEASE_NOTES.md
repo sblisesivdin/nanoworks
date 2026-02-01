@@ -2,6 +2,10 @@
 
 ### Development Version
 
+- n/a
+
+### Version 26.2.0 - Feb 1, 2026 (The first nanoworks version)
+
 - Initializing context and tools for the session.
 - Removed `gg.py` and gui_files/ directory.
 - Renaming project and its files as: `gpaw-tools` -> `Nanoworks`, `gpawsolve.py` -> `dftsolve.py`, and `asapsolve.py` -> `mdsolve.py`.

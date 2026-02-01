@@ -7,8 +7,8 @@ packages = ["nanoworks"]
 
 [project]
 name = "nanoworks"
-version = "0.0.1"
-description = " Nanoworks:Nanoscale Python scripts for DFT, MD and ML works"
+version = "26.2.0"
+description = " Nanoworks is a unified, high-level Python interface for conducting DFT, MD and ML calculations"
 readme = "README.md"
 requires-python = ">=3.8"
 license = { text = "MIT" }
