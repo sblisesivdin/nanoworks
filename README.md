@@ -2,8 +2,6 @@
 > **gpaw-tools** has evolved and is now called **Nanoworks**!
 > The **gpaw-tools** project began as a script that utilized only ASE and GPAW. Over the course of four years, it evolved into a comprehensive suite leveraging multiple libraries, including ASAP3, Phonopy, Elastic, OpenKIM, and now modern Machine Learning Potentials (MACE, CHGNet, SevenNet).
  
-> [!IMPORTANT]
-> **Nanoworks** is currently under heavy development. Please continue to use `gpaw-tools` until further announcement. 
 
 # Nanoworks
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
@@ -123,19 +121,25 @@ Please do not forget that Nanoworks is a user interface software. For the main D
 
 ### ASE 
 * Ask Hjorth Larsen et al. "[The Atomic Simulation Environment—A Python library for working with atoms](https://doi.org/10.1088/1361-648X/aa680e)" J. Phys.: Condens. Matter Vol. 29 273002, 2017.
+
 ### GPAW
 * J. J. Mortensen, L. B. Hansen, and K. W. Jacobsen "[Real-space grid implementation of the projector augmented wave method](https://doi.org/10.1103/PhysRevB.71.035109)" Phys. Rev. B 71, 035109 (2005) and J. Enkovaara, C. Rostgaard, J. J. Mortensen et al. "[Electronic structure calculations with GPAW: a real-space implementation of the projector augmented-wave method](https://doi.org/10.1088/0953-8984/22/25/253202)" J. Phys.: Condens. Matter 22, 253202 (2010).
+
 ### KIM
 * E. B. Tadmor, R. S. Elliott, J. P. Sethna, R. E. Miller, and C. A. Becker "[The Potential of Atomistic Simulations and the Knowledgebase of Interatomic Models](https://doi.org/10.1007/s11837-011-0102-6)" JOM, 63, 17 (2011).
+
 ### Elastic
 * P.T. Jochym, K. Parlinski and M. Sternik "[TiC lattice dynamics from ab initio calculations](https://doi.org/10.1007/s100510050823)", European Physical Journal B; 10, 9 (1999).
+
 ### Phonopy
 * A. Togo "[First-principles Phonon Calculations with Phonopy and Phono3py](https://doi.org/10.7566/JPSJ.92.012001)", Journal of the Physical Society of Japan, 92(1), 012001 (2023).
 
 ### MACE
 * Batatia, Ilyes, et al. "[MACE: Higher order equivariant message passing neural networks for fast and accurate force fields.](https://arxiv.org/abs/2206.07697)" arXiv preprint arXiv:2206.07697 (2022).
+
 ### CHGNet
 * Deng, Bowen, et al. "[CHGNet as a pretrained universal graph neural network for charge-informed atomistic modeling.](https://doi.org/10.1038/s42256-023-00716-3)" Nature Machine Intelligence 5.9: 1031-1041 (2023).
+
 ### SevenNet
 * Park, Yurum, et al. "[SevenNet: A Scalable Equivariant Neural Network for Universal Atomistic Modeling.](https://doi.org/10.1021/acs.jctc.4c00190)" Journal of Chemical Theory and Computation (2024).
 
