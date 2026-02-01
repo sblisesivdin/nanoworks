@@ -27,6 +27,8 @@
 - Better installation and usage guides.
 - New argument for `dftsolve`: -p for parallel processing. Without using gpaw -P or mpirun -np arguments, users can run parallel processing with this new argument.
 - New argument for `dftsolve`: -a for auto mode. It is working with only geometry file, runs ground, dos and band calculations and create an input file for future needs.
+- Add timing calculation to elastic calculations.
+- Change all output file naming scheme.
 
 ### Version 25.10.0 - Oct 1, 2025 (The last gpaw-tools version)
 
