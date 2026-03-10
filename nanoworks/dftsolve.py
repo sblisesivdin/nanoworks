@@ -2140,13 +2140,24 @@ def main():
     if args.energymeas == True:
         # Ending of energy consumption measuring.
         meter.end()
-        energyresult=meter.result
+        energyresult = meter.result
+       
+        # Safely handle potential None values from pyRAPL
+        duration = energyresult.duration if energyresult.duration is not None else 0.0
+        pkg_energy = sum(energyresult.pkg) if energyresult.pkg is not None else 0.0
+        dram_energy = sum(energyresult.dram) if energyresult.dram is not None else 0.0
+       
         with paropen(struct+'-ENERGY-Log-Energyconsumption.txt', 'a') as f1:
             print("Energy measurement:-----------------------------------------", end="\n", file=f1)
-            print(1e-6*energyresult.duration," Computation time in seconds", end="\n", file=f1)
-            print(1e-6*sum(energyresult.pkg)," CPU energy consumption in Joules", end="\n", file=f1)
-            print(1e-6*sum(energyresult.dram)," DRAM energy consumption in Joules", end="\n", file=f1)
-            print(2.77777778e-7*(1e-6*sum(energyresult.dram)+1e-6*sum(energyresult.pkg))," Total energy consumption in kWh", end="\n", file=f1)
+            print(1e-6 * duration, " Computation time in seconds", end="\n", file=f1)
+            print(1e-6 * pkg_energy, " CPU energy consumption in Joules", end="\n", file=f1)
+           
+            if energyresult.dram is None:
+                print("0.0 DRAM energy consumption in Joules (Hardware domain unsupported)", end="\n", file=f1)
+            else:
+                print(1e-6 * dram_energy, " DRAM energy consumption in Joules", end="\n", file=f1)
+               
+            print(2.77777778e-7 * (1e-6 * dram_energy + 1e-6 * pkg_energy), " Total energy consumption in kWh", end="\n", file=f1)
 
 if __name__ == "__main__":
     main()
