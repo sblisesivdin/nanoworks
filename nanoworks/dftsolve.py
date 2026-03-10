@@ -1499,7 +1499,30 @@ class dftsolve:
         # fig = phonon.plot_band_structure_and_dos(pdoc_indices=[[0], [1]])
 
         fig.savefig(self.struct+'-PHONON-Graph-Phonon.png', dpi=300)
+        # Standard Phonopy YAML format export
+        try:
+            phonon.write_yaml_band_structure(filename=self.struct+'-PHONON-Result-Band.yaml')
+        except Exception as e:
+            parprint("YAML band data can not be saved:", e)
 
+        # Saving in .dat format
+        try:
+            band_dict = phonon.get_band_structure_dict()
+            distances = band_dict['distances']
+            frequencies = band_dict['frequencies']
+            
+            with open(self.struct+'-PHONON-Result-Band.dat', 'w') as f_band:
+                f_band.write("Distance(1/A)    Frequencies(THz)...\n")
+                # Return for every k-way segment
+                for dist_path, freq_path in zip(distances, frequencies):
+                    for d, f in zip(dist_path, freq_path):
+                        # Write all frequency branches at the same q point
+                        freq_str = "    ".join([f"{x:.6f}" for x in f])
+                        f_band.write(f"{d:.6f}    {freq_str}\n")
+                    f_band.write("\n") # Give space between segments
+        except Exception as e:
+            parprint("DAT band data can not be saved:", e)
+    
         time52 = time.time()
         # Write timings of calculation
         with paropen(self.struct+'-TIMINGS-Log-Timings.txt', 'a') as f1:
