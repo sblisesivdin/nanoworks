@@ -151,7 +151,10 @@ def get_ml_calculator(model_type, device='cpu', **kwargs):
     elif model_type == 'chgnet':
         try:
             from chgnet.model import CHGNet
-            from chgnet.model.model import CHGNetCalculator
+            try:
+                from chgnet.model import CHGNetCalculator
+            except ImportError:
+                from chgnet.model.dynamics import CHGNetCalculator
             
             print(f"--> Loading CHGNet Model - Device: {device}...")
             
@@ -163,8 +166,8 @@ def get_ml_calculator(model_type, device='cpu', **kwargs):
                 model = CHGNet.load()
             
             return CHGNetCalculator(model=model, use_device=device)
-        except ImportError:
-            sys.exit("Error: CHGNet library is not installed. Install with: pip install chgnet")
+        except Exception as e:
+            sys.exit(f"Error loading CHGNet: {e}\n")
 
     # --- SevenNet Configuration ---
     elif model_type == 'sevennet':
