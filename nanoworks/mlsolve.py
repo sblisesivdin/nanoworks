@@ -169,15 +169,18 @@ def get_ml_calculator(model_type, device='cpu', **kwargs):
     # --- SevenNet Configuration ---
     elif model_type == 'sevennet':
         try:
+            import torch
+            torch.serialization.add_safe_globals([slice]) 
+            
             from sevenn.sevennet_calculator import SevenNetCalculator
             
             print(f"--> Loading SevenNet Model - Device: {device}...")
-            # Default model: 7net-0 (Materials Project based)
+            # Default model: 7net-0
             model_name = kwargs.get('model_name', '7net-0')
             
             return SevenNetCalculator(model=model_name, device=device)
-        except ImportError:
-            sys.exit("Error: SevenNet library is not installed. Install with: pip install sevenn")
+        except ImportError as e:
+            sys.exit(f"Error loading SevenNet: {e}")
 
     else:
         sys.exit(f"Error: Unknown model type '{model_type}'. Supported options: mace, chgnet, sevennet")
