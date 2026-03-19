@@ -45,9 +45,9 @@ New Release
 -----------
 
 In each new release, the following steps must be completed.
-- Update __version__ variable in `dftsolve.py` as vYY.m.x. Here, YY is the year, m (or mm) is the month, and x is the step number of releases for that month. There is no minor or major release.
-- Update __version__ variable in `mdsolve.py` (Approximate place is line 77) as vYY.m.x. Here, YY is the year, m (or mm) is the month, and x is the step number of releases for that month. There is no minor or major release.
-- On the releases page, Click `Draft a new release` and create a new tag with the version number.
-- Give a general title, give some highlights information, write Release Notes (copy/paste from gh-pages/releasenotes.md webpage).
+- Update `__version__` variable in `‎nanoworks/__init__.py` as YY.m.x. Here, YY is the year, m (or mm) is the month, and x is the step number (first step is 0) of releases for that month. There is no minor or major release.
+- Update `‎RELEASE_NOTES.md` and `‎pyproject.toml` as done in this [commit](https://github.com/sblisesivdin/nanoworks/commit/0593543fe472815dcd0736175b7e5249eeffa74c#diff-68d24fa81558aae3d8c59e2aa57a4fa719ea3b04d7fa14beff45f16f00858f50).
+- Update `release` and `version` in `‎‎docs/source/conf.py` as done in this [commit](https://github.com/sblisesivdin/nanoworks/commit/1f460ceca08062b16590d2010ac4c3f1194f6a36).
+- On the releases page, click `Draft a new release` and create a new tag with the version number.
+- Give a general title, give some highlights information, write Release Notes (copy/paste from RELEASE_NOTES.md page, it can be automatized in future).
 - Select `Create a discussion for this release` and then finish the release.
-- Update __version__ variable in `dftsolve.py` and `mdsolve.py` as vYY.m.y. Here y= (x+1)b1. For example for x=0 -> y=1b1 for x=1 -> y=2b1 ...etc...
