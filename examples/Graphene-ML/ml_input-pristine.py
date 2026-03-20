@@ -1,4 +1,4 @@
-model = 'mace'
+model = 'sevennet'
 task = 'optimize'
-fmax = 0.01
+fmax = 0.0001
 cell_relax = True
