@@ -13,8 +13,8 @@ Optical_calc = False     # Calculate the optical properties
 # Parameters
 # -------------------------------------------------------------
 # GEOMETRY
-Optimizer = 'LBFGS'     # QuasiNewton, GPMin, LBFGS or FIRE
-Max_F_tolerance = 0.05 	# Maximum force tolerance in LBFGS geometry optimization. Unit is eV/Ang.
+Optimizer = 'QuasiNewton'     # QuasiNewton, GPMin, LBFGS or FIRE
+Max_F_tolerance = 0.0001 	# Maximum force tolerance in LBFGS geometry optimization. Unit is eV/Ang.
 Max_step = 0.1          # How far is a single atom allowed to move. Default is 0.2 Ang.
 Alpha = 60.0            # LBFGS only: Initial guess for the Hessian (curvature of energy surface)
 Damping = 1.0           # LBFGS only: The calculated step is multiplied with this number before added to the positions
@@ -25,11 +25,11 @@ Relax_cell = [True, True, True, False, False, False]
 Hydrostatic_pressure=0.0 #GPa
 
 # ELECTRONIC
-Cut_off_energy = 600 	# eV
+Cut_off_energy = 700 	# eV
 #Ground_kpts_density = 2.5     # pts per Å^-1  If the user prefers to use this, kpts_x,y,z will not be used automatically.
-Ground_kpts_x = 7 			    # kpoints in x direction
-Ground_kpts_y = 7				# kpoints in y direction
-Ground_kpts_z = 7				# kpoints in z direction
+Ground_kpts_x = 21 			    # kpoints in x direction
+Ground_kpts_y = 21				# kpoints in y direction
+Ground_kpts_z = 21				# kpoints in z direction
 Gamma = True
 Band_path = 'LGWXK'	    # Brillouin zone high symmetry points
 Band_npoints = 40		# Number of points between high symmetry points
@@ -37,7 +37,7 @@ Setup_params = {}            # Can be used like {'N': ':p,6.0'}, for none use {}
 
 XC_calc = 'PBE'         # Exchange-Correlation, choose one: LDA, PBE, GLLBSCM, HSE06, HSE03, revPBE, RPBE, PBE0, EXX, B3LYP
 
-Ground_convergence = {}   # Convergence items for ground state calculations
+Ground_convergence = {'energy': 1e-8}   # Convergence items for ground state calculations
 Band_convergence = {'bands':8}   # Convergence items for band calculations
 Occupation = {'name': 'fermi-dirac', 'width': 0.05}  # Refer to GPAW docs: https://wiki.fysik.dtu.dk/gpaw/documentation/basic.html#occupation-numbers
 
