@@ -4,6 +4,15 @@
 
 - n/a
 
+### Version 26.3.0 - Mar 23, 2026 
+
+- Better energy measurement control
+- Save phonon data in YAML and DAT formats
+- Correcting SevenNet calculation error
+- Correcting CHGNet calculation error
+- Update release process instructions in CONTRIBUTING.md
+- Add or change examples TiC-Elastic, Si-phonon and Graphene-ML for forthcoming Nanoworks article.
+
 ### Version 26.2.0 - Feb 1, 2026 (The first nanoworks version)
 
 - Initializing context and tools for the session.
