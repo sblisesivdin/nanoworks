@@ -4,6 +4,10 @@
 
 - n/a
 
+### Version 26.3.1 - Mar 23, 2026 
+
+- Error in versioning, correcting to 26.3.1.
+
 ### Version 26.3.0 - Mar 23, 2026 
 
 - Better energy measurement control
