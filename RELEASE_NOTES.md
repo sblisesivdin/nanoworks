@@ -2,7 +2,8 @@
 
 ### Development Version
 
-- n/a
+- Spin Orbit Coupling (SOC) in PW mode for DOS and Band calculations
+- SOC Example for 2D WSe2
 
 ### Version 26.3.1 - Mar 23, 2026 
 
