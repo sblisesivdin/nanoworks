@@ -124,6 +124,7 @@ class DFTConfig:
     Density_calc: bool = False
     Phonon_calc: bool = False
     Optical_calc: bool = False
+    SOC: bool = False
     
     # Geometry optimization parameters
     Optimizer: str = 'QuasiNewton'
@@ -429,6 +430,7 @@ class dftsolve:
         self.Band_calc = config.Band_calc
         self.Density_calc = config.Density_calc
         self.Optical_calc = config.Optical_calc
+        self.SOC = config.SOC
         self.Optimizer = config.Optimizer
         self.Max_F_tolerance = config.Max_F_tolerance
         self.Max_step = config.Max_step
@@ -923,7 +925,67 @@ class dftsolve:
         
         chem_sym = self.bulk_configuration.get_chemical_symbols()
         
-
+        if self.SOC:
+            parprint("Calculating Total DOS with Spin-Orbit Coupling...")
+            from gpaw.spinorbit import soc_eigenstates
+            
+            soc = soc_eigenstates(calc)
+            
+            # Take eigenvalues anduse only real parts
+            soc_evals_raw = soc.eigenvalues()
+            soc_evals = np.real(np.array(soc_evals_raw).flatten())
+            
+            # NaN error protection for Fermi level
+            ef_safe = ef if not np.isnan(ef) else 0.0
+            soc_evals = soc_evals - ef_safe
+            
+            energies = np.linspace(self.Energy_min, self.Energy_max, self.DOS_npoints)
+            dos = np.zeros_like(energies)
+            
+            # Divide by zero protection
+            smearing = getattr(self, 'DOS_width', 0.1)
+            smearing = max(smearing, 0.01)
+            
+            # Gaussian smearing
+            for e in soc_evals:
+                if not np.isnan(e): # Sadece geçerli sayılar
+                    dos += np.exp(-((energies - e) / smearing)**2) / (smearing * np.sqrt(np.pi))
+            
+            # Normalize with dividing to k-points number
+            try:
+                nkpts = max(1, len(calc.get_ibz_k_points()))
+            except:
+                nkpts = max(1, len(soc_evals_raw))
+            dos /= nkpts
+            
+            # If data is empty...
+            if np.isnan(dos).all() or np.max(dos) == 0.0:
+                parprint("WARNING: Computed SOC-DOS array is empty or NaN. Matplotlib crash prevented.")
+                dos[:] = 0.0 
+            
+            with paropen(self.struct+'-DOS-Result-DOS-SOC.csv', "w") as fd:
+                for en, d in zip(energies, dos):
+                    print(f"{en}, {d}", file=fd)
+            
+            ax = plt.gca()
+            ax.plot(energies, dos, 'purple', label='DOS (SOC)')
+            ax.set_xlabel(self.dos_xlabel[self.Localisation])
+            ax.set_ylabel(self.dos_ylabel[self.Localisation])
+            plt.xlim(self.Energy_min, self.Energy_max)
+            plt.legend()
+            
+            # Draw scaling of DOS
+            if np.max(dos) > 0.0 and not np.isnan(dos).all():
+                autoscale_y(ax)
+            else:
+                ax.set_ylim(0, 1)
+                
+            plt.savefig(self.struct+'-DOS-Graph-DOS-SOC.png', dpi=300)
+            plt.clf()
+            
+            parprint("Spin-Orbit Total DOS is computed. PDOS is not computed for SOC.")
+            return
+            
         if self.Spin_calc == True:
             #Spin down
 
@@ -1261,7 +1323,17 @@ class dftsolve:
                 print(e)
 
         else:
-            eps_skn = np.array([[calc.get_eigenvalues(k,s)
+            if self.SOC:
+                from gpaw.spinorbit import soc_eigenstates
+                parprint("Applying Spin-Orbit Coupling to Band Structure...")
+                # Spin-Orbit perturbation
+                soc = soc_eigenstates(calc)
+                soc_evals = np.real(soc.eigenvalues()) # Taking only real parts
+                # GPAW returns SOC eigenvalues ​​as a single spin channel (nkpts, 2*nbands)
+                eps_skn = np.array([soc_evals]) - ef
+                Band_num_of_bands = eps_skn.shape[2]
+            else:
+                eps_skn = np.array([[calc.get_eigenvalues(k,s)
                                 for k in range(self.Band_npoints)]
                                 for s in range(1)]) - ef
             with paropen(self.struct+'-BAND-Result-Band.dat', 'w') as f:
@@ -1311,6 +1383,9 @@ class dftsolve:
         # Draw graphs only on master node
         if world.rank == 0:
             # Band Structure
+            if self.SOC:
+                from ase.spectrum.band_structure import BandStructure
+                bs = BandStructure(path=bs.path, energies=np.array([soc_evals]), reference=ef)
             bs.plot(filename=self.struct+'-BAND-Graph-Band.png', show=False, emax=self.Energy_max + bs.reference, emin=self.Energy_min + bs.reference, ylabel=self.band_ylabel[self.Localisation])
 
     def densitycalc(self):
