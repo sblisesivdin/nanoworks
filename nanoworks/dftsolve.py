@@ -125,6 +125,7 @@ class DFTConfig:
     Phonon_calc: bool = False
     Optical_calc: bool = False
     SOC: bool = False
+    vdW_calc: str = 'None'
     
     # Geometry optimization parameters
     Optimizer: str = 'QuasiNewton'
@@ -431,6 +432,7 @@ class dftsolve:
         self.Density_calc = config.Density_calc
         self.Optical_calc = config.Optical_calc
         self.SOC = config.SOC
+        self.vdW_calc = config.vdW_calc
         self.Optimizer = config.Optimizer
         self.Max_F_tolerance = config.Max_F_tolerance
         self.Max_step = config.Max_step
@@ -547,6 +549,14 @@ class dftsolve:
 
         # Start ground state timing
         time11 = time.time()
+        
+        # vdW Correction
+        if hasattr(self.config, 'vdW_calc') and self.config.vdW_calc.upper() != 'NONE':
+            if self.config.vdW_calc.upper() == 'D3':
+                calc_kwargs['dispersion'] = {'name': 'd3', 'xc': self.config.XC_calc}
+            elif self.config.vdW_calc.upper() == 'TS':
+                calc_kwargs['dispersion'] = {'name': 'ts09'}
+                
         if self.Mode == 'PW':
             if self.Spin_calc == True:
                 if self.Magmom_single_atom is not None:
@@ -680,6 +690,7 @@ class dftsolve:
                         'convergence': self.Ground_convergence, 
                         'occupations': self.Occupation
                     }
+                
                 # Fix the spacegroup in the geometric optimization if wanted
                 if self.Fix_symmetry == True:
                     self.bulk_configuration.set_constraint(FixSymmetry(self.bulk_configuration))
