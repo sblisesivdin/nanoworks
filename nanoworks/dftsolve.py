@@ -667,27 +667,40 @@ class dftsolve:
                 self.bulk_configuration.set_initial_magnetic_moments(numm)
             if self.Ground_calc == True:
                 parprint("Starting LCAO ground state calculation...")
+                calc_kwargs = {
+                        'mode': 'lcao',
+                        'basis': 'dzp',
+                        'nbands': '200%',
+                        'setups' self.Setup_params,
+                        'parallel': {'domain': world.size},
+                        'mixer': self.Mixer_type,
+                        'charge': self.Total_charge,
+                        'spinpol': self.Spin_calc,
+                        'txt': self.struct+'-GROUND-Log-Calculation.txt',
+                        'convergence': self.Ground_convergence, 
+                        'occupations': self.Occupation
+                    }
                 # Fix the spacegroup in the geometric optimization if wanted
                 if self.Fix_symmetry == True:
                     self.bulk_configuration.set_constraint(FixSymmetry(self.bulk_configuration))
                 if self.Ground_gpts_density is not None:
                     if self.Ground_kpts_density is not None:
-                        calc = GPAW(mode='lcao', basis='dzp', setups= self.Setup_params, kpts={'density': self.Ground_kpts_density, 'gamma': self.Gamma},
-                                convergence = self.Ground_convergence, h=self.Ground_gpts_density, spinpol=self.Spin_calc, txt=self.struct+'-GROUND-Log-Calculation.txt',
-                                mixer=self.Mixer_type, occupations = self.Occupation, nbands='200%', parallel={'domain': world.size}, charge=self.Total_charge)
+                        calc_kwargs['kpts'] = {'density': self.Ground_kpts_density, 'gamma': self.Gamma}
+                        calc_kwargs['h'] = self.Ground_gpts_density
+                        calc = GPAW(**calc_kwargs)
                     else:
-                        calc = GPAW(mode='lcao', basis='dzp', setups= self.Setup_params, kpts={'size':(self.Ground_kpts_x, self.Ground_kpts_y, self.Ground_kpts_z), 'gamma': self.Gamma},
-                                convergence = self.Ground_convergence, h=self.Ground_gpts_density, spinpol=self.Spin_calc, txt=self.struct+'-GROUND-Log-Calculation.txt',
-                                mixer=self.Mixer_type, occupations = self.Occupation, nbands='200%', parallel={'domain': world.size}, charge=self.Total_charge)
+                        calc_kwargs['kpts'] = {'size':(self.Ground_kpts_x, self.Ground_kpts_y, self.Ground_kpts_z), 'gamma': self.Gamma}
+                        calc_kwargs['h'] = self.Ground_gpts_density
+                        calc = GPAW(**calc_kwargs)
                 else:
                     if self.Ground_kpts_density is not None:
-                        calc = GPAW(mode='lcao', basis='dzp', setups= self.Setup_params, kpts={'density': self.Ground_kpts_density, 'gamma': self.Gamma},
-                                convergence = self.Ground_convergence, gpts=(self.Ground_gpts_x, self.Ground_gpts_y, self.Ground_gpts_z), spinpol=self.Spin_calc, txt=self.struct+'-GROUND-Log-Calculation.txt',
-                                mixer=self.Mixer_type, occupations = self.Occupation, nbands='200%', parallel={'domain': world.size}, charge=self.Total_charge)
+                        calc_kwargs['kpts'] = {'density': self.Ground_kpts_density, 'gamma': self.Gamma}
+                        calc_kwargs['gpts'] = (self.Ground_gpts_x, self.Ground_gpts_y, self.Ground_gpts_z)
+                        calc = GPAW(**calc_kwargs)
                     else:
-                        calc = GPAW(mode='lcao', basis='dzp', setups= self.Setup_params, kpts={'size':(self.Ground_kpts_x, self.Ground_kpts_y, self.Ground_kpts_z), 'gamma': self.Gamma},
-                                convergence = self.Ground_convergence, gpts=(self.Ground_gpts_x, self.Ground_gpts_y, self.Ground_gpts_z), spinpol=self.Spin_calc, txt=self.struct+'-GROUND-Log-Calculation.txt',
-                                mixer=self.Mixer_type, occupations = self.Occupation, nbands='200%', parallel={'domain': world.size}, charge=self.Total_charge)
+                        calc_kwargs['kpts'] = {'size':(self.Ground_kpts_x, self.Ground_kpts_y, self.Ground_kpts_z), 'gamma': self.Gamma}
+                        calc_kwargs['gpts'] = (self.Ground_gpts_x, self.Ground_gpts_y, self.Ground_gpts_z)
+                        calc = GPAW(**calc_kwargs)
                 self.bulk_configuration.calc = calc
                 if self.Geo_optim == True:
                     if True in self.Relax_cell:
