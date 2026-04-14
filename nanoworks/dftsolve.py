@@ -593,7 +593,6 @@ class dftsolve:
                         'nbands': '200%',
                         'setups' self.Setup_params,
                         'parallel': {'domain': world.size},
-                        'eigensolver': Davidson(niter=1),
                         'mixer': self.Mixer_type,
                         'charge': self.Total_charge,
                         'spinpol': self.Spin_calc,
