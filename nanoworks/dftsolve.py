@@ -769,6 +769,28 @@ class dftsolve:
         # Start Elastic calc
         time151 = time.time()
         
+        elastic_kwargs = {
+            'mode': PW(ecut=self.config.Cut_off_energy, force_complex_dtype=True),
+            'xc': self.config.XC_calc,
+            'nbands': '200%',
+            'setups': self.config.Setup_params,
+            'parallel': {'domain': world.size},
+            'spinpol': self.config.Spin_calc,
+            'kpts': {'size': (self.config.Ground_kpts_x, self.config.Ground_kpts_y, self.config.Ground_kpts_z), 'gamma': self.config.Gamma},
+            'mixer': self.config.Mixer_type,
+            'txt': self.struct+'-ELASTIC-Log-Elastic-deformations.txt',
+            'charge': self.config.Total_charge,
+            'convergence': self.config.Ground_convergence,
+            'occupations': self.config.Occupation
+        }
+        
+        # vdW Correction
+        if hasattr(self.config, 'vdW_calc') and self.config.vdW_calc.upper() != 'NONE':
+            if self.config.vdW_calc.upper() == 'D3':
+                elastic_kwargs['dispersion'] = {'name': 'd3', 'xc': self.config.XC_calc}
+            elif self.config.vdW_calc.upper() == 'TS':
+                elastic_kwargs['dispersion'] = {'name': 'ts09'}
+        
         # Load the optimized (reference) structure
         bulk_atoms = self.bulk_configuration
         ref_calc = GPAW(self.struct + '-GROUND-Result-State.gpw')
@@ -836,12 +858,8 @@ class dftsolve:
                         deformed_atoms.set_cell(deformed_atoms.cell @ strain_tensor, scale_atoms=True)
             
                         # Attach a new GPAW calculator for the deformed structure using PBE.
-                        deformed_atoms.set_calculator(GPAW(mode=PW(ecut=self.config.Cut_off_energy, force_complex_dtype=True), xc=self.config.XC_calc, 
-                                    nbands='200%', setups=self.config.Setup_params, 
-                                    parallel={'domain': world.size}, spinpol=self.config.Spin_calc, 
-                                    kpts={'size': (self.config.Ground_kpts_x, self.config.Ground_kpts_y, self.config.Ground_kpts_z), 'gamma': self.config.Gamma},
-                                    mixer=self.config.Mixer_type, txt=self.struct+'-ELASTIC-Log-Elastic-deformations.txt', charge=self.config.Total_charge,
-                                    convergence=self.config.Ground_convergence, occupations=self.config.Occupation))
+                        deformed_atoms.set_calculator(GPAW(**elastic_kwargs))
+                        
                         try:
                             deformed_atoms.get_potential_energy()
                             # Force stress calculation.
