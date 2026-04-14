@@ -566,16 +566,25 @@ class dftsolve:
                         quit()
                 if self.XC_calc in ['HSE06', 'HSE03','B3LYP', 'PBE0','EXX']:
                     parprint('Starting Hybrid XC calculations...')
+                    calc_kwargs = {
+                        'mode': PW(ecut=self.Cut_off_energy, force_complex_dtype=True), 
+                        'xc': {'name': self.XC_calc, 'backend': 'pw'}, 
+                        'nbands': '200%',
+                        'parallel': {'band': 1, 'kpt': 1},
+                        'eigensolver': Davidson(niter=1),
+                        'mixer': self.Mixer_type,
+                        'charge': self.Total_charge,
+                        'spinpol': self.Spin_calc,
+                        'txt': self.struct+'-GROUND-Log-Calculation.txt',
+                        'convergence': self.Ground_convergence, 
+                        'occupations': self.Occupation
+                    }
                     if self.Ground_kpts_density is not None:
-                        calc = GPAW(mode=PW(ecut=self.Cut_off_energy, force_complex_dtype=True), xc={'name': self.XC_calc, 'backend': 'pw'}, nbands='200%',
-                                parallel={'band': 1, 'kpt': 1}, eigensolver=Davidson(niter=1), mixer=self.Mixer_type, charge=self.Total_charge,
-                                spinpol=self.Spin_calc, kpts={'density': self.Ground_kpts_density, 'gamma': self.Gamma}, txt=self.struct+'-GROUND-Log-Calculation.txt',
-                                convergence = self.Ground_convergence, occupations = self.Occupation)
+                        calc_kwargs['kpts'] = {'density': self.Ground_kpts_density, 'gamma': self.Gamma}
+                        calc = GPAW(**calc_kwargs)
                     else:
-                        calc = GPAW(mode=PW(ecut=self.Cut_off_energy, force_complex_dtype=True), xc={'name': self.XC_calc, 'backend': 'pw'}, nbands='200%', 
-                                parallel={'band': 1, 'kpt': 1}, eigensolver=Davidson(niter=1), mixer=self.Mixer_type, charge=self.Total_charge,
-                                spinpol=self.Spin_calc, kpts={'size': (self.Ground_kpts_x, self.Ground_kpts_y, self.Ground_kpts_z), 'gamma': self.Gamma}, txt=self.struct+'-GROUND-Log-Calculation.txt',
-                                convergence = self.Ground_convergence, occupations = self.Occupation)
+                        calc_kwargs['kpts'] = {'size': (self.Ground_kpts_x, self.Ground_kpts_y, self.Ground_kpts_z), 'gamma': self.Gamma}
+                        calc = GPAW(**calc_kwargs)
                 else:
                     parprint('Starting calculations with '+self.XC_calc+'...')
                     # Fix the spacegroup in the geometric optimization if wanted
