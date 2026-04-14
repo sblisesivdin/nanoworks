@@ -587,19 +587,29 @@ class dftsolve:
                         calc = GPAW(**calc_kwargs)
                 else:
                     parprint('Starting calculations with '+self.XC_calc+'...')
+                    calc_kwargs = {
+                        'mode': PW(ecut=self.Cut_off_energy, force_complex_dtype=True), 
+                        'xc': self.XC_calc, 
+                        'nbands': '200%',
+                        'setups' self.Setup_params,
+                        'parallel': {'domain': world.size},
+                        'eigensolver': Davidson(niter=1),
+                        'mixer': self.Mixer_type,
+                        'charge': self.Total_charge,
+                        'spinpol': self.Spin_calc,
+                        'txt': self.struct+'-GROUND-Log-Calculation.txt',
+                        'convergence': self.Ground_convergence, 
+                        'occupations': self.Occupation
+                    }
                     # Fix the spacegroup in the geometric optimization if wanted
                     if self.Fix_symmetry == True:
                         self.bulk_configuration.set_constraint(FixSymmetry(self.bulk_configuration))
                     if self.Ground_kpts_density is not None:
-                        calc = GPAW(mode=PW(ecut=self.Cut_off_energy, force_complex_dtype=True), xc=self.XC_calc, nbands='200%', setups= self.Setup_params, 
-                                parallel={'domain': world.size}, spinpol=self.Spin_calc, kpts={'density': self.Ground_kpts_density, 'gamma': self.Gamma},
-                                mixer=self.Mixer_type, txt=self.struct+'-GROUND-Log-Calculation.txt', charge=self.Total_charge,
-                                convergence = self.Ground_convergence, occupations = self.Occupation)
+                        calc_kwargs['kpts'] = {'density': self.Ground_kpts_density, 'gamma': self.Gamma}
+                        calc = GPAW(**calc_kwargs)
                     else:
-                        calc = GPAW(mode=PW(ecut=self.Cut_off_energy, force_complex_dtype=True), xc=self.XC_calc, nbands='200%', setups= self.Setup_params, 
-                                parallel={'domain': world.size}, spinpol=self.Spin_calc, kpts={'size': (self.Ground_kpts_x, self.Ground_kpts_y, self.Ground_kpts_z), 'gamma': self.Gamma},
-                                mixer=self.Mixer_type, txt=self.struct+'-GROUND-Log-Calculation.txt', charge=self.Total_charge,
-                                convergence = self.Ground_convergence, occupations = self.Occupation)
+                        calc_kwargs['kpts'] = {'size': (self.Ground_kpts_x, self.Ground_kpts_y, self.Ground_kpts_z), 'gamma': self.Gamma}
+                        calc = GPAW(**calc_kwargs)
                 self.bulk_configuration.calc = calc
                 if self.Geo_optim == True:
                     if True in self.Relax_cell:
