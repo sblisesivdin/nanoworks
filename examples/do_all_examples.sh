@@ -31,12 +31,6 @@ tsp mpirun -np $CORENUMBER dftsolve.py -i graphene-neutral.py -g graphene4x4with
 echo "Step 2: Charged defective Graphene."
 tsp mpirun -np $CORENUMBER dftsolve.py -i graphene-charged.py -g graphene4x4withdefect.cif
 
-# Not working after GPAW 22.1.0, needs future fix.
-# MoS2-GW -------------------
-#echo "Adding: MoS2-GW"
-#cd ../MoS2-GW
-#tsp dftsolve.py -o -i MoS2-GW.py -g MoS2-structure.cif
-
 # Si-2atoms-optical ----------------
 echo "adding: Si-2atoms-optical"
 cd ../Si-2atoms-optical
