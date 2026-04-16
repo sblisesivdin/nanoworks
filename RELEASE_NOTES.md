@@ -2,8 +2,10 @@
 
 ### Development Version
 
+- Grimme-D3 correction for van der Walls (vdW) structures.
+- vdW correction example for MoS2 
 - Spin Orbit Coupling (SOC) in PW mode for DOS and Band calculations
-- SOC Example for 2D WSe2
+- SOC example for 2D WSe2
 
 ### Version 26.3.1 - Mar 23, 2026 
 
