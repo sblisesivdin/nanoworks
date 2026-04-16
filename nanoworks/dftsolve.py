@@ -549,13 +549,6 @@ class dftsolve:
 
         # Start ground state timing
         time11 = time.time()
-        
-        # vdW Correction
-        if hasattr(self.config, 'vdW_calc') and self.config.vdW_calc.upper() != 'NONE':
-            if self.config.vdW_calc.upper() == 'D3':
-                calc_kwargs['dispersion'] = {'name': 'd3', 'xc': self.config.XC_calc}
-            elif self.config.vdW_calc.upper() == 'TS':
-                calc_kwargs['dispersion'] = {'name': 'ts09'}
                 
         if self.Mode == 'PW':
             if self.Spin_calc == True:
@@ -589,6 +582,7 @@ class dftsolve:
                         'convergence': self.Ground_convergence, 
                         'occupations': self.Occupation
                     }
+
                     if self.Ground_kpts_density is not None:
                         calc_kwargs['kpts'] = {'density': self.Ground_kpts_density, 'gamma': self.Gamma}
                         calc = GPAW(**calc_kwargs)
@@ -610,6 +604,7 @@ class dftsolve:
                         'convergence': self.Ground_convergence, 
                         'occupations': self.Occupation
                     }
+
                     # Fix the spacegroup in the geometric optimization if wanted
                     if self.Fix_symmetry == True:
                         self.bulk_configuration.set_constraint(FixSymmetry(self.bulk_configuration))
@@ -619,6 +614,16 @@ class dftsolve:
                     else:
                         calc_kwargs['kpts'] = {'size': (self.Ground_kpts_x, self.Ground_kpts_y, self.Ground_kpts_z), 'gamma': self.Gamma}
                         calc = GPAW(**calc_kwargs)
+                # Wrapping for vdW
+                if hasattr(self.config, 'vdW_calc') and self.config.vdW_calc.upper() == 'D3':
+                    from ase.calculators.dftd3 import DFTD3
+                    gpaw_calc = calc
+                    
+                    # wrap it
+                    calc = DFTD3(dft=gpaw_calc)
+                    calc.write = gpaw_calc.write 
+                    if hasattr(gpaw_calc, 'get_fermi_level'): calc.get_fermi_level = gpaw_calc.get_fermi_level
+                    parprint("Applying Grimme DFT-D3 via native ASE Wrapper on legacy GPAW...")
                 self.bulk_configuration.calc = calc
                 if self.Geo_optim == True:
                     if True in self.Relax_cell:
@@ -689,8 +694,8 @@ class dftsolve:
                         'txt': self.struct+'-GROUND-Log-Calculation.txt',
                         'convergence': self.Ground_convergence, 
                         'occupations': self.Occupation
-                    }
-                
+                }
+
                 # Fix the spacegroup in the geometric optimization if wanted
                 if self.Fix_symmetry == True:
                     self.bulk_configuration.set_constraint(FixSymmetry(self.bulk_configuration))
@@ -712,6 +717,17 @@ class dftsolve:
                         calc_kwargs['kpts'] = {'size':(self.Ground_kpts_x, self.Ground_kpts_y, self.Ground_kpts_z), 'gamma': self.Gamma}
                         calc_kwargs['gpts'] = (self.Ground_gpts_x, self.Ground_gpts_y, self.Ground_gpts_z)
                         calc = GPAW(**calc_kwargs)
+
+                # Wrapping for vdW
+                if hasattr(self.config, 'vdW_calc') and self.config.vdW_calc.upper() == 'D3':
+                    from ase.calculators.dftd3 import DFTD3
+                    gpaw_calc = calc
+                    
+                    # wrap it
+                    calc = DFTD3(dft=gpaw_calc)
+                    calc.write = gpaw_calc.write 
+                    if hasattr(gpaw_calc, 'get_fermi_level'): calc.get_fermi_level = gpaw_calc.get_fermi_level
+                    parprint("Applying Grimme DFT-D3 via native ASE Wrapper on legacy GPAW...")
                 self.bulk_configuration.calc = calc
                 if self.Geo_optim == True:
                     if True in self.Relax_cell:
@@ -795,13 +811,6 @@ class dftsolve:
             'occupations': self.config.Occupation
         }
         
-        # vdW Correction
-        if hasattr(self.config, 'vdW_calc') and self.config.vdW_calc.upper() != 'NONE':
-            if self.config.vdW_calc.upper() == 'D3':
-                elastic_kwargs['dispersion'] = {'name': 'd3', 'xc': self.config.XC_calc}
-            elif self.config.vdW_calc.upper() == 'TS':
-                elastic_kwargs['dispersion'] = {'name': 'ts09'}
-        
         # Load the optimized (reference) structure
         bulk_atoms = self.bulk_configuration
         ref_calc = GPAW(self.struct + '-GROUND-Result-State.gpw')
@@ -870,6 +879,16 @@ class dftsolve:
             
                         # Attach a new GPAW calculator for the deformed structure using PBE.
                         deformed_atoms.set_calculator(GPAW(**elastic_kwargs))
+                        # Wrapping for vdW
+                        if hasattr(self.config, 'vdW_calc') and self.config.vdW_calc.upper() == 'D3':
+                            from ase.calculators.dftd3 import DFTD3
+                            gpaw_calc = deformed_atoms
+                            
+                            # wrap it
+                            calc = DFTD3(dft=gpaw_calc)
+                            calc.write = gpaw_calc.write 
+                            if hasattr(gpaw_calc, 'get_fermi_level'): calc.get_fermi_level = gpaw_calc.get_fermi_level
+                            parprint("Applying Grimme DFT-D3 via native ASE Wrapper on legacy GPAW...")
                         
                         try:
                             deformed_atoms.get_potential_energy()
@@ -980,7 +999,12 @@ class dftsolve:
             calc = GPAW().read(filename=self.struct+'-GROUND-Result-State.gpw')
             ef=0.0 # Can not find the use get_fermi_level() 
         else:
-            calc = GPAW(self.struct+'-GROUND-Result-State.gpw').fixed_density(txt=self.struct+'-DOS-Log-Calculation.txt', convergence = self.DOS_convergence, occupations = self.Occupation)
+            #calc = GPAW(self.struct+'-GROUND-Result-State.gpw').fixed_density(txt=self.struct+'-DOS-Log-Calculation.txt', convergence = self.DOS_convergence, occupations = self.Occupation)
+            calc_load = GPAW(self.struct+'-GROUND-Result-State.gpw')
+            # remove 'extensions' (vdW) param
+            calc_load.parameters.pop('extensions', None)
+            # Continue with fixed_density
+            calc = calc_load.fixed_density(txt=self.struct+'-DOS-Log-Calculation.txt', convergence = self.DOS_convergence, occupations = self.Occupation)
             ef = calc.get_fermi_level()
         
         chem_sym = self.bulk_configuration.get_chemical_symbols()
