@@ -124,7 +124,7 @@ class DFTConfig:
     Density_calc: bool = False
     Phonon_calc: bool = False
     Optical_calc: bool = False
-    SOC: bool = False
+    SOC_calc: bool = False
     vdW_calc: str = 'None'
     
     # Geometry optimization parameters
@@ -431,7 +431,7 @@ class dftsolve:
         self.Band_calc = config.Band_calc
         self.Density_calc = config.Density_calc
         self.Optical_calc = config.Optical_calc
-        self.SOC = config.SOC
+        self.SOC_calc = config.SOC_calc
         self.vdW_calc = config.vdW_calc
         self.Optimizer = config.Optimizer
         self.Max_F_tolerance = config.Max_F_tolerance
@@ -1009,7 +1009,7 @@ class dftsolve:
         
         chem_sym = self.bulk_configuration.get_chemical_symbols()
         
-        if self.SOC:
+        if self.SOC_calc:
             parprint("Calculating Total DOS with Spin-Orbit Coupling...")
             from gpaw.spinorbit import soc_eigenstates
             
@@ -1407,7 +1407,7 @@ class dftsolve:
                 print(e)
 
         else:
-            if self.SOC:
+            if self.SOC_calc:
                 from gpaw.spinorbit import soc_eigenstates
                 parprint("Applying Spin-Orbit Coupling to Band Structure...")
                 # Spin-Orbit perturbation
@@ -1467,7 +1467,7 @@ class dftsolve:
         # Draw graphs only on master node
         if world.rank == 0:
             # Band Structure
-            if self.SOC:
+            if self.SOC_calc:
                 from ase.spectrum.band_structure import BandStructure
                 bs = BandStructure(path=bs.path, energies=np.array([soc_evals]), reference=ef)
             bs.plot(filename=self.struct+'-BAND-Graph-Band.png', show=False, emax=self.Energy_max + bs.reference, emin=self.Energy_min + bs.reference, ylabel=self.band_ylabel[self.Localisation])

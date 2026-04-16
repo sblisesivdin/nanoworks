@@ -10,7 +10,7 @@ DOS_calc = True         # DOS calculation
 Band_calc = True        # Band structure calculation
 Density_calc = False    # Calculate the all-electron density?
 Optical_calc = False     # Calculate the optical properties
-SOC = False              # Calculate Spin Orbit Coupling Effects
+SOC_calc = False              # Calculate Spin Orbit Coupling Effects
 vdW_calc = 'None'        # Calculate with vdW correction. 'D3' for Grimme-D3 or 'None' for none.
 # -------------------------------------------------------------
 # Parameters
