@@ -183,6 +183,13 @@ class DFTConfig:
     Phonon_path: str = 'LGL'
     Phonon_npoints: int = 61
     Phonon_acoustic_sum_rule: bool = True
+    Phonon_qpts_x: int = 20
+    Phonon_qpts_y: int = 20
+    Phonon_qpts_z: int = 20
+    Phonon_thermal_calc: bool = False
+    Phonon_T_min: float = 0.0
+    Phonon_T_max: float = 1000.0
+    Phonon_T_step: float = 10.0
     
     # Optical parameters
     Opt_calc_type: str = 'BSE'
@@ -478,6 +485,13 @@ class dftsolve:
         self.Phonon_path = config.Phonon_path
         self.Phonon_npoints = config.Phonon_npoints
         self.Phonon_acoustic_sum_rule = config.Phonon_acoustic_sum_rule
+        self.Phonon_qpts_x = config.Phonon_qpts_x
+        self.Phonon_qpts_y = config.Phonon_qpts_y
+        self.Phonon_qpts_z = config.Phonon_qpts_z
+        self.Phonon_thermal_calc = config.Phonon_thermal_calc
+        self.Phonon_T_min = config.Phonon_T_min
+        self.Phonon_T_max = config.Phonon_T_max
+        self.Phonon_T_step = config.Phonon_T_step
         self.Opt_calc_type = config.Opt_calc_type
         self.Opt_shift_en = config.Opt_shift_en
         self.Opt_BSE_valence = config.Opt_BSE_valence
@@ -1535,7 +1549,7 @@ class dftsolve:
         # -------------------------------------------------------------
 
         time51 = time.time()
-        parprint("Starting phonon calculation.(\033[93mWARNING:\033[0mNOT TESTED FEATURE, PLEASE CONTROL THE RESULTS)")
+        parprint("Starting phonon calculations.")
 
         calc = GPAW(self.struct+'-GROUND-Result-State.gpw')
         self.bulk_configuration.calc = calc
@@ -1593,8 +1607,8 @@ class dftsolve:
                 print("[Phonopy] %3d: %10.5f THz" %  (i + 1, freq), end="\n", file=f2) # THz
 
             # DOS
-            print("[Phonopy] Initializing mesh [21, 21, 21]...", end="\n", file=f2)
-            phonon.init_mesh([21, 21, 21])
+            print("[Phonopy] Initializing mesh...", end="\n", file=f2)
+            phonon.init_mesh([self.Phonon_qpts_x, self.Phonon_qpts_y, self.Phonon_qpts_z])
             print("[Phonopy] Running total DOS calculation...", end="\n", file=f2)
             phonon.run_total_dos()
             print("[Phonopy] DOS calculation completed. Type of total_dos:", type(phonon.total_dos), end="\n", file=f2)
@@ -1649,7 +1663,7 @@ class dftsolve:
         # fig = phonon.plot_band_structure()
 
         # with DOS
-        phonon.run_mesh([20, 20, 20])
+        #phonon.run_mesh([self.Phonon_qpts_x, self.Phonon_qpts_y, self.Phonon_qpts_z])
         phonon.run_total_dos()
         fig = phonon.plot_band_structure_and_dos()
 
@@ -1670,7 +1684,7 @@ class dftsolve:
             distances = band_dict['distances']
             frequencies = band_dict['frequencies']
             
-            with open(self.struct+'-PHONON-Result-Band.dat', 'w') as f_band:
+            with paropen(self.struct+'-PHONON-Result-Band.dat', 'w') as f_band:
                 f_band.write("Distance(1/A)    Frequencies(THz)...\n")
                 # Return for every k-way segment
                 for dist_path, freq_path in zip(distances, frequencies):
@@ -1681,7 +1695,32 @@ class dftsolve:
                     f_band.write("\n") # Give space between segments
         except Exception as e:
             parprint("DAT band data can not be saved:", e)
-    
+        #Thermodynamic calculations
+        if self.Phonon_thermal_calc:
+            parprint(f"Thermal properties calculation (T: {self.Phonon_T_min}K - {self.Phonon_T_max}K)...")
+                      
+            # Termal properties calc
+            phonon.run_thermal_properties(t_min=self.Phonon_T_min, 
+                                          t_max=self.Phonon_T_max, 
+                                          t_step=self.Phonon_T_step)
+            
+            # Phonopy standard YAML output
+            phonon.write_yaml_thermal_properties(filename=self.struct+'-PHONON-Result-Thermal_properties.yaml')
+            
+            # convert to CSV format
+            tp_dict = phonon.get_thermal_properties_dict()
+            temperatures = tp_dict['temperatures']
+            free_energy = tp_dict['free_energy']
+            entropy = tp_dict['entropy']
+            heat_capacity = tp_dict['heat_capacity']
+            
+            with paropen(self.struct+"-PHONON-Result-Thermal_properties.csv", "w") as f:
+                f.write("T(K),Free_Energy(kJ/mol),Entropy(J/K/mol),Cv(J/K/mol)\n")
+                for i in range(len(temperatures)):
+                    f.write(f"{temperatures[i]:.2f},{free_energy[i]:.6f},{entropy[i]:.6f},{heat_capacity[i]:.6f}\n")
+                    
+            parprint(f"Thermal calculations finished!")
+        
         time52 = time.time()
         # Write timings of calculation
         with paropen(self.struct+'-TIMINGS-Log-Timings.txt', 'a') as f1:
