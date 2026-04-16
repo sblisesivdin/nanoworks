@@ -19,6 +19,7 @@ There are some example calculations given with different usage scenarios. Please
 | Si-qe       | Example for QE to Nanoworks conversion with qeconverter |
 | Si-vasp       | Example for VASP to Nanoworks conversion with vaspconverter |
 | SOC-WSe2-noCIF | Example for Spin Orbit Coupling Effect on 2D WSe2 |
+| Bulk-MoS2-vdW | Grimme-D3 correction on MoS2 
 
 
 ## mdsolve.py Example List

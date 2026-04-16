@@ -52,12 +52,24 @@ tsp dftsolve -p $CORENUMBER -i ZnO_woHubbard.py
 # Rocksalt TiC with Elastic Calculations
 echo "Adding: Rocksalt TiC."
 cd ../TiC-elastic-electronic
-tsp dftsolve -p $CORENUMBER -i TiC.py -g TiC_mp-631_primitive-Final.cif
+tsp dftsolve -p $CORENUMBER -i TiC.py -g TiC_primitive_geooptimized.cif
 
 # Phonon dispersion of Aluminum
 echo "Adding: Phonon dispersion of bulk Aluminum."
 cd ../Al-phonon
 tsp dftsolve -p $CORENUMBER -i Al-phonon.py -g Al_mp-134_primitive.cif
+
+# SOC WSe2
+echo "Adding: SOC calculations of 2D WSe2"
+cd ../SOC-WSe2-noCIF
+tsp dftsolve -p $CORENUMBER -i WSe2-with-SOC.py
+tsp dftsolve -p $CORENUMBER -i WSe2-wo-SOC.py
+
+# vdW MoS2
+echo "Adding: Bulk MoS2 with Grimme-D3 correction"
+cd ../Bulk-MoS2-vdW
+tsp dftsolve -p $CORENUMBER -i MoS2-wo-vdW.py -g Bulk_MoS2.cif
+tsp dftsolve -p $CORENUMBER -i MoS2-with-vdW.py -g Bulk_MoS2.cif
 
 # Finish
 echo "All calculations except the HSE calculation are added. Due to consuming too much time, please run the HSE example separately."
