@@ -50,11 +50,19 @@ Phonon_PW_cutoff = 700
 Phonon_kpts_x = 5
 Phonon_kpts_y = 5
 Phonon_kpts_z = 5
+Phonon_qpts_x = 21
+Phonon_qpts_y = 21
+Phonon_qpts_z = 21
 Phonon_supercell = np.diag([2, 2, 2])
 Phonon_displacement = 1e-3
 Phonon_path = 'GXKGL'
 Phonon_npoints = 61
 Phonon_acoustic_sum_rule = True
+Phonon_thermal_calc = True    # Thermodynamic calculations
+Phonon_T_min = 0.0            
+Phonon_T_max = 1000.0         
+Phonon_T_step = 10.0
+
 
 #GENERAL
 MPI_cores = 4            # Number of cores in calculation.
