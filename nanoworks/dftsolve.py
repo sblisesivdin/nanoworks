@@ -2239,6 +2239,7 @@ def projected_weights(calc):
 # End of Projected Band Structure related functions----------------
 
 def main():
+    meter = None
     parser = ArgumentParser(prog ='dftsolve.py', description=Description, formatter_class=RawFormatter)
     parser.add_argument("-i", "--input", dest = "inputfile", help="Use input file for calculation variables (also you can insert geometry)")
     parser.add_argument("-g", "--geometry",dest ="geometryfile", help="Use CIF file for geometry")
@@ -2358,7 +2359,7 @@ def main():
     with paropen(struct+'-TIMINGS-Log-Timings.txt', 'a') as f1:
         print("---------------------------------------", end="\n", file=f1)
 
-    if args.energymeas == True:
+    if args.energymeas == True and meter is not None:
         # Ending of energy consumption measuring.
         meter.end()
         energyresult = meter.result
