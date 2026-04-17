@@ -1481,7 +1481,7 @@ class dftsolve:
         # Draw graphs only on master node
         if world.rank == 0:
             # Band Structure
-            if self.SOC_calc:
+            if self.SOC_calc and not self.Spin_calc:
                 from ase.spectrum.band_structure import BandStructure
                 bs = BandStructure(path=bs.path, energies=np.array([soc_evals]), reference=ef)
             bs.plot(filename=self.struct+'-BAND-Graph-Band.png', show=False, emax=self.Energy_max + bs.reference, emin=self.Energy_min + bs.reference, ylabel=self.band_ylabel[self.Localisation])
