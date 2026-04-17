@@ -82,6 +82,28 @@ General Keywords
 
     Optical_calc = False
 
+.. describe:: SOC_calc
+
+    :Type: ``boolean``
+    :Default: ``False``
+
+    Whether Spin Orbit Coupling calculations are added to calculation or not.
+
+.. code-block:: python
+
+    SOC_calc = True
+
+.. describe:: vdW_calc
+
+    :Type: ``str``
+    :Default: ``None``
+
+    Whether van der Walls correction are added to calculation or not. For now only Grimme-D3 correction is supported.
+
+.. code-block:: python
+
+    vdW_calc = "D3"
+
 .. describe:: Energy_min
 
     :Type: ``int``
@@ -535,6 +557,63 @@ Phonon Calculations Keywords
 .. code-block:: python
 
     Phonon_acoustic_sum_rule = True
+    
+.. describe:: Phonon_qpts_x | Phonon_qpts_y | Phonon_qpts_z
+
+    :Type: ``int``
+    :Default: ``21``
+    
+    Number of q-points in x / y / z directions for phonon mesh. Suggested to use odd and necessarily big numbers. 
+
+.. code-block:: python
+
+    Phonon_qpts_x = 21
+    Phonon_qpts_y = 21
+    Phonon_qpts_z = 21
+
+.. describe:: Phonon_thermal_calc
+
+    :Type: ``boolean``
+    :Default: ``False``
+
+    Run thermodynamic calculations to calculate free energy, entropy and heat capacity.
+
+.. code-block:: python
+
+    Phonon_thermal_calc = True
+
+.. describe:: Phonon_T_min
+
+    :Type: ``float``
+    :Default: ``0.0``
+
+    Starting temperature of thermodynamic calculations. Phonon_thermal_calc must be set to True.
+
+.. code-block:: python
+
+    Phonon_T_min = 0.0
+
+.. describe:: Phonon_T_max
+
+    :Type: ``float``
+    :Default: ``1000.0``
+
+    Final temperature of thermodynamic calculations. Phonon_thermal_calc must be set to True.
+
+.. code-block:: python
+
+    Phonon_T_max = 1000.0
+
+.. describe:: Phonon_T_step
+
+    :Type: ``float``
+    :Default: ``10.0``
+
+    Temperature step value for thermodynamic calculations. Phonon_thermal_calc must be set to True.
+
+.. code-block:: python
+
+    Phonon_T_step = 10.0
 
 Optical Calculations Keywords
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
