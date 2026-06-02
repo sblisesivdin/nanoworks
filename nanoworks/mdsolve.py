@@ -233,7 +233,7 @@ def main():
 
     if args.version:
         print(f"nanoworks: mdsolve: version: {nanoworks.__version__}")
-        quit()
+        sys.exit(1)
 
     if not args.inputfile or not args.geometryfile:
         print('ERROR: Please provide both input (-i) and geometry (-g) files.')

@@ -579,8 +579,8 @@ class dftsolve:
                     if self.XC_calc in ['GLLBSC', 'GLLBSCM', 'HSE06', 'HSE03','B3LYP', 'PBE0','EXX']:
                         parprint("\033[91mERROR:\033[0m Structure optimization LBFGS can not be used with "+self.XC_calc+" xc.")
                         parprint("Do manual structure optimization, or do with PBE, then use its final CIF as input.")
-                        parprint("Quiting...")
-                        quit()
+                        parprint("Exiting...")
+                        sys.exit(1)
                 if self.XC_calc in ['HSE06', 'HSE03','B3LYP', 'PBE0','EXX']:
                     parprint('Starting Hybrid XC calculations...')
                     calc_kwargs = {
@@ -683,8 +683,8 @@ class dftsolve:
                 parprint("Passing PW ground state calculation...")
                 # Control the ground state GPW file
                 if not os.path.exists(self.struct+'-GROUND-Result-State.gpw'):
-                    parprint('\033[91mERROR:\033[0m'+self.struct+'-GROUND-Result-State.gpw file can not be found. It is needed in other calculations. Firstly, finish the ground state calculation. You must have \033[95mGround_calc = True\033[0m line in your input file. Quiting.')
-                    quit()
+                    parprint('\033[91mERROR:\033[0m'+self.struct+'-GROUND-Result-State.gpw file can not be found. It is needed in other calculations. Firstly, finish the ground state calculation. You must have \033[95mGround_calc = True\033[0m line in your input file. Exiting.')
+                    sys.exit(1)
 
         elif self.Mode == 'LCAO':
             if self.Spin_calc == True:
@@ -748,7 +748,7 @@ class dftsolve:
                         #uf = FrechetCellFilter(self.bulk_configuration, mask=self.Relax_cell)
                         #relax = LBFGS(uf, maxstep=self.Max_step, alpha=self.Alpha, damping=self.Damping, trajectory=self.struct+'-GROUND-Result-Trajectory.traj')
                         parprint('\033[91mERROR:\033[0mModifying supercell and atom positions with a filter (Relax_cell keyword) is not implemented in LCAO mode.')
-                        quit()
+                        sys.exit(1)
                     else:
                         # Optimizer Selection
                         if self.Optimizer == 'FIRE':
@@ -780,15 +780,15 @@ class dftsolve:
                 parprint("Passing LCAO ground state calculation...")
                 # Control the ground state GPW file
                 if not os.path.exists(self.struct+'-GROUND-Result-State.gpw'):
-                    parprint('\033[91mERROR:\033[0m'+self.struct+'-GROUND-Result-State.gpw file can not be found. It is needed in other calculations. Firstly, finish the ground state calculation. You must have \033[95mGround_calc = True\033[0m line in your input file. Quiting.')
-                    quit()
+                    parprint('\033[91mERROR:\033[0m'+self.struct+'-GROUND-Result-State.gpw file can not be found. It is needed in other calculations. Firstly, finish the ground state calculation. You must have \033[95mGround_calc = True\033[0m line in your input file. Exiting.')
+                    sys.exit(1)
 
         elif self.Mode == 'FD':
             parprint("\033[91mERROR:\033[0mFD mode is not implemented in Nanoworks yet...")
-            quit()
+            sys.exit(1)
         else:
             parprint("\033[91mERROR:\033[0mPlease enter correct mode information.")
-            quit()
+            sys.exit(1)
         # Finish ground state timing
         time12 = time.time()
 
@@ -1749,7 +1749,7 @@ class dftsolve:
             except FileNotFoundError as err:
                 # output error, and return with an error code
                 parprint('\033[91mERROR:\033[0mOptical computations must be done separately. Please do ground calculations first.')
-                quit()
+                sys.exit(1)
 
             calc.get_potential_energy()
 
@@ -1760,7 +1760,7 @@ class dftsolve:
             if self.Opt_calc_type == 'BSE':
                 if self.Spin_calc == True:
                    parprint('\033[91mERROR:\033[0mBSE calculations can not run with spin dependent data.')
-                   quit()
+                   sys.exit(1)
                 parprint('Starting BSE calculations')
                 bse = BSE(calc= self.struct+'-OPTICAL-Result-State.gpw', ecut=self.Opt_cut_of_energy,
                              valence_bands=self.Opt_BSE_valence,
@@ -2013,7 +2013,7 @@ class dftsolve:
 
             else:
                 parprint('\033[91mERROR:\033[0mUnknown optical calculation type.')
-                quit()
+                sys.exit(1)
 
         elif self.Mode == 'LCAO':
             parprint('\033[91mERROR:\033[0mNot implemented in LCAO mode yet.')
@@ -2259,7 +2259,7 @@ def main():
 
     if args is None:
         parprint("No arguments used.")
-        quit()
+        sys.exit(1)
 
     energymeas = False
     inFile = None
@@ -2269,19 +2269,19 @@ def main():
     try:
         if args.version == True:
             parprint(f"nanoworks: dftsolve: version: {nanoworks.__version__}")
-            quit()
+            sys.exit(1)
 
         if args.auto:
             if args.geometryfile is None:
                 parprint("\033[91mERROR:\033[0m Auto mode (-a) requires a geometry file (-g).")
-                quit()
+                sys.exit(1)
             inFile = os.path.join(os.getcwd(), args.geometryfile)
         elif args.inputfile is not None:
             configpath = os.path.join(os.getcwd(),args.inputfile)
             sys.path.append(os.getcwd())
         else:
             parprint("\033[91mERROR:\033[0m Please use an input file with -i argument or use auto mode -a.")
-            quit()
+            sys.exit(1)
 
 
         if args.geometryfile :
@@ -2302,7 +2302,7 @@ def main():
                 parprint("If you got permission error, try: sudo chmod -R a+r /sys/class/powercap/intel-rapl")
                 parprint("More information about the error:")
                 parprint(sys.exc_info()[0])
-                quit()
+                sys.exit(1)
 
     except getopt.error as err:
         # output error, and return with an error code
