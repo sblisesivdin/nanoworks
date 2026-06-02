@@ -15,6 +15,14 @@ import os
 import shutil
 import subprocess
 
+def create_gpaw_calc(*args, **kwargs):
+    """
+    Central factory for all GPAW calculators
+    """
+    # With New GPAW, we may continue with legacy GPAW for a while.
+    # kwargs['legacy_gpaw'] = True 
+    return GPAW(*args, **kwargs)
+
 # Parallel execution logic (Must be before other imports to avoid MPI initialization issues)
 def check_parallel_restart():
     parallel = None
@@ -599,10 +607,10 @@ class dftsolve:
 
                     if self.Ground_kpts_density is not None:
                         calc_kwargs['kpts'] = {'density': self.Ground_kpts_density, 'gamma': self.Gamma}
-                        calc = GPAW(**calc_kwargs)
+                        calc = create_gpaw_calc(**calc_kwargs)
                     else:
                         calc_kwargs['kpts'] = {'size': (self.Ground_kpts_x, self.Ground_kpts_y, self.Ground_kpts_z), 'gamma': self.Gamma}
-                        calc = GPAW(**calc_kwargs)
+                        calc = create_gpaw_calc(**calc_kwargs)
                 else:
                     parprint('Starting calculations with '+self.XC_calc+'...')
                     calc_kwargs = {
@@ -624,10 +632,10 @@ class dftsolve:
                         self.bulk_configuration.set_constraint(FixSymmetry(self.bulk_configuration))
                     if self.Ground_kpts_density is not None:
                         calc_kwargs['kpts'] = {'density': self.Ground_kpts_density, 'gamma': self.Gamma}
-                        calc = GPAW(**calc_kwargs)
+                        calc = create_gpaw_calc(**calc_kwargs)
                     else:
                         calc_kwargs['kpts'] = {'size': (self.Ground_kpts_x, self.Ground_kpts_y, self.Ground_kpts_z), 'gamma': self.Gamma}
-                        calc = GPAW(**calc_kwargs)
+                        calc = create_gpaw_calc(**calc_kwargs)
                 # Wrapping for vdW
                 if hasattr(self.config, 'vdW_calc') and self.config.vdW_calc.upper() == 'D3':
                     from ase.calculators.dftd3 import DFTD3
@@ -717,20 +725,20 @@ class dftsolve:
                     if self.Ground_kpts_density is not None:
                         calc_kwargs['kpts'] = {'density': self.Ground_kpts_density, 'gamma': self.Gamma}
                         calc_kwargs['h'] = self.Ground_gpts_density
-                        calc = GPAW(**calc_kwargs)
+                        calc = create_gpaw_calc(**calc_kwargs)
                     else:
                         calc_kwargs['kpts'] = {'size':(self.Ground_kpts_x, self.Ground_kpts_y, self.Ground_kpts_z), 'gamma': self.Gamma}
                         calc_kwargs['h'] = self.Ground_gpts_density
-                        calc = GPAW(**calc_kwargs)
+                        calc = create_gpaw_calc(**calc_kwargs)
                 else:
                     if self.Ground_kpts_density is not None:
                         calc_kwargs['kpts'] = {'density': self.Ground_kpts_density, 'gamma': self.Gamma}
                         calc_kwargs['gpts'] = (self.Ground_gpts_x, self.Ground_gpts_y, self.Ground_gpts_z)
-                        calc = GPAW(**calc_kwargs)
+                        calc = create_gpaw_calc(**calc_kwargs)
                     else:
                         calc_kwargs['kpts'] = {'size':(self.Ground_kpts_x, self.Ground_kpts_y, self.Ground_kpts_z), 'gamma': self.Gamma}
                         calc_kwargs['gpts'] = (self.Ground_gpts_x, self.Ground_gpts_y, self.Ground_gpts_z)
-                        calc = GPAW(**calc_kwargs)
+                        calc = create_gpaw_calc(**calc_kwargs)
 
                 # Wrapping for vdW
                 if hasattr(self.config, 'vdW_calc') and self.config.vdW_calc.upper() == 'D3':
@@ -827,7 +835,7 @@ class dftsolve:
         
         # Load the optimized (reference) structure
         bulk_atoms = self.bulk_configuration
-        ref_calc = GPAW(self.struct + '-GROUND-Result-State.gpw')
+        ref_calc = create_gpaw_calc(self.struct + '-GROUND-Result-State.gpw')
         bulk_atoms.set_calculator(ref_calc)
         parprint('Optimized (reference) structure is loaded.')
         try:
@@ -892,7 +900,7 @@ class dftsolve:
                         deformed_atoms.set_cell(deformed_atoms.cell @ strain_tensor, scale_atoms=True)
             
                         # Attach a new GPAW calculator for the deformed structure using PBE.
-                        deformed_atoms.set_calculator(GPAW(**elastic_kwargs))
+                        deformed_atoms.set_calculator(create_gpaw_calc(**elastic_kwargs))
                         # Wrapping for vdW
                         if hasattr(self.config, 'vdW_calc') and self.config.vdW_calc.upper() == 'D3':
                             from ase.calculators.dftd3 import DFTD3
@@ -1010,11 +1018,11 @@ class dftsolve:
         parprint("Starting DOS calculation...")
         if self.XC_calc in ['HSE06', 'HSE03','B3LYP', 'PBE0','EXX']:
             parprint('Passing DOS NSCF calculations...')
-            calc = GPAW().read(filename=self.struct+'-GROUND-Result-State.gpw')
+            calc = create_gpaw_calc().read(filename=self.struct+'-GROUND-Result-State.gpw')
             ef=0.0 # Can not find the use get_fermi_level() 
         else:
-            #calc = GPAW(self.struct+'-GROUND-Result-State.gpw').fixed_density(txt=self.struct+'-DOS-Log-Calculation.txt', convergence = self.DOS_convergence, occupations = self.Occupation)
-            calc_load = GPAW(self.struct+'-GROUND-Result-State.gpw')
+            #calc = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw').fixed_density(txt=self.struct+'-DOS-Log-Calculation.txt', convergence = self.DOS_convergence, occupations = self.Occupation)
+            calc_load = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw')
             # remove 'extensions' (vdW) param
             calc_load.parameters.pop('extensions', None)
             # Continue with fixed_density
@@ -1343,13 +1351,13 @@ class dftsolve:
         time31 = time.time()
         parprint("Starting band structure calculation...")
         if self.XC_calc in ['HSE06', 'HSE03','B3LYP', 'PBE0','EXX']:
-            calc = GPAW(self.struct+'-GROUND-Result-State.gpw', symmetry='off',kpts={'path': self.Band_path, 'npoints': self.Band_npoints},
+            calc = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw', symmetry='off',kpts={'path': self.Band_path, 'npoints': self.Band_npoints},
                       parallel={'band':1, 'kpt':1}, occupations = self.Occupation,
                       txt=self.struct+'-BAND-Log-Calculation.txt', convergence=self.Band_convergence)
             ef=0.0
 
         else:
-            calc = GPAW(self.struct+'-GROUND-Result-State.gpw').fixed_density(kpts={'path': self.Band_path, 'npoints': self.Band_npoints},
+            calc = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw').fixed_density(kpts={'path': self.Band_path, 'npoints': self.Band_npoints},
                       txt=self.struct+'-BAND-Log-Calculation.txt', symmetry='off', occupations = self.Occupation, convergence=self.Band_convergence)
             ef = calc.get_fermi_level()
 
@@ -1500,7 +1508,7 @@ class dftsolve:
         #Start Density calc
         time41 = time.time()
         parprint("Starting All-electron density calculation...")
-        calc = GPAW(self.struct+'-GROUND-Result-State.gpw', txt=self.struct+'-EDENSITY-Log-Calculation.txt')
+        calc = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw', txt=self.struct+'-EDENSITY-Log-Calculation.txt')
         self.bulk_configuration.calc = calc
         if self.Spin_calc == True:
             np = calc.get_pseudo_density()
@@ -1551,7 +1559,7 @@ class dftsolve:
         time51 = time.time()
         parprint("Starting phonon calculations.")
 
-        calc = GPAW(self.struct+'-GROUND-Result-State.gpw')
+        calc = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw')
         self.bulk_configuration.calc = calc
 
         # Pre-process
@@ -1565,7 +1573,7 @@ class dftsolve:
                 print("[Phonopy] %d %s" % (d[0], d[1:]), end="\n", file=f2)
 
         # FIX THIS PART
-        calc = GPAW(mode=PW(self.Phonon_PW_cutoff),
+        calc = create_gpaw_calc(mode=PW(self.Phonon_PW_cutoff),
                kpts={'size': (self.Phonon_kpts_x, self.Phonon_kpts_y, self.Phonon_kpts_z)}, txt=self.struct+'-PHONON-Log-Phonon-GPAW.txt')
 
         self.bulk_configuration.calc = calc
@@ -1743,7 +1751,7 @@ class dftsolve:
         if self.Mode == 'PW':
             parprint("Starting optical calculation...")
             try:
-                calc = GPAW(self.struct+'-GROUND-Result-State.gpw').fixed_density(txt=self.struct+'-OPTICAL-Log-Calculation.txt',
+                calc = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw').fixed_density(txt=self.struct+'-OPTICAL-Log-Calculation.txt',
                         nbands=self.Opt_num_of_bands,parallel={'domain': 1, 'band': 1 },
                         occupations=FermiDirac(self.Opt_FD_smearing))
             except FileNotFoundError as err:
