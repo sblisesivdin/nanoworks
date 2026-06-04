@@ -12,6 +12,7 @@
 - Create a GPAW factory function for all usage in `dftsolve`. It will maintain a control between legacy GPAW and New GPAW
 - All Python dependencies and optional dependencies are included in the pyproject.toml
 - New installation page in documentation
+- log_energy_consumption() function is created
 
 
 ### Version 26.3.1 - Mar 23, 2026 

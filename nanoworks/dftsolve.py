@@ -23,6 +23,35 @@ def create_gpaw_calc(*args, **kwargs):
     # kwargs['legacy_gpaw'] = True 
     return GPAW(*args, **kwargs)
 
+def log_energy_consumption(meter, struct_name):
+    """
+    Reads pyRAPL results, write energy consumption to a file MPI-safe 
+    """
+    if meter is None:
+        return
+        
+    from ase.parallel import paropen
+    
+    meter.end()
+    energyresult = meter.result
+   
+    # Safely handle potential None values from pyRAPL
+    duration = energyresult.duration if energyresult.duration is not None else 0.0
+    pkg_energy = sum(energyresult.pkg) if energyresult.pkg is not None else 0.0
+    dram_energy = sum(energyresult.dram) if energyresult.dram is not None else 0.0
+   
+    with paropen(struct_name + '-ENERGY-Log-Energy_consumption.txt', 'a') as f1:
+        print("Energy measurement:-----------------------------------------", end="\n", file=f1)
+        print(1e-6 * duration, " Computation time in seconds", end="\n", file=f1)
+        print(1e-6 * pkg_energy, " CPU energy consumption in Joules", end="\n", file=f1)
+       
+        if energyresult.dram is None:
+            print("0.0 DRAM energy consumption in Joules (Hardware domain unsupported)", end="\n", file=f1)
+        else:
+            print(1e-6 * dram_energy, " DRAM energy consumption in Joules", end="\n", file=f1)
+           
+        print(2.77777778e-7 * (1e-6 * pkg_energy + 1e-6 * dram_energy), " Total energy consumption in kWh", end="\n", file=f1)
+
 # Parallel execution logic (Must be before other imports to avoid MPI initialization issues)
 def check_parallel_restart():
     parallel = None
@@ -2368,26 +2397,7 @@ def main():
         print("---------------------------------------", end="\n", file=f1)
 
     if args.energymeas == True and meter is not None:
-        # Ending of energy consumption measuring.
-        meter.end()
-        energyresult = meter.result
-       
-        # Safely handle potential None values from pyRAPL
-        duration = energyresult.duration if energyresult.duration is not None else 0.0
-        pkg_energy = sum(energyresult.pkg) if energyresult.pkg is not None else 0.0
-        dram_energy = sum(energyresult.dram) if energyresult.dram is not None else 0.0
-       
-        with paropen(struct+'-ENERGY-Log-Energyconsumption.txt', 'a') as f1:
-            print("Energy measurement:-----------------------------------------", end="\n", file=f1)
-            print(1e-6 * duration, " Computation time in seconds", end="\n", file=f1)
-            print(1e-6 * pkg_energy, " CPU energy consumption in Joules", end="\n", file=f1)
-           
-            if energyresult.dram is None:
-                print("0.0 DRAM energy consumption in Joules (Hardware domain unsupported)", end="\n", file=f1)
-            else:
-                print(1e-6 * dram_energy, " DRAM energy consumption in Joules", end="\n", file=f1)
-               
-            print(2.77777778e-7 * (1e-6 * dram_energy + 1e-6 * pkg_energy), " Total energy consumption in kWh", end="\n", file=f1)
+        log_energy_consumption(meter, struct)
 
 if __name__ == "__main__":
     main()
