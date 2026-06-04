@@ -6,6 +6,13 @@
 - vdW correction example for MoS2 
 - Spin Orbit Coupling (SOC) in PW mode for DOS and Band calculations
 - SOC example for 2D WSe2
+- New keywords are added to documentation
+- Fix some uninittialized local variable problems
+- Replace `quit()` usages with `sys.exit()`
+- Create a GPAW factory function for all usage in `dftsolve`. It will maintain a control between legacy GPAW and New GPAW
+- All Python dependencies and optional dependencies are included in the pyproject.toml
+- New installation page in documentation
+
 
 ### Version 26.3.1 - Mar 23, 2026 
 
