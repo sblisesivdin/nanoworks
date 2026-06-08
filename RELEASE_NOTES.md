@@ -13,6 +13,8 @@
 - All Python dependencies and optional dependencies are included in the pyproject.toml
 - New installation page in documentation
 - log_energy_consumption() function is created
+- Because there is no `gg.py` in Nanoworks, variable MPI_cores is not used. It is removed.
+- New localization system. Variable name is renamed to `Localization`
 
 
 ### Version 26.3.1 - Mar 23, 2026 
