@@ -245,17 +245,11 @@ class DFTConfig:
     Opt_nblocks: Any = None
     
     # General parameters
-    MPI_cores: int = 4
-    Localisation: str = "en_UK"
+    Localization: str = "en_UK"
     Outdirname: str = ''
     
     # Bulk configuration
     bulk_configuration: Any = None
-    
-    # Localization labels
-    dos_xlabel: Dict = field(default_factory=dict)
-    dos_ylabel: Dict = field(default_factory=dict)
-    band_ylabel: Dict = field(default_factory=dict)
     
     def __post_init__(self):
         """Initialize default values that depend on other objects."""
@@ -543,31 +537,20 @@ class dftsolve:
         self.Opt_omega2 = config.Opt_omega2
         self.Opt_cut_of_energy = config.Opt_cut_of_energy
         self.Opt_nblocks = config.Opt_nblocks
-        self.MPI_cores = config.MPI_cores
-        self.Localisation = config.Localisation
         self.bulk_configuration = config.bulk_configuration
-        self.dos_xlabel = config.dos_xlabel
-        self.dos_ylabel = config.dos_ylabel
-        self.band_ylabel = config.band_ylabel
         
-        if not self.dos_xlabel:
-            self.dos_xlabel.update({
-                'en_UK':'Energy [eV]', 'tr_TR':'Enerji [eV]', 'de_DE':'Energie [eV]', 
-                'fr_FR':'Énergie [eV]', 'ru_RU':'Энергия [эВ]', 'zh_CN':'能量 [eV]', 
-                'ko_KR':'에너지 [eV]', 'ja_JP':'エネルギー [eV]'
-            })
-        if not self.dos_ylabel:
-            self.dos_ylabel.update({
-                'en_UK':'DOS [1/eV]', 'tr_TR':'Durum Yoğunluğu [1/eV]', 'de_DE':'Zustandsdichte [1/eV]',
-                'fr_FR':'DOS [1/eV]', 'ru_RU':'Плотность состояний [1/эВ]', 'zh_CN':'态密度 [1/eV]',
-                'ko_KR':'상태 밀도 [1/eV]', 'ja_JP':'状態密度 [1/eV]'
-            })
-        if not self.band_ylabel:
-            self.band_ylabel.update({
-                'en_UK':'Energy [eV]', 'tr_TR':'Enerji [eV]', 'de_DE':'Energie [eV]',
-                'fr_FR':'Énergie [eV]', 'ru_RU':'Энергия [эВ]', 'zh_CN':'能量 [eV]',
-                'ko_KR':'에너지 [eV]', 'ja_JP':'エネルギー [eV]'
-            })
+        from nanoworks.localization import Translator
+        
+        # Control localisation/localization
+        if hasattr(self.config, 'Localization'):
+            current_lang = self.config.Localization
+        elif hasattr(self.config, 'Localisation'):
+            current_lang = self.config.Localisation
+        else:
+            current_lang = "en"  # İkisi de yoksa İngilizce
+            
+        # translator function
+        self._t = Translator(lang_code=current_lang).get
         
 
     def structurecalc(self):
@@ -1104,8 +1087,8 @@ class dftsolve:
             
             ax = plt.gca()
             ax.plot(energies, dos, 'purple', label='DOS (SOC)')
-            ax.set_xlabel(self.dos_xlabel[self.Localisation])
-            ax.set_ylabel(self.dos_ylabel[self.Localisation])
+            ax.set_xlabel(self._t("fig_dos_xlabel"))
+            ax.set_ylabel(self._t("fig_dos_ylabel"))
             plt.xlim(self.Energy_min, self.Energy_max)
             plt.legend()
             
@@ -1351,15 +1334,15 @@ class dftsolve:
                 ax = plt.gca()
                 ax.plot(downf[0], -1.0*downf[1], 'y')
                 ax.plot(upf[0], upf[1], 'b')
-                ax.set_xlabel(self.dos_xlabel[self.Localisation])
-                ax.set_ylabel(self.dos_ylabel[self.Localisation])
+                ax.set_xlabel(self._t("fig_dos_xlabel"))
+                ax.set_ylabel(self._t("fig_dos_ylabel"))
             else:
                 dosf = pd.read_csv(self.struct+'-DOS-Result-DOS.csv', header=None)
                 dosf[0]=dosf[0]+ef
                 ax = plt.gca()
                 ax.plot(dosf[0], dosf[1], 'b')
-                ax.set_xlabel(self.dos_xlabel[self.Localisation])
-                ax.set_ylabel(self.dos_ylabel[self.Localisation])
+                ax.set_xlabel(self._t("fig_dos_xlabel"))
+                ax.set_ylabel(self._t("fig_dos_ylabel"))
             plt.xlim(self.Energy_min+ef, self.Energy_max+ef)
             autoscale_y(ax)
             plt.savefig(self.struct+'-DOS-Graph-DOS.png', dpi=300)
@@ -1521,7 +1504,7 @@ class dftsolve:
             if self.SOC_calc and not self.Spin_calc:
                 from ase.spectrum.band_structure import BandStructure
                 bs = BandStructure(path=bs.path, energies=np.array([soc_evals]), reference=ef)
-            bs.plot(filename=self.struct+'-BAND-Graph-Band.png', show=False, emax=self.Energy_max + bs.reference, emin=self.Energy_min + bs.reference, ylabel=self.band_ylabel[self.Localisation])
+            bs.plot(filename=self.struct+'-BAND-Graph-Band.png', show=False, emax=self.Energy_max + bs.reference, emin=self.Energy_min + bs.reference, ylabel=self._t("fig_band_ylabel"))
 
     def densitycalc(self):
         """

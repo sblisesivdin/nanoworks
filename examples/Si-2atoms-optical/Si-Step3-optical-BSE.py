@@ -29,5 +29,4 @@ Opt_nblocks = world.size   # Split matrices in nblocks blocks and distribute the
                            # or frequencies over processes or can use world.size
 
 #GENERAL
-MPI_cores = 4            # Number of cores in calculation.
-Localisation = "en_UK"  # Localisation setting for figures. en_UK is default.
+Localization = "en_UK"  # Localization setting for figures. en_UK is default.

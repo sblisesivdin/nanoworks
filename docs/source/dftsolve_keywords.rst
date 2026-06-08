@@ -128,7 +128,7 @@ General Keywords
 
     Energy_max = 10  # eV
 
-.. describe:: Localisation
+.. describe:: Localization
 
     :Type: ``str``
     :Default: ``en_UK``

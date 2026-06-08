@@ -58,4 +58,4 @@ Total_charge = 0.0       # Total charge. Normally 0.0 for a neutral system.
 #GENERAL
 Energy_min = -5 		# eV. It is the minimum energy value for band structure and DOS figures.
 Energy_max = 5  		# eV. It is the maximum energy value for band structure and DOS figures.
-# Localisation = "tr_TR" # Localisation setting for figures. en_UK is default.
+# Localization = "tr_TR" # Localization setting for figures. en_UK is default.
