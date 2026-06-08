@@ -57,7 +57,6 @@ Refine_grid = 4          # refine grid for all electron density (1, 2 [=default]
 Total_charge = 0.0       # Total charge. Normally 0.0 for a neutral system.
 
 #GENERAL
-MPI_cores = 4            # Number of cores in calculation.
 Energy_min = -5 		# eV. It is the minimum energy value for band structure and DOS figures.
 Energy_max = 5  		# eV. It is the maximum energy value for band structure and DOS figures.
 Localization = "en_UK"  # Localization setting for figures. en_UK is default.

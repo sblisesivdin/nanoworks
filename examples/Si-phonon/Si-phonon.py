@@ -57,7 +57,6 @@ Phonon_npoints = 61
 Phonon_acoustic_sum_rule = True
 
 #GENERAL
-MPI_cores = 4            # Number of cores in calculation.
 Energy_min = -5 		# eV. It is the minimum energy value for band structure and DOS figures.
 Energy_max = 5  		# eV. It is the maximum energy value for band structure and DOS figures.
 Localization = "en_UK"  # Localization setting for figures. en_UK is default.
