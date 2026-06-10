@@ -339,9 +339,44 @@ Electronic Calculations Keywords
 
     Exchange-correlation functional. Relax_cell keyword must be [False, False, False, False, False, False] with GLLBSC, HSE03 and HSE06.
 
+    The hybrid functionals (``HSE06``, ``HSE03``, ``PBE0``, ``B3LYP``, ``EXX``) use GPAW's plane-wave hybrid backend. They are automatically run with plane-wave parallelisation and a single-iteration Davidson eigensolver, and they can not use cell relaxation or stress-based (elastic/phonon) calculations. For DOS and band structure the eigenvalues are referenced to the converged ground-state Fermi level.
+
 .. code-block:: python
 
     XC_calc = 'PBE'
+
+.. describe:: XC_exx_fraction
+
+    :Type: ``float`` or ``None``
+    :Default: ``None``
+
+    Exact-exchange (Hartree-Fock) fraction for hybrid functionals. When ``None`` the functional's documented default is used (e.g. 0.25 for HSE06/PBE0). Only used when ``XC_calc`` is a hybrid.
+
+.. code-block:: python
+
+    XC_exx_fraction = 0.25
+
+.. describe:: XC_omega
+
+    :Type: ``float`` or ``None``
+    :Default: ``None``
+
+    Screening parameter (range-separation, in 1/Bohr) for screened hybrids such as HSE06/HSE03. When ``None`` the functional default is used (e.g. 0.11 for HSE06). Only used when ``XC_calc`` is a hybrid.
+
+.. code-block:: python
+
+    XC_omega = 0.11
+
+.. describe:: XC_backend
+
+    :Type: ``string``
+    :Default: ``pw``
+
+    Backend used to evaluate hybrid functionals. Currently ``pw`` (plane-wave) is recommended and used by default. Only used when ``XC_calc`` is a hybrid.
+
+.. code-block:: python
+
+    XC_backend = 'pw'
 
 .. describe:: Ground_convergence
 

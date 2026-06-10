@@ -15,6 +15,26 @@ import os
 import shutil
 import subprocess
 
+# Exchange-correlation functionals that are treated as hybrids in GPAW's
+# plane-wave backend. These require the dict-style xc selection, plane-wave
+# parallelisation and a single-iteration Davidson eigensolver. They also can
+# NOT be treated with fixed_density() because the exchange operator depends on
+# the occupied orbitals, not only on the density.
+HYBRID_XC = ('HSE06', 'HSE03', 'B3LYP', 'PBE0', 'EXX')
+
+
+def is_hybrid(xc_calc):
+    """
+    Return True if the requested exchange-correlation functional is a hybrid
+    that needs the special plane-wave hybrid workflow (HSE06, HSE03, B3LYP,
+    PBE0, EXX). Centralising this test avoids repeating the membership list in
+    every calculation method.
+    """
+    if xc_calc is None:
+        return False
+    return str(xc_calc).upper() in HYBRID_XC
+
+
 def create_gpaw_calc(*args, **kwargs):
     """
     Central factory for all GPAW calculators
@@ -22,6 +42,23 @@ def create_gpaw_calc(*args, **kwargs):
     # With New GPAW, we may continue with legacy GPAW for a while.
     # kwargs['legacy_gpaw'] = True 
     return GPAW(*args, **kwargs)
+
+
+def build_hybrid_xc(xc_calc, exx_fraction=None, omega=None, backend='pw'):
+    """
+    Build the dict-style xc parameter for a plane-wave hybrid functional.
+
+    Optional exact-exchange fraction (alpha) and screening parameter (omega)
+    are added only when explicitly provided, so the GPAW defaults for each
+    named functional (e.g. omega=0.11, fraction=0.25 for HSE06) are preserved
+    otherwise.
+    """
+    xc = {'name': str(xc_calc).upper(), 'backend': backend}
+    if exx_fraction is not None:
+        xc['fraction'] = exx_fraction
+    if omega is not None:
+        xc['omega'] = omega
+    return xc
 
 def log_energy_consumption(meter, struct_name):
     """
@@ -186,6 +223,12 @@ class DFTConfig:
     Ground_gpts_z: int = 8
     Setup_params: Dict = field(default_factory=dict)
     XC_calc: str = 'LDA'
+    # Optional hybrid (HSE06/HSE03/PBE0/B3LYP/EXX) tuning. When left as None,
+    # GPAW's documented defaults for each functional are used (e.g. HSE06 uses
+    # omega=0.11 1/Bohr and 25% exact exchange).
+    XC_exx_fraction: Optional[float] = None
+    XC_omega: Optional[float] = None
+    XC_backend: str = 'pw'
     Ground_convergence: Dict = field(default_factory=dict)
     Occupation: Dict = field(default_factory=lambda: {'name': 'fermi-dirac', 'width': 0.05})
     Mixer_type: Any = None
@@ -395,6 +438,9 @@ def struct_from_auto(geometryfile):
         f.write(f"Mode = '{config.Mode}'\n")
         f.write(f"Ground_calc = {config.Ground_calc}\n")
         f.write(f"XC_calc = '{config.XC_calc}'\n")
+        f.write(f"XC_exx_fraction = {getattr(config, 'XC_exx_fraction', None)}\n")
+        f.write(f"XC_omega = {getattr(config, 'XC_omega', None)}\n")
+        f.write(f"XC_backend = '{getattr(config, 'XC_backend', 'pw')}'\n")
         f.write(f"Cut_off_energy = {config.Cut_off_energy}\n")
         f.write(f"Gamma = {config.Gamma}\n")
         f.write(f"Optimizer = '{config.Optimizer}'\n")
@@ -490,6 +536,13 @@ class dftsolve:
         self.Ground_gpts_z = config.Ground_gpts_z
         self.Setup_params = config.Setup_params
         self.XC_calc = config.XC_calc
+        self.XC_exx_fraction = getattr(config, 'XC_exx_fraction', None)
+        self.XC_omega = getattr(config, 'XC_omega', None)
+        self.XC_backend = getattr(config, 'XC_backend', 'pw')
+        # Fermi level (eV) of the converged ground state. Stored here so that
+        # the DOS and band methods can reference hybrid eigenvalues correctly
+        # instead of hard-coding 0.0 eV.
+        self.Ground_fermi_level = None
         self.Ground_convergence = config.Ground_convergence
         self.Occupation = config.Occupation
         self.Mixer_type = config.Mixer_type
@@ -596,16 +649,18 @@ class dftsolve:
                 # PW Ground State Calculations
                 parprint("Starting PW ground state calculation...")
                 if True in self.Relax_cell:
-                    if self.XC_calc in ['GLLBSC', 'GLLBSCM', 'HSE06', 'HSE03','B3LYP', 'PBE0','EXX']:
+                    # Cell relaxation needs the stress tensor, which is not
+                    # available for GLLBSC(M) nor for the plane-wave hybrids.
+                    if self.XC_calc in ['GLLBSC', 'GLLBSCM'] or is_hybrid(self.XC_calc):
                         parprint("\033[91mERROR:\033[0m Structure optimization LBFGS can not be used with "+self.XC_calc+" xc.")
                         parprint("Do manual structure optimization, or do with PBE, then use its final CIF as input.")
                         parprint("Exiting...")
                         sys.exit(1)
-                if self.XC_calc in ['HSE06', 'HSE03','B3LYP', 'PBE0','EXX']:
+                if is_hybrid(self.XC_calc):
                     parprint('Starting Hybrid XC calculations...')
                     calc_kwargs = {
                         'mode': PW(ecut=self.Cut_off_energy, force_complex_dtype=True), 
-                        'xc': {'name': self.XC_calc, 'backend': 'pw'}, 
+                        'xc': build_hybrid_xc(self.XC_calc, self.XC_exx_fraction, self.XC_omega, self.XC_backend), 
                         'nbands': '200%',
                         'parallel': {'band': 1, 'kpt': 1},
                         'eigensolver': Davidson(niter=1),
@@ -694,7 +749,15 @@ class dftsolve:
                 else:
                     self.bulk_configuration.set_calculator(calc)
                     self.bulk_configuration.get_potential_energy()
-                
+
+                # Store the ground-state Fermi level so that DOS/band methods
+                # have a valid energy reference, including for hybrids where
+                # get_fermi_level() can not be read back from the NSCF runs.
+                try:
+                    self.Ground_fermi_level = calc.get_fermi_level()
+                except Exception:
+                    self.Ground_fermi_level = None
+
                 calc.write(self.struct+'-GROUND-Result-State.gpw', mode="all")
 
                 # Writes final configuration as CIF file
@@ -829,13 +892,25 @@ class dftsolve:
         
         # Start Elastic calc
         time151 = time.time()
-        
+
+        # Elastic constants rely on the stress tensor. The plane-wave hybrid
+        # stress is not reliably available in GPAW, so warn the user and use
+        # the proper hybrid calculator settings if a hybrid is requested.
+        if is_hybrid(self.XC_calc):
+            parprint("\033[93mWARNING:\033[0m Elastic constants with hybrid ("+self.XC_calc+") XC rely on stress/forces that are not reliable in plane-wave GPAW.")
+            parprint("It is recommended to compute elastic properties with PBE and use hybrids only for the electronic structure.")
+            elastic_xc = build_hybrid_xc(self.XC_calc, self.XC_exx_fraction, self.XC_omega, self.XC_backend)
+            elastic_parallel = {'band': 1, 'kpt': 1}
+        else:
+            elastic_xc = self.config.XC_calc
+            elastic_parallel = {'domain': world.size}
+
         elastic_kwargs = {
             'mode': PW(ecut=self.config.Cut_off_energy, force_complex_dtype=True),
-            'xc': self.config.XC_calc,
+            'xc': elastic_xc,
             'nbands': '200%',
             'setups': self.config.Setup_params,
-            'parallel': {'domain': world.size},
+            'parallel': elastic_parallel,
             'spinpol': self.config.Spin_calc,
             'kpts': {'size': (self.config.Ground_kpts_x, self.config.Ground_kpts_y, self.config.Ground_kpts_z), 'gamma': self.config.Gamma},
             'mixer': self.config.Mixer_type,
@@ -844,6 +919,9 @@ class dftsolve:
             'convergence': self.config.Ground_convergence,
             'occupations': self.config.Occupation
         }
+        # Hybrids require the single-iteration Davidson eigensolver.
+        if is_hybrid(self.XC_calc):
+            elastic_kwargs['eigensolver'] = Davidson(niter=1)
         
         # Load the optimized (reference) structure
         bulk_atoms = self.bulk_configuration
@@ -1014,6 +1092,36 @@ class dftsolve:
             print('Elastic Calculation: ', round((time152-time151),2), end="\n", file=f1)
 
 
+    def hybrid_fermi_level(self, calc=None):
+        """
+        Return a sensible Fermi-level reference (eV) for hybrid calculations.
+
+        Tries, in order: the value stored from the ground-state run, then the
+        Fermi level of a freshly read ground-state .gpw, then the Fermi level
+        of the calculator passed in. Falls back to 0.0 eV only if nothing is
+        available, instead of unconditionally hard-coding 0.0 eV as before.
+        """
+        if self.Ground_fermi_level is not None and not np.isnan(self.Ground_fermi_level):
+            return self.Ground_fermi_level
+        # Try reading the converged ground-state .gpw written by groundcalc().
+        try:
+            ref_calc = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw')
+            ef = ref_calc.get_fermi_level()
+            if ef is not None and not np.isnan(ef):
+                self.Ground_fermi_level = ef
+                return ef
+        except Exception:
+            pass
+        if calc is not None:
+            try:
+                ef = calc.get_fermi_level()
+                if ef is not None and not np.isnan(ef):
+                    return ef
+            except Exception:
+                pass
+        parprint("\033[93mWARNING:\033[0m Could not determine the Fermi level for the hybrid calculation; using 0.0 eV as reference.")
+        return 0.0
+
     def doscalc(self):
         """
         This method performs density of states (DOS) calculations for the given structure using
@@ -1028,10 +1136,14 @@ class dftsolve:
         # Start DOS calc
         time21 = time.time()
         parprint("Starting DOS calculation...")
-        if self.XC_calc in ['HSE06', 'HSE03','B3LYP', 'PBE0','EXX']:
-            parprint('Passing DOS NSCF calculations...')
+        if is_hybrid(self.XC_calc):
+            # Hybrids can NOT use fixed_density(): the exchange operator
+            # depends on the occupied orbitals, not only on the density. We
+            # therefore read the eigenvalues stored in the converged ground
+            # state and reference them to the ground-state Fermi level.
+            parprint('Passing DOS NSCF calculations (using ground-state eigenvalues for hybrid)...')
             calc = create_gpaw_calc().read(filename=self.struct+'-GROUND-Result-State.gpw')
-            ef=0.0 # Can not find the use get_fermi_level() 
+            ef = self.hybrid_fermi_level(calc)
         else:
             #calc = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw').fixed_density(txt=self.struct+'-DOS-Log-Calculation.txt', convergence = self.DOS_convergence, occupations = self.Occupation)
             calc_load = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw')
@@ -1362,11 +1474,14 @@ class dftsolve:
         # Start Band calc
         time31 = time.time()
         parprint("Starting band structure calculation...")
-        if self.XC_calc in ['HSE06', 'HSE03','B3LYP', 'PBE0','EXX']:
+        if is_hybrid(self.XC_calc):
+            # Hybrids must recompute eigenvalues along the path (no
+            # fixed_density()); the energies are then referenced to the
+            # converged ground-state Fermi level instead of 0.0 eV.
             calc = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw', symmetry='off',kpts={'path': self.Band_path, 'npoints': self.Band_npoints},
                       parallel={'band':1, 'kpt':1}, occupations = self.Occupation,
                       txt=self.struct+'-BAND-Log-Calculation.txt', convergence=self.Band_convergence)
-            ef=0.0
+            ef = self.hybrid_fermi_level()
 
         else:
             calc = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw').fixed_density(kpts={'path': self.Band_path, 'npoints': self.Band_npoints},
@@ -1374,6 +1489,10 @@ class dftsolve:
             ef = calc.get_fermi_level()
 
         calc.get_potential_energy()
+        # For hybrids, refine the reference now that the calculator is
+        # populated, in case the ground-state value was unavailable above.
+        if is_hybrid(self.XC_calc) and (ef is None or ef == 0.0):
+            ef = self.hybrid_fermi_level(calc)
         bs = calc.band_structure()
             
         Band_num_of_bands = calc.get_number_of_bands()
@@ -1571,6 +1690,10 @@ class dftsolve:
         time51 = time.time()
         parprint("Starting phonon calculations.")
 
+        if is_hybrid(self.XC_calc):
+            parprint("\033[93mWARNING:\033[0m Phonon calculations use finite-difference forces; hybrid ("+self.XC_calc+") forces are expensive and unreliable in plane-wave GPAW.")
+            parprint("It is recommended to compute phonons with PBE and use hybrids only for the electronic structure.")
+
         calc = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw')
         self.bulk_configuration.calc = calc
 
@@ -1763,9 +1886,19 @@ class dftsolve:
         if self.Mode == 'PW':
             parprint("Starting optical calculation...")
             try:
-                calc = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw').fixed_density(txt=self.struct+'-OPTICAL-Log-Calculation.txt',
-                        nbands=self.Opt_num_of_bands,parallel={'domain': 1, 'band': 1 },
-                        occupations=FermiDirac(self.Opt_FD_smearing))
+                if is_hybrid(self.XC_calc):
+                    # fixed_density() is invalid for hybrids (the exchange
+                    # operator depends on the orbitals), so we read the
+                    # converged hybrid ground state directly and full-
+                    # diagonalize it for the optical response.
+                    parprint("Hybrid XC detected: reading ground state directly for optical calculation...")
+                    calc = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw',
+                            txt=self.struct+'-OPTICAL-Log-Calculation.txt',
+                            parallel={'domain': 1, 'band': 1 })
+                else:
+                    calc = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw').fixed_density(txt=self.struct+'-OPTICAL-Log-Calculation.txt',
+                            nbands=self.Opt_num_of_bands,parallel={'domain': 1, 'band': 1 },
+                            occupations=FermiDirac(self.Opt_FD_smearing))
             except FileNotFoundError as err:
                 # output error, and return with an error code
                 parprint('\033[91mERROR:\033[0mOptical computations must be done separately. Please do ground calculations first.')
