@@ -1117,8 +1117,8 @@ class dftsolve:
                 ef = calc.get_fermi_level()
                 if ef is not None and not np.isnan(ef):
                     return ef
-            except Exception:
-                pass
+            except Exception as e:
+                parprint("\033[93mWARNING:\033[0m Failed to read Fermi level from provided calculator:", e)
         parprint("\033[93mWARNING:\033[0m Could not determine the Fermi level for the hybrid calculation; using 0.0 eV as reference.")
         return 0.0
 
