@@ -2,6 +2,11 @@
 
 ### Development Version
 
+- Hybrid (HSE06/HSE03/PBE0/B3LYP/EXX) workflow improvements: centralized `is_hybrid()` test and `build_hybrid_xc()` factory, replacing the repeated XC membership lists
+- Hybrid DOS and band-structure energies are now referenced to the converged ground-state Fermi level instead of being hard-coded to 0 eV
+- New optional hybrid keywords `XC_exx_fraction`, `XC_omega` and `XC_backend` to tune the exact-exchange fraction, screening parameter and backend
+- Optical calculations now read the hybrid ground state directly instead of using the invalid `fixed_density()` path for hybrids
+- Elastic and phonon calculations now warn when a hybrid XC is used (stress/forces are unreliable for hybrids) and apply the correct hybrid calculator settings
 - Grimme-D3 correction for van der Walls (vdW) structures.
 - vdW correction example for MoS2 
 - Spin Orbit Coupling (SOC) in PW mode for DOS and Band calculations
