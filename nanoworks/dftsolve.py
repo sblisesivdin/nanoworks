@@ -1110,8 +1110,8 @@ class dftsolve:
             if ef is not None and not np.isnan(ef):
                 self.Ground_fermi_level = ef
                 return ef
-        except Exception:
-            pass
+        except Exception as e:
+            parprint(f"\033[93mWARNING:\033[0m Could not read Fermi level from ground-state file: {e}")
         if calc is not None:
             try:
                 ef = calc.get_fermi_level()
