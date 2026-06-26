@@ -7,19 +7,20 @@
 - New optional hybrid keywords `XC_exx_fraction`, `XC_omega` and `XC_backend` to tune the exact-exchange fraction, screening parameter and backend
 - Optical calculations now read the hybrid ground state directly instead of using the invalid `fixed_density()` path for hybrids
 - Elastic and phonon calculations now warn when a hybrid XC is used (stress/forces are unreliable for hybrids) and apply the correct hybrid calculator settings
-- Grimme-D3 correction for van der Walls (vdW) structures.
+- Grimme-D3 correction for van der Waals (vdW) structures.
 - vdW correction example for MoS2 
 - Spin Orbit Coupling (SOC) in PW mode for DOS and Band calculations
 - SOC example for 2D WSe2
-- New keywords are added to documentation
-- Fix some uninittialized local variable problems
+- New keywords are added to the documentation
+- Fix some uninitialized local variable problems
 - Replace `quit()` usages with `sys.exit()`
-- Create a GPAW factory function for all usage in `dftsolve`. It will maintain a control between legacy GPAW and New GPAW
+- Create a GPAW factory function for all usage in `dftsolve`. It will maintain control between legacy GPAW and New GPAW
 - All Python dependencies and optional dependencies are included in the pyproject.toml
 - New installation page in documentation
 - log_energy_consumption() function is created
-- Because there is no `gg.py` in Nanoworks, variable MPI_cores is not used. It is removed.
+- Because there is no `gg.py` in Nanoworks, the variable MPI_cores is not used. It is removed.
 - New localization system. Variable name is renamed to `Localization`
+- New citing information is added: B. Sarikavak-Lisesivdin, S.B. Lisesivdin "Nanoworks: A multi-scale python-based orchestrator for materials science simulations" Comput. Condens. Mat. 48, e01362 (2026).
 
 
 ### Version 26.3.1 - Mar 23, 2026 
