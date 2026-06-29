@@ -11,6 +11,7 @@
 ![Release date:](https://img.shields.io/github/release-date/sblisesivdin/nanoworks)
 [![Commits:](https://img.shields.io/github/commit-activity/m/sblisesivdin/nanoworks)](https://github.com/sblisesivdin/nanoworks/commits/main)
 [![Last Commit:](https://img.shields.io/github/last-commit/sblisesivdin/nanoworks)](https://github.com/sblisesivdin/nanoworks/commits/main)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fsblisesivdin%2Fnanoworks.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fsblisesivdin%2Fnanoworks?ref=badge_shield)
 
 ## Introduction
 **Nanoworks** is a unified, high-level Python interface for conducting Density Functional Theory (DFT), Molecular Dynamics (MD), and Machine Learning (ML) potential calculations. 
@@ -151,3 +152,6 @@ Many other packages need to be cited. With GPAW, you may need to cite LibXC or c
 
 ## Licensing
 This project is licensed under the terms of the [MIT license](https://opensource.org/licenses/MIT).
+
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fsblisesivdin%2Fnanoworks.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fsblisesivdin%2Fnanoworks?ref=badge_large)
