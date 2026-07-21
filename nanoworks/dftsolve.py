@@ -114,27 +114,37 @@ def check_parallel_restart():
             i += 1
             
     if parallel:
-        gpaw_exe = shutil.which('gpaw')
-        script_path = os.path.abspath(__file__)
-        
-        if gpaw_exe:
-            # Use gpaw -P <cores> python <script> -- <args>
-            cmd = [gpaw_exe, '-P', str(parallel), 'python', script_path, '--'] + filtered_args
+        script_path = os.path.abspath(__file__)    
+        # gpaw -P is deprecated in GPAW 26.7.0+, directly use mpirun/mpiexec
+        mpi_exe = shutil.which('mpiexec') or shutil.which('mpirun') or shutil.which('srun')
+            
+        if mpi_exe:
+            flag = '-n' if 'srun' in mpi_exe else '-np'
+
+            venv_python = sys.executable 
+            
+            os.environ['OMP_NUM_THREADS'] = '1'
+            os.environ['OPENBLAS_NUM_THREADS'] = '1'
+            os.environ['MKL_NUM_THREADS'] = '1'
+            os.environ['VECLIB_MAXIMUM_THREADS'] = '1'
+            os.environ['NUMEXPR_NUM_THREADS'] = '1'
+            
+            # Using venv paths
+            cmd = [mpi_exe, flag, str(parallel), venv_python, script_path] + filtered_args
         else:
-            # Fallback to mpirun -np <cores> python <script> <args>
-            mpirun_exe = shutil.which('mpirun')
-            if mpirun_exe:
-                cmd = [mpirun_exe, '-np', str(parallel), 'python', script_path] + filtered_args
-            else:
-                print("Error: Neither gpaw nor mpirun found for parallel execution.")
-                sys.exit(1)
-        
+            print("Error: mpiexec, mpirun, or srun not found for parallel execution.")
+            sys.exit(1)
+            
         print(f"Restarting with {parallel} cores: {' '.join(cmd)}")
         sys.stdout.flush()
-        # Use execvp to replace the current process
         os.execvp(cmd[0], cmd)
 
 check_parallel_restart()
+
+# Since gpaw-python is removed, the standard python interpreter needs this 
+# environment variable to enable MPI parallelization when imported as a library.
+if "GPAW_MPI_BACKEND" not in os.environ:
+    os.environ["GPAW_MPI_BACKEND"] = "cgpaw" # or "mpi4py"
 
 import getopt, time
 import textwrap
@@ -1147,8 +1157,18 @@ class dftsolve:
         else:
             #calc = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw').fixed_density(txt=self.struct+'-DOS-Log-Calculation.txt', convergence = self.DOS_convergence, occupations = self.Occupation)
             calc_load = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw')
-            # remove 'extensions' (vdW) param
-            calc_load.parameters.pop('extensions', None)
+            # Safe parameter cleanup compatible with GPAW 26.7.0+
+            try:
+                # For older dictionary-style structures
+                if hasattr(calc_load.parameters, 'pop'):
+                    calc_load.parameters.pop('extensions', None)
+                # For newer object-style structures
+                elif hasattr(calc_load.parameters, 'extensions'):
+                    delattr(calc_load.parameters, 'extensions')
+            except Exception:
+                # Safely ignore if 'extensions' is deprecated, removed, 
+                # or read-only in newer ASE/GPAW versions
+                pass
             # Continue with fixed_density
             calc = calc_load.fixed_density(txt=self.struct+'-DOS-Log-Calculation.txt', convergence = self.DOS_convergence, occupations = self.Occupation)
             ef = calc.get_fermi_level()
