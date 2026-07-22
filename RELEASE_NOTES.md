@@ -21,7 +21,7 @@
 - Because there is no `gg.py` in Nanoworks, the variable MPI_cores is not used. It is removed.
 - New localization system. Variable name is renamed to `Localization`
 - New citing information is added: B. Sarikavak-Lisesivdin, S.B. Lisesivdin "Nanoworks: A multi-scale python-based orchestrator for materials science simulations" Comput. Condens. Mat. 48, e01362 (2026).
-
+- Changing the startup scheme of `dftsolve.py` for the new GPAW 26.7.0.
 
 ### Version 26.3.1 - Mar 23, 2026 
 
