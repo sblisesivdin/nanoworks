@@ -1,7 +1,32 @@
 import sys
 import argparse
 from pathlib import Path
+import os
+import shutil
+import importlib.resources as pkg_resources
 import nanoworks
+
+def deploy_examples():
+    # Find the user's home directory
+    home_dir = os.path.expanduser("~")
+    target_dir = os.path.join(home_dir, ".nanoworks", "examples")
+    
+    # Check if the directory already exists to prevent overwriting
+    if os.path.exists(target_dir):
+        print(f"Warning: examples already exist in '{target_dir}'.")
+        return
+
+    print(f"Copying Nanoworks examples to '{target_dir}'...")
+    
+    try:
+        # Locate the 'examples' directory within the installed package
+        source_dir = pkg_resources.files(nanoworks).joinpath("examples")
+        
+        # Copy the directory tree to the target location
+        shutil.copytree(source_dir, target_dir)
+        print("Success! You can find the examples in the ~/.nanoworks/examples directory.")
+    except Exception as e:
+        print(f"An error occurred while copying the examples: {e}")
 
 def find_package_folder(folder_name):
     """
@@ -33,21 +58,50 @@ def find_package_folder(folder_name):
 
 def main():
     parser = argparse.ArgumentParser(prog='nanoworks', description='Nanoworks CLI tool')
-    parser.add_argument('-v', '--version', action='version', version=f'nanoworks: nanoworks: version {nanoworks.__version__}')
-    # Use parse_known_args to avoid exiting on unknown arguments if this is used as a wrapper
-    parser.parse_args()
-    import ase
-    import gpaw
-    import phonopy
-    try:
-        import asap3
-    except ImportError:
+    parser.add_argument('-v', '--version', action='store_true', help='Show version and detailed library information')
+    parser.add_argument('--install-examples', action='store_true', help='Copy example files to ~/.nanoworks/Examples')
+    
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(0)
+    
+    # Parse the arguments. Using parse_known_args to avoid exiting on unknown arguments 
+    args, unknown = parser.parse_known_args()
+
+    # If the user passes the --install-examples flag, run the function and exit
+    if args.install_examples:
+        deploy_examples()
+        sys.exit(0)
+    
+    if args.version:
+        import ase
+        import gpaw
+        import phonopy
+        try:
+            import asap3
+        except ImportError:
+            print("----------------------------------")
+            print("Welcome to Nanoworks!")
+            print(f"Version: {nanoworks.__version__}")
+            print("----------------------------------")
+            print("Libraries used:") 
+            print(f"ASE: {ase.__version__}, GPAW: {gpaw.__version__}, Phonopy: {phonopy.__version__}")
+            print("----------------------------------")
+            folders = ["optimizations", "examples"]
+            for folder in folders:
+                path = find_package_folder(folder)
+                if path:
+                    print(f"{folder.capitalize()} folder: {path}")
+                else:
+                    print(f"Could not locate {folder} folder. (It may not be included in the installation)")
+            sys.exit(1)
+        
         print("----------------------------------")
         print("Welcome to Nanoworks!")
         print(f"Version: {nanoworks.__version__}")
         print("----------------------------------")
         print("Libraries used:") 
-        print(f"ASE: {ase.__version__}, GPAW: {gpaw.__version__}, Phonopy: {phonopy.__version__}")
+        print(f"ASE: {ase.__version__}, GPAW: {gpaw.__version__}, Phonopy: {phonopy.__version__}, ASAP3: {asap3.__version__}")
         print("----------------------------------")
         folders = ["optimizations", "examples"]
         for folder in folders:
@@ -56,22 +110,6 @@ def main():
                 print(f"{folder.capitalize()} folder: {path}")
             else:
                 print(f"Could not locate {folder} folder. (It may not be included in the installation)")
-        sys.exit(1)
-    
-    print("----------------------------------")
-    print("Welcome to Nanoworks!")
-    print(f"Version: {nanoworks.__version__}")
-    print("----------------------------------")
-    print("Libraries used:") 
-    print(f"ASE: {ase.__version__}, GPAW: {gpaw.__version__}, Phonopy: {phonopy.__version__}, ASAP3: {asap3.__version__}")
-    print("----------------------------------")
-    folders = ["optimizations", "examples"]
-    for folder in folders:
-        path = find_package_folder(folder)
-        if path:
-            print(f"{folder.capitalize()} folder: {path}")
-        else:
-            print(f"Could not locate {folder} folder. (It may not be included in the installation)")
     
 
 if __name__ == "__main__":
