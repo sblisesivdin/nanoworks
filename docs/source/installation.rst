@@ -99,4 +99,12 @@ Installs `PyTorch <https://pytorch.org/>`_, `MACE (Multi-Atomic Cluster Expansio
 
    (.venv_nw) $ pip3 install "nanoworks[all]"
 
+Installation of Examples
+--------------------------------------------
+Nanoworks software has an examples directory containing numerous examples in the DFT, MD and ML topics. You can copy this directory to the easily accessible ~/.nanoworks/examples location with the following command.
 
+.. code-block:: console
+
+   (.venv_nw) $ nanoworks --install-examples"
+
+Each example contains `README.md` files. You can run the related example with a single command in each example.
