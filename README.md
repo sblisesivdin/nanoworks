@@ -24,7 +24,16 @@ It acts as a wrapper and orchestrator for several powerful scientific libraries,
 
 ## Installation
 
-Nanoworks is a Python package. You can install it with pip. However, because you need many other system libraries and Python libraries to be installed, it is better to look at the [Nanoworks Installation](https://nanoworks.readthedocs.io/en/latest/installation.html) webpage for more detailed installation and usage instructions.
+### Quick Installation
+
+For Debian/Ubuntu systems, run the automated installation script:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/sblisesivdin/nanoworks/refs/heads/main/install_scripts/install-all-Debian-based.sh | bash
+
+### Detailed Installation
+
+Prefer a proper and controlled setup? Nanoworks is a Python package. You can install it with pip. However, because you need many other system libraries and Python libraries to be installed, it is better to look at the [Nanoworks Installation](https://nanoworks.readthedocs.io/en/latest/installation.html) webpage for more detailed installation and usage instructions.
 
 ## Tools & Usage
 

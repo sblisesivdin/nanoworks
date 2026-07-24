@@ -3,11 +3,21 @@ Installation
 
 .. _installation:
 
-Installation of Linux System Configuration 
-------------------------------------------
 
-Debian-based distributions (also Windows 11 with WSL)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Quick Installation of Nanoworks to Linux Systems 
+------------------------------------------------
+
+For Debian/Ubuntu systems, run the automated installation script:
+
+.. code-block:: console
+
+    $ curl -sSL https://raw.githubusercontent.com/sblisesivdin/nanoworks/refs/heads/main/install_scripts/install-all-Debian-based.sh | bash
+
+Detailed Installation of Nanoworks to Linux Systems 
+---------------------------------------------------
+
+Installation of system libraries to Debian-based distributions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You can also use the same commands on a pure Debian-based Linux system or Windows systems with WSL. If you do not know how to install Linux on Windows 11 with WSL, you can view `this video <https://www.youtube.com/watch?v=zZf4YH4WiZo>`_. On the WSL system, you can use either Debian or Ubuntu. We recommend Ubuntu due to the support provided by Microsoft. First, install the required system files:
 
@@ -19,8 +29,8 @@ You can also use the same commands on a pure Debian-based Linux system or Window
                     libfftw3-dev libkim-api-dev openkim-models libkim-api2 pkg-config \
                     task-spooler
 
-Fedora-based distributions
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+Installation of system libraries to Fedora-based distributions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 First, install the required system files:
 
@@ -41,7 +51,7 @@ You also must install `kim-api`, `kim-api-devel`, and `openkim-models`. At the t
    $ sudo dnf install openkim-models-2021.01.28-12.fc43.src.rpm
 
 Creation of GPAW configuration file (Required for high-performance DFT calculations)
-------------------------------------------------------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Although Nanoworks automatically installs all necessary Python libraries, GPAW need some configuration inputs for its compilation. For this, a configuration file must be created before installing Nanoworks. Therefore, creating a config file called `siteconfig.py` file is important. You can use any text editor. Here, we are creating a file with the cat command, writing necessary information inside it, then closing it with the Ctrl-D command (^D).
 
@@ -57,7 +67,7 @@ Although Nanoworks automatically installs all necessary Python libraries, GPAW n
 If you have problems with libraries fftw, scalapack, you can remove them from the `siteconfig.py` file. They are simply optional. However, for better performance, you need these configuration.
 
 Python Virtual Environment Installation
----------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Then, if you do not have a Python environment, create one and activate it:
 
@@ -67,7 +77,7 @@ Then, if you do not have a Python environment, create one and activate it:
    $ source ~/.venv_nw/bin/activate
 
 Installation of Nanoworks and Python Modules
---------------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 There are many Python packages needed to be installed. Nanoworks handles the dependencies automatically.
 
@@ -100,7 +110,7 @@ Installs `PyTorch <https://pytorch.org/>`_, `MACE (Multi-Atomic Cluster Expansio
    (.venv_nw) $ pip3 install "nanoworks[all]"
 
 Installation of Examples
---------------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^
 Nanoworks software has an examples directory containing numerous examples in the DFT, MD and ML topics. You can copy this directory to the easily accessible ~/.nanoworks/examples location with the following command.
 
 .. code-block:: console

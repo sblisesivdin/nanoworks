@@ -11,6 +11,17 @@ It acts as a wrapper and orchestrator for several powerful scientific libraries,
 
     The **gpaw-tools** project began as a script that utilized only ASE and GPAW. Over the course of four years, it evolved into a comprehensive suite leveraging multiple libraries, including ASAP3, Phonopy, Elastic, OpenKIM, and now modern Machine Learning Potentials (MACE, CHGNet, SevenNet).
 
+Quick Installation 
+------------------------------------------------
+
+For Debian/Ubuntu systems, run the automated installation script:
+
+.. code-block:: console
+
+    $ curl -sSL https://raw.githubusercontent.com/sblisesivdin/nanoworks/refs/heads/main/install_scripts/install-all-Debian-based.sh | bash
+    
+For more detailed installation, please use `Nanoworks Installation <https://nanoworks.readthedocs.io/en/latest/installation.html>`_ webpage.
+
 Core Modules
 ------------
 
