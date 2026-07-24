@@ -80,13 +80,13 @@ def main():
         try:
             import asap3
         except ImportError:
-            print("----------------------------------")
+            print("--------------------------------------------------------------------")
             print("Welcome to Nanoworks!")
             print(f"Version: {nanoworks.__version__}")
-            print("----------------------------------")
+            print("--------------------------------------------------------------------")
             print("Libraries used:") 
             print(f"ASE: {ase.__version__}, GPAW: {gpaw.__version__}, Phonopy: {phonopy.__version__}")
-            print("----------------------------------")
+            print("--------------------------------------------------------------------")
             folders = ["optimizations", "examples"]
             for folder in folders:
                 path = find_package_folder(folder)
@@ -94,18 +94,18 @@ def main():
                     print(f"{folder.capitalize()} folder: {path}")
                 else:
                     print(f"Could not locate {folder} folder. (It may not be included in the installation)")
-            print("----------------------------------")
+            print("--------------------------------------------------------------------")
             print("If you do not have examples, run nanoworks --install-examples")
             print("and then continue with each example. Every example has its own README.md")
             sys.exit(1)
         
-        print("----------------------------------")
+        print("--------------------------------------------------------------------")
         print("Welcome to Nanoworks!")
         print(f"Version: {nanoworks.__version__}")
-        print("----------------------------------")
+        print("--------------------------------------------------------------------")
         print("Libraries used:") 
         print(f"ASE: {ase.__version__}, GPAW: {gpaw.__version__}, Phonopy: {phonopy.__version__}, ASAP3: {asap3.__version__}")
-        print("----------------------------------")
+        print("--------------------------------------------------------------------")
         folders = ["optimizations", "examples"]
         for folder in folders:
             path = find_package_folder(folder)
@@ -113,9 +113,9 @@ def main():
                 print(f"{folder.capitalize()} folder: {path}")
             else:
                 print(f"Could not locate {folder} folder. (It may not be included in the installation)")
-        print("----------------------------------")
-            print("If you do not have examples, run nanoworks --install-examples")
-            print("and then continue with each example. Every example has its own README.md")
+        print("--------------------------------------------------------------------")
+        print("If you do not have examples, run nanoworks --install-examples")
+        print("and then continue with each example. Every example has its own README.md")
     
 
 if __name__ == "__main__":
