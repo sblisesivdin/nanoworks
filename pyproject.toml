@@ -15,6 +15,7 @@ license = { text = "MIT" }
 authors = [{name = "Sefer Bora Lisesivdin" }, {name = "Beyza Sarikavak-Lisesivdin"}]
 dependencies = [
     "ase>=3.22.0",
+    "gpaw>=26.7.0",
     "spglib",
     "docutils",
     "elastic",

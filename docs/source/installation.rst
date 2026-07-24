@@ -40,6 +40,22 @@ You also must install `kim-api`, `kim-api-devel`, and `openkim-models`. At the t
    $ sudo dnf install kim-api-devel-2.2.1-11.fc43.x86_64.rpm
    $ sudo dnf install openkim-models-2021.01.28-12.fc43.src.rpm
 
+Creation of GPAW configuration file (Required for high-performance DFT calculations)
+------------------------------------------------------------------------------------
+
+Although Nanoworks automatically installs all necessary Python libraries, GPAW need some configuration inputs for its compilation. For this, a configuration file must be created before installing Nanoworks. Therefore, creating a config file called `siteconfig.py` file is important. You can use any text editor. Here, we are creating a file with the cat command, writing necessary information inside it, then closing it with the Ctrl-D command (^D).
+
+.. code-block:: console
+
+   (.venv_nw) $ mkdir -p ~/.gpaw
+   (.venv_nw) $ cat > ~/.gpaw/siteconfig.py
+   fftw = True
+   scalapack = True
+   libraries = ['xc', 'blas', 'fftw3', 'scalapack-openmpi']
+   ^D
+
+If you have problems with libraries fftw, scalapack, you can remove them from the `siteconfig.py` file. They are simply optional. However, for better performance, you need these configuration.
+
 Python Virtual Environment Installation
 ---------------------------------------
 
@@ -53,7 +69,7 @@ Then, if you do not have a Python environment, create one and activate it:
 Installation of Nanoworks and Python Modules
 --------------------------------------------
 
-There are many Python packages needed to be installed. Except GPAW package, which must have some steps to install, Nanoworks handles the dependencies automatically.
+There are many Python packages needed to be installed. Nanoworks handles the dependencies automatically.
 
 If you want to perform DFT calculations only, (which includes `ASE <https://wiki.fysik.dtu.dk/ase/install.html>`_ and all necessary background libraries for `dftsolve`):
 
@@ -83,31 +99,4 @@ Installs `PyTorch <https://pytorch.org/>`_, `MACE (Multi-Atomic Cluster Expansio
 
    (.venv_nw) $ pip3 install "nanoworks[all]"
 
-Installation of GPAW (Required for DFT)
---------------------------------------------
 
-Although Nanoworks automatically installs ASE, `GPAW <https://wiki.fysik.dtu.dk/gpaw/install.html>`_ requires manual compilation specific to your Linux system's MPI and C compilers. Since Nanoworks has already installed ASE in the previous step, you can safely build GPAW now.
-
-Creating a `siteconfig.py` file is important. You can use any text editor. Here, we are creating a file with the cat command, writing necessary information inside it, then closing it with the Ctrl-D command (^D).
-
-.. code-block:: console
-
-   (.venv_nw) $ mkdir -p ~/.gpaw
-   (.venv_nw) $ cat > ~/.gpaw/siteconfig.py
-   fftw = True
-   scalapack = True
-   libraries = ['xc', 'blas', 'fftw3', 'scalapack-openmpi']
-   ^D
-
-If you have problems with libraries fftw, scalapack, you can remove them from the `siteconfig.py` file. They are simply optional. Then continue to install gpaw:
-
-.. code-block:: console
-
-    (.venv_nw) $ pip3 install --upgrade gpaw
-
-Use `gpaw info` to see installation information. However, PAW datasets are not installed yet. To install them, first create a directory under `~/.gpaw` and then install PAW datasets: 
-
-.. code-block:: console
-
-    (.venv_nw) $ mkdir ~/.gpaw/gpaw-setups
-    (.venv_nw) $ gpaw install-data --gpaw ~/.gpaw/gpaw-setups/
