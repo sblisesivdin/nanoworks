@@ -5,6 +5,9 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools]
 packages = ["nanoworks"]
 
+[tool.setuptools.package-data]
+"nanoworks" = ["examples/*", "examples/**/*"]
+
 [project]
 name = "nanoworks"
 version = "26.3.1"
