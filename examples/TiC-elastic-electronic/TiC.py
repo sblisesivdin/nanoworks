@@ -14,7 +14,7 @@ Optical_calc = False     # Calculate the optical properties
 # -------------------------------------------------------------
 # GEOMETRY
 Optimizer = 'QuasiNewton'     # QuasiNewton, GPMin, LBFGS or FIRE
-Max_F_tolerance = 0.0001 	# Maximum force tolerance in LBFGS geometry optimization. Unit is eV/Ang.
+Max_F_tolerance = 0.0005 	# Maximum force tolerance in LBFGS geometry optimization. Unit is eV/Ang.
 Max_step = 0.1          # How far is a single atom allowed to move. Default is 0.2 Ang.
 Alpha = 60.0            # LBFGS only: Initial guess for the Hessian (curvature of energy surface)
 Damping = 1.0           # LBFGS only: The calculated step is multiplied with this number before added to the positions
