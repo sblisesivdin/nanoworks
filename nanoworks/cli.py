@@ -39,7 +39,24 @@ def main():
     import ase
     import gpaw
     import phonopy
-    import asap3
+    try:
+        import asap3
+    except ImportError:
+        print("----------------------------------")
+        print("Welcome to Nanoworks!")
+        print(f"Version: {nanoworks.__version__}")
+        print("----------------------------------")
+        print("Libraries used:") 
+        print(f"ASE: {ase.__version__}, GPAW: {gpaw.__version__}, Phonopy: {phonopy.__version__}")
+        print("----------------------------------")
+        folders = ["optimizations", "examples"]
+        for folder in folders:
+            path = find_package_folder(folder)
+            if path:
+                print(f"{folder.capitalize()} folder: {path}")
+            else:
+                print(f"Could not locate {folder} folder. (It may not be included in the installation)")
+        sys.exit(1)
     
     print("----------------------------------")
     print("Welcome to Nanoworks!")
@@ -55,6 +72,7 @@ def main():
             print(f"{folder.capitalize()} folder: {path}")
         else:
             print(f"Could not locate {folder} folder. (It may not be included in the installation)")
+    
 
 if __name__ == "__main__":
     main()
