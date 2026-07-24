@@ -94,6 +94,9 @@ def main():
                     print(f"{folder.capitalize()} folder: {path}")
                 else:
                     print(f"Could not locate {folder} folder. (It may not be included in the installation)")
+            print("----------------------------------")
+            print("If you do not have examples, run nanoworks --install-examples")
+            print("and then continue with each example. Every example has its own README.md")
             sys.exit(1)
         
         print("----------------------------------")
@@ -110,6 +113,9 @@ def main():
                 print(f"{folder.capitalize()} folder: {path}")
             else:
                 print(f"Could not locate {folder} folder. (It may not be included in the installation)")
+        print("----------------------------------")
+            print("If you do not have examples, run nanoworks --install-examples")
+            print("and then continue with each example. Every example has its own README.md")
     
 
 if __name__ == "__main__":
