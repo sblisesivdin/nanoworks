@@ -15,7 +15,7 @@ then install examples with nanoworks command:
 
     (.venv_nw) $ nanoworks --install-examples
     
- Now your example folder is located in the ``~/.nanoworks/examples/`` 
+Now your example folder is located in the ``~/.nanoworks/examples/`` 
 
 Below is a categorized overview of the available examples and what they demonstrate. You can run any of the example scripts directly using Python.
 
