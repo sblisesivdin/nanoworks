@@ -45,6 +45,7 @@ Documentation
    :caption: Getting Started
 
    installation
+   examples
    usage
 
 .. toctree::
@@ -61,7 +62,6 @@ Documentation
    contributing
    code_of_conduct
    release_notes
-   examples
    license
 
 Indices and tables

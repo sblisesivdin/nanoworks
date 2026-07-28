@@ -123,4 +123,16 @@ Nanoworks includes several optimization scripts (found via the `nanoworks` comma
 Examples
 --------
 
-The package includes an `examples/` directory covering various scenarios. You can find the location of these examples by running the `nanoworks` command.
+The ``nanoworks`` package provides a comprehensive set of examples demonstrating how to use the framework for various types of materials science calculations. To find these examples, firstly activate your virtual environment:
+
+.. code-block:: console
+
+    $ source ~/.venv_nw/bin/activate
+    
+then install examples with nanoworks command:
+
+.. code-block:: console
+
+    (.venv_nw) $ nanoworks --install-examples
+    
+ Now your example folder is located in the ``~/.nanoworks/examples/``. For more information, please visit `Examples <https://nanoworks.readthedocs.io/en/latest/examples.html>`_ webpage.
