@@ -186,17 +186,8 @@ warnings.filterwarnings('ignore')
 
 @dataclass
 class DFTConfig:
-    """Configuration dataclass to hold all DFT calculation parameters.
-    
-    This dataclass replaces the previous global variable approach, providing:
-    - Type hints for better code clarity
-    - Default values in one centralized location
-    - Easier testing and parameter management
-    - Reduced global namespace pollution
-    
-    All parameters that were previously global variables are now encapsulated
-    in this dataclass. The dftsolve class receives a DFTConfig instance and
-    exposes its attributes for backward compatibility.
+    """
+    Configuration dataclass to hold all DFT calculation parameters.
     """
     # Mode and calculation flags
     Mode: str = 'PW'
@@ -259,6 +250,8 @@ class DFTConfig:
     Energy_max: float = 5
     Energy_min: float = -5
     Band_convergence: Dict = field(default_factory=lambda: {'bands': 8})
+    Projected_band_plot: bool = False
+    Projections: List[Dict[str, Any]] = field(default_factory=list)
     
     # Electron density parameters
     Refine_grid: int = 4
@@ -316,6 +309,22 @@ class DFTConfig:
             self.Opt_BSE_conduction = range(4, 7)
         if self.Opt_nblocks is None:
             self.Opt_nblocks = world.size
+        
+        sanitized_projections = []
+        
+        for idx, proj in enumerate(self.Projections):
+            if isinstance(proj, dict):
+                # Rebuild the dictionary with safe defaults if keys are missing
+                safe_proj = {
+                    'atoms': proj.get('atoms', []),
+                    'orbital': proj.get('orbital', None),
+                    'color': proj.get('color', 'blue'),  # Default to blue if missing
+                    'label': proj.get('label', f"Proj-{idx+1}") # Default label if missing
+                }
+                sanitized_projections.append(safe_proj)
+        
+        # Replace the user's raw list with the safely formatted list
+        self.Projections = sanitized_projections
 
 class RawFormatter(HelpFormatter):
     """To print Description variable with argparse"""
@@ -565,6 +574,8 @@ class dftsolve:
         self.DOS_convergence = config.DOS_convergence
         self.Gamma = config.Gamma
         self.Band_path = config.Band_path
+        self.Projected_band_plot = config.Projected_band_plot
+        self.Projections = config.Projections
         self.Band_npoints = config.Band_npoints
         self.Energy_max = config.Energy_max
         self.Energy_min = config.Energy_min
@@ -1619,17 +1630,6 @@ class dftsolve:
                 print("\033[93mWARNING:\033[0m A problem occurred during writing XYYY formatted Band file. Mostly, the file is created without any problem.")
                 print(e)
                 
-            # Projected Band
-            Projected_band = False
-            if Projected_band == True:                
-                with paropen(self.struct+'-BAND-Result-ProjectedBand.dat', 'w') as f3:
-                    for i in range(len(sym_ang_mom_i)):
-                        print('----------------------'+sym_ang_mom_i[i]+'---------------------------', end="\n", file=f3)
-                        for n in range(Band_num_of_bands):
-                            for k in range(self.Band_npoints):
-                                print(k, projector_weight_skni[0, k, n, i], end="\n", file=f3)
-                            print (end="\n", file=f3)
-                
         # Finish Band calc
         time32 = time.time()
         # Write timings of calculation
@@ -1644,7 +1644,144 @@ class dftsolve:
                 from ase.spectrum.band_structure import BandStructure
                 bs = BandStructure(path=bs.path, energies=np.array([soc_evals]), reference=ef)
             bs.plot(filename=self.struct+'-BAND-Graph-Band.png', show=False, emax=self.Energy_max + bs.reference, emin=self.Energy_min + bs.reference, ylabel=self._t("fig_band_ylabel"))
+            
+        # Projected band
+        if self.Projected_band_plot == True:
+            parprint(f"Drawing Projected Band...")
+            self._draw_projectedband(calc)
 
+
+    def _draw_projectedband(self, calc):
+        """
+        Internal method for dftsolve class to plot projected band structures.
+        """
+
+        """from gpaw.utilities.dos import get_angular_projectors
+        """
+        from gpaw.utilities.dos import get_angular_projectors
+        
+        # Get number of spins (1 for non-magnetic, 2 for spin-polarized)
+        nspins = calc.get_number_of_spins()
+        
+        filename = f"{self.struct}-BAND-Result-Projected_band.png"
+        
+        if not self.Projections:
+            if world.rank == 0:
+                print("Warning: 'Projections' list is missing in config. Auto-generating total projection...")
+            total_atoms = len(calc.get_atoms())
+            Projections = [{
+                'atoms': list(range(total_atoms)), 
+                'orbital': None, 
+                'color': 'blue', 
+                'label': 'Total Contribution'
+            }]
+        
+        bs = calc.band_structure()
+
+        x, x_special, labels = bs.path.get_linear_kpoint_axis()
+        
+        # Loop over each spin channel
+        for spin_index in range(nspins):
+            # Dynamic filename based on spin index
+            if nspins == 1:
+                filename = f"{self.struct}-BAND-Result-Projected_band.png"
+            else:
+                spin_label = "Up" if spin_index == 0 else "Down"
+                filename = f"{self.struct}-BAND-Result-Projected_band_Spin_{spin_label}.png"
+            
+            energies = bs.energies[spin_index]  
+            nbands = energies.shape[1]
+            projection_data = []
+            
+            
+            for proj in self.Projections:
+                atom_indices = proj.get('atoms', [])
+                orbital = proj.get('orbital', None)
+                color = proj.get('color', 'blue')
+                label = proj.get('label', f"Atoms: {atom_indices}")
+                
+                # local weights matrice
+                weights_local = np.zeros(energies.shape)
+                
+                for kpt in calc.wfs.kpt_u:
+                    # Skip if the k-point doesn't belong to the current spin channel
+                    if kpt.s != spin_index:
+                        continue
+                    k = kpt.k  # Global k-point index
+                    P_ani = kpt.P_ani
+                    for a in atom_indices:
+                        if a in P_ani:
+                            if orbital is not None:
+                                setup = calc.wfs.setups[a]
+                                proj_indices = get_angular_projectors(setup, orbital, type='bound')
+                                w_n = np.sum(np.abs(P_ani[a][:, proj_indices])**2, axis=1)
+                            else:
+                                w_n = np.sum(np.abs(P_ani[a])**2, axis=1)
+                            # write weights to local k-point index
+                            weights_local[k, :] += w_n
+
+                world.sum(weights_local)
+                
+                projection_data.append((weights_local, color, label))
+
+            legend_handles = []
+            # draw
+            if world.rank == 0:
+                import matplotlib.pyplot as plt
+                from matplotlib.lines import Line2D
+                fig, ax = plt.subplots(figsize=(8, 6))
+                
+                # background standard bands
+                for n in range(nbands):
+                    ax.plot(x, energies[:, n], color='gray', lw=0.5, zorder=1)
+                    
+                # Projections are scatters
+                for weights, color, label in projection_data:
+                    # Draw all scatter points without legend labels
+                    for n in range(nbands):
+                        ax.scatter(
+                            x,
+                            energies[:, n],
+                            s=weights[:, n] * 80,
+                            color=color,
+                            zorder=2,
+                            alpha=0.6,
+                            edgecolors='none'
+                        )
+
+                    # One fixed-size legend entry
+                    legend_handles.append(
+                        Line2D(
+                            [0], [0],
+                            marker='o',
+                            linestyle='None',
+                            markerfacecolor=color,
+                            markeredgecolor='none',
+                            markersize=8,
+                            label=label
+                        )
+                    )
+
+                ax.set_xticks(x_special)
+                ax.set_xticklabels(labels)
+                ax.set_ylabel(self._t("fig_band_ylabel"))
+                ax.set_ylim(self.Energy_min + bs.reference, self.Energy_max + bs.reference)
+                ax.set_xlim(x[0], x[-1])
+                ax.axhline(0, color='black', lw=1.0, ls='-')
+                for x_loc in x_special:
+                    ax.axvline(x_loc, color='black', lw=0.5, ls='--')
+                
+                if legend_handles:
+                    ax.legend(handles=legend_handles,
+                              loc='lower left',
+                              frameon=True,
+                              fontsize=10)
+                    
+                plt.tight_layout()
+                plt.savefig(filename, dpi=300)
+                plt.close()
+
+        
     def densitycalc(self):
         """
         This method performs density calculations for the given structure using the
