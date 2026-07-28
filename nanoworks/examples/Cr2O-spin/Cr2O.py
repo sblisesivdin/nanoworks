@@ -49,6 +49,28 @@ Spin_calc = True        # Spin polarized calculation?
 Magmom_per_atom = 1.0    # Magnetic moment per atom
 Refine_grid = 4             # refine grid for all electron density (1, 2 [=default] and 4)
 Total_charge = 0.0       # Total charge. Normally 0.0 for a neutral system.
+Projected_band_plot = True  # Projected Band Configuration for Cr2O
+# Assumption: Atom 0 and Atom 1 = Cr, Atom 2 = O (same with .cif file)
+
+Projections = [
+    # ==========================================
+    # CHROMIUM (Cr) COMPONENTS
+    # ==========================================
+    # As a transition metal, the d-band is the most critical for magnetism and conductivity.
+    {'atoms': [0, 1], 'orbital': 'd', 'color': 'red',   'label': 'Cr-d'},
+    
+    # Chromium's s-orbitals generally form wider, more dispersed bands.
+    {'atoms': [0, 1], 'orbital': 's', 'color': 'orange','label': 'Cr-s'},
+
+    # ==========================================
+    # OXYGEN (O) COMPONENTS
+    # ==========================================
+    # Oxygen's valence electrons are in p-orbitals, which strongly hybridize with Cr-d.
+    {'atoms': [2],    'orbital': 'p', 'color': 'blue',  'label': 'O-p'},
+    
+    # Oxygen's s-orbitals are usually located in deep valence bands, far below the Fermi level.
+    {'atoms': [2],    'orbital': 's', 'color': 'cyan',  'label': 'O-s'}
+]
 
 #GENERAL
 Energy_min = -5 		# eV. It is the minimum energy value for band structure and DOS figures.

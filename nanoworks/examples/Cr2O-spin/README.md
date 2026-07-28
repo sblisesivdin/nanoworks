@@ -1,6 +1,6 @@
 # Example: Spin-dependent electronic properties of Cr2O
 
-This example is for showing spin dependent calculations. The input files is obtained from (https://materialsproject.org/materials/mp-1206821/) .
+This example is for showing spin dependent calculations. Also calculates the projected band structure for both spins. The input files is obtained from (https://materialsproject.org/materials/mp-1206821/) .
 
 To run with MPI for 4 cores please execute the following command.
 
