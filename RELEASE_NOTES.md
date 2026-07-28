@@ -25,6 +25,7 @@
 - Changing the startup scheme of `dftsolve.py` for the new GPAW 26.7.0.
 - New installation webpage with new order and also new argument for nanoworks command. 
 - New `nanoworks` command with -v, -h and --install-examples.
+- A basic `Examples` page is added to documentation.
 - Many other small changes.
 
 ### Version 26.3.1 - Mar 23, 2026 
@@ -298,7 +299,7 @@
 * Strain minimization in PW only. 
 * BFGS to LBFGS, many changes have been made.
 
-### Preversion
+### First Commit - Aug 3, 2021
 * `PW-Optical-SingleCoreOnly.py` script for optical calculations.
 * `PW-Electronic-changename.py` script for electronic calculations. 
 * First scripts for personal usage.
