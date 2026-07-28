@@ -509,6 +509,102 @@ Electronic Calculations Keywords
 
     Total_charge = 0.0
 
+.. describe:: Projected_band_plot
+
+    :Type: ``boolean``
+    :Default: ``False``
+
+    Enables orbital-projected band structure plotting. When enabled,
+    the contribution of selected atomic orbitals is visualized on the
+    band structure using colored markers. The projections are defined
+    with the ``Projections`` keyword.
+
+.. code-block:: python
+
+    Projected_band_plot = True
+
+.. note::
+
+    The marker size at each k-point is proportional to the projected
+    orbital weight. This makes it possible to identify the orbital
+    character of individual bands and to analyze orbital hybridization
+    between different atomic species.
+
+.. describe:: Projections
+
+    :Type: ``list``
+    :Default: ``[]``
+
+    Defines the atomic orbital projections used for the projected band
+    structure. Each list element is a Python dictionary describing one
+    projection.
+
+    Dictionary fields:
+
+    * ``atoms`` (list of integers)
+        Indices of the atoms whose orbital contributions will be combined.
+        Atom numbering follows the order of atoms in the input structure
+        (CIF, XYZ, POSCAR, etc.).
+
+    * ``orbital`` (string)
+        Orbital type to project. Supported values are ``"s"``, ``"p"``,
+        ``"d"``, and ``"f"`` (depending on the pseudopotential and the
+        atomic species).
+
+    * ``color`` (string)
+        Matplotlib-compatible color used when plotting the projected
+        contribution.
+
+    * ``label`` (string)
+        Text displayed in the plot legend.
+
+    Multiple projections can be defined simultaneously. Contributions
+    from atoms listed in the same ``atoms`` entry are summed before
+    plotting.
+
+.. code-block:: python
+
+    Projected_band_plot = True
+
+    # Assumption:
+    # Atom 0 and Atom 1 = Cr
+    # Atom 2 = O
+
+    Projections = [
+
+        # Chromium d orbitals
+        {
+            'atoms': [0, 1],
+            'orbital': 'd',
+            'color': 'red',
+            'label': 'Cr-d'
+        },
+
+        # Chromium s orbitals
+        {
+            'atoms': [0, 1],
+            'orbital': 's',
+            'color': 'orange',
+            'label': 'Cr-s'
+        },
+
+        # Oxygen p orbitals
+        {
+            'atoms': [2],
+            'orbital': 'p',
+            'color': 'blue',
+            'label': 'O-p'
+        },
+
+        # Oxygen s orbitals
+        {
+            'atoms': [2],
+            'orbital': 's',
+            'color': 'cyan',
+            'label': 'O-s'
+        }
+    ]
+
 Phonon Calculations Keywords
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
