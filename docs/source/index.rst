@@ -37,6 +37,13 @@ Please do not forget that Nanoworks is a wrapper/orchestrator software. For the 
 
 * **B. Sarikavak-Lisesivdin, S.B. Lisesivdin "Nanoworks: A multi-scale python-based orchestrator for materials science simulations" Comput. Condens. Mat. 48, e01362 (2026).**
 
+Spread the word
+---------------
+
+If you like Nanoworks and want to share it with your colleagues or students, you can print out our promotional poster and pin it to your department or laboratory boards! 
+
+* :download:`Download Nanoworks Promotional Poster (PDF) <_static/Nanoworks_poster.pdf>`
+
 Documentation
 -------------
 
