@@ -6,6 +6,47 @@ INSTALL_DIR="$HOME/$ENV_NAME"
 USERNAME=$(whoami)
 
 echo "Starting installation script for GPAW and related tools..."
+echo ""
+
+# ---------------------------------------------------------
+# INTERACTIVE INSTALLATION MENU
+# ---------------------------------------------------------
+echo "================================================="
+echo " Select the Nanoworks installation mode: "
+echo "================================================="
+echo "  1) DFT only        (pip install nanoworks)"
+echo "  2) DFT + MD        (pip install nanoworks[md])"
+echo "  3) DFT + ML        (pip install nanoworks[ml])"
+echo "  4) DFT + MD + ML   (pip install nanoworks[all]) [Default]"
+echo "================================================="
+
+# Read input directly from the terminal to prevent curl piping issues
+read -r -p "Enter your choice [1-4, default=4]: " choice < /dev/tty || choice="4"
+
+case "$choice" in
+    1)
+        NW_PACKAGE="nanoworks"
+        MODE_NAME="DFT only"
+        ;;
+    2)
+        NW_PACKAGE="nanoworks[md]"
+        MODE_NAME="DFT + MD"
+        ;;
+    3)
+        NW_PACKAGE="nanoworks[ml]"
+        MODE_NAME="DFT + ML"
+        ;;
+    *)
+        NW_PACKAGE="nanoworks[all]"
+        MODE_NAME="DFT + MD + ML"
+        ;;
+esac
+
+echo ""
+echo "-> You selected: $MODE_NAME ($NW_PACKAGE)"
+echo "-> Proceeding with system setup..."
+echo ""
+# ---------------------------------------------------------
 
 # Update and upgrade system packages
 echo "Updating and upgrading system packages..."
@@ -32,15 +73,13 @@ scalapack = True
 libraries = ['xc', 'blas', 'fftw3', 'scalapack-openmpi']
 EOL
 
-# Install Nanoworks
-echo "Installing Nanoworks [DFT, MD and ML]..."
-
-# Add Nanoworks directory to PATH in .bashrc
-pip install "nanoworks[all]"
+# Install Nanoworks using the user's selected package
+echo "Installing $NW_PACKAGE..."
+pip install "$NW_PACKAGE"
 
 echo "Creating examples folder..."
 nanoworks --install-examples
 echo "Examples folder is installed to ~/.nanoworks/examples ..."
+
 # Final message
 echo "Installation complete!"
-

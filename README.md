@@ -29,7 +29,7 @@ It acts as a wrapper and orchestrator for several powerful scientific libraries,
 For Debian/Ubuntu systems, run the automated installation script:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/sblisesivdin/nanoworks/refs/heads/main/install_scripts/install-all-Debian-based.sh | bash
+curl -fsSL https://raw.githubusercontent.com/sblisesivdin/nanoworks/refs/heads/main/install_scripts/install-all-Debian-based.sh | bash
 ```
 
 ### Detailed Installation

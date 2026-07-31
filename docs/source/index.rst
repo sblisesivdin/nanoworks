@@ -18,7 +18,7 @@ For Debian/Ubuntu systems, run the automated installation script:
 
 .. code-block:: console
 
-    $ curl -sSL https://raw.githubusercontent.com/sblisesivdin/nanoworks/refs/heads/main/install_scripts/install-all-Debian-based.sh | bash
+    $ curl -fsSL https://raw.githubusercontent.com/sblisesivdin/nanoworks/refs/heads/main/install_scripts/install-all-Debian-based.sh | bash
     
 For more detailed installation, please use `Nanoworks Installation <https://nanoworks.readthedocs.io/en/latest/installation.html>`_ webpage.
 
