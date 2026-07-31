@@ -81,15 +81,19 @@ Optimize a structure using MACE (assuming parameters are in `ml_input.py`)
 nanoworks
 ------------
 
-A helper CLI to locate package resources like examples and optimization scripts. For now, it is only showing helpful information. In future, it will be equipped with more 
+A helper CLI to locate package resources like examples and optimization scripts. For now, it has only ``-h``, ``-h`` and ``--install-examples`` arguments. In future, it will be equipped with more 
 
 .. code-block:: console
 
-   $ nanoworks
-   Welcome to Nanoworks!
-   Version: 0.0.1
-   Optimizations folder: /path/to/site-packages/nanoworks/optimizations
-   Examples folder: /path/to/site-packages/nanoworks/examples
+    (.venv-nw) $ nanoworks
+    usage: nanoworks [-h] [-v] [--install-examples]
+    
+    Nanoworks CLI tool
+    
+    options:
+      -h, --help          show this help message and exit
+      -v, --version       Show version and detailed library information
+      --install-examples  Copy example files to ~/.nanoworks/Examples
 
 qeconverter 
 -----------
@@ -134,5 +138,5 @@ then install examples with nanoworks command:
 .. code-block:: console
 
     (.venv_nw) $ nanoworks --install-examples
-    
- Now your example folder is located in the ``~/.nanoworks/examples/``. For more information, please visit `Examples <https://nanoworks.readthedocs.io/en/latest/examples.html>`_ webpage.
+
+Now your example folder is located in the ``~/.nanoworks/examples/``. For more information, please visit `Examples <https://nanoworks.readthedocs.io/en/latest/examples.html>`_ webpage.
