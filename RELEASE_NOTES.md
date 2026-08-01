@@ -2,23 +2,23 @@
 
 ### Development Version
 
-- Hybrid (HSE06/HSE03/PBE0/B3LYP/EXX) workflow improvements: centralized `is_hybrid()` test and `build_hybrid_xc()` factory, replacing the repeated XC membership lists
-- Hybrid DOS and band-structure energies are now referenced to the converged ground-state Fermi level instead of being hard-coded to 0 eV
-- New optional hybrid keywords `XC_exx_fraction`, `XC_omega` and `XC_backend` to tune the exact-exchange fraction, screening parameter and backend
+- Hybrid (HSE06/HSE03/PBE0/B3LYP/EXX) workflow improvements: centralized `is_hybrid()` test and `build_hybrid_xc()` factory, replacing the repeated XC membership lists.
+- Hybrid DOS and band-structure energies are now referenced to the converged ground-state Fermi level instead of being hard-coded to 0 eV.
+- New optional hybrid keywords `XC_exx_fraction`, `XC_omega` and `XC_backend` to tune the exact-exchange fraction, screening parameter and backend.
 - Optical calculations now read the hybrid ground state directly instead of using the invalid `fixed_density()` path for hybrids
-- Elastic and phonon calculations now warn when a hybrid XC is used (stress/forces are unreliable for hybrids) and apply the correct hybrid calculator settings
+- Elastic and phonon calculations now warn when a hybrid XC is used (stress/forces are unreliable for hybrids) and apply the correct hybrid calculator settings.
 - Grimme-D3 correction for van der Waals (vdW) structures.
-- vdW correction example for MoS2 
-- Spin Orbit Coupling (SOC) in PW mode for DOS and Band calculations
-- Projected Band Plotting (Fat band)
-- SOC example for 2D WSe2
-- New keywords are added to the documentation
-- Fix some uninitialized local variable problems
-- Replace `quit()` usages with `sys.exit()`
+- vdW correction example for MoS2 .
+- Spin Orbit Coupling (SOC) in PW mode for DOS and Band calculations.
+- Projected Band Plotting (Fat band).
+- SOC example for 2D WSe2.
+- New keywords are added to the documentation.
+- Fix some uninitialized local variable problems.
+- Replace `quit()` usages with `sys.exit()`.
 - Create a GPAW factory function for all usage in `dftsolve`. It will maintain control between legacy GPAW and New GPAW
-- All Python dependencies and optional dependencies are included in the pyproject.toml
-- New installation page in documentation
-- log_energy_consumption() function is created
+- All Python dependencies and optional dependencies are included in the pyproject.toml.
+- New installation page in documentation.
+- log_energy_consumption() function is created.
 - Because there is no `gg.py` in Nanoworks, the variable MPI_cores is not used. It is removed.
 - New localization system. Variable name is renamed to `Localization`
 - New citing information is added: B. Sarikavak-Lisesivdin, S.B. Lisesivdin "Nanoworks: A multi-scale python-based orchestrator for materials science simulations" Comput. Condens. Mat. 48, e01362 (2026).
@@ -26,6 +26,7 @@
 - New installation webpage with new order and also new argument for nanoworks command. 
 - New `nanoworks` command with -v, -h and --install-examples.
 - A basic `Examples` page is added to documentation.
+- A promotional poster in pdf and odp format is added to documentation.
 - Many other small changes.
 
 ### Version 26.3.1 - Mar 23, 2026 
