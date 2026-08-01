@@ -2334,6 +2334,138 @@ class dftsolve:
         # Write timings of calculation
         with paropen(self.struct+'-TIMINGS-Log-Timings.txt', 'a') as f1:
             print('Optical calculation: ', round((time62-time61),2), end="\n", file=f1)
+        
+        # Plot generated optical data
+        self._plot_optical_results()
+    
+    def _generate_optical_figures(self, data, file_prefix, title_suffix):
+        """
+        Helper method to generate 4 standard optical figures from parsed array data.
+        Forces the 'Agg' backend for matplotlib to prevent X11 server errors on clusters.
+        
+        Args:
+            data (numpy.ndarray): 2D array containing the optical data.
+                                  Col 0: Energy, Col 1: Eps_real, Col 2: Eps_img,
+                                  Col 3: Refractive_Index, Col 4: Extinction_Index,
+                                  Col 5: Absorption, Col 6: Reflectivity
+            file_prefix (str): Prefix string for the saved .png files.
+            title_suffix (str): String appended to the plot titles (e.g., 'BSE' or 'RPA LFC (x)').
+        """
+        import matplotlib
+        matplotlib.use('Agg') # Essential for headless cluster/HPC environments
+        import matplotlib.pyplot as plt
+
+        # Extract columns based on the .dat file structure generated in opticalcalc
+        energy = data[:, 0]
+        eps_real = data[:, 1]
+        eps_img = data[:, 2]
+        n_idx = data[:, 3]
+        k_idx = data[:, 4]
+        absorption = data[:, 5]
+        reflectivity = data[:, 6]
+
+        # ---------------------------------------------------------
+        # 1. Plot Complex Dielectric Function (Epsilon Real & Imag)
+        # ---------------------------------------------------------
+        fig, ax = plt.subplots(figsize=(8, 6))
+        ax.plot(energy, eps_real, label=r'$\epsilon_1$ (Re)', color='blue', linewidth=2)
+        ax.plot(energy, eps_img, label=r'$\epsilon_2$ (Im)', color='red', linestyle='--', linewidth=2)
+        ax.set_xlabel(self._t("fig_optical_xlabel"))
+        ax.set_ylabel('Dielectric Function')
+        ax.set_xlim(left=0) 
+        ax.axhline(y=0, color='black', linestyle='-', linewidth=0.8) 
+        ax.legend(loc='upper right', frameon=True)
+        ax.grid(True, linestyle=':', alpha=0.7)
+        fig.tight_layout()
+        fig.savefig(f"{file_prefix}-Dielectric.png", dpi=300)
+        plt.close(fig)
+
+        # ---------------------------------------------------------
+        # 2. Plot Complex Refractive Index (n & k)
+        # ---------------------------------------------------------
+        fig, ax = plt.subplots(figsize=(8, 6))
+        ax.plot(energy, n_idx, label='n', color='darkgreen', linewidth=2)
+        ax.plot(energy, k_idx, label='k', color='orange', linestyle='--', linewidth=2)
+        ax.set_xlabel(self._t("fig_optical_xlabel"))
+        ax.set_ylabel('n,k')
+        ax.set_xlim(left=0)
+        ax.legend(loc='upper right', frameon=True)
+        ax.grid(True, linestyle=':', alpha=0.7)
+        fig.tight_layout()
+        fig.savefig(f"{file_prefix}-n-and-k.png", dpi=300)
+        plt.close(fig)
+
+        # ---------------------------------------------------------
+        # 3. Plot Absorption Coefficient
+        # ---------------------------------------------------------
+        fig, ax = plt.subplots(figsize=(8, 6))
+        ax.plot(energy, absorption, label=r'Abs ($\alpha$)', color='purple', linewidth=2)
+        ax.set_xlabel(self._t("fig_optical_xlabel"))
+        ax.set_ylabel(self._t("fig_optical_abs"))
+        ax.set_xlim(left=0)
+        ax.set_ylim(bottom=0) 
+        ax.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+        ax.legend(loc='upper right', frameon=True)
+        ax.grid(True, linestyle=':', alpha=0.7)
+        fig.tight_layout()
+        fig.savefig(f"{file_prefix}-Absorption.png", dpi=300)
+        plt.close(fig)
+
+        # ---------------------------------------------------------
+        # 4. Plot Reflectivity
+        # ---------------------------------------------------------
+        fig, ax = plt.subplots(figsize=(8, 6))
+        ax.plot(energy, reflectivity, label='Ref (R)', color='teal', linewidth=2)
+        ax.set_xlabel(self._t("fig_optical_xlabel"))
+        ax.set_ylabel(self._t("fig_optical_ref"))
+        ax.set_xlim(left=0)
+        ax.set_ylim(bottom=0)
+        ax.legend(loc='upper right', frameon=True)
+        ax.grid(True, linestyle=':', alpha=0.7)
+        fig.tight_layout()
+        fig.savefig(f"{file_prefix}-Reflectivity.png", dpi=300)
+        plt.close(fig)
+
+    def _plot_optical_results(self):
+        """
+        Scans for generated optical .dat files and plots them.
+        Execution is strictly isolated to the master node (rank 0).
+        """
+        from ase.parallel import world, parprint
+        import os
+        import numpy as np
+
+        # Safety check: Ensure only the master core executes plotting
+        if world.rank == 0:
+            parprint("Generating optical property figures...")
+            
+            # 1. Process BSE Data
+            bse_filename = f"{self.struct}-OPTICAL-Result-Calculation-BSE-AllData.dat"
+            if os.path.exists(bse_filename):
+                try:
+                    bse_data = np.loadtxt(bse_filename, skiprows=1)
+                    # Create prefix aligning with Nanoworks standard
+                    file_prefix = f"{self.struct}-OPTICAL-Result-Figure-BSE"
+                    self._generate_optical_figures(bse_data, file_prefix, "BSE")
+                except Exception as e:
+                    print(f"Error plotting BSE data: {e}")
+
+            # 2. Process RPA Data (LFC and NLFC across x, y, z directions)
+            rpa_types = ["LFC", "NLFC"]
+            directions = ["xdirection", "ydirection", "zdirection"]
+
+            for rtype in rpa_types:
+                for direction in directions:
+                    rpa_filename = f"{self.struct}-OPTICAL-Result-Calculation-RPA-{rtype}-AllData_{direction}.dat"
+                    if os.path.exists(rpa_filename):
+                        try:
+                            rpa_data = np.loadtxt(rpa_filename, skiprows=1)
+                            # Create prefix aligning with Nanoworks standard
+                            file_prefix = f"{self.struct}-OPTICAL-Result-Figure-RPA-{rtype}-{direction}"
+                            title_suffix = f"RPA {rtype} ({direction})"
+                            self._generate_optical_figures(rpa_data, file_prefix, title_suffix)
+                        except Exception as e:
+                            print(f"Error plotting RPA data ({rtype}, {direction}): {e}")
 
     def run_gpaw(self, calc, cell):
         cell = convert_atoms_to_ase(cell)

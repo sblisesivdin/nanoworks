@@ -7,7 +7,10 @@ STRINGS = {
     "fig_band_ylabel": "能量 (eV)",
     
     # Optical Properties Figure
-    "fig_optical_energy_x": "能量 (eV)",
+    "fig_optical_xlabel": "能量 (eV)",
+    "fig_optical_dielectric": "介电函数",
+    "fig_optical_abs": r"吸收系数 ($cm^{-1}$)",
+    "fig_optical_ref": "反射率",
     
     # Elastic/Phonon Figures
     "fig_phonon_ylabel": "频率 (THz)"

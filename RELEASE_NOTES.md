@@ -11,6 +11,7 @@
 - vdW correction example for MoS2 .
 - Spin Orbit Coupling (SOC) in PW mode for DOS and Band calculations.
 - Projected Band Plotting (Fat band).
+- Optical calculations plotting. Complex Dielectric Function (Epsilon Real & Imag), Complex Refractive Index (n & k), Absorption Coefficient and Reflectivity plots are produced for all calculated directions.
 - SOC example for 2D WSe2.
 - New keywords are added to the documentation.
 - Fix some uninitialized local variable problems.

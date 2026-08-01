@@ -7,7 +7,10 @@ STRINGS = {
     "fig_band_ylabel": "Enerji (eV)",
     
     # Optical Properties Figure
-    "fig_optical_energy_x": "Enerji (eV)",
+    "fig_optical_xlabel": "Enerji (eV)",
+    "fig_optical_dielectric": "Dielektrik Fonksiyonu",
+    "fig_optical_abs": r"Soğurma Katsayısı ($cm^{-1}$)",
+    "fig_optical_ref": "Yansıtıcılık",
     
     # Elastic/Phonon Figures
     "fig_phonon_ylabel": "Frekans (THz)"
