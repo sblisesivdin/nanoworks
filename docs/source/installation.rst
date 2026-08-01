@@ -39,16 +39,16 @@ First, install the required system files:
    $ sudo dnf update
    $ sudo dnf install python3-devel openblas-devel libxc-devel scalapack-openmpi-devel fftw-devel pkgconf
 
-You also must install `kim-api`, `kim-api-devel`, and `openkim-models`. At the time of writing these instructions, packages for Fedora 43 cannot be installed remotely. Therefore, we must download them, then install them with dnf locally. The order is important:
+You also must install `kim-api`, `kim-api-devel`, and `openkim-models`. At the time of writing these instructions, packages for Fedora 43 and 44 cannot be installed remotely. Therefore, we must download them, then install them with dnf locally. The order is important:
 
 .. code-block:: console
 
    $ wget https://download.copr.fedorainfracloud.org/results/lecris/cmake-ninja/fedora-rawhide-x86_64/08840866-kim-api/kim-api-2.2.1-11.fc43.x86_64.rpm
    $ wget https://download.copr.fedorainfracloud.org/results/lecris/cmake-ninja/fedora-rawhide-x86_64/08840866-kim-api/kim-api-devel-2.2.1-11.fc43.x86_64.rpm
-   $ wget https://download.copr.fedorainfracloud.org/results/lecris/cmake-ninja/fedora-rawhide-x86_64/08841484-openkim-models/openkim-models-2021.01.28-12.fc43.src.rpm
+   $ wget https://download.copr.fedorainfracloud.org/results/lecris/cmake-ninja/fedora-rawhide-x86_64/08841484-openkim-models/openkim-models-2021.01.28-12.fc43.x86_64.rpm
    $ sudo dnf install kim-api-2.2.1-11.fc43.x86_64.rpm
    $ sudo dnf install kim-api-devel-2.2.1-11.fc43.x86_64.rpm
-   $ sudo dnf install openkim-models-2021.01.28-12.fc43.src.rpm
+   $ sudo dnf install openkim-models-2021.01.28-12.fc43.x86_64.rpm
 
 Creation of GPAW configuration file (Required for high-performance DFT calculations)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
