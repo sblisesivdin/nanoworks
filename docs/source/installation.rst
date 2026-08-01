@@ -49,6 +49,13 @@ You also must install `kim-api`, `kim-api-devel`, and `openkim-models`. At the t
    $ sudo dnf install kim-api-2.2.1-11.fc43.x86_64.rpm
    $ sudo dnf install kim-api-devel-2.2.1-11.fc43.x86_64.rpm
    $ sudo dnf install openkim-models-2021.01.28-12.fc43.x86_64.rpm
+   
+Also on Fedora-bades systems, we may need to specify g++ as the C and C++ compiler in the system. After GPAW 26.7.0, the GPAW C-extension will now be built as C++ code.
+
+.. code-block:: console
+
+   (.venv_nw) $ export CC=g++
+   (.venv_nw) $ export CXX=g++
 
 Creation of GPAW configuration file (Required for high-performance DFT calculations)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -57,8 +64,8 @@ Although Nanoworks automatically installs all necessary Python libraries, GPAW n
 
 .. code-block:: console
 
-   (.venv_nw) $ mkdir -p ~/.gpaw
-   (.venv_nw) $ cat > ~/.gpaw/siteconfig.py
+   $ mkdir -p ~/.gpaw
+   $ cat > ~/.gpaw/siteconfig.py
    fftw = True
    scalapack = True
    libraries = ['xc', 'blas', 'fftw3', 'scalapack-openmpi']
@@ -75,6 +82,7 @@ Then, if you do not have a Python environment, create one and activate it:
 
    $ python -m venv ~/.venv_nw
    $ source ~/.venv_nw/bin/activate
+
 
 Installation of Nanoworks and Python Modules
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
