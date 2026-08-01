@@ -728,10 +728,9 @@ class dftsolve:
                 if hasattr(self.config, 'vdW_calc') and self.config.vdW_calc.upper() == 'D3':
                     from ase.calculators.dftd3 import DFTD3
                     gpaw_calc = calc
-                    
-                    # wrap it
-                    calc = DFTD3(dft=gpaw_calc)
-                    calc.write = gpaw_calc.write 
+                    calc = DFTD3(dft=gpaw_calc, xc=self.config.XC_calc)
+                    calc.write = gpaw_calc.write
+
                     if hasattr(gpaw_calc, 'get_fermi_level'): calc.get_fermi_level = gpaw_calc.get_fermi_level
                     parprint("Applying Grimme DFT-D3 via native ASE Wrapper on legacy GPAW...")
                 self.bulk_configuration.calc = calc
@@ -767,6 +766,7 @@ class dftsolve:
                         else:
                             relax = QuasiNewton(self.bulk_configuration, maxstep=self.Max_step, trajectory=self.struct+'-GROUND-Result-Trajectory.traj')
                     relax.run(fmax=self.Max_F_tolerance)  # Consider tighter fmax!
+
                 else:
                     self.bulk_configuration.set_calculator(calc)
                     self.bulk_configuration.get_potential_energy()
@@ -789,6 +789,23 @@ class dftsolve:
                 if not os.path.exists(self.struct+'-GROUND-Result-State.gpw'):
                     parprint('\033[91mERROR:\033[0m'+self.struct+'-GROUND-Result-State.gpw file can not be found. It is needed in other calculations. Firstly, finish the ground state calculation. You must have \033[95mGround_calc = True\033[0m line in your input file. Exiting.')
                     sys.exit(1)
+
+            # A little clean-up
+            if hasattr(self.config, 'vdW_calc') and self.config.vdW_calc.upper() == 'D3':
+                import os, glob
+                clean_path = os.path.join(self.struct, "../..")
+                clean_path = os.path.normpath(clean_path)
+                # Erase the dftd3 temp files from input_dir
+                temp_files = (glob.glob(os.path.join(clean_path, "dftd3_*")) +
+                            glob.glob(os.path.join(clean_path, "ase_dftd3*")) +
+                            [os.path.join(clean_path, ".dftd3_info")])
+
+                for f in temp_files:
+                    try:
+                        if os.path.exists(f):
+                            os.remove(f)
+                    except Exception:
+                        pass
 
         elif self.Mode == 'LCAO':
             if self.Spin_calc == True:
