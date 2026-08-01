@@ -57,12 +57,16 @@ echo "Installing required system packages..."
 sudo apt install -y python3-venv python3-pip unzip python-is-python3 \
                     python3-dev libopenblas-dev libxc-dev libscalapack-mpi-dev \
                     libfftw3-dev libkim-api-dev openkim-models libkim-api2 pkg-config \
-                    task-spooler
+                    task-spooler build-essential
 
 # Create and activate the Python virtual environment
 echo "Creating Python virtual environment..."
 python3 -m venv "$INSTALL_DIR"
 source "$INSTALL_DIR/bin/activate"
+
+# We specify g++ as the C and C++ compiler in the system.
+export CC=g++
+export CXX=g++
 
 # Set up GPAW configurations
 echo "Setting up GPAW configurations..."
@@ -75,7 +79,7 @@ EOL
 
 # Install Nanoworks using the user's selected package
 echo "Installing $NW_PACKAGE..."
-pip install "$NW_PACKAGE"
+pip install "$NW_PACKAGE" --no-cache-dir
 
 echo "Creating examples folder..."
 nanoworks --install-examples

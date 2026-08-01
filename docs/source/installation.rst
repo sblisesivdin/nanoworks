@@ -27,7 +27,7 @@ You can also use the same commands on a pure Debian-based Linux system or Window
    $ sudo apt install -y python3-venv python3-pip unzip python-is-python3 \
                     python3-dev libopenblas-dev libxc-dev libscalapack-mpi-dev \
                     libfftw3-dev libkim-api-dev openkim-models libkim-api2 pkg-config \
-                    task-spooler
+                    task-spooler build-essential
 
 Installation of system libraries to Fedora-based distributions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -87,7 +87,7 @@ If you want to perform DFT calculations only, (which includes `ASE <https://wiki
 
    (.venv_nw) $ pip3 install nanoworks
 
-If you also want to perform Molecular Dynamics (`mdsolve`) or Machine Learning calculations (`mlsolve`), you can install the optional dependencies. Note the use of quotes to prevent terminal parsing errors.
+To prevent potential past faulty installations from being retrieved from the cache, you can add `--no-cache-dir` to the end. If you also want to perform Molecular Dynamics (`mdsolve`) or Machine Learning calculations (`mlsolve`), you can install the optional dependencies. Note the use of quotes to prevent terminal parsing errors.
 
 **For Molecular Dynamics:**
 Installs `ASAP3 <https://wiki.fysik.dtu.dk/asap/>`_ and `KIM <https://openkim.org/kim-api/>`_ (`kimpy <https://github.com/openkim/kimpy>`_).

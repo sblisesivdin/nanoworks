@@ -27,6 +27,7 @@
 - New `nanoworks` command with -v, -h and --install-examples.
 - A basic `Examples` page is added to documentation.
 - A promotional poster in pdf and odp format is added to documentation.
+- Installation notes are updated for Fedora 44.
 - Many other small changes.
 
 ### Version 26.3.1 - Mar 23, 2026 
