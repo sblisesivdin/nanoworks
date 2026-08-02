@@ -741,7 +741,8 @@ class dftsolve:
                         'spinpol': self.Spin_calc,
                         'txt': self.struct+'-GROUND-Log-Calculation.txt',
                         'convergence': self.Ground_convergence, 
-                        'occupations': self.Occupation
+                        'occupations': self.Occupation,
+                        'legacy_gpaw': True
                     }
 
                     if self.Ground_kpts_density is not None:
@@ -1012,6 +1013,7 @@ class dftsolve:
         # Hybrids require the single-iteration Davidson eigensolver.
         if is_hybrid(self.XC_calc):
             elastic_kwargs['eigensolver'] = Davidson(niter=1)
+            elastic_kwargs['legacy_gpaw'] = True
         
         # Load the optimized (reference) structure
         bulk_atoms = self.bulk_configuration
@@ -1232,7 +1234,7 @@ class dftsolve:
             # therefore read the eigenvalues stored in the converged ground
             # state and reference them to the ground-state Fermi level.
             parprint('Passing DOS NSCF calculations (using ground-state eigenvalues for hybrid)...')
-            calc = create_gpaw_calc().read(filename=self.struct+'-GROUND-Result-State.gpw')
+            calc = GPAW(filename=self.struct+'-GROUND-Result-State.gpw', legacy_gpaw=True)
             ef = self.hybrid_fermi_level(calc)
         else:
             calc_load = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw')
@@ -1605,9 +1607,9 @@ class dftsolve:
             # Hybrids must recompute eigenvalues along the path (no
             # fixed_density()); the energies are then referenced to the
             # converged ground-state Fermi level instead of 0.0 eV.
-            calc = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw', symmetry='off',kpts={'path': self.Band_path, 'npoints': self.Band_npoints},
+            calc = GPAW(self.struct+'-GROUND-Result-State.gpw', symmetry='off',kpts={'path': self.Band_path, 'npoints': self.Band_npoints},
                       parallel={'band':1, 'kpt':1}, occupations = self.Occupation,
-                      txt=self.struct+'-BAND-Log-Calculation.txt', convergence=self.Band_convergence)
+                      txt=self.struct+'-BAND-Log-Calculation.txt', convergence=self.Band_convergence, legacy_gpaw=True)
             ef = self.hybrid_fermi_level()
 
         else:
@@ -1946,6 +1948,7 @@ class dftsolve:
         if is_hybrid(self.XC_calc):
             parprint("\033[93mWARNING:\033[0m Phonon calculations use finite-difference forces; hybrid ("+self.XC_calc+") forces are expensive and unreliable in plane-wave GPAW.")
             parprint("It is recommended to compute phonons with PBE and use hybrids only for the electronic structure.")
+            sys.exit(1)
 
         calc = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw')
         self.bulk_configuration.calc = calc
@@ -2147,7 +2150,7 @@ class dftsolve:
                     parprint("Hybrid XC detected: reading ground state directly for optical calculation...")
                     calc = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw',
                             txt=self.struct+'-OPTICAL-Log-Calculation.txt',
-                            parallel={'domain': 1, 'band': 1 })
+                            parallel={'domain': 1, 'band': 1 }, legacy_gpaw=True)
                 else:
                     calc = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw').fixed_density(txt=self.struct+'-OPTICAL-Log-Calculation.txt',
                             nbands=self.Opt_num_of_bands,parallel={'domain': 1, 'band': 1 },
