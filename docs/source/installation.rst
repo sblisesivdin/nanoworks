@@ -83,6 +83,22 @@ Then, if you do not have a Python environment, create one and activate it:
    $ python -m venv ~/.venv_nw
    $ source ~/.venv_nw/bin/activate
 
+OPTIONAL: DFT-D3 Dispersion Correction
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For the DFT-D3 dispersion correction, you need to install the dftd3 package on your system. Legacy dftd3 just works fine.
+
+.. code-block:: console
+
+   (.venv_nw) $ cd ~/.venv_nw/bin
+   (.venv_nw) $ mkdir build_d3
+   (.venv_nw) $ cd build_d3
+   (.venv_nw) $ wget https://www.chemie.uni-bonn.de/grimme/de/software/dft-d3/dftd3.tgz
+   (.venv_nw) $ tar -xzf dftd3.tgz
+   (.venv_nw) $ make
+   (.venv_nw) $ mv dftd3 ../
+   (.venv_nw) $ cd ..
+   (.venv_nw) $ rm -rf build_d3
 
 Installation of Nanoworks and Python Modules
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

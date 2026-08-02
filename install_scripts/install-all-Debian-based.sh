@@ -64,10 +64,6 @@ echo "Creating Python virtual environment..."
 python3 -m venv "$INSTALL_DIR"
 source "$INSTALL_DIR/bin/activate"
 
-# We specify g++ as the C and C++ compiler in the system.
-export CC=g++
-export CXX=g++
-
 # Set up GPAW configurations
 echo "Setting up GPAW configurations..."
 mkdir -p ~/.gpaw
