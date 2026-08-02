@@ -60,27 +60,40 @@ def build_hybrid_xc(xc_calc, exx_fraction=None, omega=None, backend='pw'):
         xc['omega'] = omega
     return xc
 
-def resolve_xc_and_setups(xc_input: Any, user_setups: Optional[Dict] = None) -> tuple[str, Dict[str, Any], bool]:
+def resolve_xc_and_setups(xc_input, user_setups=None):
     """
-    Parses and sanitizes XC functional inputs for GPAW, supporting standard names,
-    explicit 'libxc:' prefixes, and raw libxc component strings while managing
-    default PAW dataset fallbacks.
+    Parses and sanitizes XC functional inputs for GPAW.
+    Determines if the functional belongs to libxc.
     """
     if user_setups is None:
         setups = {}
     else:
-        setups = dict(user_setups)  # Shallow copy to preserve user's original dict
+        setups = dict(user_setups)
 
-    xc_str = str(xc_input).strip()
     is_libxc = False
 
-    # 1. Check for explicit 'libxc:' prefix
+    # Extract string if a dict is provided
+    if isinstance(xc_input, dict):
+        xc_str = str(xc_input.get('name', xc_input.get('xc', ''))).strip()
+    else:
+        xc_str = str(xc_input).strip()
+
+    # Check for 'libxc:' prefix
     if xc_str.lower().startswith("libxc:"):
         xc_str = xc_str[6:].strip()
         is_libxc = True
-    # 2. Smart detection for raw libxc functional strings
-    elif "+" in xc_str or "_X_" in xc_str or "_C_" in xc_str or xc_str.startswith("MGGA_") or xc_str.startswith("GGA_"):
+
+    # Check for broader libxc prefixes
+    elif any(xc_str.startswith(prefix) for prefix in ["MGGA_", "GGA_", "HYB_", "LDA_"]):
         is_libxc = True
+
+    # Check for '+' which strongly indicates a combined libxc functional
+    elif "+" in xc_str:
+        is_libxc = True
+
+    # Note: We deliberately DO NOT force a default 'PBE' setup here.
+    # Forcing it overrides GPAW's native fallback mechanism and causes
+    # FileNotFoundError for concatenated setup names. GPAW handles it natively.
 
     return xc_str, setups, is_libxc
 
