@@ -11,7 +11,7 @@ Description = f'''
 '''
 
 import sys
-import os
+import os, glob
 import shutil
 import subprocess
 
@@ -59,6 +59,34 @@ def build_hybrid_xc(xc_calc, exx_fraction=None, omega=None, backend='pw'):
     if omega is not None:
         xc['omega'] = omega
     return xc
+
+def resolve_xc_and_setups(xc_input: Any, user_setups: Optional[Dict] = None) -> tuple[str, Dict[str, Any], bool]:
+    """
+    Parses and sanitizes XC functional inputs for GPAW, supporting standard names,
+    explicit 'libxc:' prefixes, and raw libxc component strings while managing
+    default PAW dataset fallbacks.
+    """
+    if user_setups is None:
+        setups = {}
+    else:
+        setups = dict(user_setups)  # Shallow copy to preserve user's original dict
+
+    xc_str = str(xc_input).strip()
+    is_libxc = False
+
+    # 1. Check for explicit 'libxc:' prefix
+    if xc_str.lower().startswith("libxc:"):
+        xc_str = xc_str[6:].strip()
+        is_libxc = True
+    # 2. Smart detection for raw libxc functional strings
+    elif "+" in xc_str or "_X_" in xc_str or "_C_" in xc_str or xc_str.startswith("MGGA_") or xc_str.startswith("GGA_"):
+        is_libxc = True
+
+    # 3. Inject PBE fallback for PAW datasets if using a libxc functional without an explicit default
+    if is_libxc and 'default' not in setups:
+        setups['default'] = 'PBE'
+
+    return xc_str, setups, is_libxc
 
 def log_energy_consumption(meter, struct_name):
     """
@@ -480,32 +508,43 @@ def struct_from_auto(geometryfile):
     
     return struct, config
 
-def autoscale_y(ax,margin=0.1):
-    """This function rescales the y-axis based on the data that is visible given the current xlim of the axis.
-    ax -- a matplotlib axes object
-    margin -- the fraction of the total height of the y-data to pad the upper and lower ylims"""
-
+def autoscale_y(ax, margin=0.1):
+    """
+    Automatically scales the Y-axis of a matplotlib ax based on the visible X-limits.
+    """
     import numpy as np
 
     def get_bottom_top(line):
-        xd = line.get_xdata()
-        yd = line.get_ydata()
-        lo,hi = ax.get_xlim()
-        y_displayed = yd[((xd>lo) & (xd<hi))]
+        # Force the data into numpy arrays to allow boolean masking
+        xd = np.asarray(line.get_xdata())
+        yd = np.asarray(line.get_ydata())
+
+        lo, hi = ax.get_xlim()
+
+        # Create a boolean mask for the visible region
+        mask = (xd > lo) & (xd < hi)
+        y_displayed = yd[mask]
+
+        # Safety guard: if there is no data in the visible range, skip
+        if len(y_displayed) == 0:
+            return np.nan, np.nan
+
         h = np.max(y_displayed) - np.min(y_displayed)
-        bot = np.min(y_displayed)-margin*h
-        top = np.max(y_displayed)+margin*h
-        return bot,top
+        bot = np.min(y_displayed) - margin * h
+        top = np.max(y_displayed) + margin * h
+        return bot, top
 
-    lines = ax.get_lines()
-    bot,top = np.inf, -np.inf
+    # Gather limits for all lines plotted in the axis
+    lines = ax.lines
+    bot_top = [get_bottom_top(line) for line in lines]
 
-    for line in lines:
-        new_bot, new_top = get_bottom_top(line)
-        if new_bot < bot: bot = new_bot
-        if new_top > top: top = new_top
+    # Filter out empty/invalid bounds
+    bot_top = [bt for bt in bot_top if not np.isnan(bt[0])]
 
-    ax.set_ylim(bot,top)
+    # Apply the new global min and max to the Y-axis
+    if len(bot_top) > 0:
+        bots, tops = zip(*bot_top)
+        ax.set_ylim(min(bots), max(tops))
 
 class dftsolve:
     """
@@ -657,6 +696,9 @@ class dftsolve:
 
         # Start ground state timing
         time11 = time.time()
+
+        # Resolve XC functional string and PAW setups
+        actual_xc, resolved_setups, is_libxc = resolve_xc_and_setups(self.XC_calc, self.Setup_params)
                 
         if self.Mode == 'PW':
             if self.Spin_calc == True:
@@ -677,7 +719,7 @@ class dftsolve:
                         parprint("Do manual structure optimization, or do with PBE, then use its final CIF as input.")
                         parprint("Exiting...")
                         sys.exit(1)
-                if is_hybrid(self.XC_calc):
+                if is_hybrid(actual_xc):
                     parprint('Starting Hybrid XC calculations...')
                     calc_kwargs = {
                         'mode': PW(ecut=self.Cut_off_energy, force_complex_dtype=True), 
@@ -700,18 +742,18 @@ class dftsolve:
                         calc_kwargs['kpts'] = {'size': (self.Ground_kpts_x, self.Ground_kpts_y, self.Ground_kpts_z), 'gamma': self.Gamma}
                         calc = create_gpaw_calc(**calc_kwargs)
                 else:
-                    parprint('Starting calculations with '+self.XC_calc+'...')
+                    parprint(f'Starting calculations with {actual_xc}...')
                     calc_kwargs = {
-                        'mode': PW(ecut=self.Cut_off_energy, force_complex_dtype=True), 
-                        'xc': self.XC_calc, 
+                        'mode': PW(ecut=self.Cut_off_energy, force_complex_dtype=True),
+                        'xc': actual_xc,
                         'nbands': '200%',
-                        'setups': self.Setup_params,
+                        'setups': resolved_setups,  # Uses resolved setups with fallback if needed
                         'parallel': {'domain': world.size},
                         'mixer': self.Mixer_type,
                         'charge': self.Total_charge,
                         'spinpol': self.Spin_calc,
-                        'txt': self.struct+'-GROUND-Log-Calculation.txt',
-                        'convergence': self.Ground_convergence, 
+                        'txt': self.struct + '-GROUND-Log-Calculation.txt',
+                        'convergence': self.Ground_convergence,
                         'occupations': self.Occupation
                     }
 
@@ -792,7 +834,6 @@ class dftsolve:
 
             # A little clean-up
             if hasattr(self.config, 'vdW_calc') and self.config.vdW_calc.upper() == 'D3':
-                import os, glob
                 clean_path = os.path.join(self.struct, "../..")
                 clean_path = os.path.normpath(clean_path)
                 # Erase the dftd3 temp files from input_dir
@@ -931,6 +972,8 @@ class dftsolve:
         # Start Elastic calc
         time151 = time.time()
 
+        actual_xc, resolved_setups, _ = resolve_xc_and_setups(self.XC_calc, self.Setup_params)
+
         # Elastic constants rely on the stress tensor. The plane-wave hybrid
         # stress is not reliably available in GPAW, so warn the user and use
         # the proper hybrid calculator settings if a hybrid is requested.
@@ -945,9 +988,9 @@ class dftsolve:
 
         elastic_kwargs = {
             'mode': PW(ecut=self.config.Cut_off_energy, force_complex_dtype=True),
-            'xc': elastic_xc,
+            'xc': actual_xc,
             'nbands': '200%',
-            'setups': self.config.Setup_params,
+            'setups': resolved_setups,
             'parallel': elastic_parallel,
             'spinpol': self.config.Spin_calc,
             'kpts': {'size': (self.config.Ground_kpts_x, self.config.Ground_kpts_y, self.config.Ground_kpts_z), 'gamma': self.config.Gamma},
@@ -1171,9 +1214,9 @@ class dftsolve:
         # DOS CALCULATION
         # -------------------------------------------------------------
 
-        # Start DOS calc
         time21 = time.time()
         parprint("Starting DOS calculation...")
+
         if is_hybrid(self.XC_calc):
             # Hybrids can NOT use fixed_density(): the exchange operator
             # depends on the occupied orbitals, not only on the density. We
@@ -1183,98 +1226,95 @@ class dftsolve:
             calc = create_gpaw_calc().read(filename=self.struct+'-GROUND-Result-State.gpw')
             ef = self.hybrid_fermi_level(calc)
         else:
-            #calc = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw').fixed_density(txt=self.struct+'-DOS-Log-Calculation.txt', convergence = self.DOS_convergence, occupations = self.Occupation)
             calc_load = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw')
             # Safe parameter cleanup compatible with GPAW 26.7.0+
             try:
-                # For older dictionary-style structures
                 if hasattr(calc_load.parameters, 'pop'):
                     calc_load.parameters.pop('extensions', None)
-                # For newer object-style structures
                 elif hasattr(calc_load.parameters, 'extensions'):
                     delattr(calc_load.parameters, 'extensions')
             except Exception:
-                # Safely ignore if 'extensions' is deprecated, removed, 
-                # or read-only in newer ASE/GPAW versions
                 pass
+
             # Continue with fixed_density
-            calc = calc_load.fixed_density(txt=self.struct+'-DOS-Log-Calculation.txt', convergence = self.DOS_convergence, occupations = self.Occupation)
+            calc = calc_load.fixed_density(txt=self.struct+'-DOS-Log-Calculation.txt', convergence=self.DOS_convergence, occupations=self.Occupation)
             ef = calc.get_fermi_level()
-        
+
         chem_sym = self.bulk_configuration.get_chemical_symbols()
-        
+
         if self.SOC_calc:
             parprint("Calculating Total DOS with Spin-Orbit Coupling...")
             from gpaw.spinorbit import soc_eigenstates
-            
+
             soc = soc_eigenstates(calc)
-            
-            # Take eigenvalues anduse only real parts
+
+            # Take eigenvalues and use only real parts
             soc_evals_raw = soc.eigenvalues()
             soc_evals = np.real(np.array(soc_evals_raw).flatten())
-            
+
             # NaN error protection for Fermi level
             ef_safe = ef if not np.isnan(ef) else 0.0
             soc_evals = soc_evals - ef_safe
-            
+
             energies = np.linspace(self.Energy_min, self.Energy_max, self.DOS_npoints)
             dos = np.zeros_like(energies)
-            
+
             # Divide by zero protection
             smearing = getattr(self, 'DOS_width', 0.1)
             smearing = max(smearing, 0.01)
-            
+
             # Gaussian smearing
             for e in soc_evals:
-                if not np.isnan(e): # Sadece geçerli sayılar
+                if not np.isnan(e): # Only valid numbers
                     dos += np.exp(-((energies - e) / smearing)**2) / (smearing * np.sqrt(np.pi))
-            
+
             # Normalize with dividing to k-points number
             try:
                 nkpts = max(1, len(calc.get_ibz_k_points()))
             except:
                 nkpts = max(1, len(soc_evals_raw))
             dos /= nkpts
-            
+
             # If data is empty...
             if np.isnan(dos).all() or np.max(dos) == 0.0:
                 parprint("WARNING: Computed SOC-DOS array is empty or NaN. Matplotlib crash prevented.")
-                dos[:] = 0.0 
-            
+                dos[:] = 0.0
+
             with paropen(self.struct+'-DOS-Result-DOS-SOC.csv', "w") as fd:
                 for en, d in zip(energies, dos):
                     print(f"{en}, {d}", file=fd)
-            
-            ax = plt.gca()
-            ax.plot(energies, dos, 'purple', label='DOS (SOC)')
-            ax.set_xlabel(self._t("fig_dos_xlabel"))
-            ax.set_ylabel(self._t("fig_dos_ylabel"))
-            plt.xlim(self.Energy_min, self.Energy_max)
-            plt.legend()
-            
-            # Draw scaling of DOS
-            if np.max(dos) > 0.0 and not np.isnan(dos).all():
-                autoscale_y(ax)
-            else:
-                ax.set_ylim(0, 1)
-                
-            plt.savefig(self.struct+'-DOS-Graph-DOS-SOC.png', dpi=300)
-            plt.clf()
-            
+
+            # Use explicit figure creation to avoid memory overlap
+            if world.rank == 0:
+                fig_soc, ax_soc = plt.subplots(figsize=(8, 6))
+                ax_soc.plot(energies, dos, 'purple', label='DOS (SOC)')
+                ax_soc.set_xlabel(self._t("fig_dos_xlabel"))
+                ax_soc.set_ylabel(self._t("fig_dos_ylabel"))
+                ax_soc.set_xlim(self.Energy_min, self.Energy_max)
+                ax_soc.legend()
+
+                # Draw scaling of DOS
+                if np.max(dos) > 0.0 and not np.isnan(dos).all():
+                    autoscale_y(ax_soc)
+                else:
+                    ax_soc.set_ylim(0, 1)
+
+                plt.tight_layout()
+                plt.savefig(self.struct+'-DOS-Graph-DOS-SOC.png', dpi=300)
+                plt.close(fig_soc)
+
             parprint("Spin-Orbit Total DOS is computed. PDOS is not computed for SOC.")
             return
-            
-        if self.Spin_calc == True:
-            #Spin down
 
-            # RAW PDOS for spin down
+        if self.Spin_calc == True:
+            # ==========================================
+            # SPIN DOWN CALCULATIONS
+            # ==========================================
             parprint("Calculating and saving Raw PDOS for spin down...")
-            if ef==0.0:
-                rawdos = DOSCalculator.from_calculator(filename=self.struct+'-GROUND-Result-State.gpw',soc=False, theta=0.0, phi=0.0, shift_fermi_level=True)
-            else:
-                rawdos = DOSCalculator.from_calculator(filename=self.struct+'-GROUND-Result-State.gpw',soc=False, theta=0.0, phi=0.0, shift_fermi_level=False)
+            rawdos = DOSCalculator.from_calculator(filename=self.struct+'-GROUND-Result-State.gpw', soc=False, theta=0.0, phi=0.0, shift_fermi_level=False)
             energies = rawdos.get_energies(npoints=self.DOS_npoints)
-            # Weights
+
+            # Weights initialization
             pdossweightsdown = [0.0] * self.DOS_npoints
             pdospweightsdown = [0.0] * self.DOS_npoints
             pdospxweightsdown = [0.0] * self.DOS_npoints
@@ -1288,11 +1328,12 @@ class dftsolve:
             pdosdx2_y2weightsdown = [0.0] * self.DOS_npoints
             pdosfweightsdown = [0.0] * self.DOS_npoints
             totaldosweightsdown = [0.0] * self.DOS_npoints
+
             # Writing RawPDOS
             with paropen(self.struct+'-DOS-Result-RawPDOS-EachAtom-Down.csv', "w") as fd:
                 print("Energy, s-total, p-total, px, py, pz, d-total, dxy, dyz, d3z2_r2, dzx, dx2_y2, f-total, TOTAL", file=fd)
                 for j in range(0, self.bulk_configuration.get_global_number_of_atoms()):
-                    print("Atom no: "+str(j+1)+", Atom Symbol: "+chem_sym[j]+" --------------------", file=fd)
+                    print(f"Atom no: {j+1}, Atom Symbol: {chem_sym[j]} --------------------", file=fd)
                     pdoss = rawdos.raw_pdos(energies, a=j, l=0, m=None, spin=0, width=self.DOS_width)
                     pdosp = rawdos.raw_pdos(energies, a=j, l=1, m=None, spin=0, width=self.DOS_width)
                     pdospx = rawdos.raw_pdos(energies, a=j, l=1, m=2, spin=0, width=self.DOS_width)
@@ -1306,20 +1347,20 @@ class dftsolve:
                     pdosdx2_y2 = rawdos.raw_pdos(energies, a=j, l=2, m=4, spin=0, width=self.DOS_width)
                     pdosf = rawdos.raw_pdos(energies, a=j, l=3, m=None, spin=0, width=self.DOS_width)
                     dosspdf = pdoss + pdosp + pdosd + pdosf
-                    # Weights
                     pdossweightsdown = pdossweightsdown + pdoss
                     pdospweightsdown = pdospweightsdown + pdosp
                     pdospxweightsdown = pdospxweightsdown + pdospx
                     pdospyweightsdown = pdospyweightsdown + pdospy
                     pdospzweightsdown = pdospzweightsdown + pdospz
                     pdosdweightsdown = pdosdweightsdown + pdosd
-                    pdosdxyweightsdown = pdosdxyweightsdown + pdosd
-                    pdosdyzweightsdown = pdosdyzweightsdown + pdosd
-                    pdosd3z2_r2weightsdown = pdosd3z2_r2weightsdown + pdosd
-                    pdosdzxweightsdown = pdosdzxweightsdown + pdosd
-                    pdosdx2_y2weightsdown = pdosdx2_y2weightsdown + pdosd
+                    pdosdxyweightsdown = pdosdxyweightsdown + pdosdxy
+                    pdosdyzweightsdown = pdosdyzweightsdown + pdosdyz
+                    pdosd3z2_r2weightsdown = pdosd3z2_r2weightsdown + pdosd3z2_r2
+                    pdosdzxweightsdown = pdosdzxweightsdown + pdosdzx
+                    pdosdx2_y2weightsdown = pdosdx2_y2weightsdown + pdosdx2_y2
                     pdosfweightsdown = pdosfweightsdown + pdosf
                     totaldosweightsdown = totaldosweightsdown + dosspdf
+
                     for x in zip(energies, pdoss, pdosp, pdospx, pdospy, pdospz, pdosd, pdosdxy, pdosdyz, pdosd3z2_r2, pdosdzx, pdosdx2_y2, pdosf, dosspdf):
                         print(*x, sep=", ", file=fd)
 
@@ -1328,7 +1369,7 @@ class dftsolve:
             with paropen(self.struct+'-DOS-Result-DOS-Down.csv', "w") as fd:
                 for x in zip(energies, totaldosweightsdown):
                     print(*x, sep=", ", file=fd)
-                    
+
             # Writing PDOS
             parprint("Saving PDOS for spin down...")
             with paropen(self.struct+'-DOS-Result-PDOS-Down.csv', "w") as fd:
@@ -1337,13 +1378,14 @@ class dftsolve:
                              pdosdxyweightsdown, pdosdyzweightsdown, pdosd3z2_r2weightsdown, pdosdzxweightsdown, pdosdx2_y2weightsdown, pdosfweightsdown, totaldosweightsdown):
                     print(*x, sep=", ", file=fd)
 
-            #Spin up
-
-            # RAW PDOS for spin up
+            # ==========================================
+            # SPIN UP CALCULATIONS
+            # ==========================================
             parprint("Calculating and saving Raw PDOS for spin up...")
-            rawdos = DOSCalculator.from_calculator(self.struct+'-GROUND-Result-State.gpw',soc=False, theta=0.0, phi=0.0, shift_fermi_level=True)
+            rawdos = DOSCalculator.from_calculator(self.struct+'-GROUND-Result-State.gpw', soc=False, theta=0.0, phi=0.0, shift_fermi_level=False)
             energies = rawdos.get_energies(npoints=self.DOS_npoints)
-            # Weights
+
+            # Weights initialization
             pdossweightsup = [0.0] * self.DOS_npoints
             pdospweightsup = [0.0] * self.DOS_npoints
             pdospxweightsup = [0.0] * self.DOS_npoints
@@ -1358,11 +1400,11 @@ class dftsolve:
             pdosfweightsup = [0.0] * self.DOS_npoints
             totaldosweightsup = [0.0] * self.DOS_npoints
 
-            #Writing RawPDOS
+            # Writing RawPDOS
             with paropen(self.struct+'-DOS-Result-RawPDOS-EachAtom-Up.csv', "w") as fd:
                 print("Energy, s-total, p-total, px, py, pz, d-total, dxy, dyz, d3z2_r2, dzx, dx2_y2, f-total, TOTAL", file=fd)
                 for j in range(0, self.bulk_configuration.get_global_number_of_atoms()):
-                    print("Atom no: "+str(j+1)+", Atom Symbol: "+chem_sym[j]+" --------------------", file=fd)
+                    print(f"Atom no: {j+1}, Atom Symbol: {chem_sym[j]} --------------------", file=fd)
                     pdoss = rawdos.raw_pdos(energies, a=j, l=0, m=None, spin=1, width=self.DOS_width)
                     pdosp = rawdos.raw_pdos(energies, a=j, l=1, m=None, spin=1, width=self.DOS_width)
                     pdospx = rawdos.raw_pdos(energies, a=j, l=1, m=2, spin=1, width=self.DOS_width)
@@ -1376,20 +1418,20 @@ class dftsolve:
                     pdosdx2_y2 = rawdos.raw_pdos(energies, a=j, l=2, m=4, spin=1, width=self.DOS_width)
                     pdosf = rawdos.raw_pdos(energies, a=j, l=3, m=None, spin=1, width=self.DOS_width)
                     dosspdf = pdoss + pdosp + pdosd + pdosf
-                    # Weights
                     pdossweightsup = pdossweightsup + pdoss
                     pdospweightsup = pdospweightsup + pdosp
                     pdospxweightsup = pdospxweightsup + pdospx
                     pdospyweightsup = pdospyweightsup + pdospy
                     pdospzweightsup = pdospzweightsup + pdospz
                     pdosdweightsup = pdosdweightsup + pdosd
-                    pdosdxyweightsup = pdosdxyweightsup + pdosd
-                    pdosdyzweightsup = pdosdyzweightsup + pdosd
-                    pdosd3z2_r2weightsup = pdosd3z2_r2weightsup + pdosd
-                    pdosdzxweightsup = pdosdzxweightsup + pdosd
-                    pdosdx2_y2weightsup = pdosdx2_y2weightsup + pdosd
+                    pdosdxyweightsup = pdosdxyweightsup + pdosdxy
+                    pdosdyzweightsup = pdosdyzweightsup + pdosdyz
+                    pdosd3z2_r2weightsup = pdosd3z2_r2weightsup + pdosd3z2_r2
+                    pdosdzxweightsup = pdosdzxweightsup + pdosdzx
+                    pdosdx2_y2weightsup = pdosdx2_y2weightsup + pdosdx2_y2
                     pdosfweightsup = pdosfweightsup + pdosf
                     totaldosweightsup = totaldosweightsup + dosspdf
+
                     for x in zip(energies, pdoss, pdosp, pdospx, pdospy, pdospz, pdosd, pdosdxy, pdosdyz, pdosd3z2_r2, pdosdzx, pdosdx2_y2, pdosf, dosspdf):
                         print(*x, sep=", ", file=fd)
 
@@ -1398,21 +1440,23 @@ class dftsolve:
             with paropen(self.struct+'-DOS-Result-DOS-Up.csv', "w") as fd:
                 for x in zip(energies, totaldosweightsup):
                     print(*x, sep=", ", file=fd)
-            
+
             # Writing PDOS
             parprint("Saving PDOS for spin up...")
             with paropen(self.struct+'-DOS-Result-PDOS-Up.csv', "w") as fd:
                 print("Energy, s-total, p-total, px, py, pz, d-total, dxy, dyz, d3z2_r2, dzx, dx2_y2, f-total, TOTAL", file=fd)
-                for x in zip(energies, pdossweightsup, pdospweightsup, pdospxweightsup, pdospyweightsup, pdospzweightsup, pdosdweightsup, pdosdxyweightsup, 
+                for x in zip(energies, pdossweightsup, pdospweightsup, pdospxweightsup, pdospyweightsup, pdospzweightsup, pdosdweightsup, pdosdxyweightsup,
                              pdosdyzweightsup, pdosd3z2_r2weightsup, pdosdzxweightsup, pdosdx2_y2weightsup, pdosfweightsup, totaldosweightsup):
                     print(*x, sep=", ", file=fd)
 
         else:
-
-            # RAW PDOS
+            # ==========================================
+            # NON-SPIN CALCULATIONS
+            # ==========================================
             parprint("Calculating and saving Raw PDOS...")
-            rawdos = DOSCalculator.from_calculator(self.struct+'-GROUND-Result-State.gpw',soc=False, theta=0.0, phi=0.0, shift_fermi_level=True)
+            rawdos = DOSCalculator.from_calculator(self.struct+'-GROUND-Result-State.gpw', soc=False, theta=0.0, phi=0.0, shift_fermi_level=False)
             energies = rawdos.get_energies(npoints=self.DOS_npoints)
+
             totaldosweights = [0.0] * self.DOS_npoints
             pdossweights = [0.0] * self.DOS_npoints
             pdospweights = [0.0] * self.DOS_npoints
@@ -1431,7 +1475,7 @@ class dftsolve:
             with paropen(self.struct+'-DOS-Result-RawPDOS-EachAtom.csv', "w") as fd:
                 print("Energy, s-total, p-total, px, py, pz, d-total, dxy, dyz, d3z2_r2, dzx, dx2_y2, f-total, TOTAL", file=fd)
                 for j in range(0, self.bulk_configuration.get_global_number_of_atoms()):
-                    print("Atom no: "+str(j+1)+", Atom Symbol: "+chem_sym[j]+" ----------------------------------------", file=fd)
+                    print(f"Atom no: {j+1}, Atom Symbol: {chem_sym[j]} ----------------------------------------", file=fd)
                     pdoss = rawdos.raw_pdos(energies, a=j, l=0, m=None, spin=None, width=self.DOS_width)
                     pdosp = rawdos.raw_pdos(energies, a=j, l=1, m=None, spin=None, width=self.DOS_width)
                     pdospx = rawdos.raw_pdos(energies, a=j, l=1, m=2, spin=None, width=self.DOS_width)
@@ -1444,21 +1488,24 @@ class dftsolve:
                     pdosdzx = rawdos.raw_pdos(energies, a=j, l=2, m=3, spin=None, width=self.DOS_width)
                     pdosdx2_y2 = rawdos.raw_pdos(energies, a=j, l=2, m=4, spin=None, width=self.DOS_width)
                     pdosf = rawdos.raw_pdos(energies, a=j, l=3, m=None, spin=None, width=self.DOS_width)
-                    # Weights
+
                     dosspdf = pdoss + pdosp + pdosd + pdosf
+
+                    # Weights accumulation (CRITICAL BUG FIXED HERE)
                     pdossweights = pdossweights + pdoss
                     pdospweights = pdospweights + pdosp
                     pdospxweights = pdospxweights + pdospx
                     pdospyweights = pdospyweights + pdospy
                     pdospzweights = pdospzweights + pdospz
                     pdosdweights = pdosdweights + pdosd
-                    pdosdxyweights = pdosdxyweights + pdosd
-                    pdosdyzweights = pdosdyzweights + pdosd
-                    pdosd3z2_r2weights = pdosd3z2_r2weights + pdosd
-                    pdosdzxweights = pdosdzxweights + pdosd
-                    pdosdx2_y2weights = pdosdx2_y2weights + pdosd
+                    pdosdxyweights = pdosdxyweights + pdosdxy
+                    pdosdyzweights = pdosdyzweights + pdosdyz
+                    pdosd3z2_r2weights = pdosd3z2_r2weights + pdosd3z2_r2
+                    pdosdzxweights = pdosdzxweights + pdosdzx
+                    pdosdx2_y2weights = pdosdx2_y2weights + pdosdx2_y2
                     pdosfweights = pdosfweights + pdosf
                     totaldosweights = totaldosweights + dosspdf
+
                     for x in zip(energies, pdoss, pdosp, pdospx, pdospy, pdospz, pdosd, pdosdxy, pdosdyz, pdosd3z2_r2, pdosdzx, pdosdx2_y2, pdosf, dosspdf):
                         print(*x, sep=", ", file=fd)
 
@@ -1467,45 +1514,68 @@ class dftsolve:
             with paropen(self.struct+'-DOS-Result-DOS.csv', "w") as fd:
                 for x in zip(energies, totaldosweights):
                     print(*x, sep=", ", file=fd)
-            
+
             # Writing PDOS
             parprint("Saving PDOS...")
             with paropen(self.struct+'-DOS-Result-PDOS.csv', "w") as fd:
                 print("Energy, s-total, p-total, px, py, pz, d-total, dxy, dyz, d3z2_r2, dzx, dx2_y2, f-total, TOTAL", file=fd)
-                for x in zip(energies, pdossweights, pdospweights, pdospxweights, pdospyweights, pdospzweights, pdosdweights, pdosdxyweights, pdosdyzweights, 
+                for x in zip(energies, pdossweights, pdospweights, pdospxweights, pdospyweights, pdospzweights, pdosdweights, pdosdxyweights, pdosdyzweights,
                              pdosd3z2_r2weights, pdosdzxweights, pdosdx2_y2weights, pdosfweights, totaldosweights):
                     print(*x, sep=", ", file=fd)
-                    
+
         # Finish DOS calc
         time22 = time.time()
+
         # Write timings of calculation
         with paropen(self.struct+'-TIMINGS-Log-Timings.txt', 'a') as f1:
-            print('DOS calculation: ', round((time22-time21),2), end="\n", file=f1)
+            print(f'DOS calculation: {round((time22-time21),2)}', file=f1)
 
-        # Write or draw figures
-        # Draw graphs only on master node
         if world.rank == 0:
-            # DOS
+            import pandas as pd
+            fig, ax = plt.subplots(figsize=(8, 6))
+
             if self.Spin_calc == True:
                 downf = pd.read_csv(self.struct+'-DOS-Result-DOS-Down.csv', header=None)
                 upf = pd.read_csv(self.struct+'-DOS-Result-DOS-Up.csv', header=None)
-                downf[0]=downf[0]+ef
-                upf[0]=upf[0]+ef
-                ax = plt.gca()
-                ax.plot(downf[0], -1.0*downf[1], 'y')
-                ax.plot(upf[0], upf[1], 'b')
-                ax.set_xlabel(self._t("fig_dos_xlabel"))
-                ax.set_ylabel(self._t("fig_dos_ylabel"))
+
+                # SUBTRACT the Fermi level (Ef) to shift the 0 point accurately.
+                downf[0] = downf[0] - ef
+                upf[0] = upf[0] - ef
+
+                ax.plot(downf[0], -1.0*downf[1], 'r', linewidth=1.5, label='Spin Down')
+                ax.plot(upf[0], upf[1], 'b', linewidth=1.5, label='Spin Up')
+
+                ax.fill_between(downf[0], 0, -1.0*downf[1], facecolor='red', alpha=0.2)
+                ax.fill_between(upf[0], 0, upf[1], facecolor='blue', alpha=0.2)
+
             else:
                 dosf = pd.read_csv(self.struct+'-DOS-Result-DOS.csv', header=None)
-                dosf[0]=dosf[0]+ef
-                ax = plt.gca()
-                ax.plot(dosf[0], dosf[1], 'b')
-                ax.set_xlabel(self._t("fig_dos_xlabel"))
-                ax.set_ylabel(self._t("fig_dos_ylabel"))
-            plt.xlim(self.Energy_min+ef, self.Energy_max+ef)
+
+                # SUBTRACT the Fermi level (Ef) to shift the 0 point accurately
+                dosf[0] = dosf[0] - ef
+
+                ax.plot(dosf[0], dosf[1], 'b', linewidth=1.5)
+                ax.fill_between(dosf[0], 0, dosf[1], facecolor='blue', alpha=0.2)
+
+            # Axis labels (Using multi-language infrastructure)
+            ax.set_xlabel(self._t("fig_dos_xlabel"))
+            ax.set_ylabel(self._t("fig_dos_ylabel"))
+
+            # Draw a vertical dashed black line exactly at 0 (Fermi Level)
+            ax.axvline(x=0, color='k', linestyle='--', linewidth=1)
+            ax.axhline(y=0, color='k', linewidth=0.8)
+
+            # X limits should now be pure min and max since we shifted the data
+            ax.set_xlim(self.Energy_min, self.Energy_max)
+
             autoscale_y(ax)
+
+            # Layout and Saving
+            plt.tight_layout()
             plt.savefig(self.struct+'-DOS-Graph-DOS.png', dpi=300)
+
+            # Clear memory to prevent interference with upcoming Band/Optical calculations
+            plt.close(fig)
 
     def bandcalc(self):
         """
