@@ -82,10 +82,6 @@ def resolve_xc_and_setups(xc_input: Any, user_setups: Optional[Dict] = None) -> 
     elif "+" in xc_str or "_X_" in xc_str or "_C_" in xc_str or xc_str.startswith("MGGA_") or xc_str.startswith("GGA_"):
         is_libxc = True
 
-    # 3. Inject PBE fallback for PAW datasets if using a libxc functional without an explicit default
-    if is_libxc and 'default' not in setups:
-        setups['default'] = 'PBE'
-
     return xc_str, setups, is_libxc
 
 def log_energy_consumption(meter, struct_name):
