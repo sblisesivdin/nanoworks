@@ -98,10 +98,14 @@ A helper CLI to locate package resources like examples and optimization scripts.
 
 ```bash
 $ nanoworks
-Welcome to Nanoworks!
-Version: 0.0.1
-Optimizations folder: /path/to/site-packages/nanoworks/optimizations
-Examples folder: /path/to/site-packages/nanoworks/examples
+usage: nanoworks [-h] [-v] [--install-examples]
+
+Nanoworks CLI tool
+
+options:
+  -h, --help          show this help message and exit
+  -v, --version       Show version and detailed library information
+  --install-examples  Copy example files to ~/.nanoworks/Examples
 ```
 
 ### 5. qeconverter and vaspconverter
