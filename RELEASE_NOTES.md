@@ -2,6 +2,10 @@
 
 ### Development Version
 
+- n/a
+
+### Version 26.8.0 - Aug 3, 2026
+
 - Hybrid (HSE06/HSE03/PBE0/B3LYP/EXX) workflow improvements: centralized `is_hybrid()` test and `build_hybrid_xc()` factory, replacing the repeated XC membership lists.
 - Hybrid DOS and band-structure energies are now referenced to the converged ground-state Fermi level instead of being hard-coded to 0 eV.
 - New optional hybrid keywords `XC_exx_fraction`, `XC_omega` and `XC_backend` to tune the exact-exchange fraction, screening parameter and backend.

@@ -6,8 +6,8 @@ project = 'Nanoworks'
 copyright = '2026, S.B. Lisesivdin, B.Sarikavak-Lisesivdin'
 author = 'S.B. Lisesivdin'
 
-release = '26.3.1'
-version = '26.3'
+release = '26.8.0'
+version = '26.8'
 
 # -- General configuration
 
