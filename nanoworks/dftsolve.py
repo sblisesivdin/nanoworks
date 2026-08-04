@@ -114,7 +114,7 @@ from ase import *
 from ase.spacegroup import get_spacegroup
 from ase.dft.kpoints import get_special_points
 from ase.parallel import paropen, world, parprint, broadcast
-from gpaw import GPAW, PW, Davidson, FermiDirac, MixerSum, MixerDif, Mixer
+from gpaw import PW, Davidson, FermiDirac, MixerSum, MixerDif, Mixer
 from ase.optimize import QuasiNewton
 from ase.io import read, write
 from ase.calculators.singlepoint import SinglePointCalculator
