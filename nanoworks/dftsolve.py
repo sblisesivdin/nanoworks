@@ -1155,7 +1155,7 @@ class dftsolve:
             # therefore read the eigenvalues stored in the converged ground
             # state and reference them to the ground-state Fermi level.
             parprint('Passing DOS NSCF calculations (using ground-state eigenvalues for hybrid)...')
-            calc = GPAW(filename=self.struct+'-GROUND-Result-State.gpw', legacy_gpaw=True)
+            calc = create_gpaw_calc(filename=self.struct+'-GROUND-Result-State.gpw', legacy_gpaw=True)
             ef = self.hybrid_fermi_level(calc)
         else:
             calc_load = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw')
@@ -1528,7 +1528,7 @@ class dftsolve:
             # Hybrids must recompute eigenvalues along the path (no
             # fixed_density()); the energies are then referenced to the
             # converged ground-state Fermi level instead of 0.0 eV.
-            calc = GPAW(self.struct+'-GROUND-Result-State.gpw', symmetry='off',kpts={'path': self.Band_path, 'npoints': self.Band_npoints},
+            calc = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw', symmetry='off',kpts={'path': self.Band_path, 'npoints': self.Band_npoints},
                       parallel={'band':1, 'kpt':1}, occupations = self.Occupation,
                       txt=self.struct+'-BAND-Log-Calculation.txt', convergence=self.Band_convergence, legacy_gpaw=True)
             ef = self.hybrid_fermi_level()
