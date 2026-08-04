@@ -34,16 +34,6 @@ def is_hybrid(xc_calc):
         return False
     return str(xc_calc).upper() in HYBRID_XC
 
-
-def create_gpaw_calc(*args, **kwargs):
-    """
-    Central factory for all GPAW calculators
-    """
-    # With New GPAW, we may continue with legacy GPAW for a while.
-    # kwargs['legacy_gpaw'] = True 
-    return GPAW(*args, **kwargs)
-
-
 def build_hybrid_xc(xc_calc, exx_fraction=None, omega=None, backend='pw'):
     """
     Build the dict-style xc parameter for a plane-wave hybrid functional.
@@ -188,6 +178,7 @@ import textwrap
 import requests
 import pickle
 import nanoworks
+from nanoworks.engine.gpaw import create_gpaw_calc
 from argparse import ArgumentParser, HelpFormatter
 from dataclasses import dataclass, field
 from typing import Optional, Dict, List, Any
