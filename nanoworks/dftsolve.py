@@ -226,7 +226,8 @@ class DFTConfig:
     """
     Configuration dataclass to hold all DFT calculation parameters.
     """
-    # Mode and calculation flags
+    # Engine, mode and calculation flags
+    Engine: str = 'GPAW'
     Mode: str = 'PW'
     Ground_calc: bool = False
     Geo_optim: bool = False
@@ -574,6 +575,7 @@ class dftsolve:
         self.config = config
         
         # For backward compatibility, expose config attributes as instance attributes
+        self.Engine = config.Engine
         self.Mode = config.Mode
         self.Ground_calc = config.Ground_calc
         self.Geo_optim = config.Geo_optim
