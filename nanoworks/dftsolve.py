@@ -933,7 +933,6 @@ class dftsolve:
         # Hybrids require the single-iteration Davidson eigensolver.
         if is_hybrid(self.XC_calc):
             elastic_kwargs['eigensolver'] = Davidson(niter=1)
-            elastic_kwargs['legacy_gpaw'] = True
         
         # Load the optimized (reference) structure
         bulk_atoms = self.bulk_configuration
