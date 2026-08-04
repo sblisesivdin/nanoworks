@@ -3,7 +3,12 @@
 import unittest
 from unittest.mock import patch
 
-from nanoworks.engine.gpaw import create_gpaw_calc, is_hybrid
+from nanoworks.engine.gpaw import (
+    build_hybrid_xc,
+    create_gpaw_calc,
+    is_hybrid,
+    resolve_xc_and_setups,
+)
 
 
 class TestGPAWEngine(unittest.TestCase):
@@ -56,6 +61,52 @@ class TestGPAWEngine(unittest.TestCase):
             xc={'name': 'HSE06', 'backend': 'pw'},
             legacy_gpaw=False,
         )
+    
+    def test_hybrid_xc_uses_gpaw_defaults_when_optional_values_are_missing(self):
+        xc = build_hybrid_xc('HSE06')
+
+        self.assertEqual(
+            xc,
+            {
+                'name': 'HSE06',
+                'backend': 'pw',
+            },
+        )
+
+    def test_hybrid_xc_includes_optional_parameters(self):
+        xc = build_hybrid_xc(
+            'HSE06',
+            exx_fraction=0.30,
+            omega=0.15,
+            backend='pw',
+        )
+
+        self.assertEqual(
+            xc,
+            {
+                'name': 'HSE06',
+                'backend': 'pw',
+                'fraction': 0.30,
+                'omega': 0.15,
+            },
+        )
+
+    def test_libxc_prefix_is_resolved(self):
+        xc, setups, is_libxc = resolve_xc_and_setups(
+            'libxc:GGA_X_PBE+GGA_C_PBE',
+            {'Cu': ':d,6.0'},
+        )
+
+        self.assertEqual(xc, 'GGA_X_PBE+GGA_C_PBE')
+        self.assertEqual(setups, {'Cu': ':d,6.0'})
+        self.assertTrue(is_libxc)
+
+    def test_native_gpaw_xc_is_not_marked_as_libxc(self):
+        xc, setups, is_libxc = resolve_xc_and_setups('PBE')
+
+        self.assertEqual(xc, 'PBE')
+        self.assertEqual(setups, {})
+        self.assertFalse(is_libxc)
 
 
 if __name__ == '__main__':
