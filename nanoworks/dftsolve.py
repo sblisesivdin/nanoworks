@@ -662,8 +662,7 @@ class dftsolve:
                         'spinpol': self.Spin_calc,
                         'txt': self.struct+'-GROUND-Log-Calculation.txt',
                         'convergence': self.Ground_convergence, 
-                        'occupations': self.Occupation,
-                        'legacy_gpaw': True
+                        'occupations': self.Occupation
                     }
 
                     if self.Ground_kpts_density is not None:
