@@ -15,22 +15,6 @@ import os, glob
 import shutil
 import subprocess
 
-def build_hybrid_xc(xc_calc, exx_fraction=None, omega=None, backend='pw'):
-    """
-    Build the dict-style xc parameter for a plane-wave hybrid functional.
-
-    Optional exact-exchange fraction (alpha) and screening parameter (omega)
-    are added only when explicitly provided, so the GPAW defaults for each
-    named functional (e.g. omega=0.11, fraction=0.25 for HSE06) are preserved
-    otherwise.
-    """
-    xc = {'name': str(xc_calc).upper(), 'backend': backend}
-    if exx_fraction is not None:
-        xc['fraction'] = exx_fraction
-    if omega is not None:
-        xc['omega'] = omega
-    return xc
-
 def resolve_xc_and_setups(xc_input, user_setups=None):
     """
     Parses and sanitizes XC functional inputs for GPAW.
@@ -159,7 +143,7 @@ import textwrap
 import requests
 import pickle
 import nanoworks
-from nanoworks.engine.gpaw import create_gpaw_calc, is_hybrid
+from nanoworks.engine.gpaw import build_hybrid_xc, create_gpaw_calc, is_hybrid
 from argparse import ArgumentParser, HelpFormatter
 from dataclasses import dataclass, field
 from typing import Optional, Dict, List, Any

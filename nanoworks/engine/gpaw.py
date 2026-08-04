@@ -21,6 +21,25 @@ def is_hybrid(xc_calc):
     """Return whether the requested XC functional uses the hybrid workflow."""
     return _get_xc_name(xc_calc) in HYBRID_XC
 
+def build_hybrid_xc(
+    xc_calc,
+    exx_fraction=None,
+    omega=None,
+    backend='pw',
+):
+    """Build the GPAW dictionary specification for a hybrid functional."""
+    xc = {
+        'name': str(xc_calc).upper(),
+        'backend': backend,
+    }
+
+    if exx_fraction is not None:
+        xc['fraction'] = exx_fraction
+
+    if omega is not None:
+        xc['omega'] = omega
+
+    return xc
 
 def create_gpaw_calc(*args, **kwargs):
     """Create a GPAW calculator using legacy GPAW for hybrid functionals."""
