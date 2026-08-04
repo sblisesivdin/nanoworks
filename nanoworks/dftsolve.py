@@ -15,25 +15,6 @@ import os, glob
 import shutil
 import subprocess
 
-# Exchange-correlation functionals that are treated as hybrids in GPAW's
-# plane-wave backend. These require the dict-style xc selection, plane-wave
-# parallelisation and a single-iteration Davidson eigensolver. They also can
-# NOT be treated with fixed_density() because the exchange operator depends on
-# the occupied orbitals, not only on the density.
-HYBRID_XC = ('HSE06', 'HSE03', 'B3LYP', 'PBE0', 'EXX')
-
-
-def is_hybrid(xc_calc):
-    """
-    Return True if the requested exchange-correlation functional is a hybrid
-    that needs the special plane-wave hybrid workflow (HSE06, HSE03, B3LYP,
-    PBE0, EXX). Centralising this test avoids repeating the membership list in
-    every calculation method.
-    """
-    if xc_calc is None:
-        return False
-    return str(xc_calc).upper() in HYBRID_XC
-
 def build_hybrid_xc(xc_calc, exx_fraction=None, omega=None, backend='pw'):
     """
     Build the dict-style xc parameter for a plane-wave hybrid functional.
@@ -178,7 +159,7 @@ import textwrap
 import requests
 import pickle
 import nanoworks
-from nanoworks.engine.gpaw import create_gpaw_calc
+from nanoworks.engine.gpaw import create_gpaw_calc, is_hybrid
 from argparse import ArgumentParser, HelpFormatter
 from dataclasses import dataclass, field
 from typing import Optional, Dict, List, Any
