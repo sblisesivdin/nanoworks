@@ -2,8 +2,8 @@
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-packages = ["nanoworks"]
+[tool.setuptools.packages.find]
+include = ["nanoworks*"]
 
 [tool.setuptools.package-data]
 "nanoworks" = ["examples/*", "examples/**/*"]
