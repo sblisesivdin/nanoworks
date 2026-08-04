@@ -47,3 +47,35 @@ def create_gpaw_calc(*args, **kwargs):
         kwargs['legacy_gpaw'] = True
 
     return GPAW(*args, **kwargs)
+
+def resolve_xc_and_setups(xc_input, user_setups=None):
+    """Resolve GPAW XC and setup specifications."""
+
+    if user_setups is None:
+        setups = {}
+    else:
+        setups = dict(user_setups)
+
+    is_libxc = False
+
+    if isinstance(xc_input, dict):
+        xc_str = str(
+            xc_input.get('name', xc_input.get('xc', ''))
+        ).strip()
+    else:
+        xc_str = str(xc_input).strip()
+
+    if xc_str.lower().startswith('libxc:'):
+        xc_str = xc_str[6:].strip()
+        is_libxc = True
+
+    elif any(
+        xc_str.startswith(prefix)
+        for prefix in ('MGGA_', 'GGA_', 'HYB_', 'LDA_')
+    ):
+        is_libxc = True
+
+    elif '+' in xc_str:
+        is_libxc = True
+
+    return xc_str, setups, is_libxc

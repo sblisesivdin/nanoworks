@@ -15,43 +15,6 @@ import os, glob
 import shutil
 import subprocess
 
-def resolve_xc_and_setups(xc_input, user_setups=None):
-    """
-    Parses and sanitizes XC functional inputs for GPAW.
-    Determines if the functional belongs to libxc.
-    """
-    if user_setups is None:
-        setups = {}
-    else:
-        setups = dict(user_setups)
-
-    is_libxc = False
-
-    # Extract string if a dict is provided
-    if isinstance(xc_input, dict):
-        xc_str = str(xc_input.get('name', xc_input.get('xc', ''))).strip()
-    else:
-        xc_str = str(xc_input).strip()
-
-    # Check for 'libxc:' prefix
-    if xc_str.lower().startswith("libxc:"):
-        xc_str = xc_str[6:].strip()
-        is_libxc = True
-
-    # Check for broader libxc prefixes
-    elif any(xc_str.startswith(prefix) for prefix in ["MGGA_", "GGA_", "HYB_", "LDA_"]):
-        is_libxc = True
-
-    # Check for '+' which strongly indicates a combined libxc functional
-    elif "+" in xc_str:
-        is_libxc = True
-
-    # Note: We deliberately DO NOT force a default 'PBE' setup here.
-    # Forcing it overrides GPAW's native fallback mechanism and causes
-    # FileNotFoundError for concatenated setup names. GPAW handles it natively.
-
-    return xc_str, setups, is_libxc
-
 def log_energy_consumption(meter, struct_name):
     """
     Reads pyRAPL results, write energy consumption to a file MPI-safe 
@@ -143,7 +106,7 @@ import textwrap
 import requests
 import pickle
 import nanoworks
-from nanoworks.engine.gpaw import build_hybrid_xc, create_gpaw_calc, is_hybrid
+from nanoworks.engine.gpaw import build_hybrid_xc, create_gpaw_calc, is_hybrid, resolve_xc_and_setups
 from argparse import ArgumentParser, HelpFormatter
 from dataclasses import dataclass, field
 from typing import Optional, Dict, List, Any
