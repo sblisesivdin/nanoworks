@@ -1119,7 +1119,10 @@ class dftsolve:
             return self.Ground_fermi_level
         # Try reading the converged ground-state .gpw written by groundcalc().
         try:
-            ref_calc = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw')
+            ref_calc = load_gpaw_calc(
+                self.struct+'-GROUND-Result-State.gpw',
+                hybrid=True,
+            )
             ef = ref_calc.get_fermi_level()
             if ef is not None and not np.isnan(ef):
                 self.Ground_fermi_level = ef
