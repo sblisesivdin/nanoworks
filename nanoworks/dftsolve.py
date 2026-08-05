@@ -2096,9 +2096,12 @@ class dftsolve:
                     # converged hybrid ground state directly and full-
                     # diagonalize it for the optical response.
                     parprint("Hybrid XC detected: reading ground state directly for optical calculation...")
-                    calc = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw',
-                            txt=self.struct+'-OPTICAL-Log-Calculation.txt',
-                            parallel={'domain': 1, 'band': 1 }, legacy_gpaw=True)
+                    calc = load_gpaw_calc(
+                        self.struct+'-GROUND-Result-State.gpw',
+                        hybrid=True,
+                        txt=self.struct+'-OPTICAL-Log-Calculation.txt',
+                        parallel={'domain': 1, 'band': 1},
+                    )
                 else:
                     calc = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw').fixed_density(txt=self.struct+'-OPTICAL-Log-Calculation.txt',
                             nbands=self.Opt_num_of_bands,parallel={'domain': 1, 'band': 1 },
