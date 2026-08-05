@@ -1159,7 +1159,7 @@ class dftsolve:
             )
             ef = self.hybrid_fermi_level(calc)
         else:
-            calc_load = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw')
+            calc_load = load_gpaw_calc(self.struct+'-GROUND-Result-State.gpw')
             # Safe parameter cleanup compatible with GPAW 26.7.0+
             try:
                 if hasattr(calc_load.parameters, 'pop'):
