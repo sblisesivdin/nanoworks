@@ -936,7 +936,10 @@ class dftsolve:
         
         # Load the optimized (reference) structure
         bulk_atoms = self.bulk_configuration
-        ref_calc = create_gpaw_calc(self.struct + '-GROUND-Result-State.gpw')
+        ref_calc = load_gpaw_calc(
+            self.struct + '-GROUND-Result-State.gpw',
+            hybrid=is_hybrid(self.XC_calc),
+        )
         bulk_atoms.set_calculator(ref_calc)
         parprint('Optimized (reference) structure is loaded.')
         try:
