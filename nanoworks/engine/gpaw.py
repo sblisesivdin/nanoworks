@@ -48,6 +48,13 @@ def create_gpaw_calc(*args, **kwargs):
 
     return GPAW(*args, **kwargs)
 
+def load_gpaw_calc(filename, hybrid=False, **kwargs):
+    """Load a GPAW calculator from a state file."""
+    if hybrid and 'legacy_gpaw' not in kwargs:
+        kwargs['legacy_gpaw'] = True
+
+    return GPAW(filename, **kwargs)
+
 def resolve_xc_and_setups(xc_input, user_setups=None):
     """Resolve GPAW XC and setup specifications."""
 

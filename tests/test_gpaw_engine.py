@@ -8,6 +8,7 @@ from nanoworks.engine.gpaw import (
     create_gpaw_calc,
     is_hybrid,
     resolve_xc_and_setups,
+    load_gpaw_calc,
 )
 
 
@@ -107,6 +108,45 @@ class TestGPAWEngine(unittest.TestCase):
         self.assertEqual(xc, 'PBE')
         self.assertEqual(setups, {})
         self.assertFalse(is_libxc)
+    
+    @patch('nanoworks.engine.gpaw.GPAW')
+    def test_hybrid_state_loading_uses_legacy_gpaw(self, mock_gpaw):
+        load_gpaw_calc(
+            'system-GROUND-Result-State.gpw',
+            hybrid=True,
+            symmetry='off',
+        )
+
+        mock_gpaw.assert_called_once_with(
+            'system-GROUND-Result-State.gpw',
+            symmetry='off',
+            legacy_gpaw=True,
+        )
+
+    @patch('nanoworks.engine.gpaw.GPAW')
+    def test_regular_state_loading_uses_new_gpaw(self, mock_gpaw):
+        load_gpaw_calc(
+            'system-GROUND-Result-State.gpw',
+            symmetry='off',
+        )
+
+        mock_gpaw.assert_called_once_with(
+            'system-GROUND-Result-State.gpw',
+            symmetry='off',
+        )
+
+    @patch('nanoworks.engine.gpaw.GPAW')
+    def test_explicit_state_loading_mode_is_preserved(self, mock_gpaw):
+        load_gpaw_calc(
+            'system-GROUND-Result-State.gpw',
+            hybrid=True,
+            legacy_gpaw=False,
+        )
+
+        mock_gpaw.assert_called_once_with(
+            'system-GROUND-Result-State.gpw',
+            legacy_gpaw=False,
+        )
 
 
 if __name__ == '__main__':
