@@ -1836,7 +1836,7 @@ class dftsolve:
         #Start Density calc
         time41 = time.time()
         parprint("Starting All-electron density calculation...")
-        calc = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw', txt=self.struct+'-EDENSITY-Log-Calculation.txt')
+        calc = load_gpaw_calc(self.struct+'-GROUND-Result-State.gpw', txt=self.struct+'-EDENSITY-Log-Calculation.txt')
         self.bulk_configuration.calc = calc
         if self.Spin_calc == True:
             np = calc.get_pseudo_density()
