@@ -1898,7 +1898,7 @@ class dftsolve:
             parprint("It is recommended to compute phonons with PBE and use hybrids only for the electronic structure.")
             sys.exit(1)
 
-        calc = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw')
+        calc = load_gpaw_calc(self.struct+'-GROUND-Result-State.gpw')
         self.bulk_configuration.calc = calc
 
         # Pre-process
