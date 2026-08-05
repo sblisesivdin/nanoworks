@@ -106,7 +106,7 @@ import textwrap
 import requests
 import pickle
 import nanoworks
-from nanoworks.engine.gpaw import build_hybrid_xc, create_gpaw_calc, is_hybrid, resolve_xc_and_setups
+from nanoworks.engine.gpaw import build_hybrid_xc, create_gpaw_calc, is_hybrid, resolve_xc_and_setups, load_gpaw_calc
 from argparse import ArgumentParser, HelpFormatter
 from dataclasses import dataclass, field
 from typing import Optional, Dict, List, Any
@@ -1153,7 +1153,10 @@ class dftsolve:
             # therefore read the eigenvalues stored in the converged ground
             # state and reference them to the ground-state Fermi level.
             parprint('Passing DOS NSCF calculations (using ground-state eigenvalues for hybrid)...')
-            calc = create_gpaw_calc(filename=self.struct+'-GROUND-Result-State.gpw', legacy_gpaw=True)
+            calc = load_gpaw_calc(
+                self.struct + '-GROUND-Result-State.gpw',
+                hybrid=True,
+            )
             ef = self.hybrid_fermi_level(calc)
         else:
             calc_load = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw')
