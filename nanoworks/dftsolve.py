@@ -2103,9 +2103,14 @@ class dftsolve:
                         parallel={'domain': 1, 'band': 1},
                     )
                 else:
-                    calc = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw').fixed_density(txt=self.struct+'-OPTICAL-Log-Calculation.txt',
-                            nbands=self.Opt_num_of_bands,parallel={'domain': 1, 'band': 1 },
-                            occupations=FermiDirac(self.Opt_FD_smearing))
+                    calc = load_gpaw_calc(
+                        self.struct+'-GROUND-Result-State.gpw'
+                    ).fixed_density(
+                        txt=self.struct+'-OPTICAL-Log-Calculation.txt',
+                        nbands=self.Opt_num_of_bands,
+                        parallel={'domain': 1, 'band': 1},
+                        occupations=FermiDirac(self.Opt_FD_smearing)
+                    )
             except FileNotFoundError as err:
                 # output error, and return with an error code
                 parprint('\033[91mERROR:\033[0mOptical computations must be done separately. Please do ground calculations first.')
