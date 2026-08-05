@@ -1529,9 +1529,19 @@ class dftsolve:
             # Hybrids must recompute eigenvalues along the path (no
             # fixed_density()); the energies are then referenced to the
             # converged ground-state Fermi level instead of 0.0 eV.
-            calc = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw', symmetry='off',kpts={'path': self.Band_path, 'npoints': self.Band_npoints},
-                      parallel={'band':1, 'kpt':1}, occupations = self.Occupation,
-                      txt=self.struct+'-BAND-Log-Calculation.txt', convergence=self.Band_convergence, legacy_gpaw=True)
+            calc = load_gpaw_calc(
+                self.struct+'-GROUND-Result-State.gpw',
+                hybrid=True,
+                symmetry='off',
+                kpts={
+                    'path': self.Band_path,
+                    'npoints': self.Band_npoints
+                },
+                parallel={'band': 1, 'kpt': 1},
+                occupations=self.Occupation,
+                txt=self.struct+'-BAND-Log-Calculation.txt',
+                convergence=self.Band_convergence
+            )
             ef = self.hybrid_fermi_level()
 
         else:
