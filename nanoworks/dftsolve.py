@@ -1545,8 +1545,18 @@ class dftsolve:
             ef = self.hybrid_fermi_level()
 
         else:
-            calc = create_gpaw_calc(self.struct+'-GROUND-Result-State.gpw').fixed_density(kpts={'path': self.Band_path, 'npoints': self.Band_npoints},
-                      txt=self.struct+'-BAND-Log-Calculation.txt', symmetry='off', occupations = self.Occupation, convergence=self.Band_convergence)
+            calc = load_gpaw_calc(
+                self.struct+'-GROUND-Result-State.gpw'
+            ).fixed_density(
+                kpts={
+                    'path': self.Band_path,
+                    'npoints': self.Band_npoints
+                },
+                txt=self.struct+'-BAND-Log-Calculation.txt',
+                symmetry='off',
+                occupations=self.Occupation,
+                convergence=self.Band_convergence
+            )
             ef = calc.get_fermi_level()
 
         calc.get_potential_energy()
