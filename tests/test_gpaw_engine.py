@@ -15,6 +15,7 @@ from nanoworks.engine.gpaw import (
     create_hybrid_pw_ground_calc,
     create_lcao_ground_calc,
     create_elastic_calc,
+    create_phonon_calc,
 )
 from gpaw import PW
 from ase.units import Hartree
@@ -563,6 +564,41 @@ class TestGPAWEngine(unittest.TestCase):
         )
         self.assertEqual(kwargs['charge'], 1.0)
         self.assertTrue(kwargs['spinpol'])
+        
+    @patch('nanoworks.engine.gpaw.create_gpaw_calc')
+    def test_phonon_calc_builds_expected_arguments(
+        self,
+        create_calc,
+    ):
+        calculator = object()
+        create_calc.return_value = calculator
+
+        result = create_phonon_calc(
+            cutoff=350,
+            kpoint_size=(3, 3, 2),
+            txt='sample-PHONON-Log-Phonon-GPAW.txt',
+        )
+
+        self.assertIs(result, calculator)
+
+        kwargs = create_calc.call_args.kwargs
+
+        self.assertIsInstance(kwargs['mode'], PW)
+        self.assertAlmostEqual(
+            kwargs['mode'].ecut * Hartree,
+            350.0,
+            places=10,
+        )
+        self.assertEqual(
+            kwargs['kpts'],
+            {
+                'size': (3, 3, 2),
+            },
+        )
+        self.assertEqual(
+            kwargs['txt'],
+            'sample-PHONON-Log-Phonon-GPAW.txt',
+        )
 
 if __name__ == '__main__':
     unittest.main()

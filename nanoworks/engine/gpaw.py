@@ -314,3 +314,17 @@ def create_elastic_calc(
         kwargs['eigensolver'] = Davidson(niter=1)
 
     return create_gpaw_calc(**kwargs)
+
+def create_phonon_calc(
+    cutoff,
+    kpoint_size,
+    txt,
+):
+    """Create a GPAW calculator for finite-displacement phonons."""
+    return create_gpaw_calc(
+        mode=PW(cutoff),
+        kpts={
+            'size': tuple(kpoint_size),
+        },
+        txt=txt,
+    )
