@@ -115,6 +115,7 @@ from nanoworks.engine.gpaw import (
     load_gpaw_calc,
     build_kpoint_spec,
     build_ground_common_kwargs,
+    create_regular_pw_ground_calc,
 )
 from argparse import ArgumentParser, HelpFormatter
 from dataclasses import dataclass, field
@@ -698,40 +699,31 @@ class dftsolve:
                     calc = create_gpaw_calc(**calc_kwargs)
                 else:
                     parprint(f'Starting calculations with {actual_xc}...')
-                    calc_kwargs = build_ground_common_kwargs(
+                    # Fix the spacegroup in the geometric optimization if wanted
+                    if self.Fix_symmetry == True:
+                        self.bulk_configuration.set_constraint(
+                            FixSymmetry(self.bulk_configuration)
+                        )
+
+                    calc = create_regular_pw_ground_calc(
+                        cutoff=self.Cut_off_energy,
+                        xc=actual_xc,
+                        setups=resolved_setups,
+                        parallel={'domain': world.size},
                         mixer=self.Mixer_type,
                         charge=self.Total_charge,
                         spinpol=self.Spin_calc,
                         txt=self.struct+'-GROUND-Log-Calculation.txt',
                         convergence=self.Ground_convergence,
                         occupations=self.Occupation,
-                    )
-
-                    calc_kwargs.update({
-                        'mode': PW(
-                            ecut=self.Cut_off_energy,
-                            force_complex_dtype=True,
-                        ),
-                        'xc': actual_xc,
-                        'setups': resolved_setups,
-                        'parallel': {'domain': world.size},
-                    })
-
-                    # Fix the spacegroup in the geometric optimization if wanted
-                    if self.Fix_symmetry == True:
-                        self.bulk_configuration.set_constraint(FixSymmetry(self.bulk_configuration))
-                    
-                    calc_kwargs['kpts'] = build_kpoint_spec(
-                        density=self.Ground_kpts_density,
-                        size=(
+                        kpoint_density=self.Ground_kpts_density,
+                        kpoint_size=(
                             self.Ground_kpts_x,
                             self.Ground_kpts_y,
                             self.Ground_kpts_z,
                         ),
                         gamma=self.Gamma,
                     )
-
-                    calc = create_gpaw_calc(**calc_kwargs)
                 # Wrapping for vdW
                 if hasattr(self.config, 'vdW_calc') and self.config.vdW_calc.upper() == 'D3':
                     from ase.calculators.dftd3 import DFTD3
