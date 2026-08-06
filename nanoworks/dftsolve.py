@@ -108,7 +108,6 @@ import pickle
 import nanoworks
 from nanoworks.engine.gpaw import (
     build_hybrid_xc,
-    create_gpaw_calc,
     is_hybrid,
     resolve_xc_and_setups,
     load_gpaw_calc,
@@ -116,6 +115,7 @@ from nanoworks.engine.gpaw import (
     create_hybrid_pw_ground_calc,
     create_lcao_ground_calc,
     create_elastic_calc,
+    create_phonon_calc,
 )
 from argparse import ArgumentParser, HelpFormatter
 from dataclasses import dataclass, field
@@ -124,7 +124,7 @@ from ase import *
 from ase.spacegroup import get_spacegroup
 from ase.dft.kpoints import get_special_points
 from ase.parallel import paropen, world, parprint, broadcast
-from gpaw import PW, FermiDirac, MixerSum, MixerDif, Mixer
+from gpaw import FermiDirac, MixerSum, MixerDif, Mixer
 from ase.optimize import QuasiNewton
 from ase.io import read, write
 from ase.calculators.singlepoint import SinglePointCalculator
@@ -1929,9 +1929,15 @@ class dftsolve:
             for d in disps:
                 print("[Phonopy] %d %s" % (d[0], d[1:]), end="\n", file=f2)
 
-        # FIX THIS PART
-        calc = create_gpaw_calc(mode=PW(self.Phonon_PW_cutoff),
-               kpts={'size': (self.Phonon_kpts_x, self.Phonon_kpts_y, self.Phonon_kpts_z)}, txt=self.struct+'-PHONON-Log-Phonon-GPAW.txt')
+        calc = create_phonon_calc(
+            cutoff=self.Phonon_PW_cutoff,
+            kpoint_size=(
+                self.Phonon_kpts_x,
+                self.Phonon_kpts_y,
+                self.Phonon_kpts_z,
+            ),
+            txt=self.struct+'-PHONON-Log-Phonon-GPAW.txt',
+        )
 
         self.bulk_configuration.calc = calc
 
