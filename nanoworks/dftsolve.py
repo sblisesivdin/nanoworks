@@ -824,19 +824,21 @@ class dftsolve:
                 self.bulk_configuration.set_initial_magnetic_moments(numm)
             if self.Ground_calc == True:
                 parprint("Starting LCAO ground state calculation...")
-                calc_kwargs = {
-                        'mode': 'lcao',
-                        'basis': 'dzp',
-                        'nbands': '200%',
-                        'setups': self.Setup_params,
-                        'parallel': {'domain': world.size},
-                        'mixer': self.Mixer_type,
-                        'charge': self.Total_charge,
-                        'spinpol': self.Spin_calc,
-                        'txt': self.struct+'-GROUND-Log-Calculation.txt',
-                        'convergence': self.Ground_convergence, 
-                        'occupations': self.Occupation
-                }
+                calc_kwargs = build_ground_common_kwargs(
+                    mixer=self.Mixer_type,
+                    charge=self.Total_charge,
+                    spinpol=self.Spin_calc,
+                    txt=self.struct+'-GROUND-Log-Calculation.txt',
+                    convergence=self.Ground_convergence,
+                    occupations=self.Occupation,
+                )
+
+                calc_kwargs.update({
+                    'mode': 'lcao',
+                    'basis': 'dzp',
+                    'setups': self.Setup_params,
+                    'parallel': {'domain': world.size},
+                })
 
                 # Fix the spacegroup in the geometric optimization if wanted
                 if self.Fix_symmetry == True:
