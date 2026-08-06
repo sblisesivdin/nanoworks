@@ -697,12 +697,18 @@ class dftsolve:
                     # Fix the spacegroup in the geometric optimization if wanted
                     if self.Fix_symmetry == True:
                         self.bulk_configuration.set_constraint(FixSymmetry(self.bulk_configuration))
-                    if self.Ground_kpts_density is not None:
-                        calc_kwargs['kpts'] = {'density': self.Ground_kpts_density, 'gamma': self.Gamma}
-                        calc = create_gpaw_calc(**calc_kwargs)
-                    else:
-                        calc_kwargs['kpts'] = {'size': (self.Ground_kpts_x, self.Ground_kpts_y, self.Ground_kpts_z), 'gamma': self.Gamma}
-                        calc = create_gpaw_calc(**calc_kwargs)
+                    
+                    calc_kwargs['kpts'] = build_kpoint_spec(
+                        density=self.Ground_kpts_density,
+                        size=(
+                            self.Ground_kpts_x,
+                            self.Ground_kpts_y,
+                            self.Ground_kpts_z,
+                        ),
+                        gamma=self.Gamma,
+                    )
+
+                    calc = create_gpaw_calc(**calc_kwargs)
                 # Wrapping for vdW
                 if hasattr(self.config, 'vdW_calc') and self.config.vdW_calc.upper() == 'D3':
                     from ase.calculators.dftd3 import DFTD3
