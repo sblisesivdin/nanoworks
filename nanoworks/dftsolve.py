@@ -652,12 +652,18 @@ class dftsolve:
             if self.config.Ground_calc == True:
                 # PW Ground State Calculations
                 parprint("Starting PW ground state calculation...")
-                if True in self.Relax_cell:
+                if self.Geo_optim and True in self.Relax_cell:
                     # Cell relaxation needs the stress tensor, which is not
-                    # available for GLLBSC(M) nor for the plane-wave hybrids.
+                    # available for GLLBSC(M) nor for plane-wave hybrids.
                     if self.XC_calc in ['GLLBSC', 'GLLBSCM'] or is_hybrid(self.XC_calc):
-                        parprint("\033[91mERROR:\033[0m Structure optimization LBFGS can not be used with "+self.XC_calc+" xc.")
-                        parprint("Do manual structure optimization, or do with PBE, then use its final CIF as input.")
+                        parprint(
+                            "\033[91mERROR:\033[0m Cell relaxation can not be used "
+                            "with "+self.XC_calc+" xc."
+                        )
+                        parprint(
+                            "Disable Relax_cell, or optimize the structure with PBE "
+                            "and use the resulting CIF for this calculation."
+                        )
                         parprint("Exiting...")
                         sys.exit(1)
                 if is_hybrid(actual_xc):
@@ -685,7 +691,7 @@ class dftsolve:
                 else:
                     parprint(f'Starting calculations with {actual_xc}...')
                     # Fix the spacegroup in the geometric optimization if wanted
-                    if self.Fix_symmetry == True:
+                    if self.Geo_optim and self.Fix_symmetry:
                         self.bulk_configuration.set_constraint(
                             FixSymmetry(self.bulk_configuration)
                         )
@@ -818,7 +824,7 @@ class dftsolve:
                 })
 
                 # Fix the spacegroup in the geometric optimization if wanted
-                if self.Fix_symmetry == True:
+                if self.Geo_optim and self.Fix_symmetry:
                     self.bulk_configuration.set_constraint(FixSymmetry(self.bulk_configuration))
                 calc_kwargs['kpts'] = build_kpoint_spec(
                     density=self.Ground_kpts_density,
