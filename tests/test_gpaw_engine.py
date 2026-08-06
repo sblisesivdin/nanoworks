@@ -17,8 +17,9 @@ from nanoworks.engine.gpaw import (
     create_elastic_calc,
     create_phonon_calc,
     resolve_elastic_settings,
+    create_default_mixer,
 )
-from gpaw import PW
+from gpaw import PW, MixerSum
 from ase.units import Hartree
 
 class TestGPAWEngine(unittest.TestCase):
@@ -646,6 +647,20 @@ class TestGPAWEngine(unittest.TestCase):
             0.30,
             0.12,
             'pw',
+        )
+        
+    @patch('nanoworks.engine.gpaw.MixerSum')
+    def test_default_mixer_uses_nanoworks_settings(self, mixer_sum):
+        mixer = object()
+        mixer_sum.return_value = mixer
+
+        result = create_default_mixer()
+
+        self.assertIs(result, mixer)
+        mixer_sum.assert_called_once_with(
+            beta=0.1,
+            nmaxold=3,
+            weight=50,
         )
 
 if __name__ == '__main__':

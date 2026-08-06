@@ -1,6 +1,6 @@
 """GPAW computation engine helpers."""
 
-from gpaw import GPAW, PW
+from gpaw import GPAW, PW, MixerSum
 from gpaw.eigensolvers import Davidson
 
 HYBRID_XC = ('HSE06', 'HSE03', 'B3LYP', 'PBE0', 'EXX')
@@ -363,3 +363,11 @@ def resolve_elastic_settings(
         }
 
     return elastic_xc, resolved_setups, parallel, hybrid
+
+def create_default_mixer():
+    """Create the default GPAW density mixer used by Nanoworks."""
+    return MixerSum(
+        beta=0.1,
+        nmaxold=3,
+        weight=50,
+    )
