@@ -116,6 +116,7 @@ from nanoworks.engine.gpaw import (
     create_elastic_calc,
     create_phonon_calc,
     resolve_elastic_settings,
+    create_default_mixer,
 )
 from argparse import ArgumentParser, HelpFormatter
 from dataclasses import dataclass, field
@@ -267,7 +268,7 @@ class DFTConfig:
     def __post_init__(self):
         """Initialize default values that depend on other objects."""
         if self.Mixer_type is None:
-            self.Mixer_type = MixerSum(0.1, 3, 50)
+            self.Mixer_type = create_default_mixer()
         if self.Phonon_supercell is None:
             self.Phonon_supercell = np.diag([2, 2, 2])
         if self.Opt_BSE_valence is None:
