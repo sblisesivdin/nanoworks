@@ -114,6 +114,7 @@ from nanoworks.engine.gpaw import (
     resolve_xc_and_setups,
     load_gpaw_calc,
     build_kpoint_spec,
+    build_ground_common_kwargs,
 )
 from argparse import ArgumentParser, HelpFormatter
 from dataclasses import dataclass, field
@@ -659,19 +660,30 @@ class dftsolve:
                         sys.exit(1)
                 if is_hybrid(actual_xc):
                     parprint('Starting Hybrid XC calculations...')
-                    calc_kwargs = {
-                        'mode': PW(ecut=self.Cut_off_energy, force_complex_dtype=True), 
-                        'xc': build_hybrid_xc(self.XC_calc, self.XC_exx_fraction, self.XC_omega, self.XC_backend), 
-                        'nbands': '200%',
+
+                    calc_kwargs = build_ground_common_kwargs(
+                        mixer=self.Mixer_type,
+                        charge=self.Total_charge,
+                        spinpol=self.Spin_calc,
+                        txt=self.struct+'-GROUND-Log-Calculation.txt',
+                        convergence=self.Ground_convergence,
+                        occupations=self.Occupation,
+                    )
+
+                    calc_kwargs.update({
+                        'mode': PW(
+                            ecut=self.Cut_off_energy,
+                            force_complex_dtype=True,
+                        ),
+                        'xc': build_hybrid_xc(
+                            self.XC_calc,
+                            self.XC_exx_fraction,
+                            self.XC_omega,
+                            self.XC_backend,
+                        ),
                         'parallel': {'band': 1, 'kpt': 1},
                         'eigensolver': Davidson(niter=1),
-                        'mixer': self.Mixer_type,
-                        'charge': self.Total_charge,
-                        'spinpol': self.Spin_calc,
-                        'txt': self.struct+'-GROUND-Log-Calculation.txt',
-                        'convergence': self.Ground_convergence, 
-                        'occupations': self.Occupation
-                    }
+                    })
 
                     calc_kwargs['kpts'] = build_kpoint_spec(
                         density=self.Ground_kpts_density,
