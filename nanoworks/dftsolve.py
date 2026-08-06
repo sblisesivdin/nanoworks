@@ -831,14 +831,23 @@ class dftsolve:
 
                     calc = create_gpaw_calc(**calc_kwargs)
                 else:
-                    if self.Ground_kpts_density is not None:
-                        calc_kwargs['kpts'] = {'density': self.Ground_kpts_density, 'gamma': self.Gamma}
-                        calc_kwargs['gpts'] = (self.Ground_gpts_x, self.Ground_gpts_y, self.Ground_gpts_z)
-                        calc = create_gpaw_calc(**calc_kwargs)
-                    else:
-                        calc_kwargs['kpts'] = {'size':(self.Ground_kpts_x, self.Ground_kpts_y, self.Ground_kpts_z), 'gamma': self.Gamma}
-                        calc_kwargs['gpts'] = (self.Ground_gpts_x, self.Ground_gpts_y, self.Ground_gpts_z)
-                        calc = create_gpaw_calc(**calc_kwargs)
+                    calc_kwargs['kpts'] = build_kpoint_spec(
+                        density=self.Ground_kpts_density,
+                        size=(
+                            self.Ground_kpts_x,
+                            self.Ground_kpts_y,
+                            self.Ground_kpts_z,
+                        ),
+                        gamma=self.Gamma,
+                    )
+
+                    calc_kwargs['gpts'] = (
+                        self.Ground_gpts_x,
+                        self.Ground_gpts_y,
+                        self.Ground_gpts_z,
+                    )
+
+                    calc = create_gpaw_calc(**calc_kwargs)
 
                 # Wrapping for vdW
                 if hasattr(self.config, 'vdW_calc') and self.config.vdW_calc.upper() == 'D3':
