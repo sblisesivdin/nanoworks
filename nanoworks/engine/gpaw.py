@@ -1,7 +1,7 @@
 """GPAW computation engine helpers."""
 
 from gpaw import GPAW, PW
-
+from gpaw.eigensolvers import Davidson
 
 HYBRID_XC = ('HSE06', 'HSE03', 'B3LYP', 'PBE0', 'EXX')
 
@@ -164,6 +164,57 @@ def create_regular_pw_ground_calc(
         'xc': xc,
         'setups': setups,
         'parallel': parallel,
+        'kpts': build_kpoint_spec(
+            density=kpoint_density,
+            size=kpoint_size,
+            gamma=gamma,
+        ),
+    })
+
+    return create_gpaw_calc(**kwargs)
+
+def create_hybrid_pw_ground_calc(
+    cutoff,
+    xc_calc,
+    exx_fraction,
+    omega,
+    backend,
+    mixer,
+    charge,
+    spinpol,
+    txt,
+    convergence,
+    occupations,
+    kpoint_density,
+    kpoint_size,
+    gamma,
+):
+    """Create a hybrid GPAW plane-wave ground-state calculator."""
+    kwargs = build_ground_common_kwargs(
+        mixer=mixer,
+        charge=charge,
+        spinpol=spinpol,
+        txt=txt,
+        convergence=convergence,
+        occupations=occupations,
+    )
+
+    kwargs.update({
+        'mode': PW(
+            ecut=cutoff,
+            force_complex_dtype=True,
+        ),
+        'xc': build_hybrid_xc(
+            xc_calc,
+            exx_fraction,
+            omega,
+            backend,
+        ),
+        'parallel': {
+            'band': 1,
+            'kpt': 1,
+        },
+        'eigensolver': Davidson(niter=1),
         'kpts': build_kpoint_spec(
             density=kpoint_density,
             size=kpoint_size,

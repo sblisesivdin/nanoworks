@@ -12,8 +12,10 @@ from nanoworks.engine.gpaw import (
     build_grid_spec,
     build_ground_common_kwargs,
     create_regular_pw_ground_calc,
+    create_hybrid_pw_ground_calc,
 )
 from gpaw import PW
+from ase.units import Hartree
 
 class TestGPAWEngine(unittest.TestCase):
     """Verify GPAW calculator creation and hybrid detection."""
@@ -294,6 +296,73 @@ class TestGPAWEngine(unittest.TestCase):
             },
         )
         self.assertEqual(kwargs['nbands'], '200%')
+    
+    @patch('nanoworks.engine.gpaw.create_gpaw_calc')
+    def test_hybrid_pw_ground_calc_builds_expected_arguments(
+        self,
+        create_calc,
+    ):
+        mixer = object()
+        calculator = object()
+        create_calc.return_value = calculator
+
+        result = create_hybrid_pw_ground_calc(
+            cutoff=400,
+            xc_calc='HSE06',
+            exx_fraction=0.30,
+            omega=0.11,
+            backend='pw',
+            mixer=mixer,
+            charge=1.0,
+            spinpol=True,
+            txt='hybrid-GROUND-Log-Calculation.txt',
+            convergence={'energy': 1.0e-5},
+            occupations={
+                'name': 'fermi-dirac',
+                'width': 0.05,
+            },
+            kpoint_density=None,
+            kpoint_size=(3, 3, 1),
+            gamma=True,
+        )
+
+        self.assertIs(result, calculator)
+
+        kwargs = create_calc.call_args.kwargs
+
+        self.assertAlmostEqual(
+            kwargs['mode'].ecut * Hartree,
+            400.0,
+            places=10,
+        )
+        self.assertEqual(
+            kwargs['xc'],
+            {
+                'name': 'HSE06',
+                'backend': 'pw',
+                'fraction': 0.30,
+                'omega': 0.11,
+            },
+        )
+        self.assertEqual(
+            kwargs['parallel'],
+            {
+                'band': 1,
+                'kpt': 1,
+            },
+        )
+        self.assertEqual(kwargs['eigensolver'].niter, 1)
+        self.assertEqual(
+            kwargs['kpts'],
+            {
+                'size': (3, 3, 1),
+                'gamma': True,
+            },
+        )
+        self.assertEqual(kwargs['nbands'], '200%')
+        self.assertIs(kwargs['mixer'], mixer)
+        self.assertEqual(kwargs['charge'], 1.0)
+        self.assertTrue(kwargs['spinpol'])
 
 if __name__ == '__main__':
     unittest.main()
