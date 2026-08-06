@@ -106,7 +106,14 @@ import textwrap
 import requests
 import pickle
 import nanoworks
-from nanoworks.engine.gpaw import build_hybrid_xc, create_gpaw_calc, is_hybrid, resolve_xc_and_setups, load_gpaw_calc
+from nanoworks.engine.gpaw import (
+    build_hybrid_xc,
+    create_gpaw_calc,
+    is_hybrid,
+    resolve_xc_and_setups,
+    load_gpaw_calc,
+    build_kpoint_spec,
+)
 from argparse import ArgumentParser, HelpFormatter
 from dataclasses import dataclass, field
 from typing import Optional, Dict, List, Any
@@ -806,14 +813,17 @@ class dftsolve:
                 if self.Fix_symmetry == True:
                     self.bulk_configuration.set_constraint(FixSymmetry(self.bulk_configuration))
                 if self.Ground_gpts_density is not None:
-                    if self.Ground_kpts_density is not None:
-                        calc_kwargs['kpts'] = {'density': self.Ground_kpts_density, 'gamma': self.Gamma}
-                        calc_kwargs['h'] = self.Ground_gpts_density
-                        calc = create_gpaw_calc(**calc_kwargs)
-                    else:
-                        calc_kwargs['kpts'] = {'size':(self.Ground_kpts_x, self.Ground_kpts_y, self.Ground_kpts_z), 'gamma': self.Gamma}
-                        calc_kwargs['h'] = self.Ground_gpts_density
-                        calc = create_gpaw_calc(**calc_kwargs)
+                    calc_kwargs['kpts'] = build_kpoint_spec(
+                        density=self.Ground_kpts_density,
+                        size=(
+                            self.Ground_kpts_x,
+                            self.Ground_kpts_y,
+                            self.Ground_kpts_z,
+                        ),
+                        gamma=self.Gamma,
+                    )
+
+                    calc = create_gpaw_calc(**calc_kwargs)
                 else:
                     if self.Ground_kpts_density is not None:
                         calc_kwargs['kpts'] = {'density': self.Ground_kpts_density, 'gamma': self.Gamma}
