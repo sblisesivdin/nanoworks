@@ -282,6 +282,11 @@ class TestGPAWEngine(unittest.TestCase):
         kwargs = create_calc.call_args.kwargs
 
         self.assertIsInstance(kwargs['mode'], PW)
+        self.assertAlmostEqual(
+            kwargs['mode'].ecut * Hartree,
+            450.0,
+            places=10,
+        )
         self.assertEqual(kwargs['xc'], 'PBE')
         self.assertEqual(kwargs['setups'], {'N': ':p,6.0'})
         self.assertEqual(kwargs['parallel'], {'domain': 4})
