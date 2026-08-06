@@ -107,7 +107,6 @@ import requests
 import pickle
 import nanoworks
 from nanoworks.engine.gpaw import (
-    build_hybrid_xc,
     is_hybrid,
     resolve_xc_and_setups,
     load_gpaw_calc,
@@ -116,6 +115,7 @@ from nanoworks.engine.gpaw import (
     create_lcao_ground_calc,
     create_elastic_calc,
     create_phonon_calc,
+    resolve_elastic_settings,
 )
 from argparse import ArgumentParser, HelpFormatter
 from dataclasses import dataclass, field
@@ -914,19 +914,31 @@ class dftsolve:
         # Start Elastic calc
         time151 = time.time()
 
-        actual_xc, resolved_setups, _ = resolve_xc_and_setups(self.XC_calc, self.Setup_params)
+        elastic_xc, resolved_setups, elastic_parallel, hybrid = (
+            resolve_elastic_settings(
+                xc_calc=self.XC_calc,
+                setups=self.Setup_params,
+                world_size=world.size,
+                exx_fraction=self.XC_exx_fraction,
+                omega=self.XC_omega,
+                backend=self.XC_backend,
+            )
+        )
 
-        # Elastic constants rely on the stress tensor. The plane-wave hybrid
-        # stress is not reliably available in GPAW, so warn the user and use
-        # the proper hybrid calculator settings if a hybrid is requested.
-        if is_hybrid(self.XC_calc):
-            parprint("\033[93mWARNING:\033[0m Elastic constants with hybrid ("+self.XC_calc+") XC rely on stress/forces that are not reliable in plane-wave GPAW.")
-            parprint("It is recommended to compute elastic properties with PBE and use hybrids only for the electronic structure.")
-            elastic_xc = build_hybrid_xc(self.XC_calc, self.XC_exx_fraction, self.XC_omega, self.XC_backend)
-            elastic_parallel = {'band': 1, 'kpt': 1}
-        else:
-            elastic_xc = self.config.XC_calc
-            elastic_parallel = {'domain': world.size}
+        # Elastic constants rely on the stress tensor. Plane-wave hybrid
+        # stress is not reliably available in GPAW, so retain the existing
+        # warning when a hybrid functional is requested.
+        if hybrid:
+            parprint(
+                "\033[93mWARNING:\033[0m Elastic constants with hybrid ("
+                + self.XC_calc
+                + ") XC rely on stress/forces that are not reliable "
+                  "in plane-wave GPAW."
+            )
+            parprint(
+                "It is recommended to compute elastic properties with PBE "
+                "and use hybrids only for the electronic structure."
+            )
 
         def make_elastic_calc():
             return create_elastic_calc(
@@ -947,14 +959,14 @@ class dftsolve:
                 charge=self.config.Total_charge,
                 convergence=self.config.Ground_convergence,
                 occupations=self.config.Occupation,
-                hybrid=is_hybrid(self.XC_calc),
+                hybrid=hybrid,
             )
         
         # Load the optimized (reference) structure
         bulk_atoms = self.bulk_configuration
         ref_calc = load_gpaw_calc(
             self.struct + '-GROUND-Result-State.gpw',
-            hybrid=is_hybrid(self.XC_calc),
+            hybrid=hybrid,
         )
         bulk_atoms.set_calculator(ref_calc)
         parprint('Optimized (reference) structure is loaded.')
