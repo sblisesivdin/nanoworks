@@ -929,7 +929,7 @@ class dftsolve:
 
         elastic_kwargs = {
             'mode': PW(ecut=self.config.Cut_off_energy, force_complex_dtype=True),
-            'xc': actual_xc,
+            'xc': elastic_xc,
             'nbands': '200%',
             'setups': resolved_setups,
             'parallel': elastic_parallel,
