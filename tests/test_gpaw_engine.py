@@ -10,6 +10,7 @@ from nanoworks.engine.gpaw import (
     resolve_xc_and_setups,
     load_gpaw_calc,
     build_kpoint_spec,
+    build_grid_spec,
 )
 
 
@@ -179,7 +180,32 @@ class TestGPAWEngine(unittest.TestCase):
                 'gamma': False,
             },
         )
+    def test_grid_spec_uses_spacing_when_available(self):
+        result = build_grid_spec(
+            spacing=0.2,
+            size=(8, 8, 8),
+        )
 
+        self.assertEqual(
+            result,
+            {
+                'h': 0.2,
+            },
+        )
+
+
+    def test_grid_spec_uses_explicit_grid_without_spacing(self):
+        result = build_grid_spec(
+            spacing=None,
+            size=[12, 12, 20],
+        )
+
+        self.assertEqual(
+            result,
+            {
+                'gpts': (12, 12, 20),
+            },
+        )
 
 if __name__ == '__main__':
     unittest.main()

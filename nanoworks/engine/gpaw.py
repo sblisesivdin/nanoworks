@@ -99,3 +99,14 @@ def build_kpoint_spec(density, size, gamma):
         'size': tuple(size),
         'gamma': gamma,
     }
+    
+def build_grid_spec(spacing, size):
+    """Build a GPAW real-space grid specification."""
+    if spacing is not None:
+        return {
+            'h': spacing,
+        }
+
+    return {
+        'gpts': tuple(size),
+    }
