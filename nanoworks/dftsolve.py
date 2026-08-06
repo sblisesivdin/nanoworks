@@ -107,16 +107,14 @@ import requests
 import pickle
 import nanoworks
 from nanoworks.engine.gpaw import (
-    build_grid_spec,
     build_hybrid_xc,
     create_gpaw_calc,
     is_hybrid,
     resolve_xc_and_setups,
     load_gpaw_calc,
-    build_kpoint_spec,
-    build_ground_common_kwargs,
     create_regular_pw_ground_calc,
     create_hybrid_pw_ground_calc,
+    create_lcao_ground_calc,
 )
 from argparse import ArgumentParser, HelpFormatter
 from dataclasses import dataclass, field
@@ -807,47 +805,35 @@ class dftsolve:
                 self.bulk_configuration.set_initial_magnetic_moments(numm)
             if self.Ground_calc == True:
                 parprint("Starting LCAO ground state calculation...")
-                calc_kwargs = build_ground_common_kwargs(
+                # Fix the spacegroup in the geometric optimization if wanted
+                if self.Geo_optim and self.Fix_symmetry:
+                    self.bulk_configuration.set_constraint(
+                        FixSymmetry(self.bulk_configuration)
+                    )
+
+                calc = create_lcao_ground_calc(
+                    setups=self.Setup_params,
+                    parallel={'domain': world.size},
                     mixer=self.Mixer_type,
                     charge=self.Total_charge,
                     spinpol=self.Spin_calc,
                     txt=self.struct+'-GROUND-Log-Calculation.txt',
                     convergence=self.Ground_convergence,
                     occupations=self.Occupation,
-                )
-
-                calc_kwargs.update({
-                    'mode': 'lcao',
-                    'basis': 'dzp',
-                    'setups': self.Setup_params,
-                    'parallel': {'domain': world.size},
-                })
-
-                # Fix the spacegroup in the geometric optimization if wanted
-                if self.Geo_optim and self.Fix_symmetry:
-                    self.bulk_configuration.set_constraint(FixSymmetry(self.bulk_configuration))
-                calc_kwargs['kpts'] = build_kpoint_spec(
-                    density=self.Ground_kpts_density,
-                    size=(
+                    kpoint_density=self.Ground_kpts_density,
+                    kpoint_size=(
                         self.Ground_kpts_x,
                         self.Ground_kpts_y,
                         self.Ground_kpts_z,
                     ),
                     gamma=self.Gamma,
+                    grid_spacing=self.Ground_gpts_density,
+                    grid_size=(
+                        self.Ground_gpts_x,
+                        self.Ground_gpts_y,
+                        self.Ground_gpts_z,
+                    ),
                 )
-
-                calc_kwargs.update(
-                    build_grid_spec(
-                        spacing=self.Ground_gpts_density,
-                        size=(
-                            self.Ground_gpts_x,
-                            self.Ground_gpts_y,
-                            self.Ground_gpts_z,
-                        ),
-                    )
-                )
-
-                calc = create_gpaw_calc(**calc_kwargs)
 
                 # Wrapping for vdW
                 if hasattr(self.config, 'vdW_calc') and self.config.vdW_calc.upper() == 'D3':
