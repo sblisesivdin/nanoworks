@@ -13,6 +13,7 @@ from nanoworks.engine.gpaw import (
     build_ground_common_kwargs,
     create_regular_pw_ground_calc,
     create_hybrid_pw_ground_calc,
+    create_lcao_ground_calc,
 )
 from gpaw import PW
 from ase.units import Hartree
@@ -368,6 +369,90 @@ class TestGPAWEngine(unittest.TestCase):
         self.assertIs(kwargs['mixer'], mixer)
         self.assertEqual(kwargs['charge'], 1.0)
         self.assertTrue(kwargs['spinpol'])
+    
+    @patch('nanoworks.engine.gpaw.create_gpaw_calc')
+    def test_lcao_ground_calc_uses_grid_spacing(
+        self,
+        create_calc,
+    ):
+        mixer = object()
+        calculator = object()
+        create_calc.return_value = calculator
+
+        result = create_lcao_ground_calc(
+            setups={'Ga': 'dzp'},
+            parallel={'domain': 4},
+            mixer=mixer,
+            charge=0.0,
+            spinpol=False,
+            txt='lcao-GROUND-Log-Calculation.txt',
+            convergence={'energy': 1.0e-5},
+            occupations={
+                'name': 'fermi-dirac',
+                'width': 0.05,
+            },
+            kpoint_density=None,
+            kpoint_size=(4, 4, 4),
+            gamma=True,
+            grid_spacing=0.18,
+            grid_size=(24, 24, 24),
+        )
+
+        self.assertIs(result, calculator)
+
+        kwargs = create_calc.call_args.kwargs
+
+        self.assertEqual(kwargs['mode'], 'lcao')
+        self.assertEqual(kwargs['basis'], 'dzp')
+        self.assertEqual(kwargs['setups'], {'Ga': 'dzp'})
+        self.assertEqual(kwargs['parallel'], {'domain': 4})
+        self.assertEqual(
+            kwargs['kpts'],
+            {
+                'size': (4, 4, 4),
+                'gamma': True,
+            },
+        )
+        self.assertEqual(kwargs['h'], 0.18)
+        self.assertNotIn('gpts', kwargs)
+        self.assertEqual(kwargs['nbands'], '200%')
+        self.assertIs(kwargs['mixer'], mixer)
+    
+    @patch('nanoworks.engine.gpaw.create_gpaw_calc')
+    def test_lcao_ground_calc_uses_explicit_grid(
+        self,
+        create_calc,
+    ):
+        create_lcao_ground_calc(
+            setups={},
+            parallel={'domain': 1},
+            mixer=None,
+            charge=0.0,
+            spinpol=False,
+            txt='lcao-ground.txt',
+            convergence={},
+            occupations={},
+            kpoint_density=3.0,
+            kpoint_size=(1, 1, 1),
+            gamma=False,
+            grid_spacing=None,
+            grid_size=(20, 22, 24),
+        )
+
+        kwargs = create_calc.call_args.kwargs
+
+        self.assertEqual(
+            kwargs['kpts'],
+            {
+                'density': 3.0,
+                'gamma': False,
+            },
+        )
+        self.assertEqual(
+            kwargs['gpts'],
+            (20, 22, 24),
+        )
+        self.assertNotIn('h', kwargs)
 
 if __name__ == '__main__':
     unittest.main()

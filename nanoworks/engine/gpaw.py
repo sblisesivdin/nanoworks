@@ -223,3 +223,50 @@ def create_hybrid_pw_ground_calc(
     })
 
     return create_gpaw_calc(**kwargs)
+
+def create_lcao_ground_calc(
+    setups,
+    parallel,
+    mixer,
+    charge,
+    spinpol,
+    txt,
+    convergence,
+    occupations,
+    kpoint_density,
+    kpoint_size,
+    gamma,
+    grid_spacing,
+    grid_size,
+    basis='dzp',
+):
+    """Create a GPAW LCAO ground-state calculator."""
+    kwargs = build_ground_common_kwargs(
+        mixer=mixer,
+        charge=charge,
+        spinpol=spinpol,
+        txt=txt,
+        convergence=convergence,
+        occupations=occupations,
+    )
+
+    kwargs.update({
+        'mode': 'lcao',
+        'basis': basis,
+        'setups': setups,
+        'parallel': parallel,
+        'kpts': build_kpoint_spec(
+            density=kpoint_density,
+            size=kpoint_size,
+            gamma=gamma,
+        ),
+    })
+
+    kwargs.update(
+        build_grid_spec(
+            spacing=grid_spacing,
+            size=grid_size,
+        )
+    )
+
+    return create_gpaw_calc(**kwargs)
