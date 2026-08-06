@@ -116,6 +116,7 @@ from nanoworks.engine.gpaw import (
     build_kpoint_spec,
     build_ground_common_kwargs,
     create_regular_pw_ground_calc,
+    create_hybrid_pw_ground_calc,
 )
 from argparse import ArgumentParser, HelpFormatter
 from dataclasses import dataclass, field
@@ -661,42 +662,26 @@ class dftsolve:
                         sys.exit(1)
                 if is_hybrid(actual_xc):
                     parprint('Starting Hybrid XC calculations...')
-
-                    calc_kwargs = build_ground_common_kwargs(
+                    calc = create_hybrid_pw_ground_calc(
+                        cutoff=self.Cut_off_energy,
+                        xc_calc=self.XC_calc,
+                        exx_fraction=self.XC_exx_fraction,
+                        omega=self.XC_omega,
+                        backend=self.XC_backend,
                         mixer=self.Mixer_type,
                         charge=self.Total_charge,
                         spinpol=self.Spin_calc,
                         txt=self.struct+'-GROUND-Log-Calculation.txt',
                         convergence=self.Ground_convergence,
                         occupations=self.Occupation,
-                    )
-
-                    calc_kwargs.update({
-                        'mode': PW(
-                            ecut=self.Cut_off_energy,
-                            force_complex_dtype=True,
-                        ),
-                        'xc': build_hybrid_xc(
-                            self.XC_calc,
-                            self.XC_exx_fraction,
-                            self.XC_omega,
-                            self.XC_backend,
-                        ),
-                        'parallel': {'band': 1, 'kpt': 1},
-                        'eigensolver': Davidson(niter=1),
-                    })
-
-                    calc_kwargs['kpts'] = build_kpoint_spec(
-                        density=self.Ground_kpts_density,
-                        size=(
+                        kpoint_density=self.Ground_kpts_density,
+                        kpoint_size=(
                             self.Ground_kpts_x,
                             self.Ground_kpts_y,
                             self.Ground_kpts_z,
                         ),
                         gamma=self.Gamma,
                     )
-
-                    calc = create_gpaw_calc(**calc_kwargs)
                 else:
                     parprint(f'Starting calculations with {actual_xc}...')
                     # Fix the spacegroup in the geometric optimization if wanted
