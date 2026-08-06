@@ -115,6 +115,7 @@ from nanoworks.engine.gpaw import (
     create_regular_pw_ground_calc,
     create_hybrid_pw_ground_calc,
     create_lcao_ground_calc,
+    create_elastic_calc,
 )
 from argparse import ArgumentParser, HelpFormatter
 from dataclasses import dataclass, field
@@ -123,7 +124,7 @@ from ase import *
 from ase.spacegroup import get_spacegroup
 from ase.dft.kpoints import get_special_points
 from ase.parallel import paropen, world, parprint, broadcast
-from gpaw import PW, Davidson, FermiDirac, MixerSum, MixerDif, Mixer
+from gpaw import PW, FermiDirac, MixerSum, MixerDif, Mixer
 from ase.optimize import QuasiNewton
 from ase.io import read, write
 from ase.calculators.singlepoint import SinglePointCalculator
@@ -927,23 +928,27 @@ class dftsolve:
             elastic_xc = self.config.XC_calc
             elastic_parallel = {'domain': world.size}
 
-        elastic_kwargs = {
-            'mode': PW(ecut=self.config.Cut_off_energy, force_complex_dtype=True),
-            'xc': elastic_xc,
-            'nbands': '200%',
-            'setups': resolved_setups,
-            'parallel': elastic_parallel,
-            'spinpol': self.config.Spin_calc,
-            'kpts': {'size': (self.config.Ground_kpts_x, self.config.Ground_kpts_y, self.config.Ground_kpts_z), 'gamma': self.config.Gamma},
-            'mixer': self.config.Mixer_type,
-            'txt': self.struct+'-ELASTIC-Log-Elastic-deformations.txt',
-            'charge': self.config.Total_charge,
-            'convergence': self.config.Ground_convergence,
-            'occupations': self.config.Occupation
-        }
-        # Hybrids require the single-iteration Davidson eigensolver.
-        if is_hybrid(self.XC_calc):
-            elastic_kwargs['eigensolver'] = Davidson(niter=1)
+        def make_elastic_calc():
+            return create_elastic_calc(
+                cutoff=self.config.Cut_off_energy,
+                xc=elastic_xc,
+                setups=resolved_setups,
+                parallel=elastic_parallel,
+                spinpol=self.config.Spin_calc,
+                kpoint_size=(
+                    self.config.Ground_kpts_x,
+                    self.config.Ground_kpts_y,
+                    self.config.Ground_kpts_z,
+                ),
+                gamma=self.config.Gamma,
+                mixer=self.config.Mixer_type,
+                txt=self.struct
+                    + '-ELASTIC-Log-Elastic-deformations.txt',
+                charge=self.config.Total_charge,
+                convergence=self.config.Ground_convergence,
+                occupations=self.config.Occupation,
+                hybrid=is_hybrid(self.XC_calc),
+            )
         
         # Load the optimized (reference) structure
         bulk_atoms = self.bulk_configuration
@@ -1015,7 +1020,9 @@ class dftsolve:
                         deformed_atoms.set_cell(deformed_atoms.cell @ strain_tensor, scale_atoms=True)
             
                         # Attach a new GPAW calculator for the deformed structure using PBE.
-                        deformed_atoms.set_calculator(create_gpaw_calc(**elastic_kwargs))
+                        deformed_atoms.set_calculator(
+                            make_elastic_calc()
+                        )
                         # Wrapping for vdW
                         if hasattr(self.config, 'vdW_calc') and self.config.vdW_calc.upper() == 'D3':
                             from ase.calculators.dftd3 import DFTD3
