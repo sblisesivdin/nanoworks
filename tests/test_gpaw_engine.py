@@ -2,7 +2,6 @@
 
 import unittest
 from unittest.mock import patch
-
 from nanoworks.engine.gpaw import (
     build_hybrid_xc,
     create_gpaw_calc,
@@ -12,8 +11,9 @@ from nanoworks.engine.gpaw import (
     build_kpoint_spec,
     build_grid_spec,
     build_ground_common_kwargs,
+    create_regular_pw_ground_calc,
 )
-
+from gpaw import PW
 
 class TestGPAWEngine(unittest.TestCase):
     """Verify GPAW calculator creation and hybrid detection."""
@@ -246,6 +246,54 @@ class TestGPAWEngine(unittest.TestCase):
         )
 
         self.assertEqual(result['nbands'], 48)
+    
+    @patch('nanoworks.engine.gpaw.create_gpaw_calc')
+    def test_regular_pw_ground_calc_builds_expected_arguments(
+        self,
+        create_calc,
+    ):
+        mixer = object()
+        calculator = object()
+        create_calc.return_value = calculator
+
+        result = create_regular_pw_ground_calc(
+            cutoff=450,
+            xc='PBE',
+            setups={'N': ':p,6.0'},
+            parallel={'domain': 4},
+            mixer=mixer,
+            charge=0.0,
+            spinpol=True,
+            txt='sample-GROUND-Log-Calculation.txt',
+            convergence={'energy': 1.0e-5},
+            occupations={
+                'name': 'fermi-dirac',
+                'width': 0.05,
+            },
+            kpoint_density=None,
+            kpoint_size=(4, 4, 1),
+            gamma=True,
+        )
+
+        self.assertIs(result, calculator)
+
+        kwargs = create_calc.call_args.kwargs
+
+        self.assertIsInstance(kwargs['mode'], PW)
+        self.assertEqual(kwargs['xc'], 'PBE')
+        self.assertEqual(kwargs['setups'], {'N': ':p,6.0'})
+        self.assertEqual(kwargs['parallel'], {'domain': 4})
+        self.assertIs(kwargs['mixer'], mixer)
+        self.assertEqual(kwargs['charge'], 0.0)
+        self.assertTrue(kwargs['spinpol'])
+        self.assertEqual(
+            kwargs['kpts'],
+            {
+                'size': (4, 4, 1),
+                'gamma': True,
+            },
+        )
+        self.assertEqual(kwargs['nbands'], '200%')
 
 if __name__ == '__main__':
     unittest.main()

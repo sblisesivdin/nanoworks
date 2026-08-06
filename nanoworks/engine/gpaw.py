@@ -1,6 +1,6 @@
 """GPAW computation engine helpers."""
 
-from gpaw import GPAW
+from gpaw import GPAW, PW
 
 
 HYBRID_XC = ('HSE06', 'HSE03', 'B3LYP', 'PBE0', 'EXX')
@@ -130,3 +130,45 @@ def build_ground_common_kwargs(
         'convergence': convergence,
         'occupations': occupations,
     }
+
+def create_regular_pw_ground_calc(
+    cutoff,
+    xc,
+    setups,
+    parallel,
+    mixer,
+    charge,
+    spinpol,
+    txt,
+    convergence,
+    occupations,
+    kpoint_density,
+    kpoint_size,
+    gamma,
+):
+    """Create a regular GPAW plane-wave ground-state calculator."""
+    kwargs = build_ground_common_kwargs(
+        mixer=mixer,
+        charge=charge,
+        spinpol=spinpol,
+        txt=txt,
+        convergence=convergence,
+        occupations=occupations,
+    )
+
+    kwargs.update({
+        'mode': PW(
+            ecut=cutoff,
+            force_complex_dtype=True,
+        ),
+        'xc': xc,
+        'setups': setups,
+        'parallel': parallel,
+        'kpts': build_kpoint_spec(
+            density=kpoint_density,
+            size=kpoint_size,
+            gamma=gamma,
+        ),
+    })
+
+    return create_gpaw_calc(**kwargs)
