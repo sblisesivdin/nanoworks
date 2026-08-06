@@ -9,6 +9,7 @@ from nanoworks.engine.gpaw import (
     is_hybrid,
     resolve_xc_and_setups,
     load_gpaw_calc,
+    build_kpoint_spec,
 )
 
 
@@ -146,6 +147,37 @@ class TestGPAWEngine(unittest.TestCase):
         mock_gpaw.assert_called_once_with(
             'system-GROUND-Result-State.gpw',
             legacy_gpaw=False,
+        )
+    
+    def test_kpoint_spec_uses_density_when_available(self):
+        result = build_kpoint_spec(
+            density=3.5,
+            size=(5, 5, 1),
+            gamma=True,
+        )
+
+        self.assertEqual(
+            result,
+            {
+                'density': 3.5,
+                'gamma': True,
+            },
+        )
+
+
+    def test_kpoint_spec_uses_explicit_mesh_without_density(self):
+        result = build_kpoint_spec(
+            density=None,
+            size=[7, 7, 1],
+            gamma=False,
+        )
+
+        self.assertEqual(
+            result,
+            {
+                'size': (7, 7, 1),
+                'gamma': False,
+            },
         )
 
 

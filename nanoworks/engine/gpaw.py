@@ -86,3 +86,16 @@ def resolve_xc_and_setups(xc_input, user_setups=None):
         is_libxc = True
 
     return xc_str, setups, is_libxc
+
+def build_kpoint_spec(density, size, gamma):
+    """Build a GPAW k-point specification."""
+    if density is not None:
+        return {
+            'density': density,
+            'gamma': gamma,
+        }
+
+    return {
+        'size': tuple(size),
+        'gamma': gamma,
+    }
