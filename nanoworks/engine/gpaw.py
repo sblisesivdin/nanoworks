@@ -110,3 +110,23 @@ def build_grid_spec(spacing, size):
     return {
         'gpts': tuple(size),
     }
+
+def build_ground_common_kwargs(
+    mixer,
+    charge,
+    spinpol,
+    txt,
+    convergence,
+    occupations,
+    nbands='200%',
+):
+    """Build calculator arguments shared by GPAW ground-state modes."""
+    return {
+        'nbands': nbands,
+        'mixer': mixer,
+        'charge': charge,
+        'spinpol': spinpol,
+        'txt': txt,
+        'convergence': convergence,
+        'occupations': occupations,
+    }

@@ -11,6 +11,7 @@ from nanoworks.engine.gpaw import (
     load_gpaw_calc,
     build_kpoint_spec,
     build_grid_spec,
+    build_ground_common_kwargs,
 )
 
 
@@ -206,6 +207,45 @@ class TestGPAWEngine(unittest.TestCase):
                 'gpts': (12, 12, 20),
             },
         )
+        
+    def test_ground_common_kwargs_preserve_values(self):
+        mixer = object()
+        convergence = {'energy': 1.0e-5}
+        occupations = {'name': 'fermi-dirac', 'width': 0.05}
+
+        result = build_ground_common_kwargs(
+            mixer=mixer,
+            charge=-1.0,
+            spinpol=True,
+            txt='sample-GROUND-Log-Calculation.txt',
+            convergence=convergence,
+            occupations=occupations,
+        )
+
+        self.assertEqual(result['nbands'], '200%')
+        self.assertIs(result['mixer'], mixer)
+        self.assertEqual(result['charge'], -1.0)
+        self.assertTrue(result['spinpol'])
+        self.assertEqual(
+            result['txt'],
+            'sample-GROUND-Log-Calculation.txt',
+        )
+        self.assertIs(result['convergence'], convergence)
+        self.assertIs(result['occupations'], occupations)
+
+
+    def test_ground_common_kwargs_accept_custom_nbands(self):
+        result = build_ground_common_kwargs(
+            mixer=None,
+            charge=0.0,
+            spinpol=False,
+            txt='ground.txt',
+            convergence={},
+            occupations={},
+            nbands=48,
+        )
+
+        self.assertEqual(result['nbands'], 48)
 
 if __name__ == '__main__':
     unittest.main()
