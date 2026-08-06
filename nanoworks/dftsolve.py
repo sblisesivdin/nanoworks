@@ -673,12 +673,17 @@ class dftsolve:
                         'occupations': self.Occupation
                     }
 
-                    if self.Ground_kpts_density is not None:
-                        calc_kwargs['kpts'] = {'density': self.Ground_kpts_density, 'gamma': self.Gamma}
-                        calc = create_gpaw_calc(**calc_kwargs)
-                    else:
-                        calc_kwargs['kpts'] = {'size': (self.Ground_kpts_x, self.Ground_kpts_y, self.Ground_kpts_z), 'gamma': self.Gamma}
-                        calc = create_gpaw_calc(**calc_kwargs)
+                    calc_kwargs['kpts'] = build_kpoint_spec(
+                        density=self.Ground_kpts_density,
+                        size=(
+                            self.Ground_kpts_x,
+                            self.Ground_kpts_y,
+                            self.Ground_kpts_z,
+                        ),
+                        gamma=self.Gamma,
+                    )
+
+                    calc = create_gpaw_calc(**calc_kwargs)
                 else:
                     parprint(f'Starting calculations with {actual_xc}...')
                     calc_kwargs = {
