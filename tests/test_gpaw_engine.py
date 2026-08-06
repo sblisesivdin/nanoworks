@@ -14,6 +14,7 @@ from nanoworks.engine.gpaw import (
     create_regular_pw_ground_calc,
     create_hybrid_pw_ground_calc,
     create_lcao_ground_calc,
+    create_elastic_calc,
 )
 from gpaw import PW
 from ase.units import Hartree
@@ -453,6 +454,115 @@ class TestGPAWEngine(unittest.TestCase):
             (20, 22, 24),
         )
         self.assertNotIn('h', kwargs)
+        
+    @patch('nanoworks.engine.gpaw.create_gpaw_calc')
+    def test_regular_elastic_calc_builds_expected_arguments(
+        self,
+        create_calc,
+    ):
+        mixer = object()
+        calculator = object()
+        create_calc.return_value = calculator
+
+        result = create_elastic_calc(
+            cutoff=500,
+            xc='PBE',
+            setups={'N': ':p,6.0'},
+            parallel={'domain': 8},
+            spinpol=False,
+            kpoint_size=(5, 5, 3),
+            gamma=True,
+            mixer=mixer,
+            txt='sample-ELASTIC-Log-Elastic-deformations.txt',
+            charge=0.0,
+            convergence={'energy': 1.0e-5},
+            occupations={
+                'name': 'fermi-dirac',
+                'width': 0.05,
+            },
+            hybrid=False,
+        )
+
+        self.assertIs(result, calculator)
+
+        kwargs = create_calc.call_args.kwargs
+
+        self.assertIsInstance(kwargs['mode'], PW)
+        self.assertAlmostEqual(
+            kwargs['mode'].ecut * Hartree,
+            500.0,
+            places=10,
+        )
+        self.assertEqual(kwargs['xc'], 'PBE')
+        self.assertEqual(kwargs['setups'], {'N': ':p,6.0'})
+        self.assertEqual(kwargs['parallel'], {'domain': 8})
+        self.assertEqual(
+            kwargs['kpts'],
+            {
+                'size': (5, 5, 3),
+                'gamma': True,
+            },
+        )
+        self.assertEqual(kwargs['nbands'], '200%')
+        self.assertIs(kwargs['mixer'], mixer)
+        self.assertNotIn('eigensolver', kwargs)
+    
+    @patch('nanoworks.engine.gpaw.create_gpaw_calc')
+    def test_hybrid_elastic_calc_uses_davidson(
+        self,
+        create_calc,
+    ):
+        calculator = object()
+        create_calc.return_value = calculator
+
+        hybrid_xc = {
+            'name': 'HSE06',
+            'backend': 'pw',
+            'fraction': 0.25,
+            'omega': 0.11,
+        }
+
+        result = create_elastic_calc(
+            cutoff=400,
+            xc=hybrid_xc,
+            setups={},
+            parallel={
+                'band': 1,
+                'kpt': 1,
+            },
+            spinpol=True,
+            kpoint_size=(3, 3, 3),
+            gamma=False,
+            mixer=None,
+            txt='hybrid-ELASTIC-Log-Elastic-deformations.txt',
+            charge=1.0,
+            convergence={},
+            occupations={},
+            hybrid=True,
+        )
+
+        self.assertIs(result, calculator)
+
+        kwargs = create_calc.call_args.kwargs
+
+        self.assertEqual(kwargs['xc'], hybrid_xc)
+        self.assertEqual(
+            kwargs['parallel'],
+            {
+                'band': 1,
+                'kpt': 1,
+            },
+        )
+        self.assertEqual(kwargs['eigensolver'].niter, 1)
+        self.assertEqual(
+            kwargs['kpts'],
+            {
+                'size': (3, 3, 3),
+                'gamma': False,
+            },
+        )
+        self.assertEqual(kwargs['charge'], 1.0)
+        self.assertTrue(kwargs['spinpol'])
 
 if __name__ == '__main__':
     unittest.main()

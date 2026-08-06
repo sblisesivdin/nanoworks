@@ -270,3 +270,47 @@ def create_lcao_ground_calc(
     )
 
     return create_gpaw_calc(**kwargs)
+
+def create_elastic_calc(
+    cutoff,
+    xc,
+    setups,
+    parallel,
+    spinpol,
+    kpoint_size,
+    gamma,
+    mixer,
+    txt,
+    charge,
+    convergence,
+    occupations,
+    hybrid=False,
+):
+    """Create a GPAW calculator for elastic deformations."""
+    kwargs = build_ground_common_kwargs(
+        mixer=mixer,
+        charge=charge,
+        spinpol=spinpol,
+        txt=txt,
+        convergence=convergence,
+        occupations=occupations,
+    )
+
+    kwargs.update({
+        'mode': PW(
+            ecut=cutoff,
+            force_complex_dtype=True,
+        ),
+        'xc': xc,
+        'setups': setups,
+        'parallel': parallel,
+        'kpts': {
+            'size': tuple(kpoint_size),
+            'gamma': gamma,
+        },
+    })
+
+    if hybrid:
+        kwargs['eigensolver'] = Davidson(niter=1)
+
+    return create_gpaw_calc(**kwargs)
