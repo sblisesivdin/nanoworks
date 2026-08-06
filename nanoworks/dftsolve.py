@@ -698,19 +698,24 @@ class dftsolve:
                     calc = create_gpaw_calc(**calc_kwargs)
                 else:
                     parprint(f'Starting calculations with {actual_xc}...')
-                    calc_kwargs = {
-                        'mode': PW(ecut=self.Cut_off_energy, force_complex_dtype=True),
+                    calc_kwargs = build_ground_common_kwargs(
+                        mixer=self.Mixer_type,
+                        charge=self.Total_charge,
+                        spinpol=self.Spin_calc,
+                        txt=self.struct+'-GROUND-Log-Calculation.txt',
+                        convergence=self.Ground_convergence,
+                        occupations=self.Occupation,
+                    )
+
+                    calc_kwargs.update({
+                        'mode': PW(
+                            ecut=self.Cut_off_energy,
+                            force_complex_dtype=True,
+                        ),
                         'xc': actual_xc,
-                        'nbands': '200%',
-                        'setups': resolved_setups,  # Uses resolved setups with fallback if needed
+                        'setups': resolved_setups,
                         'parallel': {'domain': world.size},
-                        'mixer': self.Mixer_type,
-                        'charge': self.Total_charge,
-                        'spinpol': self.Spin_calc,
-                        'txt': self.struct + '-GROUND-Log-Calculation.txt',
-                        'convergence': self.Ground_convergence,
-                        'occupations': self.Occupation
-                    }
+                    })
 
                     # Fix the spacegroup in the geometric optimization if wanted
                     if self.Fix_symmetry == True:
