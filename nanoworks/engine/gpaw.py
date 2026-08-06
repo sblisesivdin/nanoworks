@@ -328,3 +328,38 @@ def create_phonon_calc(
         },
         txt=txt,
     )
+
+def resolve_elastic_settings(
+    xc_calc,
+    setups,
+    world_size,
+    exx_fraction=None,
+    omega=None,
+    backend='pw',
+):
+    """Resolve XC, setups, parallel settings, and hybrid state for elasticity."""
+    actual_xc, resolved_setups, _ = resolve_xc_and_setups(
+        xc_calc,
+        setups,
+    )
+
+    hybrid = is_hybrid(xc_calc)
+
+    if hybrid:
+        elastic_xc = build_hybrid_xc(
+            xc_calc,
+            exx_fraction,
+            omega,
+            backend,
+        )
+        parallel = {
+            'band': 1,
+            'kpt': 1,
+        }
+    else:
+        elastic_xc = actual_xc
+        parallel = {
+            'domain': world_size,
+        }
+
+    return elastic_xc, resolved_setups, parallel, hybrid

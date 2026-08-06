@@ -16,6 +16,7 @@ from nanoworks.engine.gpaw import (
     create_lcao_ground_calc,
     create_elastic_calc,
     create_phonon_calc,
+    resolve_elastic_settings,
 )
 from gpaw import PW
 from ase.units import Hartree
@@ -598,6 +599,53 @@ class TestGPAWEngine(unittest.TestCase):
         self.assertEqual(
             kwargs['txt'],
             'sample-PHONON-Log-Phonon-GPAW.txt',
+        )
+    
+    def test_resolve_regular_elastic_settings(self):
+        xc, setups, parallel, hybrid = resolve_elastic_settings(
+            xc_calc='PBE',
+            setups={'N': ':p,6.0'},
+            world_size=8,
+        )
+
+        self.assertEqual(xc, 'PBE')
+        self.assertEqual(setups, {'N': ':p,6.0'})
+        self.assertEqual(parallel, {'domain': 8})
+        self.assertFalse(hybrid)
+    
+    @patch('nanoworks.engine.gpaw.build_hybrid_xc')
+    def test_resolve_hybrid_elastic_settings(
+        self,
+        build_xc,
+    ):
+        hybrid_xc = object()
+        build_xc.return_value = hybrid_xc
+
+        xc, setups, parallel, hybrid = resolve_elastic_settings(
+            xc_calc='HSE06',
+            setups={'Ga': 'default'},
+            world_size=16,
+            exx_fraction=0.30,
+            omega=0.12,
+            backend='pw',
+        )
+
+        self.assertIs(xc, hybrid_xc)
+        self.assertEqual(setups, {'Ga': 'default'})
+        self.assertEqual(
+            parallel,
+            {
+                'band': 1,
+                'kpt': 1,
+            },
+        )
+        self.assertTrue(hybrid)
+
+        build_xc.assert_called_once_with(
+            'HSE06',
+            0.30,
+            0.12,
+            'pw',
         )
 
 if __name__ == '__main__':
