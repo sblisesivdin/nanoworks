@@ -106,6 +106,7 @@ import textwrap
 import requests
 import pickle
 import nanoworks
+from nanoworks.engine import normalize_engine_name
 from nanoworks.engine.gpaw import (
     is_hybrid,
     resolve_xc_and_setups,
@@ -270,6 +271,8 @@ class DFTConfig:
     
     def __post_init__(self):
         """Initialize default values that depend on other objects."""
+        self.Engine = normalize_engine_name(self.Engine)
+        
         if self.Mixer_type is None:
             self.Mixer_type = create_default_mixer()
         if self.Phonon_supercell is None:
