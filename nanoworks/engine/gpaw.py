@@ -1,6 +1,6 @@
 """GPAW computation engine helpers."""
 
-from gpaw import GPAW, PW, MixerSum
+from gpaw import GPAW, PW, MixerSum, FermiDirac
 from gpaw.eigensolvers import Davidson
 
 HYBRID_XC = ('HSE06', 'HSE03', 'B3LYP', 'PBE0', 'EXX')
@@ -370,4 +370,34 @@ def create_default_mixer():
         beta=0.1,
         nmaxold=3,
         weight=50,
+    )
+
+def prepare_optical_calc(
+    filename,
+    hybrid,
+    txt,
+    nbands,
+    smearing,
+):
+    """Prepare a GPAW calculator for optical-response calculations."""
+    parallel = {
+        'domain': 1,
+        'band': 1,
+    }
+
+    if hybrid:
+        return load_gpaw_calc(
+            filename,
+            hybrid=True,
+            txt=txt,
+            parallel=parallel,
+        )
+
+    return load_gpaw_calc(
+        filename,
+    ).fixed_density(
+        txt=txt,
+        nbands=nbands,
+        parallel=parallel,
+        occupations=FermiDirac(smearing),
     )

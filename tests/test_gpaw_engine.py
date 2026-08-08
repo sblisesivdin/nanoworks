@@ -1,7 +1,7 @@
 """Tests for the GPAW computation engine helpers."""
 
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from nanoworks.engine.gpaw import (
     build_hybrid_xc,
     create_gpaw_calc,
@@ -18,6 +18,7 @@ from nanoworks.engine.gpaw import (
     create_phonon_calc,
     resolve_elastic_settings,
     create_default_mixer,
+    prepare_optical_calc,
 )
 from gpaw import PW, MixerSum
 from ase.units import Hartree
@@ -662,6 +663,76 @@ class TestGPAWEngine(unittest.TestCase):
             nmaxold=3,
             weight=50,
         )
+        
+    @patch('nanoworks.engine.gpaw.FermiDirac')
+    @patch('nanoworks.engine.gpaw.load_gpaw_calc')
+    def test_regular_optical_calc_uses_fixed_density(
+        self,
+        load_calc,
+        fermi_dirac,
+    ):
+        loaded_calc = load_calc.return_value
+        prepared_calc = object()
+        occupation = object()
+
+        loaded_calc.fixed_density.return_value = prepared_calc
+        fermi_dirac.return_value = occupation
+
+        result = prepare_optical_calc(
+            filename='sample-GROUND-Result-State.gpw',
+            hybrid=False,
+            txt='sample-OPTICAL-Log-Calculation.txt',
+            nbands=16,
+            smearing=0.05,
+        )
+
+        self.assertIs(result, prepared_calc)
+
+        load_calc.assert_called_once_with(
+            'sample-GROUND-Result-State.gpw',
+        )
+
+        fermi_dirac.assert_called_once_with(0.05)
+
+        loaded_calc.fixed_density.assert_called_once_with(
+            txt='sample-OPTICAL-Log-Calculation.txt',
+            nbands=16,
+            parallel={
+                'domain': 1,
+                'band': 1,
+            },
+            occupations=occupation,
+        )
+        
+    @patch('nanoworks.engine.gpaw.load_gpaw_calc')
+    def test_hybrid_optical_calc_loads_state_directly(
+        self,
+        load_calc,
+    ):
+        prepared_calc = MagicMock()
+        load_calc.return_value = prepared_calc
+
+        result = prepare_optical_calc(
+            filename='hybrid-GROUND-Result-State.gpw',
+            hybrid=True,
+            txt='hybrid-OPTICAL-Log-Calculation.txt',
+            nbands=24,
+            smearing=0.10,
+        )
+
+        self.assertIs(result, prepared_calc)
+
+        load_calc.assert_called_once_with(
+            'hybrid-GROUND-Result-State.gpw',
+            hybrid=True,
+            txt='hybrid-OPTICAL-Log-Calculation.txt',
+            parallel={
+                'domain': 1,
+                'band': 1,
+            },
+        )
+
+        prepared_calc.fixed_density.assert_not_called()
 
 if __name__ == '__main__':
     unittest.main()
