@@ -118,6 +118,7 @@ from nanoworks.engine.gpaw import (
     resolve_elastic_settings,
     create_default_mixer,
     prepare_optical_calc,
+    prepare_dos_calc,
 )
 from argparse import ArgumentParser, HelpFormatter
 from dataclasses import dataclass, field
@@ -1185,30 +1186,29 @@ class dftsolve:
         time21 = time.time()
         parprint("Starting DOS calculation...")
 
-        if is_hybrid(self.XC_calc):
+        hybrid = is_hybrid(self.XC_calc)
+
+        if hybrid:
             # Hybrids can NOT use fixed_density(): the exchange operator
             # depends on the occupied orbitals, not only on the density. We
             # therefore read the eigenvalues stored in the converged ground
             # state and reference them to the ground-state Fermi level.
-            parprint('Passing DOS NSCF calculations (using ground-state eigenvalues for hybrid)...')
-            calc = load_gpaw_calc(
-                self.struct + '-GROUND-Result-State.gpw',
-                hybrid=True,
+            parprint(
+                'Passing DOS NSCF calculations '
+                '(using ground-state eigenvalues for hybrid)...'
             )
+
+        calc = prepare_dos_calc(
+            filename=self.struct+'-GROUND-Result-State.gpw',
+            hybrid=hybrid,
+            txt=self.struct+'-DOS-Log-Calculation.txt',
+            convergence=self.DOS_convergence,
+            occupations=self.Occupation,
+        )
+
+        if hybrid:
             ef = self.hybrid_fermi_level(calc)
         else:
-            calc_load = load_gpaw_calc(self.struct+'-GROUND-Result-State.gpw')
-            # Safe parameter cleanup compatible with GPAW 26.7.0+
-            try:
-                if hasattr(calc_load.parameters, 'pop'):
-                    calc_load.parameters.pop('extensions', None)
-                elif hasattr(calc_load.parameters, 'extensions'):
-                    delattr(calc_load.parameters, 'extensions')
-            except Exception:
-                pass
-
-            # Continue with fixed_density
-            calc = calc_load.fixed_density(txt=self.struct+'-DOS-Log-Calculation.txt', convergence=self.DOS_convergence, occupations=self.Occupation)
             ef = calc.get_fermi_level()
 
         chem_sym = self.bulk_configuration.get_chemical_symbols()
