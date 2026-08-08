@@ -432,3 +432,43 @@ def prepare_dos_calc(
         convergence=convergence,
         occupations=occupations,
     )
+
+def prepare_band_calc(
+    filename,
+    hybrid,
+    path,
+    npoints,
+    txt,
+    occupations,
+    convergence,
+):
+    """Prepare a GPAW calculator for band-structure calculations."""
+    kpts = {
+        'path': path,
+        'npoints': npoints,
+    }
+
+    if hybrid:
+        return load_gpaw_calc(
+            filename,
+            hybrid=True,
+            symmetry='off',
+            kpts=kpts,
+            parallel={
+                'band': 1,
+                'kpt': 1,
+            },
+            occupations=occupations,
+            txt=txt,
+            convergence=convergence,
+        )
+
+    return load_gpaw_calc(
+        filename,
+    ).fixed_density(
+        kpts=kpts,
+        txt=txt,
+        symmetry='off',
+        occupations=occupations,
+        convergence=convergence,
+    )

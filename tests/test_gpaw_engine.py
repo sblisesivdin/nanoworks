@@ -20,6 +20,7 @@ from nanoworks.engine.gpaw import (
     create_default_mixer,
     prepare_optical_calc,
     prepare_dos_calc,
+    prepare_band_calc,
 )
 from gpaw import PW, MixerSum
 from ase.units import Hartree
@@ -810,6 +811,95 @@ class TestGPAWEngine(unittest.TestCase):
         load_calc.assert_called_once_with(
             'hybrid-GROUND-Result-State.gpw',
             hybrid=True,
+        )
+
+        prepared_calc.fixed_density.assert_not_called()
+    
+    @patch('nanoworks.engine.gpaw.load_gpaw_calc')
+    def test_regular_band_calc_uses_fixed_density(
+        self,
+        load_calc,
+    ):
+        loaded_calc = MagicMock()
+        prepared_calc = object()
+
+        load_calc.return_value = loaded_calc
+        loaded_calc.fixed_density.return_value = prepared_calc
+
+        occupations = {
+            'name': 'fermi-dirac',
+            'width': 0.05,
+        }
+        convergence = {'bands': 8}
+
+        result = prepare_band_calc(
+            filename='sample-GROUND-Result-State.gpw',
+            hybrid=False,
+            path='GXW',
+            npoints=61,
+            txt='sample-BAND-Log-Calculation.txt',
+            occupations=occupations,
+            convergence=convergence,
+        )
+
+        self.assertIs(result, prepared_calc)
+
+        load_calc.assert_called_once_with(
+            'sample-GROUND-Result-State.gpw',
+        )
+
+        loaded_calc.fixed_density.assert_called_once_with(
+            kpts={
+                'path': 'GXW',
+                'npoints': 61,
+            },
+            txt='sample-BAND-Log-Calculation.txt',
+            symmetry='off',
+            occupations=occupations,
+            convergence=convergence,
+        )
+    
+    @patch('nanoworks.engine.gpaw.load_gpaw_calc')
+    def test_hybrid_band_calc_loads_state_directly(
+        self,
+        load_calc,
+    ):
+        prepared_calc = MagicMock()
+        load_calc.return_value = prepared_calc
+
+        occupations = {
+            'name': 'fermi-dirac',
+            'width': 0.05,
+        }
+        convergence = {'bands': 8}
+
+        result = prepare_band_calc(
+            filename='hybrid-GROUND-Result-State.gpw',
+            hybrid=True,
+            path='GXW',
+            npoints=61,
+            txt='hybrid-BAND-Log-Calculation.txt',
+            occupations=occupations,
+            convergence=convergence,
+        )
+
+        self.assertIs(result, prepared_calc)
+
+        load_calc.assert_called_once_with(
+            'hybrid-GROUND-Result-State.gpw',
+            hybrid=True,
+            symmetry='off',
+            kpts={
+                'path': 'GXW',
+                'npoints': 61,
+            },
+            parallel={
+                'band': 1,
+                'kpt': 1,
+            },
+            occupations=occupations,
+            txt='hybrid-BAND-Log-Calculation.txt',
+            convergence=convergence,
         )
 
         prepared_calc.fixed_density.assert_not_called()
