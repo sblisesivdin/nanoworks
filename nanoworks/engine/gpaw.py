@@ -401,3 +401,34 @@ def prepare_optical_calc(
         parallel=parallel,
         occupations=FermiDirac(smearing),
     )
+
+def prepare_dos_calc(
+    filename,
+    hybrid,
+    txt,
+    convergence,
+    occupations,
+):
+    """Prepare a GPAW calculator for DOS calculations."""
+    if hybrid:
+        return load_gpaw_calc(
+            filename,
+            hybrid=True,
+        )
+
+    calc = load_gpaw_calc(filename)
+
+    # Safe parameter cleanup compatible with GPAW 26.7.0+
+    try:
+        if hasattr(calc.parameters, 'pop'):
+            calc.parameters.pop('extensions', None)
+        elif hasattr(calc.parameters, 'extensions'):
+            delattr(calc.parameters, 'extensions')
+    except Exception:
+        pass
+
+    return calc.fixed_density(
+        txt=txt,
+        convergence=convergence,
+        occupations=occupations,
+    )

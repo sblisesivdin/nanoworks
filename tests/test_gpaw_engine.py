@@ -19,6 +19,7 @@ from nanoworks.engine.gpaw import (
     resolve_elastic_settings,
     create_default_mixer,
     prepare_optical_calc,
+    prepare_dos_calc,
 )
 from gpaw import PW, MixerSum
 from ase.units import Hartree
@@ -730,6 +731,85 @@ class TestGPAWEngine(unittest.TestCase):
                 'domain': 1,
                 'band': 1,
             },
+        )
+
+        prepared_calc.fixed_density.assert_not_called()
+        
+    @patch('nanoworks.engine.gpaw.load_gpaw_calc')
+    def test_regular_dos_calc_uses_fixed_density(
+        self,
+        load_calc,
+    ):
+        loaded_calc = MagicMock()
+        prepared_calc = object()
+
+        loaded_calc.parameters = {
+            'extensions': ['legacy-extension'],
+            'other': 'value',
+        }
+
+        load_calc.return_value = loaded_calc
+        loaded_calc.fixed_density.return_value = prepared_calc
+
+        convergence = {'bands': 8}
+        occupations = {
+            'name': 'fermi-dirac',
+            'width': 0.05,
+        }
+
+        result = prepare_dos_calc(
+            filename='sample-GROUND-Result-State.gpw',
+            hybrid=False,
+            txt='sample-DOS-Log-Calculation.txt',
+            convergence=convergence,
+            occupations=occupations,
+        )
+
+        self.assertIs(result, prepared_calc)
+
+        load_calc.assert_called_once_with(
+            'sample-GROUND-Result-State.gpw',
+        )
+
+        self.assertNotIn(
+            'extensions',
+            loaded_calc.parameters,
+        )
+        self.assertEqual(
+            loaded_calc.parameters['other'],
+            'value',
+        )
+
+        loaded_calc.fixed_density.assert_called_once_with(
+            txt='sample-DOS-Log-Calculation.txt',
+            convergence=convergence,
+            occupations=occupations,
+        )
+        
+    @patch('nanoworks.engine.gpaw.load_gpaw_calc')
+    def test_hybrid_dos_calc_loads_state_directly(
+        self,
+        load_calc,
+    ):
+        prepared_calc = MagicMock()
+        load_calc.return_value = prepared_calc
+
+        result = prepare_dos_calc(
+            filename='hybrid-GROUND-Result-State.gpw',
+            hybrid=True,
+            txt='hybrid-DOS-Log-Calculation.txt',
+            convergence={'bands': 8},
+            occupations={
+                'name': 'fermi-dirac',
+                'width': 0.05,
+            },
+        )
+
+        self.assertIs(result, prepared_calc)
+
+        load_calc.assert_called_once_with(
+            'hybrid-GROUND-Result-State.gpw',
+            hybrid=True,
         )
 
         prepared_calc.fixed_density.assert_not_called()
