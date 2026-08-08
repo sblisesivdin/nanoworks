@@ -117,6 +117,7 @@ from nanoworks.engine.gpaw import (
     create_phonon_calc,
     resolve_elastic_settings,
     create_default_mixer,
+    prepare_optical_calc,
 )
 from argparse import ArgumentParser, HelpFormatter
 from dataclasses import dataclass, field
@@ -125,7 +126,7 @@ from ase import *
 from ase.spacegroup import get_spacegroup
 from ase.dft.kpoints import get_special_points
 from ase.parallel import paropen, world, parprint, broadcast
-from gpaw import FermiDirac, MixerSum, MixerDif, Mixer
+from gpaw import MixerSum, MixerDif, Mixer
 from ase.optimize import QuasiNewton
 from ase.io import read, write
 from ase.calculators.singlepoint import SinglePointCalculator
@@ -2127,27 +2128,21 @@ class dftsolve:
         if self.Mode == 'PW':
             parprint("Starting optical calculation...")
             try:
-                if is_hybrid(self.XC_calc):
-                    # fixed_density() is invalid for hybrids (the exchange
-                    # operator depends on the orbitals), so we read the
-                    # converged hybrid ground state directly and full-
-                    # diagonalize it for the optical response.
-                    parprint("Hybrid XC detected: reading ground state directly for optical calculation...")
-                    calc = load_gpaw_calc(
-                        self.struct+'-GROUND-Result-State.gpw',
-                        hybrid=True,
-                        txt=self.struct+'-OPTICAL-Log-Calculation.txt',
-                        parallel={'domain': 1, 'band': 1},
+                hybrid = is_hybrid(self.XC_calc)
+
+                if hybrid:
+                    parprint(
+                        "Hybrid XC detected: reading ground state directly "
+                        "for optical calculation..."
                     )
-                else:
-                    calc = load_gpaw_calc(
-                        self.struct+'-GROUND-Result-State.gpw'
-                    ).fixed_density(
-                        txt=self.struct+'-OPTICAL-Log-Calculation.txt',
-                        nbands=self.Opt_num_of_bands,
-                        parallel={'domain': 1, 'band': 1},
-                        occupations=FermiDirac(self.Opt_FD_smearing)
-                    )
+
+                calc = prepare_optical_calc(
+                    filename=self.struct+'-GROUND-Result-State.gpw',
+                    hybrid=hybrid,
+                    txt=self.struct+'-OPTICAL-Log-Calculation.txt',
+                    nbands=self.Opt_num_of_bands,
+                    smearing=self.Opt_FD_smearing,
+                )
             except FileNotFoundError as err:
                 # output error, and return with an error code
                 parprint('\033[91mERROR:\033[0mOptical computations must be done separately. Please do ground calculations first.')
