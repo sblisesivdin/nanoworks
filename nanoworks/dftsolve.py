@@ -565,6 +565,7 @@ class dftsolve:
         # instead of hard-coding 0.0 eV.
         self.Ground_fermi_level = None
         self.Ground_convergence = config.Ground_convergence
+        self.Ground_num_of_bands = config.Ground_num_of_bands
         self.Occupation = config.Occupation
         self.Mixer_type = config.Mixer_type
         self.Spin_calc = config.Spin_calc
@@ -581,12 +582,14 @@ class dftsolve:
         self.DOS_kpts_z = config.DOS_kpts_z
         self.DOS_gamma = config.DOS_gamma
         self.DOS_occupation = config.DOS_occupation
+        self.DOS_num_of_bands = config.DOS_num_of_bands
 
         self.Gamma = config.Gamma
         self.Band_path = config.Band_path
         self.Projected_band_plot = config.Projected_band_plot
         self.Projections = config.Projections
         self.Band_npoints = config.Band_npoints
+        self.Band_num_of_bands = config.Band_num_of_bands
         self.Energy_max = config.Energy_max
         self.Energy_min = config.Energy_min
         self.Band_convergence = config.Band_convergence
@@ -722,6 +725,7 @@ class dftsolve:
                             self.Ground_kpts_z,
                         ),
                         gamma=self.Gamma,
+                        nbands=self.Ground_num_of_bands,
                     )
                 else:
                     parprint(f'Starting calculations with {actual_xc}...')
@@ -749,6 +753,7 @@ class dftsolve:
                             self.Ground_kpts_z,
                         ),
                         gamma=self.Gamma,
+                        nbands=self.Ground_num_of_bands,
                     )
                 # Wrapping for vdW
                 if hasattr(self.config, 'vdW_calc') and self.config.vdW_calc.upper() == 'D3':
@@ -864,6 +869,7 @@ class dftsolve:
                         self.Ground_kpts_z,
                     ),
                     gamma=self.Gamma,
+                    nbands=self.Ground_num_of_bands,
                     grid_spacing=self.Ground_gpts_density,
                     grid_size=(
                         self.Ground_gpts_x,
@@ -1264,6 +1270,7 @@ class dftsolve:
             kpoint_density=dos_kpoint_density,
             kpoint_size=dos_kpoint_size,
             gamma=dos_gamma,
+            nbands=self.DOS_num_of_bands,
         )
 
         if hybrid:
@@ -1634,6 +1641,7 @@ class dftsolve:
             txt=self.struct+'-BAND-Log-Calculation.txt',
             occupations=self.Occupation,
             convergence=self.Band_convergence,
+            nbands=self.Band_num_of_bands,
         )
 
         if hybrid:

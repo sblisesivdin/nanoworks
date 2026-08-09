@@ -145,6 +145,7 @@ def create_regular_pw_ground_calc(
     kpoint_density,
     kpoint_size,
     gamma,
+    nbands=None,
 ):
     """Create a regular GPAW plane-wave ground-state calculator."""
     kwargs = build_ground_common_kwargs(
@@ -154,6 +155,7 @@ def create_regular_pw_ground_calc(
         txt=txt,
         convergence=convergence,
         occupations=occupations,
+        nbands='200%' if nbands is None else nbands,
     )
 
     kwargs.update({
@@ -188,6 +190,7 @@ def create_hybrid_pw_ground_calc(
     kpoint_density,
     kpoint_size,
     gamma,
+    nbands=None,
 ):
     """Create a hybrid GPAW plane-wave ground-state calculator."""
     kwargs = build_ground_common_kwargs(
@@ -197,6 +200,7 @@ def create_hybrid_pw_ground_calc(
         txt=txt,
         convergence=convergence,
         occupations=occupations,
+        nbands='200%' if nbands is None else nbands,
     )
 
     kwargs.update({
@@ -239,6 +243,7 @@ def create_lcao_ground_calc(
     grid_spacing,
     grid_size,
     basis='dzp',
+    nbands=None,
 ):
     """Create a GPAW LCAO ground-state calculator."""
     kwargs = build_ground_common_kwargs(
@@ -248,6 +253,7 @@ def create_lcao_ground_calc(
         txt=txt,
         convergence=convergence,
         occupations=occupations,
+        nbands='200%' if nbands is None else nbands,
     )
 
     kwargs.update({
@@ -419,6 +425,7 @@ def prepare_dos_calc(
     kpoint_density,
     kpoint_size,
     gamma,
+    nbands,
 ):
     """Prepare a GPAW calculator for DOS calculations."""
     if hybrid:
@@ -438,16 +445,21 @@ def prepare_dos_calc(
     except Exception:
         pass
 
-    return calc.fixed_density(
-        txt=txt,
-        convergence=convergence,
-        occupations=occupations,
-        kpts=build_kpoint_spec(
+    kwargs = {
+        'txt': txt,
+        'convergence': convergence,
+        'occupations': occupations,
+        'kpts': build_kpoint_spec(
             density=kpoint_density,
             size=kpoint_size,
             gamma=gamma,
         ),
-    )
+    }
+
+    if nbands is not None:
+        kwargs['nbands'] = nbands
+
+    return calc.fixed_density(**kwargs)
 
 def prepare_band_calc(
     filename,
@@ -457,6 +469,7 @@ def prepare_band_calc(
     txt,
     occupations,
     convergence,
+    nbands,
 ):
     """Prepare a GPAW calculator for band-structure calculations."""
     kpts = {
@@ -479,12 +492,17 @@ def prepare_band_calc(
             convergence=convergence,
         )
 
+    kwargs = {
+        'kpts': kpts,
+        'txt': txt,
+        'symmetry': 'off',
+        'occupations': occupations,
+        'convergence': convergence,
+    }
+
+    if nbands is not None:
+        kwargs['nbands'] = nbands
+
     return load_gpaw_calc(
         filename,
-    ).fixed_density(
-        kpts=kpts,
-        txt=txt,
-        symmetry='off',
-        occupations=occupations,
-        convergence=convergence,
-    )
+    ).fixed_density(**kwargs)

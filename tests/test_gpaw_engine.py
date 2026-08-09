@@ -777,6 +777,7 @@ class TestGPAWEngine(unittest.TestCase):
             kpoint_density=None,
             kpoint_size=(16, 16, 8),
             gamma=True,
+            nbands=64,
         )
 
         self.assertIs(result, prepared_calc)
@@ -802,6 +803,7 @@ class TestGPAWEngine(unittest.TestCase):
                 'size': (16, 16, 8),
                 'gamma': True,
             },
+            nbands=64,
         )
         
     @patch('nanoworks.engine.gpaw.load_gpaw_calc')
@@ -824,6 +826,7 @@ class TestGPAWEngine(unittest.TestCase):
             kpoint_density=None,
             kpoint_size=(16, 16, 8),
             gamma=True,
+            nbands=None,
         )
 
         self.assertIs(result, prepared_calc)
@@ -860,6 +863,7 @@ class TestGPAWEngine(unittest.TestCase):
             txt='sample-BAND-Log-Calculation.txt',
             occupations=occupations,
             convergence=convergence,
+            nbands=48,
         )
 
         self.assertIs(result, prepared_calc)
@@ -877,6 +881,7 @@ class TestGPAWEngine(unittest.TestCase):
             symmetry='off',
             occupations=occupations,
             convergence=convergence,
+            nbands=48,
         )
     
     @patch('nanoworks.engine.gpaw.load_gpaw_calc')
@@ -901,6 +906,7 @@ class TestGPAWEngine(unittest.TestCase):
             txt='hybrid-BAND-Log-Calculation.txt',
             occupations=occupations,
             convergence=convergence,
+            nbands=None,
         )
 
         self.assertIs(result, prepared_calc)
