@@ -408,6 +408,9 @@ def prepare_dos_calc(
     txt,
     convergence,
     occupations,
+    kpoint_density,
+    kpoint_size,
+    gamma,
 ):
     """Prepare a GPAW calculator for DOS calculations."""
     if hybrid:
@@ -431,6 +434,11 @@ def prepare_dos_calc(
         txt=txt,
         convergence=convergence,
         occupations=occupations,
+        kpts=build_kpoint_spec(
+            density=kpoint_density,
+            size=kpoint_size,
+            gamma=gamma,
+        ),
     )
 
 def prepare_band_calc(

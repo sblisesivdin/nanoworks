@@ -764,6 +764,9 @@ class TestGPAWEngine(unittest.TestCase):
             txt='sample-DOS-Log-Calculation.txt',
             convergence=convergence,
             occupations=occupations,
+            kpoint_density=None,
+            kpoint_size=(16, 16, 8),
+            gamma=True,
         )
 
         self.assertIs(result, prepared_calc)
@@ -785,6 +788,10 @@ class TestGPAWEngine(unittest.TestCase):
             txt='sample-DOS-Log-Calculation.txt',
             convergence=convergence,
             occupations=occupations,
+            kpts={
+                'size': (16, 16, 8),
+                'gamma': True,
+            },
         )
         
     @patch('nanoworks.engine.gpaw.load_gpaw_calc')
@@ -804,6 +811,9 @@ class TestGPAWEngine(unittest.TestCase):
                 'name': 'fermi-dirac',
                 'width': 0.05,
             },
+            kpoint_density=None,
+            kpoint_size=(16, 16, 8),
+            gamma=True,
         )
 
         self.assertIs(result, prepared_calc)

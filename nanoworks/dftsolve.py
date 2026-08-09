@@ -106,7 +106,11 @@ import textwrap
 import requests
 import pickle
 import nanoworks
-from nanoworks.engine import normalize_engine_name
+from nanoworks.engine import (
+    normalize_engine_name,
+    resolve_stage_kpoint_settings,
+    resolve_stage_occupation,
+)
 from nanoworks.engine.gpaw import (
     is_hybrid,
     resolve_xc_and_setups,
@@ -214,6 +218,13 @@ class DFTConfig:
     DOS_npoints: int = 501
     DOS_width: float = 0.1
     DOS_convergence: Dict = field(default_factory=dict)
+
+    DOS_kpts_density: Optional[float] = None
+    DOS_kpts_x: Optional[int] = None
+    DOS_kpts_y: Optional[int] = None
+    DOS_kpts_z: Optional[int] = None
+    DOS_gamma: Optional[bool] = None
+    DOS_occupation: Any = None
     
     # Band structure parameters
     Gamma: bool = True
@@ -558,6 +569,14 @@ class dftsolve:
         self.DOS_npoints = config.DOS_npoints
         self.DOS_width = config.DOS_width
         self.DOS_convergence = config.DOS_convergence
+
+        self.DOS_kpts_density = config.DOS_kpts_density
+        self.DOS_kpts_x = config.DOS_kpts_x
+        self.DOS_kpts_y = config.DOS_kpts_y
+        self.DOS_kpts_z = config.DOS_kpts_z
+        self.DOS_gamma = config.DOS_gamma
+        self.DOS_occupation = config.DOS_occupation
+
         self.Gamma = config.Gamma
         self.Band_path = config.Band_path
         self.Projected_band_plot = config.Projected_band_plot
@@ -1202,12 +1221,39 @@ class dftsolve:
                 '(using ground-state eigenvalues for hybrid)...'
             )
 
+        dos_kpoint_density, dos_kpoint_size, dos_gamma = (
+            resolve_stage_kpoint_settings(
+                stage_density=self.DOS_kpts_density,
+                stage_size=(
+                    self.DOS_kpts_x,
+                    self.DOS_kpts_y,
+                    self.DOS_kpts_z,
+                ),
+                stage_gamma=self.DOS_gamma,
+                ground_density=self.Ground_kpts_density,
+                ground_size=(
+                    self.Ground_kpts_x,
+                    self.Ground_kpts_y,
+                    self.Ground_kpts_z,
+                ),
+                ground_gamma=self.Gamma,
+            )
+        )
+
+        dos_occupation = resolve_stage_occupation(
+            self.DOS_occupation,
+            self.Occupation,
+        )
+
         calc = prepare_dos_calc(
             filename=self.struct+'-GROUND-Result-State.gpw',
             hybrid=hybrid,
             txt=self.struct+'-DOS-Log-Calculation.txt',
             convergence=self.DOS_convergence,
-            occupations=self.Occupation,
+            occupations=dos_occupation,
+            kpoint_density=dos_kpoint_density,
+            kpoint_size=dos_kpoint_size,
+            gamma=dos_gamma,
         )
 
         if hybrid:
