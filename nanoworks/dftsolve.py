@@ -188,8 +188,16 @@ class DFTConfig:
     Relax_cell: List[bool] = field(default_factory=lambda: [False, False, False, False, False, False])
     Hydrostatic_pressure: float = 0.0
     
+    # Elastic parameters
+    Elastic_kpts_density: Optional[float] = None
+    Elastic_kpts_x: Optional[int] = None
+    Elastic_kpts_y: Optional[int] = None
+    Elastic_kpts_z: Optional[int] = None
+    Elastic_gamma: Optional[bool] = None
+    
     # Ground state parameters
     Cut_off_energy: float = 340
+    Ground_gamma: Optional[bool] = None
     Ground_kpts_density: Optional[float] = None
     Ground_kpts_x: int = 5
     Ground_kpts_y: int = 5
@@ -546,7 +554,13 @@ class dftsolve:
         self.Fix_symmetry = config.Fix_symmetry
         self.Relax_cell = config.Relax_cell
         self.Hydrostatic_pressure = config.Hydrostatic_pressure
+        self.Elastic_kpts_density = config.Elastic_kpts_density
+        self.Elastic_kpts_x = config.Elastic_kpts_x
+        self.Elastic_kpts_y = config.Elastic_kpts_y
+        self.Elastic_kpts_z = config.Elastic_kpts_z
+        self.Elastic_gamma = config.Elastic_gamma
         self.Cut_off_energy = config.Cut_off_energy
+        self.Ground_gamma = config.Ground_gamma
         self.Ground_kpts_density = config.Ground_kpts_density
         self.Ground_kpts_x = config.Ground_kpts_x
         self.Ground_kpts_y = config.Ground_kpts_y
@@ -678,7 +692,13 @@ class dftsolve:
 
         # Resolve XC functional string and PAW setups
         actual_xc, resolved_setups, is_libxc = resolve_xc_and_setups(self.XC_calc, self.Setup_params)
-                
+        
+        ground_gamma = (
+            self.Gamma
+            if self.Ground_gamma is None
+            else self.Ground_gamma
+        )
+        
         if self.Mode == 'PW':
             if self.Spin_calc == True:
                 if self.Magmom_single_atom is not None:

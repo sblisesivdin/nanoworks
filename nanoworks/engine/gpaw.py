@@ -283,6 +283,7 @@ def create_elastic_calc(
     setups,
     parallel,
     spinpol,
+    kpoint_density,
     kpoint_size,
     gamma,
     mixer,
@@ -310,10 +311,11 @@ def create_elastic_calc(
         'xc': xc,
         'setups': setups,
         'parallel': parallel,
-        'kpts': {
-            'size': tuple(kpoint_size),
-            'gamma': gamma,
-        },
+        'kpts': build_kpoint_spec(
+            density=kpoint_density,
+            size=kpoint_size,
+            gamma=gamma,
+        ),
     })
 
     if hybrid:

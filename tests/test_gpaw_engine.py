@@ -476,8 +476,9 @@ class TestGPAWEngine(unittest.TestCase):
             setups={'N': ':p,6.0'},
             parallel={'domain': 8},
             spinpol=False,
+            kpoint_density=None,
             kpoint_size=(5, 5, 3),
-            gamma=True,
+            gamma=False,
             mixer=mixer,
             txt='sample-ELASTIC-Log-Elastic-deformations.txt',
             charge=0.0,
@@ -506,12 +507,43 @@ class TestGPAWEngine(unittest.TestCase):
             kwargs['kpts'],
             {
                 'size': (5, 5, 3),
-                'gamma': True,
+                'gamma': False,
             },
         )
         self.assertEqual(kwargs['nbands'], '200%')
         self.assertIs(kwargs['mixer'], mixer)
         self.assertNotIn('eigensolver', kwargs)
+    
+    @patch('nanoworks.engine.gpaw.create_gpaw_calc')
+    def test_elastic_calc_uses_kpoint_density(
+        self,
+        create_calc,
+    ):
+        create_elastic_calc(
+            cutoff=400,
+            xc='PBE',
+            setups={},
+            parallel={'domain': 4},
+            spinpol=False,
+            kpoint_density=4.5,
+            kpoint_size=(5, 5, 5),
+            gamma=True,
+            mixer=None,
+            txt='elastic.txt',
+            charge=0.0,
+            convergence={},
+            occupations={},
+        )
+
+        kwargs = create_calc.call_args.kwargs
+
+        self.assertEqual(
+            kwargs['kpts'],
+            {
+                'density': 4.5,
+                'gamma': True,
+            },
+        )
     
     @patch('nanoworks.engine.gpaw.create_gpaw_calc')
     def test_hybrid_elastic_calc_uses_davidson(
@@ -537,6 +569,7 @@ class TestGPAWEngine(unittest.TestCase):
                 'kpt': 1,
             },
             spinpol=True,
+            kpoint_density=None,
             kpoint_size=(3, 3, 3),
             gamma=False,
             mixer=None,
