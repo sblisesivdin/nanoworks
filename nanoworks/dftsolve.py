@@ -197,6 +197,7 @@ class DFTConfig:
     
     # Ground state parameters
     Cut_off_energy: float = 340
+    Ground_num_of_bands: Optional[int] = None
     Ground_gamma: Optional[bool] = None
     Ground_kpts_density: Optional[float] = None
     Ground_kpts_x: int = 5
@@ -226,7 +227,7 @@ class DFTConfig:
     DOS_npoints: int = 501
     DOS_width: float = 0.1
     DOS_convergence: Dict = field(default_factory=dict)
-
+    DOS_num_of_bands: Optional[int] = None
     DOS_kpts_density: Optional[float] = None
     DOS_kpts_x: Optional[int] = None
     DOS_kpts_y: Optional[int] = None
@@ -238,6 +239,7 @@ class DFTConfig:
     Gamma: bool = True
     Band_path: str = 'LGL'
     Band_npoints: int = 61
+    Band_num_of_bands: Optional[int] = None
     Energy_max: float = 5
     Energy_min: float = -5
     Band_convergence: Dict = field(default_factory=lambda: {'bands': 8})
@@ -589,7 +591,6 @@ class dftsolve:
         self.DOS_npoints = config.DOS_npoints
         self.DOS_width = config.DOS_width
         self.DOS_convergence = config.DOS_convergence
-
         self.DOS_kpts_density = config.DOS_kpts_density
         self.DOS_kpts_x = config.DOS_kpts_x
         self.DOS_kpts_y = config.DOS_kpts_y
@@ -597,7 +598,6 @@ class dftsolve:
         self.DOS_gamma = config.DOS_gamma
         self.DOS_occupation = config.DOS_occupation
         self.DOS_num_of_bands = config.DOS_num_of_bands
-
         self.Gamma = config.Gamma
         self.Band_path = config.Band_path
         self.Projected_band_plot = config.Projected_band_plot
@@ -1268,6 +1268,12 @@ class dftsolve:
         parprint("Starting DOS calculation...")
 
         hybrid = is_hybrid(self.XC_calc)
+        
+        ground_gamma = (
+            self.Gamma
+            if self.Ground_gamma is None
+            else self.Ground_gamma
+        )
 
         if hybrid:
             # Hybrids can NOT use fixed_density(): the exchange operator
@@ -1294,7 +1300,7 @@ class dftsolve:
                     self.Ground_kpts_y,
                     self.Ground_kpts_z,
                 ),
-                ground_gamma=self.Gamma,
+                ground_gamma=ground_gamma,
             )
         )
 
@@ -2228,6 +2234,13 @@ class dftsolve:
 
         #Start Optical calc
         time61 = time.time()
+        
+        ground_gamma = (
+            self.Gamma
+            if self.Ground_gamma is None
+            else self.Ground_gamma
+        )
+        
         if self.Mode == 'PW':
             parprint("Starting optical calculation...")
             try:
@@ -2248,7 +2261,7 @@ class dftsolve:
                             self.Ground_kpts_y,
                             self.Ground_kpts_z,
                         ),
-                        ground_gamma=self.Gamma,
+                        ground_gamma=ground_gamma,
                     )
                 )
 
