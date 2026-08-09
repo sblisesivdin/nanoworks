@@ -5,12 +5,25 @@ dftsolve Keyword List
 General Keywords
 ^^^^^^^^^^^^^^^^
 
+.. describe:: Engine
+
+    :Type: ``string``
+    :Default: ``GPAW``
+
+    Selects the computational engine used by Nanoworks. Engine names are
+    case-insensitive and are normalized internally. Currently ``GPAW`` is
+    the active DFT engine.
+
+.. code-block:: python
+
+    Engine = 'GPAW'
+
 .. describe:: Mode
 
     :Type: ``string``
     :Default: ``PW``
 
-    This keyword controls the running mode of the GPAW.
+    This keyword selects the calculation mode used by the active DFT engine.
 
 .. code-block:: python
 
@@ -222,6 +235,55 @@ Geometric Optimization Keywords
 
     Relax_cell = [True, True, False, False, False, False]  # For an x-y 2D nanosheet
 
+Elastic Calculation Keywords
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. describe:: Elastic_kpts_density
+
+    :Type: ``float`` or ``None``
+    :Default: ``None``
+    :Unit: pts per Å^-1
+
+    k-point density used for elastic calculations. When specified, it
+    takes precedence over ``Elastic_kpts_x/y/z``.
+
+    When no elastic-specific k-point settings are supplied, the
+    ground-state k-point sampling is inherited.
+
+.. code-block:: python
+
+    Elastic_kpts_density = 5.0
+
+
+.. describe:: Elastic_kpts_x | Elastic_kpts_y | Elastic_kpts_z
+
+    :Type: ``int`` or ``None``
+    :Default: ``None``
+
+    Explicit k-point mesh used for elastic calculations. If at least
+    one component is specified, mesh-based sampling is selected.
+    Components left as ``None`` inherit the corresponding ground-state
+    mesh value.
+
+.. code-block:: python
+
+    Elastic_kpts_x = 10
+    Elastic_kpts_y = 10
+    Elastic_kpts_z = 6
+
+
+.. describe:: Elastic_gamma
+
+    :Type: ``boolean`` or ``None``
+    :Default: ``None``
+
+    Gamma-point sampling setting for elastic calculations. When
+    ``None``, the resolved ground-state Gamma setting is inherited.
+
+.. code-block:: python
+
+    Elastic_gamma = True
+
 Electronic Calculations Keywords
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -262,6 +324,35 @@ Electronic Calculations Keywords
     Ground_kpts_y = 5
     Ground_kpts_z = 5
 
+.. describe:: Ground_num_of_bands
+
+    :Type: ``int`` or ``None``
+    :Default: ``None``
+
+    Number of electronic bands used in the ground-state calculation.
+    When ``None``, the active computational engine uses the Nanoworks
+    default behavior. For the current GPAW backend this preserves the
+    existing automatic band allocation.
+
+.. code-block:: python
+
+    Ground_num_of_bands = 48
+
+.. describe:: Ground_gamma
+
+    :Type: ``boolean`` or ``None``
+    :Default: ``None``
+
+    Controls Gamma-centered k-point sampling for the ground-state
+    calculation. When ``None``, the legacy ``Gamma`` setting is used.
+
+    Stage-specific DOS, optical, and elastic Gamma settings also inherit
+    this value when their own Gamma keyword is left as ``None``.
+
+.. code-block:: python
+
+    Ground_gamma = True
+
 .. describe:: Ground_gpts_density 
 
     :Type: ``float``
@@ -292,11 +383,16 @@ Electronic Calculations Keywords
     :Type: ``boolean``
     :Default: ``True``
 
-    Include Gamma point in band calculations.
+    Legacy Gamma-point sampling setting retained for backward
+    compatibility. It is used as the fallback value when
+    ``Ground_gamma`` is ``None``.
+
+    New input files should preferably use ``Ground_gamma`` and the
+    corresponding stage-specific Gamma keywords.
 
 .. code-block:: python
 
-    Gamma = False
+    Gamma = True
 
 .. describe:: Band_path
 
@@ -319,6 +415,25 @@ Electronic Calculations Keywords
 .. code-block:: python
 
     Band_npoints = 51
+
+.. describe:: Band_num_of_bands
+
+    :Type: ``int`` or ``None``
+    :Default: ``None``
+
+    Number of electronic bands used for the band-structure calculation.
+    When ``None``, the existing ground-state band allocation is
+    preserved.
+
+.. code-block:: python
+
+    Band_num_of_bands = 48
+
+.. note::
+
+    For the current GPAW hybrid-functional workflow,
+    ``Band_num_of_bands`` does not alter the directly loaded hybrid
+    ground-state calculation.
 
 .. describe:: Setup_params
 
@@ -418,7 +533,7 @@ Electronic Calculations Keywords
 
     DOS_convergence = {'maximum iterations': 100}
 
-.. describe:: Occupations
+.. describe:: Occupation
 
     :Type: ``python dictionary``
     :Default: ``{}``
@@ -427,11 +542,11 @@ Electronic Calculations Keywords
 
 .. code-block:: python
 
-    Occupations = {'name': 'fermi-dirac', 'width': 0.05}
+    Occupation = {'name': 'fermi-dirac', 'width': 0.05}
 
 .. code-block:: python
 
-    Occupations = {'name': 'marzari-vanderbilt', 'width': 0.2}
+    Occupation = {'name': 'marzari-vanderbilt', 'width': 0.2}
 
 .. describe:: Mixer_type
 
@@ -473,6 +588,89 @@ Electronic Calculations Keywords
 .. code-block:: python
 
     DOS_width = 0.0  # Using tetrahedron interpolation
+
+.. describe:: DOS_num_of_bands
+
+    :Type: ``int`` or ``None``
+    :Default: ``None``
+
+    Number of electronic bands used when preparing the DOS calculation.
+    When ``None``, the band count inherited from the converged
+    ground-state calculation is preserved.
+
+.. code-block:: python
+
+    DOS_num_of_bands = 80
+
+.. describe:: DOS_kpts_density
+
+    :Type: ``float`` or ``None``
+    :Default: ``None``
+    :Unit: pts per Å^-1
+
+    k-point density used for the DOS calculation. An explicit DOS
+    density has priority over ``DOS_kpts_x/y/z``.
+
+    If no DOS-specific k-point settings are supplied, the ground-state
+    sampling is inherited.
+
+.. code-block:: python
+
+    DOS_kpts_density = 6.0
+
+
+.. describe:: DOS_kpts_x | DOS_kpts_y | DOS_kpts_z
+
+    :Type: ``int`` or ``None``
+    :Default: ``None``
+
+    Explicit k-point mesh for the DOS calculation. If at least one
+    component is specified, mesh-based DOS sampling is selected.
+    Components left as ``None`` inherit the corresponding ground-state
+    mesh value.
+
+    A denser mesh than the ground-state mesh is often useful for
+    Brillouin-zone integration in DOS calculations.
+
+.. code-block:: python
+
+    DOS_kpts_x = 16
+    DOS_kpts_y = 16
+    DOS_kpts_z = 8
+
+
+.. describe:: DOS_gamma
+
+    :Type: ``boolean`` or ``None``
+    :Default: ``None``
+
+    Gamma-point sampling setting for the DOS stage. When ``None``, the
+    resolved ground-state Gamma setting is inherited.
+
+.. code-block:: python
+
+    DOS_gamma = True
+
+.. describe:: DOS_occupation
+
+    :Type: ``python dictionary`` or ``None``
+    :Default: ``None``
+
+    Occupation scheme used when preparing the DOS calculation.
+    When ``None``, the ground-state ``Occupation`` setting is inherited.
+
+.. code-block:: python
+
+    DOS_occupation = {
+        'name': 'fermi-dirac',
+        'width': 0.02,
+    }
+
+.. note::
+
+    For the current GPAW backend, hybrid-functional DOS calculations
+    reuse the converged hybrid ground-state eigenvalues rather than
+    performing a separate fixed-density calculation.
 
 .. describe:: Spin_calc
 
@@ -749,6 +947,13 @@ Phonon Calculations Keywords
 Optical Calculations Keywords
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+.. note::
+
+    For the current GPAW backend, hybrid-functional optical calculations
+    load the converged hybrid ground-state directly. Stage-specific
+    optical k-point sampling therefore applies to the regular
+    fixed-density preparation path.
+
 .. describe:: Opt_calc_type
 
     :Type: ``str``
@@ -839,6 +1044,53 @@ Optical Calculations Keywords
 .. code-block:: python
 
     Opt_num_of_bands = 8
+
+.. describe:: Opt_kpts_density
+
+    :Type: ``float`` or ``None``
+    :Default: ``None``
+    :Unit: pts per Å^-1
+
+    k-point density used when preparing the optical-response
+    calculation. When specified, it takes precedence over
+    ``Opt_kpts_x/y/z``.
+
+    If no optical-specific k-point sampling is supplied, the
+    ground-state sampling is inherited.
+
+.. code-block:: python
+
+    Opt_kpts_density = 6.0
+
+
+.. describe:: Opt_kpts_x | Opt_kpts_y | Opt_kpts_z
+
+    :Type: ``int`` or ``None``
+    :Default: ``None``
+
+    Explicit k-point mesh used when preparing the optical-response
+    calculation. If at least one component is specified, mesh-based
+    sampling is selected. Missing components inherit the corresponding
+    ground-state values.
+
+.. code-block:: python
+
+    Opt_kpts_x = 12
+    Opt_kpts_y = 12
+    Opt_kpts_z = 6
+
+
+.. describe:: Opt_gamma
+
+    :Type: ``boolean`` or ``None``
+    :Default: ``None``
+
+    Gamma-point sampling setting for the optical stage. When ``None``,
+    the resolved ground-state Gamma setting is inherited.
+
+.. code-block:: python
+
+    Opt_gamma = True
 
 .. describe:: Opt_FD_smearing
 
