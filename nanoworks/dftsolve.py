@@ -744,7 +744,7 @@ class dftsolve:
                             self.Ground_kpts_y,
                             self.Ground_kpts_z,
                         ),
-                        gamma=self.Gamma,
+                        gamma=ground_gamma,
                         nbands=self.Ground_num_of_bands,
                     )
                 else:
@@ -772,7 +772,7 @@ class dftsolve:
                             self.Ground_kpts_y,
                             self.Ground_kpts_z,
                         ),
-                        gamma=self.Gamma,
+                        gamma=ground_gamma,
                         nbands=self.Ground_num_of_bands,
                     )
                 # Wrapping for vdW
@@ -888,7 +888,7 @@ class dftsolve:
                         self.Ground_kpts_y,
                         self.Ground_kpts_z,
                     ),
-                    gamma=self.Gamma,
+                    gamma=ground_gamma,
                     nbands=self.Ground_num_of_bands,
                     grid_spacing=self.Ground_gpts_density,
                     grid_size=(
@@ -986,6 +986,31 @@ class dftsolve:
                 backend=self.XC_backend,
             )
         )
+        
+        ground_gamma = (
+            self.Gamma
+            if self.Ground_gamma is None
+            else self.Ground_gamma
+        )
+
+        elastic_kpoint_density, elastic_kpoint_size, elastic_gamma = (
+            resolve_stage_kpoint_settings(
+                stage_density=self.Elastic_kpts_density,
+                stage_size=(
+                    self.Elastic_kpts_x,
+                    self.Elastic_kpts_y,
+                    self.Elastic_kpts_z,
+                ),
+                stage_gamma=self.Elastic_gamma,
+                ground_density=self.Ground_kpts_density,
+                ground_size=(
+                    self.Ground_kpts_x,
+                    self.Ground_kpts_y,
+                    self.Ground_kpts_z,
+                ),
+                ground_gamma=ground_gamma,
+            )
+        )
 
         # Elastic constants rely on the stress tensor. Plane-wave hybrid
         # stress is not reliably available in GPAW, so retain the existing
@@ -1009,12 +1034,9 @@ class dftsolve:
                 setups=resolved_setups,
                 parallel=elastic_parallel,
                 spinpol=self.config.Spin_calc,
-                kpoint_size=(
-                    self.config.Ground_kpts_x,
-                    self.config.Ground_kpts_y,
-                    self.config.Ground_kpts_z,
-                ),
-                gamma=self.config.Gamma,
+                kpoint_density=elastic_kpoint_density,
+                kpoint_size=elastic_kpoint_size,
+                gamma=elastic_gamma,
                 mixer=self.config.Mixer_type,
                 txt=self.struct
                     + '-ELASTIC-Log-Elastic-deformations.txt',
