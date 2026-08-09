@@ -266,6 +266,11 @@ class DFTConfig:
     Opt_BSE_max_en: float = 20.0
     Opt_BSE_num_of_data: int = 1001
     Opt_num_of_bands: int = 8
+    Opt_kpts_density: Optional[float] = None
+    Opt_kpts_x: Optional[int] = None
+    Opt_kpts_y: Optional[int] = None
+    Opt_kpts_z: Optional[int] = None
+    Opt_gamma: Optional[bool] = None
     Opt_FD_smearing: float = 0.05
     Opt_eta: float = 0.05
     Opt_domega0: float = 0.05
@@ -610,6 +615,11 @@ class dftsolve:
         self.Opt_BSE_max_en = config.Opt_BSE_max_en
         self.Opt_BSE_num_of_data = config.Opt_BSE_num_of_data
         self.Opt_num_of_bands = config.Opt_num_of_bands
+        self.Opt_kpts_density = config.Opt_kpts_density
+        self.Opt_kpts_x = config.Opt_kpts_x
+        self.Opt_kpts_y = config.Opt_kpts_y
+        self.Opt_kpts_z = config.Opt_kpts_z
+        self.Opt_gamma = config.Opt_gamma
         self.Opt_FD_smearing = config.Opt_FD_smearing
         self.Opt_eta = config.Opt_eta
         self.Opt_domega0 = config.Opt_domega0
@@ -2172,6 +2182,25 @@ class dftsolve:
             parprint("Starting optical calculation...")
             try:
                 hybrid = is_hybrid(self.XC_calc)
+                
+                opt_kpoint_density, opt_kpoint_size, opt_gamma = (
+                    resolve_stage_kpoint_settings(
+                        stage_density=self.Opt_kpts_density,
+                        stage_size=(
+                            self.Opt_kpts_x,
+                            self.Opt_kpts_y,
+                            self.Opt_kpts_z,
+                        ),
+                        stage_gamma=self.Opt_gamma,
+                        ground_density=self.Ground_kpts_density,
+                        ground_size=(
+                            self.Ground_kpts_x,
+                            self.Ground_kpts_y,
+                            self.Ground_kpts_z,
+                        ),
+                        ground_gamma=self.Gamma,
+                    )
+                )
 
                 if hybrid:
                     parprint(
@@ -2185,6 +2214,9 @@ class dftsolve:
                     txt=self.struct+'-OPTICAL-Log-Calculation.txt',
                     nbands=self.Opt_num_of_bands,
                     smearing=self.Opt_FD_smearing,
+                    kpoint_density=opt_kpoint_density,
+                    kpoint_size=opt_kpoint_size,
+                    gamma=opt_gamma,
                 )
             except FileNotFoundError as err:
                 # output error, and return with an error code

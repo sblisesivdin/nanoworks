@@ -686,6 +686,9 @@ class TestGPAWEngine(unittest.TestCase):
             txt='sample-OPTICAL-Log-Calculation.txt',
             nbands=16,
             smearing=0.05,
+            kpoint_density=None,
+            kpoint_size=(12, 12, 6),
+            gamma=True,
         )
 
         self.assertIs(result, prepared_calc)
@@ -704,6 +707,10 @@ class TestGPAWEngine(unittest.TestCase):
                 'band': 1,
             },
             occupations=occupation,
+            kpts={
+                'size': (12, 12, 6),
+                'gamma': True,
+            },
         )
         
     @patch('nanoworks.engine.gpaw.load_gpaw_calc')
@@ -720,6 +727,9 @@ class TestGPAWEngine(unittest.TestCase):
             txt='hybrid-OPTICAL-Log-Calculation.txt',
             nbands=24,
             smearing=0.10,
+            kpoint_density=None,
+            kpoint_size=(12, 12, 6),
+            gamma=True,
         )
 
         self.assertIs(result, prepared_calc)

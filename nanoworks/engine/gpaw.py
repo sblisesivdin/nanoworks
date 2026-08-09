@@ -378,6 +378,9 @@ def prepare_optical_calc(
     txt,
     nbands,
     smearing,
+    kpoint_density,
+    kpoint_size,
+    gamma,
 ):
     """Prepare a GPAW calculator for optical-response calculations."""
     parallel = {
@@ -400,6 +403,11 @@ def prepare_optical_calc(
         nbands=nbands,
         parallel=parallel,
         occupations=FermiDirac(smearing),
+        kpts=build_kpoint_spec(
+            density=kpoint_density,
+            size=kpoint_size,
+            gamma=gamma,
+        ),
     )
 
 def prepare_dos_calc(
