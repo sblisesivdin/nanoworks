@@ -29,10 +29,21 @@ General Keywords
 
     Mode = 'PW'
 
+.. describe:: Ground_calc
+
+    :Type: ``boolean``
+    :Default: ``False``
+
+    Controls execution of the ground-state calculation.
+
+.. code-block:: python
+
+    Ground_calc = True
+
 .. describe:: Geo_optim
 
     :Type: ``boolean``
-    :Default: ``True``
+    :Default: ``False``
 
     Controls execution of geometric optimization.
 
@@ -83,6 +94,17 @@ General Keywords
 .. code-block:: python
 
     Density_calc = True
+
+.. describe:: Phonon_calc
+
+    :Type: ``boolean``
+    :Default: ``False``
+
+    Controls execution of phonon calculations.
+
+.. code-block:: python
+
+    Phonon_calc = True
 
 .. describe:: Optical_calc
 
@@ -158,14 +180,14 @@ Geometric Optimization Keywords
 .. describe:: Optimizer
 
     :Type: ``str``
-    :Default: ``LBFGS``
-    :Options: ``LBFGS``, ``FIRE``
+    :Default: ``QuasiNewton``
+    :Options: ``LBFGS``, ``FIRE``, ``QuasiNewton``
     
-    Energy minimization algorithm for geometry optimization. Options: ``LBFGS``, ``FIRE``.
+    Energy minimization algorithm for geometry optimization. Options: ``LBFGS``, ``FIRE`` and ``QuasiNewton``.
 
 .. code-block:: python
 
-    Optimizer = 'FIRE'
+    Optimizer = 'QuasiNewton'
 
 .. describe:: Max_F_tolerance
 
@@ -182,25 +204,25 @@ Geometric Optimization Keywords
 .. describe:: Max_step
 
     :Type: ``float``
-    :Default: ``0.2``
+    :Default: ``0.1``
     :Unit: Å
     
     Maximum allowed movement for a single atom.
 
 .. code-block:: python
 
-    Max_step = 0.2  # Ang
+    Max_step = 0.1  # Ang
 
 .. describe:: Alpha
 
     :Type: ``float``
-    :Default: ``70.0``
+    :Default: ``60.0``
 
     Initial guess for the Hessian (curvature of the energy surface).
 
 .. code-block:: python
 
-    Alpha = 70.0
+    Alpha = 60.0
 
 .. describe:: Damping
 
@@ -454,7 +476,7 @@ Electronic Calculations Keywords
 
     Exchange-correlation functional. Relax_cell keyword must be [False, False, False, False, False, False] with GLLBSC, HSE03 and HSE06.
 
-    The hybrid functionals (``HSE06``, ``HSE03``, ``PBE0``, ``B3LYP``, ``EXX``) use GPAW's plane-wave hybrid backend. They are automatically run with plane-wave parallelisation and a single-iteration Davidson eigensolver, and they can not use cell relaxation or stress-based (elastic/phonon) calculations. For DOS and band structure the eigenvalues are referenced to the converged ground-state Fermi level.
+    The hybrid functionals (``HSE06``, ``HSE03``, ``PBE0``, ``B3LYP``,``EXX``) use GPAW's plane-wave hybrid backend. They are automatically run with plane-wave parallelisation and a single-iteration Davidson eigensolver. Cell relaxation with hybrid functionals is not supported. Hybrid elastic calculations are retained but should be treated with caution because plane-wave hybrid stress is not considered reliable. Hybrid phonon calculations are not supported. For DOS and band structure, the eigenvalues are referenced to the converged ground-state Fermi level.
 
 .. code-block:: python
 
