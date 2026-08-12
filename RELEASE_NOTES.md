@@ -2,7 +2,30 @@
 
 ### Development Version
 
-- n/a
+- A major internal refactorization of the DFT calculation workflow has started. GPAW-specific calculator construction, state loading and preparation functions are being moved from `dftsolve.py` into the new `nanoworks.engine` infrastructure.
+- A new `Engine` keyword and engine-name normalization infrastructure are added as the basis for supporting multiple DFT engines in Nanoworks. GPAW is still the active DFT engine.
+- Regular PW, hybrid PW and LCAO ground-state calculator construction are moved to the GPAW engine layer while preserving the previous calculation behavior.
+- Elastic, phonon, DOS, band and optical calculator preparation is moved to the GPAW engine layer.
+- GPAW state loading is centralized. Hybrid calculations continue to use the legacy GPAW path where required, while regular calculations continue to use the new GPAW implementation.
+- Common GPAW helpers are added for k-point specifications, real-space grids, ground-state calculator arguments, XC/setup resolution and default density mixing.
+- The geometry optimization conditions are corrected. `Geo_optim = False` now properly prevents geometry optimization and cell-relaxation related operations.
+- LCAO grid-spacing handling is corrected.
+- Elastic calculations now use the properly resolved XC and setup information.
+- New stage-specific DOS sampling keywords are added: `DOS_kpts_density`, `DOS_kpts_x`, `DOS_kpts_y`, `DOS_kpts_z`, `DOS_gamma` and `DOS_occupation`. DOS calculations can now use a different k-point sampling and occupation scheme from the ground-state calculation.
+- New stage-specific optical sampling keywords are added: `Opt_kpts_density`, `Opt_kpts_x`, `Opt_kpts_y`, `Opt_kpts_z` and `Opt_gamma`.
+- New stage-specific elastic sampling keywords are added: `Elastic_kpts_density`, `Elastic_kpts_x`, `Elastic_kpts_y`, `Elastic_kpts_z` and `Elastic_gamma`.
+- New `Ground_gamma` keyword is added. The old `Gamma` keyword is retained for backward compatibility and is used as a fallback when `Ground_gamma` is not specified.
+- New `Ground_num_of_bands`, `DOS_num_of_bands` and `Band_num_of_bands` keywords are added to allow explicit control of the number of electronic bands at different calculation stages.
+- Stage-specific k-point settings automatically fall back to the corresponding ground-state settings when they are not explicitly supplied.
+- Stage-specific k-point meshes can override a ground-state k-point density, while unspecified mesh components inherit the corresponding ground-state values.
+- Hybrid DOS, band and optical workflows preserve their existing direct ground-state loading behavior instead of incorrectly applying regular fixed-density preparation paths.
+- A new test infrastructure is added for the engine layer and GPAW-specific calculation builders. Ground-state, hybrid, elastic, phonon, DOS, band, optical, k-point, grid and fallback behaviors are now covered by unit tests.
+- The `dftsolve` keyword documentation is updated with the new engine, stage-specific sampling and band-count settings.
+- Several outdated keyword defaults in the documentation are corrected to match the actual `DFTConfig` defaults.
+- The documented `Occupations` keyword is corrected to the actual `Occupation` keyword.
+- Hybrid elastic and phonon limitations are clarified in the documentation.
+- Build artifacts, Python cache files and generated package metadata are excluded from the repository with an updated `.gitignore`.
+- Many other internal cleanups and small fixes were made while keeping the existing GPAW user workflow backward compatible.
 
 ### Version 26.8.0 - Aug 3, 2026
 
