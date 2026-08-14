@@ -1,11 +1,13 @@
 """Quantum ESPRESSO computation engine helpers."""
 
 import re
+import os
 import shutil
 import subprocess
 from pathlib import Path
 
 from ase.data import atomic_masses, atomic_numbers
+from ase.calculators.calculator import kptdensity2monkhorstpack
 
 QE_REFERENCE_VERSION = (7, 2)
 
@@ -138,6 +140,48 @@ def build_atomic_species(atoms, pseudopotentials):
 
     return species
 
+def resolve_qe_kpoint_size(
+    atoms,
+    density=None,
+    size=(5, 5, 5),
+):
+    """Resolve Nanoworks k-point settings to an explicit QE mesh."""
+    if density is not None:
+        density = float(density)
+
+        if density <= 0.0:
+            raise ValueError(
+                "QE k-point density must be greater than zero."
+            )
+
+        mesh = kptdensity2monkhorstpack(
+            atoms,
+            kptdensity=density,
+            even=None,
+        )
+
+        return tuple(
+            int(value)
+            for value in mesh
+        )
+
+    mesh = tuple(
+        int(value)
+        for value in size
+    )
+
+    if len(mesh) != 3:
+        raise ValueError(
+            "QE k-point mesh must contain exactly 3 values."
+        )
+
+    if any(value <= 0 for value in mesh):
+        raise ValueError(
+            "QE k-point mesh values must be positive integers."
+        )
+
+    return mesh
+
 def build_kpoint_settings(size, gamma=False):
     """Build a QE automatic K_POINTS mesh.
 
@@ -164,6 +208,116 @@ def build_kpoint_settings(size, gamma=False):
         'option': 'automatic',
         'size': mesh,
         'shift': shifts,
+    }
+
+def validate_qe_xc(
+    xc_calc,
+    pseudo_xc='pbe',
+):
+    """Validate XC compatibility with the installed QE pseudo set."""
+    xc = str(
+        xc_calc
+    ).strip().lower()
+
+    pseudo_xc = str(
+        pseudo_xc
+    ).strip().lower()
+
+    aliases = {
+        'pbe': 'pbe',
+    }
+
+    try:
+        normalized = aliases[xc]
+    except KeyError:
+        raise ValueError(
+            "The current Nanoworks QE pseudopotential library "
+            f"supports PBE calculations only. Requested XC: {xc_calc}"
+        )
+
+    if normalized != pseudo_xc:
+        raise ValueError(
+            f"QE XC '{xc_calc}' is incompatible with "
+            f"the installed '{pseudo_xc}' pseudopotentials."
+        )
+
+    return normalized
+
+def resolve_qe_occupation(occupation):
+    """Translate Nanoworks/GPAW-style occupation settings to QE settings."""
+    if occupation is None:
+        return {
+            'occupations': 'fixed',
+            'smearing': None,
+            'width_ev': None,
+        }
+
+    if isinstance(occupation, str):
+        name = occupation.strip().lower()
+        width = None
+
+    elif isinstance(occupation, dict):
+        name = str(
+            occupation.get(
+                'name',
+                'fixed',
+            )
+        ).strip().lower()
+
+        width = occupation.get(
+            'width'
+        )
+
+    else:
+        raise TypeError(
+            "QE occupation settings must be a string, "
+            "dictionary, or None."
+        )
+
+    fixed_names = {
+        'fixed',
+    }
+
+    if name in fixed_names:
+        return {
+            'occupations': 'fixed',
+            'smearing': None,
+            'width_ev': None,
+        }
+
+    smearing_aliases = {
+        'fermi-dirac': 'fermi-dirac',
+        'fermi_dirac': 'fermi-dirac',
+        'fd': 'fermi-dirac',
+
+        'gaussian': 'gaussian',
+        'gauss': 'gaussian',
+
+        'methfessel-paxton': 'methfessel-paxton',
+        'methfessel_paxton': 'methfessel-paxton',
+        'mp': 'methfessel-paxton',
+
+        'marzari-vanderbilt': 'marzari-vanderbilt',
+        'marzari_vanderbilt': 'marzari-vanderbilt',
+        'cold': 'marzari-vanderbilt',
+    }
+
+    try:
+        smearing = smearing_aliases[name]
+    except KeyError:
+        raise ValueError(
+            f"Unsupported Nanoworks occupation scheme for QE: {name}"
+        )
+
+    if width is None:
+        raise ValueError(
+            f"QE smearing occupation '{name}' requires a width."
+        )
+
+    return {
+        'occupations': 'smearing',
+        'smearing': smearing,
+        'width_ev': float(width),
     }
 
 def build_occupation_settings(
@@ -587,6 +741,16 @@ def run_qe_program(
         exist_ok=True,
     )
 
+    child_env = os.environ.copy()
+
+    # Prevent MPI ranks from spawning additional BLAS/OpenMP threads.
+    child_env['OMP_NUM_THREADS'] = '1'
+    child_env['OPENBLAS_NUM_THREADS'] = '1'
+    child_env['MKL_NUM_THREADS'] = '1'
+    child_env['VECLIB_MAXIMUM_THREADS'] = '1'
+    child_env['NUMEXPR_NUM_THREADS'] = '1'
+    child_env['OMP_DYNAMIC'] = 'FALSE'
+
     with output_file.open(
         'w',
         encoding='utf-8',
@@ -598,6 +762,7 @@ def run_qe_program(
             stderr=subprocess.STDOUT,
             check=False,
             text=True,
+            env=child_env,
         )
 
     if result.returncode != 0:
@@ -663,4 +828,111 @@ def parse_pw_output(output):
         'job_done': job_done,
         'total_energy_ry': total_energy_ry,
         'total_energy_ev': total_energy_ev,
+    }
+
+def run_scf(
+    atoms,
+    input_file,
+    output_file,
+    state_dir,
+    pseudopotentials,
+    pseudo_dir,
+    cutoff_ev,
+    kpoint_density=None,
+    kpoint_size=(5, 5, 5),
+    gamma=False,
+    total_charge=0.0,
+    nbands=None,
+    spinpol=False,
+    occupation=None,
+    parallel_cores=1,
+    executable='pw.x',
+    prefix='nanoworks',
+):
+    """Render, execute, and parse one QE pw.x SCF calculation."""
+    input_file = Path(
+        input_file
+    )
+
+    output_file = Path(
+        output_file
+    )
+
+    state_dir = Path(
+        state_dir
+    )
+
+    state_dir.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    mesh = resolve_qe_kpoint_size(
+        atoms,
+        density=kpoint_density,
+        size=kpoint_size,
+    )
+
+    occupation_settings = (
+        resolve_qe_occupation(
+            occupation
+        )
+    )
+
+    input_text = render_scf_input(
+        atoms=atoms,
+        pseudopotentials=pseudopotentials,
+        cutoff_ev=cutoff_ev,
+        kpoint_size=mesh,
+        gamma=gamma,
+        total_charge=total_charge,
+        nbands=nbands,
+        spinpol=spinpol,
+        occupations=occupation_settings['occupations'],
+        smearing=occupation_settings['smearing'],
+        width_ev=occupation_settings['width_ev'],
+        prefix=prefix,
+        pseudo_dir=pseudo_dir,
+        outdir=state_dir,
+    )
+
+    input_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    input_file.write_text(
+        input_text,
+        encoding='utf-8',
+    )
+
+    launcher = build_qe_launcher(
+        parallel_cores=parallel_cores
+    )
+
+    execution = run_qe_program(
+        input_file=input_file,
+        output_file=output_file,
+        executable=executable,
+        launcher=launcher,
+    )
+
+    result = parse_pw_output(
+        output_file
+    )
+
+    if not result['job_done']:
+        raise RuntimeError(
+            "Quantum ESPRESSO finished without a "
+            "'JOB DONE.' marker. "
+            f"See '{output_file}'."
+        )
+
+    return {
+        'input_file': input_file,
+        'output_file': output_file,
+        'state_dir': state_dir,
+        'kpoint_size': mesh,
+        'execution': execution,
+        'result': result,
     }

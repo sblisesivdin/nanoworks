@@ -25,6 +25,10 @@ from nanoworks.engine.qe import (
     build_qe_command,
     run_qe_program,
     parse_pw_output,
+    resolve_qe_kpoint_size,
+    resolve_qe_occupation,
+    validate_qe_xc,
+    run_scf,
 )
 
 
@@ -632,6 +636,40 @@ class TestQEEngine(unittest.TestCase):
                     str(input_file),
                 ],
             )
+
+            environment = (
+                run.call_args.kwargs['env']
+            )
+
+            self.assertEqual(
+                environment['OMP_NUM_THREADS'],
+                '1',
+            )
+
+            self.assertEqual(
+                environment['OPENBLAS_NUM_THREADS'],
+                '1',
+            )
+
+            self.assertEqual(
+                environment['MKL_NUM_THREADS'],
+                '1',
+            )
+
+            self.assertEqual(
+                environment['VECLIB_MAXIMUM_THREADS'],
+                '1',
+            )
+
+            self.assertEqual(
+                environment['NUMEXPR_NUM_THREADS'],
+                '1',
+            )
+
+            self.assertEqual(
+                environment['OMP_DYNAMIC'],
+                'FALSE',
+            )
     
     def test_qe_launcher_is_none_for_single_core(self):
         launcher = build_qe_launcher(
@@ -715,6 +753,65 @@ class TestQEEngine(unittest.TestCase):
             build_qe_launcher(
                 parallel_cores=8
             )
+
+    def test_qe_kpoint_density_resolves_mesh(self):
+        atoms = Atoms(
+            'Si2',
+            positions=[
+                [0.0, 0.0, 0.0],
+                [1.35, 1.35, 1.35],
+            ],
+            cell=[
+                [5.4, 0.0, 0.0],
+                [0.0, 5.4, 0.0],
+                [0.0, 0.0, 5.4],
+            ],
+            pbc=True,
+        )
+
+        mesh = resolve_qe_kpoint_size(
+            atoms,
+            density=2.5,
+            size=(1, 1, 1),
+        )
+
+        self.assertEqual(
+            len(mesh),
+            3,
+        )
+
+        self.assertTrue(
+            all(value > 0 for value in mesh)
+        )
+
+    def test_qe_occupation_translates_fermi_dirac(self):
+        settings = resolve_qe_occupation(
+            {
+                'name': 'fermi-dirac',
+                'width': 0.05,
+            }
+        )
+
+        self.assertEqual(
+            settings,
+            {
+                'occupations': 'smearing',
+                'smearing': 'fermi-dirac',
+                'width_ev': 0.05,
+            },
+        )
+
+    def test_qe_xc_accepts_pbe(self):
+        self.assertEqual(
+            validate_qe_xc('PBE'),
+            'pbe',
+        )
+
+    def test_qe_xc_accepts_pbe(self):
+        self.assertEqual(
+            validate_qe_xc('PBE'),
+            'pbe',
+        )
 
 if __name__ == '__main__':
     unittest.main()

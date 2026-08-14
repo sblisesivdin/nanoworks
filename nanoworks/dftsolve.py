@@ -202,6 +202,10 @@ from nanoworks.engine import (
     resolve_stage_occupation,
     load_engine_module,
 )
+from nanoworks.pseudos import (
+    get_qe_pseudo_dir,
+    resolve_qe_pseudopotentials,
+)
 from argparse import ArgumentParser, HelpFormatter
 from dataclasses import dataclass, field
 from typing import Optional, Dict, List, Any
@@ -751,6 +755,193 @@ class dftsolve:
             print("Special Points usable for this spacegroup:",get_special_points(self.bulk_configuration.get_cell()), file=fd)
 
     def groundcalc(self):
+        """Run the ground-state workflow using the selected DFT engine."""
+        time11 = time.time()
+
+        if self.Engine == 'GPAW':
+            self._groundcalc_gpaw()
+
+        elif self.Engine == 'QE':
+            self._groundcalc_qe()
+
+        else:
+            raise ValueError(
+                f"Unsupported DFT engine: {self.Engine}"
+            )
+
+        time12 = time.time()
+
+        with paropen(
+            self.struct
+            + '-TIMINGS-Log-Timings.txt',
+            'a',
+        ) as f1:
+            print(
+                'Ground state: ',
+                round(
+                    time12 - time11,
+                    2,
+                ),
+                end="\n",
+                file=f1,
+            )
+
+    def _groundcalc_qe(self):
+        """Run the Quantum ESPRESSO PW ground-state workflow."""
+        
+        # -------------------------------------------------------------
+        # GROUND STATE - QE
+        # -------------------------------------------------------------
+        
+        if self.Mode != 'PW':
+            parprint(
+                "\033[91mERROR:\033[0m "
+                "Quantum ESPRESSO backend currently supports "
+                "PW mode only."
+            )
+            sys.exit(1)
+
+        if self.Geo_optim:
+            parprint(
+                "\033[91mERROR:\033[0m "
+                "Geometry optimization is not implemented "
+                "for the QE backend yet."
+            )
+            parprint(
+                "For the first QE ground-state workflow, "
+                "use Geo_optim = False."
+            )
+            sys.exit(1)
+
+        if self.config.vdW_calc.upper() != 'NONE':
+            parprint(
+                "\033[91mERROR:\033[0m "
+                "vdW corrections are not implemented "
+                "for the QE backend yet."
+            )
+            sys.exit(1)
+
+        try:
+            self.engine.validate_qe_xc(
+                self.XC_calc,
+                pseudo_xc='pbe',
+            )
+        except ValueError as exc:
+            parprint(
+                f"\033[91mERROR:\033[0m {exc}"
+            )
+            sys.exit(1)
+
+        state_dir = Path(
+            self.struct
+            + '-GROUND-Result-State'
+        )
+
+        if not self.Ground_calc:
+            parprint(
+                "Passing QE PW ground state calculation..."
+            )
+
+            if not state_dir.exists():
+                parprint(
+                    "\033[91mERROR:\033[0m "
+                    + str(state_dir)
+                    + " directory can not be found. "
+                    "It is needed in other QE calculations. "
+                    "Firstly, finish the ground state calculation. "
+                    "You must have Ground_calc = True "
+                    "in your input file. Exiting."
+                )
+                sys.exit(1)
+
+            return
+
+        parprint(
+            "Starting QE PW ground state calculation..."
+        )
+
+        pseudo_dir = get_qe_pseudo_dir(
+            relativistic='scalar',
+        )
+
+        try:
+            pseudopotentials = (
+                resolve_qe_pseudopotentials(
+                    self.bulk_configuration,
+                    relativistic='scalar',
+                )
+            )
+        except (FileNotFoundError, RuntimeError) as exc:
+            parprint(
+                f"\033[91mERROR:\033[0m {exc}"
+            )
+            sys.exit(1)
+
+        ground_gamma = (
+            self.Gamma
+            if self.Ground_gamma is None
+            else self.Ground_gamma
+        )
+
+        input_file = Path(
+            self.struct
+            + '-GROUND-Input-QE.in'
+        )
+
+        output_file = Path(
+            self.struct
+            + '-GROUND-Log-Calculation.txt'
+        )
+
+        try:
+            workflow = self.engine.run_scf(
+                atoms=self.bulk_configuration,
+                input_file=input_file,
+                output_file=output_file,
+                state_dir=state_dir,
+                pseudopotentials=pseudopotentials,
+                pseudo_dir=pseudo_dir,
+                cutoff_ev=self.Cut_off_energy,
+                kpoint_density=self.Ground_kpts_density,
+                kpoint_size=(
+                    self.Ground_kpts_x,
+                    self.Ground_kpts_y,
+                    self.Ground_kpts_z,
+                ),
+                gamma=ground_gamma,
+                total_charge=self.Total_charge,
+                nbands=self.Ground_num_of_bands,
+                spinpol=self.Spin_calc,
+                occupation=self.Occupation,
+                parallel_cores=self.parallel_cores,
+                executable='pw.x',
+                prefix='nanoworks',
+            )
+        except Exception as exc:
+            parprint(
+                "\033[91mERROR:\033[0m "
+                f"QE ground-state calculation failed: {exc}"
+            )
+            raise
+
+        result = workflow['result']
+
+        parprint(
+            "QE ground state calculation finished."
+        )
+
+        parprint(
+            "Total energy: "
+            f"{result['total_energy_ev']:.8f} eV "
+            f"({result['total_energy_ry']:.8f} Ry)"
+        )
+
+        write_cif(
+            self.struct + '-Final.cif',
+            self.bulk_configuration,
+        )
+
+    def _groundcalc_gpaw(self):
         """
         This method performs ground state calculations for the given structure using various settings
         and parameters specified in the configuration file. It handles different XC functionals,
@@ -759,12 +950,9 @@ class dftsolve:
         """
 
         # -------------------------------------------------------------
-        # GROUND STATE
+        # GROUND STATE - GPAW
         # -------------------------------------------------------------
-
-        # Start ground state timing
-        time11 = time.time()
-
+        
         # Resolve XC functional string and PAW setups
         actual_xc, resolved_setups, is_libxc = self.engine.resolve_xc_and_setups(self.XC_calc, self.Setup_params)
         
@@ -1030,12 +1218,6 @@ class dftsolve:
         else:
             parprint("\033[91mERROR:\033[0mPlease enter correct mode information.")
             sys.exit(1)
-        # Finish ground state timing
-        time12 = time.time()
-
-        # Write timings of calculation
-        with paropen(self.struct+'-TIMINGS-Log-Timings.txt', 'a') as f1:
-            print('Ground state: ', round((time12-time11),2), end="\n", file=f1)
 
     def elasticcalc(self, drawfigs=False, strain_n=5, strain_mag=0.01, thickness=None):
         """
