@@ -1,11 +1,15 @@
 import unittest
 
 from nanoworks.engine import load_engine_module
+from ase import Atoms
 from nanoworks.engine.qe import (
     QE_REFERENCE_VERSION,
     ev_to_rydberg,
     build_control_settings,
     build_system_settings,
+    build_cell_parameters,
+    build_atomic_positions,
+    build_atomic_species,
 )
 
 
@@ -82,6 +86,104 @@ class TestQEEngine(unittest.TestCase):
             engine.QE_REFERENCE_VERSION,
             (7, 2),
         )
+    
+    def test_cell_parameters_are_built_in_angstrom(self):
+        atoms = Atoms(
+            'GaAs',
+            positions=[
+                [0.0, 0.0, 0.0],
+                [1.0, 1.0, 1.0],
+            ],
+            cell=[
+                [5.65, 0.0, 0.0],
+                [0.0, 5.65, 0.0],
+                [0.0, 0.0, 5.65],
+            ],
+            pbc=True,
+        )
+
+        card = build_cell_parameters(atoms)
+
+        self.assertEqual(card['option'], 'angstrom')
+        self.assertEqual(
+            card['vectors'],
+            [
+                (5.65, 0.0, 0.0),
+                (0.0, 5.65, 0.0),
+                (0.0, 0.0, 5.65),
+            ],
+        )
+    
+    def test_atomic_positions_are_built_in_angstrom(self):
+        atoms = Atoms(
+            'GaAs',
+            positions=[
+                [0.0, 0.0, 0.0],
+                [1.4125, 1.4125, 1.4125],
+            ],
+            cell=[5.65, 5.65, 5.65],
+            pbc=True,
+        )
+
+        card = build_atomic_positions(atoms)
+
+        self.assertEqual(card['option'], 'angstrom')
+        self.assertEqual(
+            card['positions'],
+            [
+                ('Ga', 0.0, 0.0, 0.0),
+                ('As', 1.4125, 1.4125, 1.4125),
+            ],
+        )
+    
+    def test_atomic_species_use_pseudopotential_mapping(self):
+        atoms = Atoms(
+            'GaAsGa',
+            positions=[
+                [0.0, 0.0, 0.0],
+                [1.0, 1.0, 1.0],
+                [2.0, 2.0, 2.0],
+            ],
+        )
+
+        species = build_atomic_species(
+            atoms,
+            {
+                'Ga': 'Ga.upf',
+                'As': 'As.upf',
+            },
+        )
+
+        self.assertEqual(len(species), 2)
+
+        self.assertEqual(species[0][0], 'Ga')
+        self.assertEqual(species[0][2], 'Ga.upf')
+
+        self.assertEqual(species[1][0], 'As')
+        self.assertEqual(species[1][2], 'As.upf')
+
+        self.assertGreater(species[0][1], 0.0)
+        self.assertGreater(species[1][1], 0.0)
+    
+    def test_atomic_species_reject_missing_pseudopotential(self):
+        atoms = Atoms(
+            'GaAs',
+            positions=[
+                [0.0, 0.0, 0.0],
+                [1.0, 1.0, 1.0],
+            ],
+        )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            'Missing pseudopotential mapping for: As',
+        ):
+            build_atomic_species(
+                atoms,
+                {
+                    'Ga': 'Ga.upf',
+                },
+            )
 
 
 if __name__ == '__main__':

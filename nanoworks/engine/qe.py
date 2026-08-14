@@ -1,5 +1,7 @@
 """Quantum ESPRESSO computation engine helpers."""
 
+from ase.data import atomic_masses, atomic_numbers
+
 QE_REFERENCE_VERSION = (7, 2)
 
 # CODATA-compatible conversion used by ASE and QE-related workflows.
@@ -58,3 +60,71 @@ def build_system_settings(
         settings['nspin'] = 2
 
     return settings
+
+def build_cell_parameters(atoms):
+    """Build QE CELL_PARAMETERS data from an ASE Atoms object."""
+    vectors = [
+        tuple(float(value) for value in vector)
+        for vector in atoms.cell.array
+    ]
+
+    return {
+        'option': 'angstrom',
+        'vectors': vectors,
+    }
+
+
+def build_atomic_positions(atoms):
+    """Build QE ATOMIC_POSITIONS data from an ASE Atoms object."""
+    positions = []
+
+    for symbol, position in zip(
+        atoms.get_chemical_symbols(),
+        atoms.get_positions(),
+    ):
+        positions.append(
+            (
+                symbol,
+                float(position[0]),
+                float(position[1]),
+                float(position[2]),
+            )
+        )
+
+    return {
+        'option': 'angstrom',
+        'positions': positions,
+    }
+
+
+def build_atomic_species(atoms, pseudopotentials):
+    """Build QE ATOMIC_SPECIES data from an ASE Atoms object."""
+    symbols = list(dict.fromkeys(atoms.get_chemical_symbols()))
+
+    missing = [
+        symbol
+        for symbol in symbols
+        if symbol not in pseudopotentials
+    ]
+
+    if missing:
+        raise ValueError(
+            "Missing pseudopotential mapping for: "
+            + ", ".join(missing)
+        )
+
+    species = []
+
+    for symbol in symbols:
+        atomic_number = atomic_numbers[symbol]
+        mass = float(atomic_masses[atomic_number])
+
+        species.append(
+            (
+                symbol,
+                mass,
+                str(pseudopotentials[symbol]),
+            )
+        )
+
+    return species
