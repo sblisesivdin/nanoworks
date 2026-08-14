@@ -9,14 +9,30 @@ General Keywords
 
     :Type: ``string``
     :Default: ``GPAW``
+    :Options: ``GPAW``, ``QE``
 
-    Selects the computational engine used by Nanoworks. Engine names are
-    case-insensitive and are normalized internally. Currently ``GPAW`` is
-    the active DFT engine.
+    Selects the DFT engine used by Nanoworks. Engine names are
+    case-insensitive and are normalized internally.
+
+    ``GPAW`` remains the default and currently provides the complete
+    Nanoworks DFT workflow. Initial Quantum ESPRESSO support is available
+    with ``QE`` for plane-wave ground-state calculations.
 
 .. code-block:: python
 
     Engine = 'GPAW'
+
+or:
+
+.. code-block:: python
+
+    Engine = 'QE'
+
+.. note::
+
+    Quantum ESPRESSO support is currently under active development.
+    At this stage, ``Engine = 'QE'`` supports the basic PW ground-state
+    workflow. Other calculation stages will be added incrementally.
 
 .. describe:: Mode
 

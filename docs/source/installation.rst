@@ -100,6 +100,36 @@ For the DFT-D3 dispersion correction, you need to install the dftd3 package on y
    (.venv_nw) $ cd ..
    (.venv_nw) $ rm -rf build_d3
 
+OPTIONAL: Quantum ESPRESSO Backend
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Nanoworks can also use Quantum ESPRESSO as an alternative DFT engine.
+Initial support currently covers plane-wave ground-state calculations.
+
+Quantum ESPRESSO itself is not installed automatically by the Nanoworks
+Python package. A working Quantum ESPRESSO installation with ``pw.x``
+available in ``PATH`` is required.
+
+Nanoworks can install the required PseudoDojo pseudopotential libraries
+for the QE backend:
+
+.. code-block:: console
+
+   (.venv_nw) $ nanoworks --install-qe-pseudos
+
+This installs the standard PBE scalar-relativistic and fully-relativistic
+UPF pseudopotential sets under:
+
+.. code-block:: text
+
+   ~/.nanoworks/pseudos/qe/pseudodojo/pbe/
+
+At present, the initial QE ground-state workflow uses the
+scalar-relativistic PBE pseudopotentials. Fully-relativistic
+pseudopotentials are installed for future spin-orbit-coupling support.
+
+Quantum ESPRESSO 7.2 is the initially validated version.
+
 Installation of Nanoworks and Python Modules
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
