@@ -18,30 +18,52 @@ license = { text = "MIT" }
 authors = [{name = "Sefer Bora Lisesivdin" }, {name = "Beyza Sarikavak-Lisesivdin"}]
 dependencies = [
     "ase>=3.22.0",
-    "gpaw>=26.7.0",
     "spglib",
-    "docutils",
-    "elastic",
-    "requests",
-    "phonopy",
-    "pyrapl",
-    "pymongo",
-    "pandas",
-    "setuptools_scm"
+    "docutils"
 ]
 
 [project.optional-dependencies]
+
+gpaw = [
+    "gpaw>=26.7.0",
+    "elastic",
+    "phonopy",
+    "pyrapl",
+    "pymongo",
+    "pandas"
+]
+
+qe = [
+]
+
+dft = [
+    "gpaw>=26.7.0",
+    "elastic",
+    "phonopy",
+    "pyrapl",
+    "pymongo",
+    "pandas"
+]
+
 md = [
     "asap3",
     "kimpy"
 ]
+
 ml = [
     "torch",
     "mace-torch",
     "chgnet",
     "sevenn"
 ]
+
 all = [
+    "gpaw>=26.7.0",
+    "elastic",
+    "phonopy",
+    "pyrapl",
+    "pymongo",
+    "pandas",
     "asap3",
     "kimpy",
     "torch",
