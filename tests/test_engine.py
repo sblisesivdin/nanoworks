@@ -80,6 +80,18 @@ class TestEngine(unittest.TestCase):
         import_module.assert_called_once_with(
             'nanoworks.engine.gpaw'
         )
+    
+    @patch('nanoworks.engine.import_module')
+    def test_qe_engine_module_is_loaded_lazily(self, import_module):
+        expected = object()
+        import_module.return_value = expected
+
+        result = load_engine_module('qe')
+
+        self.assertIs(result, expected)
+        import_module.assert_called_once_with(
+            'nanoworks.engine.qe'
+        )
 
 
     def test_unknown_engine_is_rejected(self):

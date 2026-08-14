@@ -8,6 +8,7 @@ def load_engine_module(engine):
 
     modules = {
         'GPAW': 'nanoworks.engine.gpaw',
+        'QE': 'nanoworks.engine.qe',
     }
 
     try:
