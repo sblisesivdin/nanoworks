@@ -1,5 +1,10 @@
 """Quantum ESPRESSO computation engine helpers."""
 
+import re
+import shutil
+import subprocess
+from pathlib import Path
+
 from ase.data import atomic_masses, atomic_numbers
 
 QE_REFERENCE_VERSION = (7, 2)
@@ -11,6 +16,10 @@ EV_PER_RYDBERG = 13.605693122994
 def ev_to_rydberg(value):
     """Convert an energy value from electron-volts to Rydberg."""
     return float(value) / EV_PER_RYDBERG
+
+def rydberg_to_ev(value):
+    """Convert an energy value from Rydberg to electron-volts."""
+    return float(value) * EV_PER_RYDBERG
 
 
 def build_control_settings(
@@ -438,3 +447,181 @@ def render_scf_input(
         )
 
     return "\n".join(lines) + "\n"
+
+def resolve_qe_executable(
+    executable='pw.x',
+):
+    """Resolve a Quantum ESPRESSO executable."""
+    executable = str(executable)
+
+    path = Path(executable).expanduser()
+
+    if path.parent != Path('.'):
+        if not path.exists():
+            raise FileNotFoundError(
+                f"Quantum ESPRESSO executable was not found: {path}"
+            )
+
+        if not path.is_file():
+            raise FileNotFoundError(
+                f"Quantum ESPRESSO executable is not a file: {path}"
+            )
+
+        return str(path.resolve())
+
+    resolved = shutil.which(executable)
+
+    if resolved is None:
+        raise FileNotFoundError(
+            f"Quantum ESPRESSO executable '{executable}' "
+            "was not found in PATH."
+        )
+
+    return resolved
+
+def build_qe_command(
+    input_file,
+    executable='pw.x',
+    launcher=None,
+):
+    """Build a Quantum ESPRESSO execution command."""
+    executable = resolve_qe_executable(
+        executable
+    )
+
+    command = []
+
+    if launcher is not None:
+        if isinstance(launcher, str):
+            raise TypeError(
+                "QE launcher must be a sequence of command arguments, "
+                "not a shell command string."
+            )
+
+        command.extend(
+            str(value)
+            for value in launcher
+        )
+
+    command.extend([
+        executable,
+        '-i',
+        str(input_file),
+    ])
+
+    return command
+
+def run_qe_program(
+    input_file,
+    output_file,
+    executable='pw.x',
+    launcher=None,
+    cwd=None,
+):
+    """Run a Quantum ESPRESSO program and write its output to a file."""
+    input_file = Path(
+        input_file
+    ).expanduser()
+
+    output_file = Path(
+        output_file
+    ).expanduser()
+
+    if not input_file.exists():
+        raise FileNotFoundError(
+            f"QE input file was not found: {input_file}"
+        )
+
+    if cwd is not None:
+        cwd = Path(
+            cwd
+        ).expanduser()
+
+    command = build_qe_command(
+        input_file=input_file,
+        executable=executable,
+        launcher=launcher,
+    )
+
+    output_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    with output_file.open(
+        'w',
+        encoding='utf-8',
+    ) as fd:
+        result = subprocess.run(
+            command,
+            cwd=cwd,
+            stdout=fd,
+            stderr=subprocess.STDOUT,
+            check=False,
+            text=True,
+        )
+
+    if result.returncode != 0:
+        raise RuntimeError(
+            "Quantum ESPRESSO calculation failed with "
+            f"return code {result.returncode}. "
+            f"See '{output_file}'."
+        )
+
+    return {
+        'command': command,
+        'returncode': result.returncode,
+        'output_file': output_file,
+    }
+
+def parse_pw_output(output):
+    """Parse basic results from pw.x output."""
+    output = Path(
+        output
+    )
+
+    if not output.exists():
+        raise FileNotFoundError(
+            f"QE output file was not found: {output}"
+        )
+
+    text = output.read_text(
+        encoding='utf-8',
+        errors='replace',
+    )
+
+    energy_matches = re.findall(
+        r'!\s+total energy\s*=\s*'
+        r'([-+]?\d+(?:\.\d*)?(?:[EeDd][-+]?\d+)?)'
+        r'\s+Ry',
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    total_energy_ry = None
+    total_energy_ev = None
+
+    if energy_matches:
+        value = (
+            energy_matches[-1]
+            .replace('D', 'E')
+            .replace('d', 'e')
+        )
+
+        total_energy_ry = float(
+            value
+        )
+
+        total_energy_ev = rydberg_to_ev(
+            total_energy_ry
+        )
+
+    job_done = (
+        'JOB DONE.' in text
+    )
+
+    return {
+        'job_done': job_done,
+        'total_energy_ry': total_energy_ry,
+        'total_energy_ev': total_energy_ev,
+    }
