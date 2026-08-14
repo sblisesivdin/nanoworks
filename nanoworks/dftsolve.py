@@ -44,57 +44,148 @@ def log_energy_consumption(meter, struct_name):
            
         print(2.77777778e-7 * (1e-6 * pkg_energy + 1e-6 * dram_energy), " Total energy consumption in kWh", end="\n", file=f1)
 
-# Parallel execution logic (Must be before other imports to avoid MPI initialization issues)
-def check_parallel_restart():
+# Parallel execution request.
+#
+# GPAW runs the whole dftsolve process under MPI.
+# Quantum ESPRESSO keeps dftsolve serial and launches the QE
+# executable itself under MPI.
+def extract_parallel_request():
     parallel = None
     filtered_args = []
+
     i = 1
+
     while i < len(sys.argv):
         arg = sys.argv[i]
+
         if arg in ['-p', '--parallel']:
-            if i + 1 < len(sys.argv):
-                parallel = sys.argv[i+1]
-                i += 2
-            else:
-                print("Error: -p/--parallel requires an argument")
+            if i + 1 >= len(sys.argv):
+                print(
+                    "Error: -p/--parallel requires an argument"
+                )
                 sys.exit(1)
-        elif arg.startswith('-p'):
+
+            parallel = sys.argv[i + 1]
+            i += 2
+
+        elif arg.startswith('--parallel='):
+            parallel = arg.split(
+                '=',
+                1,
+            )[1]
+            i += 1
+
+        elif arg.startswith('-p') and arg != '-p':
             parallel = arg[2:]
             i += 1
-        elif arg.startswith('--parallel='):
-            parallel = arg.split('=', 1)[1]
-            i += 1
+
         else:
             filtered_args.append(arg)
             i += 1
-            
-    if parallel:
-        script_path = os.path.abspath(__file__)    
-        # gpaw -P is deprecated in GPAW 26.7.0+, directly use mpirun/mpiexec
-        mpi_exe = shutil.which('mpiexec') or shutil.which('mpirun') or shutil.which('srun')
-            
-        if mpi_exe:
-            flag = '-n' if 'srun' in mpi_exe else '-np'
 
-            venv_python = sys.executable 
-            
-            os.environ['OMP_NUM_THREADS'] = '1'
-            os.environ['OPENBLAS_NUM_THREADS'] = '1'
-            os.environ['MKL_NUM_THREADS'] = '1'
-            os.environ['VECLIB_MAXIMUM_THREADS'] = '1'
-            os.environ['NUMEXPR_NUM_THREADS'] = '1'
-            
-            # Using venv paths
-            cmd = [mpi_exe, flag, str(parallel), venv_python, script_path] + filtered_args
-        else:
-            print("Error: mpiexec, mpirun, or srun not found for parallel execution.")
+    if parallel is not None:
+        try:
+            parallel = int(parallel)
+        except ValueError:
+            print(
+                "Error: -p/--parallel must be a positive integer"
+            )
             sys.exit(1)
-            
-        print(f"Restarting with {parallel} cores: {' '.join(cmd)}")
-        sys.stdout.flush()
-        os.execvp(cmd[0], cmd)
 
-check_parallel_restart()
+        if parallel <= 0:
+            print(
+                "Error: -p/--parallel must be a positive integer"
+            )
+            sys.exit(1)
+
+    return parallel, filtered_args
+
+
+def restart_gpaw_with_mpi(
+    parallel,
+    filtered_args,
+):
+    """Restart dftsolve under MPI for the GPAW backend."""
+    mpi_exe = (
+        shutil.which('mpiexec')
+        or shutil.which('mpirun')
+        or shutil.which('srun')
+    )
+
+    if mpi_exe is None:
+        print(
+            "Error: mpiexec, mpirun, or srun "
+            "not found for parallel execution."
+        )
+        sys.exit(1)
+
+    flag = (
+        '-n'
+        if 'srun' in os.path.basename(mpi_exe)
+        else '-np'
+    )
+
+    script_path = os.path.abspath(
+        __file__
+    )
+
+    gpaw_exe = shutil.which('gpaw')
+
+    if gpaw_exe is None:
+        print(
+            "Error: GPAW command was not found in PATH."
+        )
+        sys.exit(1)
+    
+    os.environ['OMP_NUM_THREADS'] = '1'
+    os.environ['OPENBLAS_NUM_THREADS'] = '1'
+    os.environ['MKL_NUM_THREADS'] = '1'
+    os.environ['VECLIB_MAXIMUM_THREADS'] = '1'
+    os.environ['NUMEXPR_NUM_THREADS'] = '1'
+
+    cmd = [
+        mpi_exe,
+        flag,
+        str(parallel),
+        gpaw_exe,
+        'python',
+        '--',
+        script_path,
+    ] + filtered_args
+
+    print(
+        f"Restarting GPAW calculation with "
+        f"{parallel} cores: {' '.join(cmd)}"
+    )
+
+    sys.stdout.flush()
+    
+    child_env = os.environ.copy()
+
+    # "gpaw python" configures the GPAW MPI backend itself.
+    # Do not pass the backend selected for the original serial
+    # Nanoworks process to the MPI child processes.
+    child_env.pop(
+        'GPAW_MPI_BACKEND',
+        None,
+    )
+
+    os.execvpe(
+        cmd[0],
+        cmd,
+        child_env,
+    )
+
+
+REQUESTED_PARALLEL, FILTERED_ARGS = (
+    extract_parallel_request()
+)
+
+# argparse must not see Nanoworks' process-count argument.
+sys.argv = [
+    sys.argv[0],
+    *FILTERED_ARGS,
+]
 
 # Since gpaw-python is removed, the standard python interpreter needs this 
 # environment variable to enable MPI parallelization when imported as a library.
@@ -501,7 +592,12 @@ class dftsolve:
     The class takes input parameters from a DFTConfig instance and performs the calculations
     accordingly.
     """
-    def __init__(self, struct: str, config: DFTConfig):
+    def __init__(
+        self,
+        struct: str,
+        config: DFTConfig,
+        parallel_cores: int = 1,
+    ):
         """Initialize dftsolve with struct path and configuration.
         
         Args:
@@ -514,6 +610,9 @@ class dftsolve:
         # For backward compatibility, expose config attributes as instance attributes
         self.Engine = config.Engine
         self.engine = load_engine_module(self.Engine)
+        self.parallel_cores = int(
+            parallel_cores
+        )
         self.Mode = config.Mode
         self.Ground_calc = config.Ground_calc
         self.Geo_optim = config.Geo_optim
@@ -2979,13 +3078,36 @@ def main():
     else:
         struct, config = struct_from_file(inputfile = configpath, geometryfile = inFile)
 
+    # Parallel execution is backend-specific.
+    #
+    # GPAW requires the complete Python calculation to run under MPI.
+    # QE keeps Nanoworks serial and launches pw.x with the requested
+    # number of MPI processes.
+    if (
+        config.Engine == 'GPAW'
+        and REQUESTED_PARALLEL is not None
+    ):
+        restart_gpaw_with_mpi(
+            REQUESTED_PARALLEL,
+            FILTERED_ARGS,
+        )
+    
+    if REQUESTED_PARALLEL is not None:
+        parallel_cores = REQUESTED_PARALLEL
+    else:
+        parallel_cores = world.size
+    
     # Write timings of calculation
     with paropen(struct+'-TIMINGS-Log-Timings.txt', 'a') as f1:
         print("dftsolve.py execution timings (seconds):", end="\n", file=f1)
         print("Execution started:", time0, end="\n", file=f1)
 
-    # Load dftsolve() class with config
-    dftsolver = dftsolve(struct, config)
+    # Load dftsolve() class with config and core numbers
+    dftsolver = dftsolve(
+        struct,
+        config,
+        parallel_cores=parallel_cores,
+    )
 
     # Run structure calculation
     dftsolver.structurecalc()
