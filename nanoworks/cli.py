@@ -5,6 +5,7 @@ import os
 import shutil
 import importlib.resources as pkg_resources
 import nanoworks
+from nanoworks.pseudos import install_qe_pseudopotentials
 
 def deploy_examples():
     # Find the user's home directory
@@ -60,6 +61,14 @@ def main():
     parser = argparse.ArgumentParser(prog='nanoworks', description='Nanoworks CLI tool')
     parser.add_argument('-v', '--version', action='store_true', help='Show version and detailed library information')
     parser.add_argument('--install-examples', action='store_true', help='Copy example files to ~/.nanoworks/Examples')
+    parser.add_argument(
+    '--install-qe-pseudos',
+    action='store_true',
+    help=(
+        'Install the default Quantum ESPRESSO '
+        'pseudopotential library'
+    ),
+)
     
     if len(sys.argv) == 1:
         parser.print_help()
@@ -71,6 +80,40 @@ def main():
     # If the user passes the --install-examples flag, run the function and exit
     if args.install_examples:
         deploy_examples()
+        sys.exit(0)
+    
+    if args.install_qe_pseudos:
+        print(
+            "Installing Quantum ESPRESSO "
+            "pseudopotentials..."
+        )
+
+        results = install_qe_pseudopotentials()
+
+        for name in (
+            'scalar',
+            'full',
+        ):
+            result = results[name]
+
+            if result['skipped']:
+                print(
+                    f"{name}: already installed at "
+                    f"{result['directory']}"
+                )
+            else:
+                print(
+                    f"{name}: installed "
+                    f"{result['count']} "
+                    "pseudopotentials in "
+                    f"{result['directory']}"
+                )
+
+            print(
+                f"{name} manifest: "
+                f"{result['manifest']}"
+            )
+
         sys.exit(0)
     
     if args.version:
@@ -97,6 +140,7 @@ def main():
             print("--------------------------------------------------------------------")
             print("If you do not have examples, run nanoworks --install-examples")
             print("and then continue with each example. Every example has its own README.md")
+            print("You can install pseudopotantions for QE with --install-qe-pseudos")
             sys.exit(1)
         
         print("--------------------------------------------------------------------")
@@ -116,6 +160,7 @@ def main():
         print("--------------------------------------------------------------------")
         print("If you do not have examples, run nanoworks --install-examples")
         print("and then continue with each example. Every example has its own README.md")
+        print("You can install pseudopotantions for QE with --install-qe-pseudos")
     
 
 if __name__ == "__main__":

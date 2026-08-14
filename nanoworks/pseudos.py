@@ -1,9 +1,45 @@
 """Pseudopotential management helpers for Nanoworks."""
 
+import json
+import os
+import re
+import shutil
+import tarfile
+import tempfile
 from pathlib import Path
-
+from urllib.error import HTTPError, URLError
+from urllib.request import urlretrieve
+import inspect
 
 DEFAULT_PSEUDO_FAMILY = 'pseudodojo'
+DEFAULT_PSEUDO_XC = 'pbe'
+DEFAULT_PSEUDO_ACCURACY = 'standard'
+DEFAULT_PSEUDO_RELATIVISTIC = 'scalar'
+
+PSEUDODOJO_SETS = {
+    'scalar': {
+        'version': '0.5',
+        'xc': 'pbe',
+        'accuracy': 'standard',
+        'relativistic': 'scalar',
+        'table': 'nc-sr-05_pbe_standard',
+        'url': (
+            'https://www.pseudo-dojo.org/pseudos/'
+            'nc-sr-05_pbe_standard_upf.tgz'
+        ),
+    },
+    'full': {
+        'version': '0.4',
+        'xc': 'pbe',
+        'accuracy': 'standard',
+        'relativistic': 'full',
+        'table': 'nc-fr-04_pbe_standard',
+        'url': (
+            'https://www.pseudo-dojo.org/pseudos/'
+            'nc-fr-04_pbe_standard_upf.tgz'
+        ),
+    },
+}
 
 
 def get_nanoworks_data_dir():
@@ -21,39 +57,383 @@ def get_qe_pseudo_root():
     return get_pseudo_root() / 'qe'
 
 
-def get_qe_pseudo_dir(family=DEFAULT_PSEUDO_FAMILY):
-    """Return the directory for a Quantum ESPRESSO pseudo family."""
+def get_qe_pseudo_dir(
+    family=DEFAULT_PSEUDO_FAMILY,
+    xc=DEFAULT_PSEUDO_XC,
+    relativistic=DEFAULT_PSEUDO_RELATIVISTIC,
+    accuracy=DEFAULT_PSEUDO_ACCURACY,
+):
+    """Return the directory for a Quantum ESPRESSO pseudo set."""
     family = str(family).strip().lower()
+    xc = str(xc).strip().lower()
+    relativistic = str(relativistic).strip().lower()
+    accuracy = str(accuracy).strip().lower()
 
-    if not family:
-        raise ValueError(
-            "Pseudopotential family name cannot be empty."
-        )
+    for name, value in (
+        ('family', family),
+        ('xc', xc),
+        ('relativistic', relativistic),
+        ('accuracy', accuracy),
+    ):
+        if not value:
+            raise ValueError(
+                f"Pseudopotential {name} cannot be empty."
+            )
 
-    return get_qe_pseudo_root() / family
+    return (
+        get_qe_pseudo_root()
+        / family
+        / xc
+        / relativistic
+        / accuracy
+    )
 
 
-def ensure_qe_pseudo_dir(family=DEFAULT_PSEUDO_FAMILY):
-    """Create and return the directory for a QE pseudo family."""
-    path = get_qe_pseudo_dir(family)
-    path.mkdir(parents=True, exist_ok=True)
+def ensure_qe_pseudo_dir(
+    family=DEFAULT_PSEUDO_FAMILY,
+    xc=DEFAULT_PSEUDO_XC,
+    relativistic=DEFAULT_PSEUDO_RELATIVISTIC,
+    accuracy=DEFAULT_PSEUDO_ACCURACY,
+):
+    """Create and return a Quantum ESPRESSO pseudo-set directory."""
+    path = get_qe_pseudo_dir(
+        family=family,
+        xc=xc,
+        relativistic=relativistic,
+        accuracy=accuracy,
+    )
+
+    path.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
 
     return path
+
+
+def get_qe_pseudo_manifest_path(
+    family=DEFAULT_PSEUDO_FAMILY,
+    xc=DEFAULT_PSEUDO_XC,
+    relativistic=DEFAULT_PSEUDO_RELATIVISTIC,
+    accuracy=DEFAULT_PSEUDO_ACCURACY,
+):
+    """Return the manifest path for a QE pseudo set."""
+    return get_qe_pseudo_dir(
+        family=family,
+        xc=xc,
+        relativistic=relativistic,
+        accuracy=accuracy,
+    ) / 'manifest.json'
+
+
+def load_qe_pseudo_manifest(
+    family=DEFAULT_PSEUDO_FAMILY,
+    xc=DEFAULT_PSEUDO_XC,
+    relativistic=DEFAULT_PSEUDO_RELATIVISTIC,
+    accuracy=DEFAULT_PSEUDO_ACCURACY,
+):
+    """Load a QE pseudopotential manifest."""
+    path = get_qe_pseudo_manifest_path(
+        family=family,
+        xc=xc,
+        relativistic=relativistic,
+        accuracy=accuracy,
+    )
+
+    if not path.exists():
+        raise FileNotFoundError(
+            f"QE pseudopotential manifest was not found at '{path}'. "
+            "Run 'nanoworks --install-qe-pseudos' first."
+        )
+
+    with path.open(
+        'r',
+        encoding='utf-8',
+    ) as fd:
+        return json.load(fd)
+
+
+def _safe_extract_tar(archive, destination):
+    """Safely extract a tar archive without path traversal."""
+    destination = Path(destination).resolve()
+
+    for member in archive.getmembers():
+        member_path = (
+            destination / member.name
+        ).resolve()
+
+        if os.path.commonpath(
+            [str(destination), str(member_path)]
+        ) != str(destination):
+            raise RuntimeError(
+                "Unsafe path detected in pseudopotential archive: "
+                f"{member.name}"
+            )
+
+    extractall_parameters = inspect.signature(
+        archive.extractall
+    ).parameters
+
+    if 'filter' in extractall_parameters:
+        archive.extractall(
+            destination,
+            filter='data',
+        )
+    else:
+        archive.extractall(destination)
+
+
+def _read_upf_element(path):
+    """Determine the chemical element represented by a UPF file."""
+    with Path(path).open(
+        'r',
+        encoding='utf-8',
+        errors='ignore',
+    ) as fd:
+        text = fd.read(65536)
+
+    match = re.search(
+        r'element\s*=\s*["\']\s*([A-Z][a-z]?)\s*["\']',
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    if match:
+        symbol = match.group(1)
+        return (
+            symbol[0].upper()
+            + symbol[1:].lower()
+        )
+
+    # Fallback for simple names such as Si.upf.
+    stem = Path(path).stem
+    candidate = stem.split('-')[0]
+
+    if re.fullmatch(
+        r'[A-Z][a-z]?',
+        candidate,
+    ):
+        return candidate
+
+    raise RuntimeError(
+        f"Could not determine element for UPF file '{path}'."
+    )
+
+
+def _install_pseudodojo_set(
+    relativistic,
+    overwrite=False,
+):
+    """Download and install one pinned PseudoDojo UPF set."""
+    try:
+        spec = PSEUDODOJO_SETS[relativistic]
+    except KeyError:
+        raise ValueError(
+            "Unsupported PseudoDojo relativistic mode: "
+            f"{relativistic}"
+        )
+
+    target_dir = ensure_qe_pseudo_dir(
+        family='pseudodojo',
+        xc=spec['xc'],
+        relativistic=spec['relativistic'],
+        accuracy=spec['accuracy'],
+    )
+
+    manifest_path = (
+        target_dir / 'manifest.json'
+    )
+
+    if (
+        manifest_path.exists()
+        and not overwrite
+    ):
+        return {
+            'directory': target_dir,
+            'manifest': manifest_path,
+            'relativistic': relativistic,
+            'skipped': True,
+        }
+
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+
+        archive_path = (
+            tmp / 'pseudodojo.tgz'
+        )
+
+        extract_dir = (
+            tmp / 'extracted'
+        )
+
+        extract_dir.mkdir()
+
+        try:
+            urlretrieve(
+                spec['url'],
+                archive_path,
+            )
+        except HTTPError as exc:
+            raise RuntimeError(
+                "Failed to download PseudoDojo "
+                f"{relativistic} pseudopotentials: "
+                f"HTTP {exc.code}"
+            ) from exc
+        except URLError as exc:
+            raise RuntimeError(
+                "Failed to download PseudoDojo "
+                f"{relativistic} pseudopotentials: "
+                f"{exc.reason}"
+            ) from exc
+
+        try:
+            with tarfile.open(
+                archive_path,
+                mode='r:gz',
+            ) as archive:
+                _safe_extract_tar(
+                    archive,
+                    extract_dir,
+                )
+        except (tarfile.TarError, OSError) as exc:
+            raise RuntimeError(
+                "Failed to unpack PseudoDojo "
+                f"{relativistic} pseudopotential archive."
+            ) from exc
+
+        upf_files = sorted(
+            path
+            for path in extract_dir.rglob('*')
+            if (
+                path.is_file()
+                and path.suffix.lower() == '.upf'
+            )
+        )
+
+        if not upf_files:
+            raise RuntimeError(
+                "No UPF files were found in the downloaded "
+                "PseudoDojo archive."
+            )
+
+        files = {}
+
+        for source in upf_files:
+            symbol = _read_upf_element(
+                source
+            )
+
+            if symbol in files:
+                raise RuntimeError(
+                    "Multiple UPF files were found for "
+                    f"{symbol} in PseudoDojo "
+                    f"{relativistic} set."
+                )
+
+            filename = source.name
+            destination = (
+                target_dir / filename
+            )
+
+            shutil.copy2(
+                source,
+                destination,
+            )
+
+            files[symbol] = filename
+
+    manifest = {
+        'family': 'pseudodojo',
+        'version': spec['version'],
+        'xc': spec['xc'],
+        'accuracy': spec['accuracy'],
+        'relativistic': spec['relativistic'],
+        'format': 'upf',
+        'table': spec['table'],
+        'source_url': spec['url'],
+        'files': dict(
+            sorted(files.items())
+        ),
+    }
+
+    with manifest_path.open(
+        'w',
+        encoding='utf-8',
+    ) as fd:
+        json.dump(
+            manifest,
+            fd,
+            indent=2,
+            sort_keys=True,
+        )
+        fd.write('\n')
+
+    return {
+        'directory': target_dir,
+        'manifest': manifest_path,
+        'relativistic': relativistic,
+        'skipped': False,
+        'count': len(files),
+    }
+
+
+def install_qe_pseudopotentials(
+    family=DEFAULT_PSEUDO_FAMILY,
+    overwrite=False,
+):
+    """Install the default Quantum ESPRESSO pseudopotential sets."""
+    family = str(
+        family
+    ).strip().lower()
+
+    if family != 'pseudodojo':
+        raise ValueError(
+            "Unsupported QE pseudopotential family: "
+            f"{family}"
+        )
+
+    results = {}
+
+    for relativistic in (
+        'scalar',
+        'full',
+    ):
+        results[relativistic] = (
+            _install_pseudodojo_set(
+                relativistic=relativistic,
+                overwrite=overwrite,
+            )
+        )
+
+    return results
 
 
 def resolve_qe_pseudopotentials(
     atoms,
     family=DEFAULT_PSEUDO_FAMILY,
+    xc=DEFAULT_PSEUDO_XC,
+    relativistic=DEFAULT_PSEUDO_RELATIVISTIC,
+    accuracy=DEFAULT_PSEUDO_ACCURACY,
 ):
-    """Resolve installed UPF files for the elements in an ASE Atoms object."""
-    pseudo_dir = get_qe_pseudo_dir(family)
+    """Resolve installed UPF files for an ASE Atoms object."""
+    pseudo_dir = get_qe_pseudo_dir(
+        family=family,
+        xc=xc,
+        relativistic=relativistic,
+        accuracy=accuracy,
+    )
 
-    if not pseudo_dir.exists():
-        raise FileNotFoundError(
-            "Quantum ESPRESSO pseudopotentials are not installed in "
-            f"'{pseudo_dir}'. Run "
-            "'nanoworks --install-qe-pseudos' first."
-        )
+    manifest = load_qe_pseudo_manifest(
+        family=family,
+        xc=xc,
+        relativistic=relativistic,
+        accuracy=accuracy,
+    )
+
+    files = manifest.get(
+        'files',
+        {},
+    )
 
     symbols = list(
         dict.fromkeys(
@@ -64,28 +444,28 @@ def resolve_qe_pseudopotentials(
     resolved = {}
 
     for symbol in symbols:
-        matches = sorted(
-            pseudo_dir.glob(f'{symbol}*.upf')
+        filename = files.get(
+            symbol
         )
 
-        if not matches:
-            matches = sorted(
-                pseudo_dir.glob(f'{symbol}*.UPF')
-            )
-
-        if not matches:
+        if filename is None:
             raise FileNotFoundError(
-                f"No installed QE pseudopotential was found for {symbol} "
-                f"in '{pseudo_dir}'."
+                "No installed QE pseudopotential "
+                f"is registered for {symbol} in "
+                f"'{pseudo_dir}'."
             )
 
-        if len(matches) > 1:
-            raise RuntimeError(
-                f"Multiple QE pseudopotentials were found for {symbol} "
-                f"in '{pseudo_dir}'. A unique manifest-based selection "
-                "is required."
+        path = (
+            pseudo_dir / filename
+        )
+
+        if not path.exists():
+            raise FileNotFoundError(
+                f"QE pseudopotential '{filename}' "
+                f"for {symbol} is missing from "
+                f"'{pseudo_dir}'."
             )
 
-        resolved[symbol] = matches[0].name
+        resolved[symbol] = filename
 
     return resolved
