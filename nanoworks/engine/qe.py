@@ -128,3 +128,114 @@ def build_atomic_species(atoms, pseudopotentials):
         )
 
     return species
+
+def build_kpoint_settings(size, gamma=False):
+    """Build a QE automatic K_POINTS mesh.
+
+    Nanoworks ``gamma=True`` means a Gamma-centered mesh, not a
+    Gamma-only calculation.
+    """
+    mesh = tuple(int(value) for value in size)
+
+    if len(mesh) != 3:
+        raise ValueError("QE k-point mesh must contain exactly 3 values.")
+
+    if any(value <= 0 for value in mesh):
+        raise ValueError("QE k-point mesh values must be positive integers.")
+
+    if gamma:
+        shifts = (0, 0, 0)
+    else:
+        shifts = tuple(
+            1 if value % 2 == 0 else 0
+            for value in mesh
+        )
+
+    return {
+        'option': 'automatic',
+        'size': mesh,
+        'shift': shifts,
+    }
+
+def build_occupation_settings(
+    occupations='fixed',
+    smearing=None,
+    width_ev=None,
+):
+    """Build QE occupation-related &SYSTEM settings."""
+    occupation = str(occupations).strip().lower()
+
+    allowed_occupations = {
+        'fixed',
+        'smearing',
+        'tetrahedra',
+        'tetrahedra_lin',
+        'tetrahedra_opt',
+    }
+
+    if occupation not in allowed_occupations:
+        raise ValueError(
+            f"Unsupported QE occupation scheme: {occupations}"
+        )
+
+    settings = {
+        'occupations': occupation,
+    }
+
+    if occupation != 'smearing':
+        if smearing is not None or width_ev is not None:
+            raise ValueError(
+                "Smearing type and width can only be used with "
+                "occupations='smearing'."
+            )
+
+        return settings
+
+    if smearing is None:
+        raise ValueError(
+            "QE smearing calculations require a smearing type."
+        )
+
+    if width_ev is None:
+        raise ValueError(
+            "QE smearing calculations require a smearing width."
+        )
+
+    aliases = {
+        'gaussian': 'gaussian',
+        'gauss': 'gaussian',
+
+        'methfessel-paxton': 'methfessel-paxton',
+        'm-p': 'methfessel-paxton',
+        'mp': 'methfessel-paxton',
+
+        'marzari-vanderbilt': 'marzari-vanderbilt',
+        'cold': 'marzari-vanderbilt',
+        'm-v': 'marzari-vanderbilt',
+        'mv': 'marzari-vanderbilt',
+
+        'fermi-dirac': 'fermi-dirac',
+        'f-d': 'fermi-dirac',
+        'fd': 'fermi-dirac',
+    }
+
+    smearing_key = str(smearing).strip().lower()
+
+    try:
+        qe_smearing = aliases[smearing_key]
+    except KeyError:
+        raise ValueError(
+            f"Unsupported QE smearing type: {smearing}"
+        )
+
+    width_ev = float(width_ev)
+
+    if width_ev <= 0.0:
+        raise ValueError(
+            "QE smearing width must be greater than zero."
+        )
+
+    settings['smearing'] = qe_smearing
+    settings['degauss'] = ev_to_rydberg(width_ev)
+
+    return settings

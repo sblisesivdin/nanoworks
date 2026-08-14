@@ -10,6 +10,8 @@ from nanoworks.engine.qe import (
     build_cell_parameters,
     build_atomic_positions,
     build_atomic_species,
+    build_kpoint_settings,
+    build_occupation_settings,
 )
 
 
@@ -183,6 +185,94 @@ class TestQEEngine(unittest.TestCase):
                 {
                     'Ga': 'Ga.upf',
                 },
+            )
+    
+    def test_gamma_centered_kpoint_mesh(self):
+        settings = build_kpoint_settings(
+            (4, 4, 4),
+            gamma=True,
+        )
+
+        self.assertEqual(settings['option'], 'automatic')
+        self.assertEqual(settings['size'], (4, 4, 4))
+        self.assertEqual(settings['shift'], (0, 0, 0))
+    
+    def test_monkhorst_pack_even_mesh_is_shifted(self):
+        settings = build_kpoint_settings(
+            (4, 6, 8),
+            gamma=False,
+        )
+
+        self.assertEqual(settings['size'], (4, 6, 8))
+        self.assertEqual(settings['shift'], (1, 1, 1))
+    
+    def test_monkhorst_pack_shift_depends_on_mesh_parity(self):
+        settings = build_kpoint_settings(
+            (4, 5, 6),
+            gamma=False,
+        )
+
+        self.assertEqual(settings['shift'], (1, 0, 1))
+    
+    def test_kpoint_mesh_rejects_nonpositive_values(self):
+        with self.assertRaises(ValueError):
+            build_kpoint_settings((4, 0, 4))
+    
+    def test_fixed_occupation_settings(self):
+        settings = build_occupation_settings('fixed')
+
+        self.assertEqual(
+            settings,
+            {'occupations': 'fixed'},
+        )
+    
+    def test_smearing_settings_convert_width_to_rydberg(self):
+        settings = build_occupation_settings(
+            occupations='smearing',
+            smearing='fermi-dirac',
+            width_ev=0.1,
+        )
+
+        self.assertEqual(
+            settings['occupations'],
+            'smearing',
+        )
+        self.assertEqual(
+            settings['smearing'],
+            'fermi-dirac',
+        )
+        self.assertAlmostEqual(
+            settings['degauss'],
+            0.1 / 13.605693122994,
+        )
+    
+    def test_cold_smearing_alias(self):
+        settings = build_occupation_settings(
+            occupations='smearing',
+            smearing='cold',
+            width_ev=0.05,
+        )
+
+        self.assertEqual(
+            settings['smearing'],
+            'marzari-vanderbilt',
+        )
+    
+    def test_tetrahedra_has_no_smearing_parameters(self):
+        settings = build_occupation_settings(
+            'tetrahedra'
+        )
+
+        self.assertEqual(
+            settings,
+            {'occupations': 'tetrahedra'},
+        )
+    
+    def test_smearing_requires_width(self):
+        with self.assertRaises(ValueError):
+            build_occupation_settings(
+                occupations='smearing',
+                smearing='gaussian',
             )
 
 
