@@ -239,3 +239,202 @@ def build_occupation_settings(
     settings['degauss'] = ev_to_rydberg(width_ev)
 
     return settings
+
+def build_electrons_settings(
+    conv_thr=None,
+    mixing_beta=None,
+    electron_maxstep=None,
+    diagonalization=None,
+):
+    """Build the QE &ELECTRONS namelist settings."""
+    settings = {}
+
+    if conv_thr is not None:
+        conv_thr = float(conv_thr)
+
+        if conv_thr <= 0.0:
+            raise ValueError(
+                "QE electronic convergence threshold must be greater than zero."
+            )
+
+        settings['conv_thr'] = conv_thr
+
+    if mixing_beta is not None:
+        mixing_beta = float(mixing_beta)
+
+        if not 0.0 < mixing_beta <= 1.0:
+            raise ValueError(
+                "QE mixing_beta must be greater than zero and at most one."
+            )
+
+        settings['mixing_beta'] = mixing_beta
+
+    if electron_maxstep is not None:
+        electron_maxstep = int(electron_maxstep)
+
+        if electron_maxstep <= 0:
+            raise ValueError(
+                "QE electron_maxstep must be a positive integer."
+            )
+
+        settings['electron_maxstep'] = electron_maxstep
+
+    if diagonalization is not None:
+        diagonalization = str(diagonalization).strip().lower()
+
+        allowed = {
+            'david',
+            'cg',
+        }
+
+        if diagonalization not in allowed:
+            raise ValueError(
+                f"Unsupported QE diagonalization method: {diagonalization}"
+            )
+
+        settings['diagonalization'] = diagonalization
+
+    return settings
+
+def format_qe_value(value):
+    """Format a Python value for a QE namelist."""
+    if isinstance(value, bool):
+        return '.true.' if value else '.false.'
+
+    if isinstance(value, str):
+        escaped = value.replace("'", "''")
+        return f"'{escaped}'"
+
+    if isinstance(value, int):
+        return str(value)
+
+    if isinstance(value, float):
+        return f"{value:.12g}"
+
+    raise TypeError(
+        f"Unsupported QE namelist value type: {type(value).__name__}"
+    )
+
+def render_namelist(name, settings):
+    """Render one QE namelist."""
+    lines = [f"&{str(name).upper()}"]
+
+    for key, value in settings.items():
+        lines.append(
+            f"  {key} = {format_qe_value(value)},"
+        )
+
+    lines.append("/")
+
+    return "\n".join(lines)
+
+def render_scf_input(
+    atoms,
+    pseudopotentials,
+    cutoff_ev,
+    kpoint_size,
+    gamma=False,
+    total_charge=0.0,
+    nbands=None,
+    spinpol=False,
+    occupations='fixed',
+    smearing=None,
+    width_ev=None,
+    prefix='nanoworks',
+    pseudo_dir=None,
+    outdir=None,
+    conv_thr=None,
+    mixing_beta=None,
+    electron_maxstep=None,
+    diagonalization=None,
+):
+    """Render a complete QE pw.x SCF input."""
+    species = build_atomic_species(
+        atoms,
+        pseudopotentials,
+    )
+
+    control = build_control_settings(
+        calculation='scf',
+        prefix=prefix,
+        pseudo_dir=pseudo_dir,
+        outdir=outdir,
+    )
+
+    system = build_system_settings(
+        cutoff_ev=cutoff_ev,
+        nat=len(atoms),
+        ntyp=len(species),
+        total_charge=total_charge,
+        nbands=nbands,
+        spinpol=spinpol,
+    )
+
+    system.update(
+        build_occupation_settings(
+            occupations=occupations,
+            smearing=smearing,
+            width_ev=width_ev,
+        )
+    )
+
+    electrons = build_electrons_settings(
+        conv_thr=conv_thr,
+        mixing_beta=mixing_beta,
+        electron_maxstep=electron_maxstep,
+        diagonalization=diagonalization,
+    )
+
+    positions = build_atomic_positions(atoms)
+    cell = build_cell_parameters(atoms)
+    kpoints = build_kpoint_settings(
+        kpoint_size,
+        gamma=gamma,
+    )
+
+    lines = [
+        render_namelist('CONTROL', control),
+        render_namelist('SYSTEM', system),
+        render_namelist('ELECTRONS', electrons),
+        '',
+        'ATOMIC_SPECIES',
+    ]
+
+    for symbol, mass, pseudo in species:
+        lines.append(
+            f"{symbol} {mass:.8f} {pseudo}"
+        )
+
+    lines.extend([
+        '',
+        f"ATOMIC_POSITIONS {positions['option']}",
+    ])
+
+    for symbol, x, y, z in positions['positions']:
+        lines.append(
+            f"{symbol} {x:.12f} {y:.12f} {z:.12f}"
+        )
+
+    lines.extend([
+        '',
+        f"K_POINTS {kpoints['option']}",
+    ])
+
+    nk1, nk2, nk3 = kpoints['size']
+    sk1, sk2, sk3 = kpoints['shift']
+
+    lines.append(
+        f"{nk1} {nk2} {nk3} {sk1} {sk2} {sk3}"
+    )
+
+    lines.extend([
+        '',
+        f"CELL_PARAMETERS {cell['option']}",
+    ])
+
+    for x, y, z in cell['vectors']:
+        lines.append(
+            f"{x:.12f} {y:.12f} {z:.12f}"
+        )
+
+    return "\n".join(lines) + "\n"

@@ -12,6 +12,10 @@ from nanoworks.engine.qe import (
     build_atomic_species,
     build_kpoint_settings,
     build_occupation_settings,
+    build_electrons_settings,
+    format_qe_value,
+    render_namelist,
+    render_scf_input,
 )
 
 
@@ -274,6 +278,196 @@ class TestQEEngine(unittest.TestCase):
                 occupations='smearing',
                 smearing='gaussian',
             )
+    
+    def test_electrons_settings_can_use_qe_defaults(self):
+        settings = build_electrons_settings()
+
+        self.assertEqual(settings, {})
+
+    def test_electrons_settings_explicit_values(self):
+        settings = build_electrons_settings(
+            conv_thr=1.0e-8,
+            mixing_beta=0.3,
+            electron_maxstep=200,
+            diagonalization='david',
+        )
+
+        self.assertEqual(settings['conv_thr'], 1.0e-8)
+        self.assertEqual(settings['mixing_beta'], 0.3)
+        self.assertEqual(settings['electron_maxstep'], 200)
+        self.assertEqual(settings['diagonalization'], 'david')
+
+    def test_qe_value_formatter(self):
+        self.assertEqual(
+            format_qe_value('scf'),
+            "'scf'",
+        )
+
+        self.assertEqual(
+            format_qe_value(True),
+            '.true.',
+        )
+
+        self.assertEqual(
+            format_qe_value(False),
+            '.false.',
+        )
+
+        self.assertEqual(
+            format_qe_value(4),
+            '4',
+        )
+
+    def test_render_namelist(self):
+        text = render_namelist(
+            'control',
+            {
+                'calculation': 'scf',
+                'prefix': 'GaAs',
+            },
+        )
+
+        self.assertEqual(
+            text,
+            "\n".join([
+                "&CONTROL",
+                "  calculation = 'scf',",
+                "  prefix = 'GaAs',",
+                "/",
+            ]),
+        )
+
+    def test_render_complete_scf_input(self):
+        atoms = Atoms(
+            'GaAs',
+            positions=[
+                [0.0, 0.0, 0.0],
+                [1.4125, 1.4125, 1.4125],
+            ],
+            cell=[
+                [2.825, 2.825, 0.0],
+                [2.825, 0.0, 2.825],
+                [0.0, 2.825, 2.825],
+            ],
+            pbc=True,
+        )
+
+        text = render_scf_input(
+            atoms=atoms,
+            pseudopotentials={
+                'Ga': 'Ga.upf',
+                'As': 'As.upf',
+            },
+            cutoff_ev=340,
+            kpoint_size=(4, 4, 4),
+            gamma=False,
+            occupations='fixed',
+            prefix='GaAs',
+        )
+
+        self.assertIn("&CONTROL", text)
+        self.assertIn("&SYSTEM", text)
+        self.assertIn("&ELECTRONS", text)
+
+        self.assertIn(
+            "calculation = 'scf'",
+            text,
+        )
+
+        self.assertIn(
+            "prefix = 'GaAs'",
+            text,
+        )
+
+        self.assertIn(
+            "ibrav = 0",
+            text,
+        )
+
+        self.assertIn(
+            "nat = 2",
+            text,
+        )
+
+        self.assertIn(
+            "ntyp = 2",
+            text,
+        )
+
+        self.assertIn(
+            "occupations = 'fixed'",
+            text,
+        )
+
+        self.assertIn(
+            "ATOMIC_SPECIES",
+            text,
+        )
+
+        self.assertIn(
+            "Ga.upf",
+            text,
+        )
+
+        self.assertIn(
+            "As.upf",
+            text,
+        )
+
+        self.assertIn(
+            "ATOMIC_POSITIONS angstrom",
+            text,
+        )
+
+        self.assertIn(
+            "K_POINTS automatic",
+            text,
+        )
+
+        self.assertIn(
+            "4 4 4 1 1 1",
+            text,
+        )
+
+        self.assertIn(
+            "CELL_PARAMETERS angstrom",
+            text,
+        )
+
+    def test_render_scf_input_with_smearing(self):
+        atoms = Atoms(
+            'Al',
+            positions=[[0.0, 0.0, 0.0]],
+            cell=[4.05, 4.05, 4.05],
+            pbc=True,
+        )
+
+        text = render_scf_input(
+            atoms=atoms,
+            pseudopotentials={
+                'Al': 'Al.upf',
+            },
+            cutoff_ev=400,
+            kpoint_size=(6, 6, 6),
+            occupations='smearing',
+            smearing='cold',
+            width_ev=0.1,
+        )
+
+        self.assertIn(
+            "occupations = 'smearing'",
+            text,
+        )
+
+        self.assertIn(
+            "smearing = 'marzari-vanderbilt'",
+            text,
+        )
+
+        self.assertIn(
+            "degauss = ",
+            text,
+        )
 
 
 if __name__ == '__main__':
