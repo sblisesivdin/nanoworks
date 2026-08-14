@@ -1,4 +1,7 @@
 import unittest
+import tempfile
+from pathlib import Path
+from unittest.mock import patch
 
 from nanoworks.engine import load_engine_module
 from ase import Atoms
@@ -16,6 +19,11 @@ from nanoworks.engine.qe import (
     format_qe_value,
     render_namelist,
     render_scf_input,
+    rydberg_to_ev,
+    resolve_qe_executable,
+    build_qe_command,
+    run_qe_program,
+    parse_pw_output,
 )
 
 
@@ -468,6 +476,162 @@ class TestQEEngine(unittest.TestCase):
             "degauss = ",
             text,
         )
+    
+    def test_rydberg_to_ev(self):
+        self.assertAlmostEqual(
+            rydberg_to_ev(1.0),
+            13.605693122994,
+        )
+
+    @patch('nanoworks.engine.qe.shutil.which')
+    def test_resolve_qe_executable_from_path(
+        self,
+        which,
+    ):
+        which.return_value = '/opt/qe/bin/pw.x'
+
+        resolved = resolve_qe_executable(
+            'pw.x'
+        )
+
+        self.assertEqual(
+            resolved,
+            '/opt/qe/bin/pw.x',
+        )
+
+        which.assert_called_once_with(
+            'pw.x'
+        )
+
+    @patch('nanoworks.engine.qe.resolve_qe_executable')
+    def test_build_qe_command_with_mpi(
+        self,
+        resolve,
+    ):
+        resolve.return_value = '/opt/qe/bin/pw.x'
+
+        command = build_qe_command(
+            input_file='si.in',
+            executable='pw.x',
+            launcher=[
+                'mpiexec',
+                '-np',
+                '8',
+            ],
+        )
+
+        self.assertEqual(
+            command,
+            [
+                'mpiexec',
+                '-np',
+                '8',
+                '/opt/qe/bin/pw.x',
+                '-i',
+                'si.in',
+            ],
+        )
+
+    @patch('nanoworks.engine.qe.resolve_qe_executable')
+    def test_qe_launcher_rejects_shell_string(
+        self,
+        resolve,
+    ):
+        resolve.return_value = '/opt/qe/bin/pw.x'
+
+        with self.assertRaises(TypeError):
+            build_qe_command(
+                input_file='si.in',
+                launcher='mpiexec -np 8',
+            )
+
+    def test_parse_pw_output(self):
+        output_text = """
+         Program PWSCF v.7.2 starts
+
+    !    total energy              =     -15.12345678 Ry
+
+         JOB DONE.
+    """
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'si.out'
+
+            path.write_text(
+                output_text
+            )
+
+            result = parse_pw_output(
+                path
+            )
+
+            self.assertTrue(
+                result['job_done']
+            )
+
+            self.assertAlmostEqual(
+                result['total_energy_ry'],
+                -15.12345678,
+            )
+
+            self.assertAlmostEqual(
+                result['total_energy_ev'],
+                -15.12345678
+                * 13.605693122994,
+            )
+
+    @patch('nanoworks.engine.qe.subprocess.run')
+    @patch('nanoworks.engine.qe.resolve_qe_executable')
+    def test_run_qe_program(
+        self,
+        resolve,
+        run,
+    ):
+        resolve.return_value = '/opt/qe/bin/pw.x'
+
+        run.return_value.returncode = 0
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+
+            input_file = (
+                tmp / 'si.in'
+            )
+
+            output_file = (
+                tmp / 'si.out'
+            )
+
+            input_file.write_text(
+                '&CONTROL\n/\n'
+            )
+
+            result = run_qe_program(
+                input_file=input_file,
+                output_file=output_file,
+            )
+
+            self.assertEqual(
+                result['returncode'],
+                0,
+            )
+
+            self.assertTrue(
+                output_file.exists()
+            )
+
+            command = (
+                run.call_args.args[0]
+            )
+
+            self.assertEqual(
+                command[-2:],
+                [
+                    '-i',
+                    str(input_file),
+                ],
+            )
+
 
 
 if __name__ == '__main__':
