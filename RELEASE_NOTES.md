@@ -2,6 +2,15 @@
 
 ### Development Version
 
+- Initial Quantum ESPRESSO backend support is added to the new DFT engine infrastructure.
+- Quantum ESPRESSO 7.2 is used as the initial validated QE version.
+- Basic Quantum ESPRESSO PW ground-state calculations are now supported with `Engine = 'QE'` and `Ground_calc = True`.
+- Existing Nanoworks input concepts such as plane-wave cutoff energy, k-point density or explicit k-point meshes, Gamma centering, occupations, total charge and spin polarization are translated to Quantum ESPRESSO input syntax.
+- The existing `dftsolve -p N` parallel execution interface is retained for both backends. GPAW runs the complete Python workflow under MPI, while Quantum ESPRESSO keeps Nanoworks serial and launches the QE executable with the requested number of MPI processes.
+- A Quantum ESPRESSO execution and output parsing layer is added, including executable discovery, MPI launcher construction, SCF input generation, output logging and basic total-energy parsing.
+- Quantum ESPRESSO child processes are restricted to one OpenMP/BLAS thread per MPI rank to prevent CPU oversubscription during parallel calculations.
+- A PseudoDojo pseudopotential installation and resolution infrastructure is added for Quantum ESPRESSO. Standard PBE scalar-relativistic and fully-relativistic UPF sets can be installed with the `nanoworks` command.
+- The first validated Nanoworks Quantum ESPRESSO calculation is a parallel PW ground-state calculation for the `Bulk-GaAs-noCIF` example using PBE and PseudoDojo pseudopotentials.
 - A major internal refactorization of the DFT calculation workflow has started. GPAW-specific calculator construction, state loading and preparation functions are being moved from `dftsolve.py` into the new `nanoworks.engine` infrastructure.
 - A new `Engine` keyword and engine-name normalization infrastructure are added as the basis for supporting multiple DFT engines in Nanoworks. GPAW is still the active DFT engine.
 - Regular PW, hybrid PW and LCAO ground-state calculator construction are moved to the GPAW engine layer while preserving the previous calculation behavior.
