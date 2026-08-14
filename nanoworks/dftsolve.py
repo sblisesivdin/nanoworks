@@ -110,21 +110,7 @@ from nanoworks.engine import (
     normalize_engine_name,
     resolve_stage_kpoint_settings,
     resolve_stage_occupation,
-)
-from nanoworks.engine.gpaw import (
-    is_hybrid,
-    resolve_xc_and_setups,
-    load_gpaw_calc,
-    create_regular_pw_ground_calc,
-    create_hybrid_pw_ground_calc,
-    create_lcao_ground_calc,
-    create_elastic_calc,
-    create_phonon_calc,
-    resolve_elastic_settings,
-    create_default_mixer,
-    prepare_optical_calc,
-    prepare_dos_calc,
-    prepare_band_calc,
+    load_engine_module,
 )
 from argparse import ArgumentParser, HelpFormatter
 from dataclasses import dataclass, field
@@ -299,8 +285,9 @@ class DFTConfig:
         """Initialize default values that depend on other objects."""
         self.Engine = normalize_engine_name(self.Engine)
         
-        if self.Mixer_type is None:
-            self.Mixer_type = create_default_mixer()
+        if self.Mixer_type is None and self.Engine == 'GPAW':
+            engine = load_engine_module(self.Engine)
+            self.Mixer_type = engine.create_default_mixer()
         if self.Phonon_supercell is None:
             self.Phonon_supercell = np.diag([2, 2, 2])
         if self.Opt_BSE_valence is None:
@@ -538,6 +525,7 @@ class dftsolve:
         
         # For backward compatibility, expose config attributes as instance attributes
         self.Engine = config.Engine
+        self.engine = load_engine_module(self.Engine)
         self.Mode = config.Mode
         self.Ground_calc = config.Ground_calc
         self.Geo_optim = config.Geo_optim
@@ -691,7 +679,7 @@ class dftsolve:
         time11 = time.time()
 
         # Resolve XC functional string and PAW setups
-        actual_xc, resolved_setups, is_libxc = resolve_xc_and_setups(self.XC_calc, self.Setup_params)
+        actual_xc, resolved_setups, is_libxc = self.engine.resolve_xc_and_setups(self.XC_calc, self.Setup_params)
         
         ground_gamma = (
             self.Gamma
@@ -713,7 +701,7 @@ class dftsolve:
                 if self.Geo_optim and True in self.Relax_cell:
                     # Cell relaxation needs the stress tensor, which is not
                     # available for GLLBSC(M) nor for plane-wave hybrids.
-                    if self.XC_calc in ['GLLBSC', 'GLLBSCM'] or is_hybrid(self.XC_calc):
+                    if self.XC_calc in ['GLLBSC', 'GLLBSCM'] or self.engine.is_hybrid(self.XC_calc):
                         parprint(
                             "\033[91mERROR:\033[0m Cell relaxation can not be used "
                             "with "+self.XC_calc+" xc."
@@ -724,9 +712,9 @@ class dftsolve:
                         )
                         parprint("Exiting...")
                         sys.exit(1)
-                if is_hybrid(actual_xc):
+                if self.engine.is_hybrid(actual_xc):
                     parprint('Starting Hybrid XC calculations...')
-                    calc = create_hybrid_pw_ground_calc(
+                    calc = self.engine.create_hybrid_pw_ground_calc(
                         cutoff=self.Cut_off_energy,
                         xc_calc=self.XC_calc,
                         exx_fraction=self.XC_exx_fraction,
@@ -755,7 +743,7 @@ class dftsolve:
                             FixSymmetry(self.bulk_configuration)
                         )
 
-                    calc = create_regular_pw_ground_calc(
+                    calc = self.engine.create_regular_pw_ground_calc(
                         cutoff=self.Cut_off_energy,
                         xc=actual_xc,
                         setups=resolved_setups,
@@ -873,7 +861,7 @@ class dftsolve:
                         FixSymmetry(self.bulk_configuration)
                     )
 
-                calc = create_lcao_ground_calc(
+                calc = self.engine.create_lcao_ground_calc(
                     setups=self.Setup_params,
                     parallel={'domain': world.size},
                     mixer=self.Mixer_type,
@@ -977,7 +965,7 @@ class dftsolve:
         time151 = time.time()
 
         elastic_xc, resolved_setups, elastic_parallel, hybrid = (
-            resolve_elastic_settings(
+            self.engine.resolve_elastic_settings(
                 xc_calc=self.XC_calc,
                 setups=self.Setup_params,
                 world_size=world.size,
@@ -1028,7 +1016,7 @@ class dftsolve:
             )
 
         def make_elastic_calc():
-            return create_elastic_calc(
+            return self.engine.create_elastic_calc(
                 cutoff=self.config.Cut_off_energy,
                 xc=elastic_xc,
                 setups=resolved_setups,
@@ -1048,7 +1036,7 @@ class dftsolve:
         
         # Load the optimized (reference) structure
         bulk_atoms = self.bulk_configuration
-        ref_calc = load_gpaw_calc(
+        ref_calc = self.engine.load_gpaw_calc(
             self.struct + '-GROUND-Result-State.gpw',
             hybrid=hybrid,
         )
@@ -1233,7 +1221,7 @@ class dftsolve:
             return self.Ground_fermi_level
         # Try reading the converged ground-state .gpw written by groundcalc().
         try:
-            ref_calc = load_gpaw_calc(
+            ref_calc = self.engine.load_gpaw_calc(
                 self.struct+'-GROUND-Result-State.gpw',
                 hybrid=True,
             )
@@ -1267,7 +1255,7 @@ class dftsolve:
         time21 = time.time()
         parprint("Starting DOS calculation...")
 
-        hybrid = is_hybrid(self.XC_calc)
+        hybrid = self.engine.is_hybrid(self.XC_calc)
         
         ground_gamma = (
             self.Gamma
@@ -1309,7 +1297,7 @@ class dftsolve:
             self.Occupation,
         )
 
-        calc = prepare_dos_calc(
+        calc = self.engine.prepare_dos_calc(
             filename=self.struct+'-GROUND-Result-State.gpw',
             hybrid=hybrid,
             txt=self.struct+'-DOS-Log-Calculation.txt',
@@ -1679,9 +1667,9 @@ class dftsolve:
         time31 = time.time()
         parprint("Starting band structure calculation...")
 
-        hybrid = is_hybrid(self.XC_calc)
+        hybrid = self.engine.is_hybrid(self.XC_calc)
 
-        calc = prepare_band_calc(
+        calc = self.engine.prepare_band_calc(
             filename=self.struct+'-GROUND-Result-State.gpw',
             hybrid=hybrid,
             path=self.Band_path,
@@ -1983,7 +1971,7 @@ class dftsolve:
         #Start Density calc
         time41 = time.time()
         parprint("Starting All-electron density calculation...")
-        calc = load_gpaw_calc(self.struct+'-GROUND-Result-State.gpw', txt=self.struct+'-EDENSITY-Log-Calculation.txt')
+        calc = self.engine.load_gpaw_calc(self.struct+'-GROUND-Result-State.gpw', txt=self.struct+'-EDENSITY-Log-Calculation.txt')
         self.bulk_configuration.calc = calc
         if self.Spin_calc == True:
             np = calc.get_pseudo_density()
@@ -2034,12 +2022,12 @@ class dftsolve:
         time51 = time.time()
         parprint("Starting phonon calculations.")
 
-        if is_hybrid(self.XC_calc):
+        if self.engine.is_hybrid(self.XC_calc):
             parprint("\033[93mWARNING:\033[0m Phonon calculations use finite-difference forces; hybrid ("+self.XC_calc+") forces are expensive and unreliable in plane-wave GPAW.")
             parprint("It is recommended to compute phonons with PBE and use hybrids only for the electronic structure.")
             sys.exit(1)
 
-        calc = load_gpaw_calc(self.struct+'-GROUND-Result-State.gpw')
+        calc = self.engine.load_gpaw_calc(self.struct+'-GROUND-Result-State.gpw')
         self.bulk_configuration.calc = calc
 
         # Pre-process
@@ -2052,7 +2040,7 @@ class dftsolve:
             for d in disps:
                 print("[Phonopy] %d %s" % (d[0], d[1:]), end="\n", file=f2)
 
-        calc = create_phonon_calc(
+        calc = self.engine.create_phonon_calc(
             cutoff=self.Phonon_PW_cutoff,
             kpoint_size=(
                 self.Phonon_kpts_x,
@@ -2244,7 +2232,7 @@ class dftsolve:
         if self.Mode == 'PW':
             parprint("Starting optical calculation...")
             try:
-                hybrid = is_hybrid(self.XC_calc)
+                hybrid = self.engine.is_hybrid(self.XC_calc)
                 
                 opt_kpoint_density, opt_kpoint_size, opt_gamma = (
                     resolve_stage_kpoint_settings(
@@ -2271,7 +2259,7 @@ class dftsolve:
                         "for optical calculation..."
                     )
 
-                calc = prepare_optical_calc(
+                calc = self.engine.prepare_optical_calc(
                     filename=self.struct+'-GROUND-Result-State.gpw',
                     hybrid=hybrid,
                     txt=self.struct+'-OPTICAL-Log-Calculation.txt',
