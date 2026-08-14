@@ -448,6 +448,45 @@ def render_scf_input(
 
     return "\n".join(lines) + "\n"
 
+def build_qe_launcher(
+    parallel_cores=1,
+):
+    """Build the MPI launcher for a Quantum ESPRESSO calculation."""
+    parallel_cores = int(
+        parallel_cores
+    )
+
+    if parallel_cores <= 0:
+        raise ValueError(
+            "QE parallel core count must be a positive integer."
+        )
+
+    if parallel_cores == 1:
+        return None
+
+    mpi_exe = (
+        shutil.which('mpiexec')
+        or shutil.which('mpirun')
+        or shutil.which('srun')
+    )
+
+    if mpi_exe is None:
+        raise FileNotFoundError(
+            "mpiexec, mpirun, or srun was not found "
+            "for QE parallel execution."
+        )
+
+    if 'srun' in Path(mpi_exe).name:
+        flag = '-n'
+    else:
+        flag = '-np'
+
+    return [
+        mpi_exe,
+        flag,
+        str(parallel_cores),
+    ]
+
 def resolve_qe_executable(
     executable='pw.x',
 ):

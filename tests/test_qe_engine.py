@@ -20,6 +20,7 @@ from nanoworks.engine.qe import (
     render_namelist,
     render_scf_input,
     rydberg_to_ev,
+    build_qe_launcher,
     resolve_qe_executable,
     build_qe_command,
     run_qe_program,
@@ -631,8 +632,89 @@ class TestQEEngine(unittest.TestCase):
                     str(input_file),
                 ],
             )
+    
+    def test_qe_launcher_is_none_for_single_core(self):
+        launcher = build_qe_launcher(
+            parallel_cores=1
+        )
 
+        self.assertIsNone(
+            launcher
+        )
+    
+    @patch('nanoworks.engine.qe.shutil.which')
+    def test_qe_launcher_uses_mpiexec(
+        self,
+        which,
+    ):
+        which.side_effect = (
+            lambda name: (
+                '/usr/bin/mpiexec'
+                if name == 'mpiexec'
+                else None
+            )
+        )
 
+        launcher = build_qe_launcher(
+            parallel_cores=8
+        )
+
+        self.assertEqual(
+            launcher,
+            [
+                '/usr/bin/mpiexec',
+                '-np',
+                '8',
+            ],
+        )
+
+    @patch('nanoworks.engine.qe.shutil.which')
+    def test_qe_launcher_uses_srun(
+        self,
+        which,
+    ):
+        available = {
+            'mpiexec': None,
+            'mpirun': None,
+            'srun': '/usr/bin/srun',
+        }
+
+        which.side_effect = (
+            lambda name: available[name]
+        )
+
+        launcher = build_qe_launcher(
+            parallel_cores=16
+        )
+
+        self.assertEqual(
+            launcher,
+            [
+                '/usr/bin/srun',
+                '-n',
+                '16',
+            ],
+        )
+
+    def test_qe_launcher_rejects_nonpositive_core_count(self):
+        with self.assertRaises(ValueError):
+            build_qe_launcher(
+                parallel_cores=0
+            )
+
+    @patch('nanoworks.engine.qe.shutil.which')
+    def test_qe_launcher_requires_mpi_command(
+        self,
+        which,
+    ):
+        which.return_value = None
+
+        with self.assertRaises(
+            FileNotFoundError
+        ):
+            build_qe_launcher(
+                parallel_cores=8
+            )
 
 if __name__ == '__main__':
     unittest.main()
