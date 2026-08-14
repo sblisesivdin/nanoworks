@@ -103,7 +103,6 @@ if "GPAW_MPI_BACKEND" not in os.environ:
 
 import getopt, time
 import textwrap
-import requests
 import pickle
 import nanoworks
 from nanoworks.engine import (
@@ -131,12 +130,6 @@ from ase.io.cif import write_cif
 from pathlib import Path
 import numpy as np
 from numpy import genfromtxt
-from elastic import get_elastic_tensor, get_elementary_deformations
-from phonopy import Phonopy
-from phonopy.structure.atoms import PhonopyAtoms
-from phonopy.phonon.band_structure import get_band_qpoints_and_path_connections
-import phonopy
-import pandas as pd
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -952,6 +945,9 @@ class dftsolve:
         - strain_mag: Maximum strain magnitude (fractional, e.g., 0.01 for 1% strain).
         - thickness: Effective thickness for 2D materials (Angstrom).
         """
+        
+        from elastic import get_elastic_tensor, get_elementary_deformations
+        
         # -------------------------------------------------------------
         # ELASTIC CALCULATION
         # -------------------------------------------------------------
@@ -2014,6 +2010,11 @@ class dftsolve:
         It generates atomic displacements, computes force constants, and calculates phonon dispersion and phonon DOS.
         The results are saved as PNG file for now.
         """
+        
+        from phonopy import Phonopy
+        from phonopy.phonon.band_structure import get_band_qpoints_and_path_connections
+        import phonopy
+        
         # -------------------------------------------------------------
         # PHONON CALCULATION
         # -------------------------------------------------------------
@@ -2830,6 +2831,8 @@ def convert_atoms_to_ase(atoms):
         )
 
 def convert_atoms_to_phonopy(atoms):
+    from phonopy.structure.atoms import PhonopyAtoms
+
     return PhonopyAtoms(
         symbols=atoms.get_chemical_symbols(),
         scaled_positions=atoms.get_scaled_positions(),
