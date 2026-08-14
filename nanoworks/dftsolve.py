@@ -842,15 +842,17 @@ class dftsolve:
                 "Passing QE PW ground state calculation..."
             )
 
-            if not state_dir.exists():
+            if not self.engine.has_qe_state(
+                state_dir,
+                prefix='nanoworks',
+            ):
                 parprint(
                     "\033[91mERROR:\033[0m "
                     + str(state_dir)
-                    + " directory can not be found. "
-                    "It is needed in other QE calculations. "
-                    "Firstly, finish the ground state calculation. "
-                    "You must have Ground_calc = True "
-                    "in your input file. Exiting."
+                    + " does not contain a valid QE ground-state result. "
+                    "It is needed by subsequent QE calculations. "
+                    "First complete the ground-state calculation with "
+                    "Ground_calc = True. Exiting."
                 )
                 sys.exit(1)
 

@@ -29,6 +29,7 @@ from nanoworks.engine.qe import (
     resolve_qe_occupation,
     validate_qe_xc,
     run_scf,
+    has_qe_state,
 )
 
 
@@ -488,6 +489,59 @@ class TestQEEngine(unittest.TestCase):
             13.605693122994,
         )
 
+    def test_has_qe_state_accepts_complete_saved_state(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_dir = Path(tmpdir)
+
+            save_dir = (
+                state_dir
+                / 'nanoworks.save'
+            )
+
+            save_dir.mkdir()
+
+            (
+                save_dir
+                / 'data-file-schema.xml'
+            ).write_text(
+                '<espresso/>',
+                encoding='utf-8',
+            )
+
+            self.assertTrue(
+                has_qe_state(
+                    state_dir
+                )
+            )
+
+    def test_has_qe_state_rejects_incomplete_saved_state(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_dir = Path(tmpdir)
+
+            (
+                state_dir
+                / 'nanoworks.save'
+            ).mkdir()
+
+            self.assertFalse(
+                has_qe_state(
+                    state_dir
+                )
+            )
+    
+    def test_has_qe_state_rejects_missing_state_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_dir = (
+                Path(tmpdir)
+                / 'missing-state'
+            )
+
+            self.assertFalse(
+                has_qe_state(
+                    state_dir
+                )
+            )
+            
     @patch('nanoworks.engine.qe.shutil.which')
     def test_resolve_qe_executable_from_path(
         self,

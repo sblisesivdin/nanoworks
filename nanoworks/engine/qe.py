@@ -641,6 +641,33 @@ def build_qe_launcher(
         str(parallel_cores),
     ]
 
+def has_qe_state(
+    state_dir,
+    prefix='nanoworks',
+):
+    """Return True when a usable QE saved state is present."""
+    state_dir = Path(
+        state_dir
+    )
+
+    save_dir = (
+        state_dir
+        / f'{prefix}.save'
+    )
+
+    if not save_dir.is_dir():
+        return False
+
+    schema_file = (
+        save_dir
+        / 'data-file-schema.xml'
+    )
+
+    if not schema_file.is_file():
+        return False
+
+    return True
+
 def resolve_qe_executable(
     executable='pw.x',
 ):
