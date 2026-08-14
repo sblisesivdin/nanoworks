@@ -1,5 +1,24 @@
 """DFT calculation backends used by Nanoworks."""
 
+from importlib import import_module
+
+def load_engine_module(engine):
+    """Load a Nanoworks computation engine only when it is needed."""
+    engine = normalize_engine_name(engine)
+
+    modules = {
+        'GPAW': 'nanoworks.engine.gpaw',
+    }
+
+    try:
+        module_name = modules[engine]
+    except KeyError:
+        raise ValueError(
+            f"Unsupported DFT engine: {engine}"
+        )
+
+    return import_module(module_name)
+
 def normalize_engine_name(engine):
     """Return the canonical Nanoworks engine name."""
     return str(engine).strip().upper()

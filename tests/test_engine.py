@@ -1,9 +1,11 @@
 import unittest
+from unittest.mock import patch
 
 from nanoworks.engine import (
     normalize_engine_name,
     resolve_stage_kpoint_settings,
     resolve_stage_occupation,
+    load_engine_module,
 )
 
 
@@ -66,6 +68,23 @@ class TestEngine(unittest.TestCase):
             resolve_stage_occupation(dos, ground),
             dos,
         )
+    
+    @patch('nanoworks.engine.import_module')
+    def test_engine_module_is_loaded_lazily(self, import_module):
+        expected = object()
+        import_module.return_value = expected
+
+        result = load_engine_module('gpaw')
+
+        self.assertIs(result, expected)
+        import_module.assert_called_once_with(
+            'nanoworks.engine.gpaw'
+        )
+
+
+    def test_unknown_engine_is_rejected(self):
+        with self.assertRaises(ValueError):
+            load_engine_module('unknown')
 
 
 if __name__ == '__main__':
