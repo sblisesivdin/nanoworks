@@ -119,7 +119,6 @@ from ase import *
 from ase.spacegroup import get_spacegroup
 from ase.dft.kpoints import get_special_points
 from ase.parallel import paropen, world, parprint, broadcast
-from gpaw import MixerSum, MixerDif, Mixer
 from ase.optimize import QuasiNewton
 from ase.io import read, write
 from ase.calculators.singlepoint import SinglePointCalculator
@@ -130,10 +129,6 @@ from ase.constraints import FixSymmetry
 from ase.filters import FrechetCellFilter
 from ase.io.cif import write_cif
 from pathlib import Path
-from gpaw.response.df import DielectricFunction
-from gpaw.response.bse import BSE
-from gpaw.dos import DOSCalculator
-from gpaw.utilities.dos import raw_orbital_LDOS
 import numpy as np
 from numpy import genfromtxt
 from elastic import get_elastic_tensor, get_elementary_deformations
@@ -1385,6 +1380,9 @@ class dftsolve:
             # SPIN DOWN CALCULATIONS
             # ==========================================
             parprint("Calculating and saving Raw PDOS for spin down...")
+            
+            from gpaw.dos import DOSCalculator
+            
             rawdos = DOSCalculator.from_calculator(filename=self.struct+'-GROUND-Result-State.gpw', soc=False, theta=0.0, phi=0.0, shift_fermi_level=False)
             energies = rawdos.get_energies(npoints=self.DOS_npoints)
 
@@ -1528,6 +1526,9 @@ class dftsolve:
             # NON-SPIN CALCULATIONS
             # ==========================================
             parprint("Calculating and saving Raw PDOS...")
+            
+            from gpaw.dos import DOSCalculator
+            
             rawdos = DOSCalculator.from_calculator(self.struct+'-GROUND-Result-State.gpw', soc=False, theta=0.0, phi=0.0, shift_fermi_level=False)
             energies = rawdos.get_energies(npoints=self.DOS_npoints)
 
@@ -1831,8 +1832,6 @@ class dftsolve:
         Internal method for dftsolve class to plot projected band structures.
         """
 
-        """from gpaw.utilities.dos import get_angular_projectors
-        """
         from gpaw.utilities.dos import get_angular_projectors
         
         # Get number of spins (1 for non-magnetic, 2 for spin-polarized)
@@ -2281,6 +2280,8 @@ class dftsolve:
 
             #from mpi4py import MPI
             if self.Opt_calc_type == 'BSE':
+                from gpaw.response.bse import BSE
+                
                 if self.Spin_calc == True:
                    parprint('\033[91mERROR:\033[0mBSE calculations can not run with spin dependent data.')
                    sys.exit(1)
@@ -2404,6 +2405,7 @@ class dftsolve:
             
             elif self.Opt_calc_type == 'RPA':
                 parprint('Starting RPA calculations')
+                from gpaw.response.df import DielectricFunction
                 df = DielectricFunction(calc=self.struct+'-OPTICAL-Result-State.gpw',
                                         frequencies={'type': 'nonlinear', 'domega0': self.Opt_domega0, 'omega2': self.Opt_omega2},
                                         eta=self.Opt_eta, intraband=False, hilbert=False,
@@ -2880,6 +2882,8 @@ def projected_weights(calc):
     nk, nb = len(calc.get_ibz_k_points()), calc.get_number_of_bands()
     projector_weight_skni = np.zeros((ns, nk, nb, len(sym_ang_mom_i)))
     ali_x = [(a, ang_mom, i) for (a, ang_mom, i) in zip(a_x, ang_mom_x, i_x)]
+    
+    from gpaw.utilities.dos import raw_orbital_LDOS
     
     for _, (a, ang_mom, i) in enumerate(ali_x):
         # Extract weights
