@@ -1967,6 +1967,14 @@ class dftsolve:
             )
             sys.exit(1)
 
+        if self.Spin_calc:
+            parprint(
+                "\033[91mERROR:\033[0m "
+                "Quantum ESPRESSO spin-polarized DOS calculations "
+                "are not supported yet."
+            )
+            sys.exit(1)
+
         try:
             self.engine.validate_qe_xc(
                 self.XC_calc,
@@ -2098,6 +2106,25 @@ class dftsolve:
                 "DOS_npoints must be at least 2 for QE DOS calculations."
             )
 
+        fermi_energy = result[
+            'fermi_energy_ev'
+        ]
+
+        if fermi_energy is None:
+            raise RuntimeError(
+                "QE DOS requires a Fermi energy from the NSCF calculation."
+            )
+
+        dos_emin_absolute = (
+            float(fermi_energy)
+            + float(self.Energy_min)
+        )
+
+        dos_emax_absolute = (
+            float(fermi_energy)
+            + float(self.Energy_max)
+        )
+
         delta_e = (
             float(self.Energy_max)
             - float(self.Energy_min)
@@ -2150,8 +2177,8 @@ class dftsolve:
                 output_file=dos_output_file,
                 state_dir=state_dir,
                 dos_file=dos_data_file,
-                emin=self.Energy_min,
-                emax=self.Energy_max,
+                emin=dos_emin_absolute,
+                emax=dos_emax_absolute,
                 delta_e=delta_e,
                 bz_sum=bz_sum,
                 parallel_cores=self.parallel_cores,
@@ -2173,6 +2200,109 @@ class dftsolve:
             "QE DOS data saved to: "
             f"{dos_workflow['dos_file']}"
         )
+        
+        dos_result = self.engine.parse_dos_output(
+            dos_workflow['dos_file']
+        )
+
+        shifted_energies = [
+            energy - fermi_energy
+            for energy in dos_result['energies_ev']
+        ]
+
+        csv_file = Path(
+            self.struct
+            + '-DOS-Result-DOS.csv'
+        )
+
+        with csv_file.open(
+            'w',
+            encoding='utf-8',
+        ) as fd:
+            for energy, dos_value in zip(
+                shifted_energies,
+                dos_result['dos'],
+            ):
+                print(
+                    energy,
+                    dos_value,
+                    sep=', ',
+                    file=fd,
+                )
+
+        parprint(
+            "Saving DOS..."
+        )
+        
+        if world.rank == 0:
+            fig, ax = plt.subplots(
+                figsize=(8, 6)
+            )
+
+            energies = np.array(
+                shifted_energies
+            )
+
+            dos_values = np.array(
+                dos_result['dos']
+            )
+
+            ax.plot(
+                energies,
+                dos_values,
+                'b',
+                linewidth=1.5,
+            )
+
+            ax.fill_between(
+                energies,
+                0,
+                dos_values,
+                facecolor='blue',
+                alpha=0.2,
+            )
+
+            ax.set_xlabel(
+                self._t("fig_dos_xlabel")
+            )
+
+            ax.set_ylabel(
+                self._t("fig_dos_ylabel")
+            )
+
+            ax.axvline(
+                x=0,
+                color='k',
+                linestyle='--',
+                linewidth=1,
+            )
+
+            ax.axhline(
+                y=0,
+                color='k',
+                linewidth=0.8,
+            )
+
+            ax.set_xlim(
+                self.Energy_min,
+                self.Energy_max,
+            )
+
+            autoscale_y(
+                ax
+            )
+
+            plt.tight_layout()
+
+            plt.savefig(
+                self.struct
+                + '-DOS-Graph-DOS.png',
+                dpi=300,
+            )
+
+            plt.close(
+                fig
+            )
 
         time22 = time.time()
 
