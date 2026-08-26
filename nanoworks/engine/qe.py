@@ -210,6 +210,48 @@ def build_kpoint_settings(size, gamma=False):
         'shift': shifts,
     }
 
+def validate_qe_version(
+    version,
+    minimum=QE_REFERENCE_VERSION,
+):
+    """Validate the Quantum ESPRESSO version used by a calculation."""
+    if version is None:
+        raise ValueError(
+            "Quantum ESPRESSO version could not be detected "
+            "from the pw.x output."
+        )
+
+    version = tuple(
+        int(value)
+        for value in version
+    )
+
+    minimum = tuple(
+        int(value)
+        for value in minimum
+    )
+
+    version_major_minor = version[:2]
+
+    if version_major_minor < minimum:
+        detected = '.'.join(
+            str(value)
+            for value in version
+        )
+
+        required = '.'.join(
+            str(value)
+            for value in minimum
+        )
+
+        raise ValueError(
+            "Unsupported Quantum ESPRESSO version "
+            f"{detected}. Nanoworks currently requires "
+            f"Quantum ESPRESSO {required} or newer."
+        )
+
+    return version
+
 def validate_qe_xc(
     xc_calc,
     pseudo_xc='pbe',
@@ -986,6 +1028,15 @@ def run_scf(
     result = parse_pw_output(
         output_file
     )
+
+    try:
+        validate_qe_version(
+            result['qe_version']
+        )
+    except ValueError as exc:
+        raise RuntimeError(
+            f"{exc} See '{output_file}'."
+        ) from exc
 
     if not result['job_done']:
         raise RuntimeError(

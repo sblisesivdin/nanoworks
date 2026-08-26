@@ -27,6 +27,7 @@ from nanoworks.engine.qe import (
     parse_pw_output,
     resolve_qe_kpoint_size,
     resolve_qe_occupation,
+    validate_qe_version,
     validate_qe_xc,
     run_scf,
     has_qe_state,
@@ -952,6 +953,45 @@ class TestQEEngine(unittest.TestCase):
             validate_qe_xc('PBE'),
             'pbe',
         )
+    
+    def test_validate_qe_version_accepts_reference_version(self):
+        result = validate_qe_version(
+            (7, 2)
+        )
+
+        self.assertEqual(
+            result,
+            (7, 2),
+        )
+    
+    def test_validate_qe_version_accepts_patch_version(self):
+        result = validate_qe_version(
+            (7, 2, 1)
+        )
+
+        self.assertEqual(
+            result,
+            (7, 2, 1),
+        )
+
+    def test_validate_qe_version_rejects_older_version(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            'requires Quantum ESPRESSO 7.2 or newer',
+        ):
+            validate_qe_version(
+                (7, 1)
+            )
+
+    def test_validate_qe_version_rejects_missing_version(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            'version could not be detected',
+        ):
+            validate_qe_version(
+                None
+            )
+            
 
 if __name__ == '__main__':
     unittest.main()
