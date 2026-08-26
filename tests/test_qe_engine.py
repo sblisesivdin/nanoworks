@@ -609,6 +609,8 @@ class TestQEEngine(unittest.TestCase):
          Program PWSCF v.7.2 starts
 
     !    total energy              =     -15.12345678 Ry
+    
+         the Fermi energy is     5.4321 ev
 
          JOB DONE.
     """
@@ -629,6 +631,11 @@ class TestQEEngine(unittest.TestCase):
             )
 
             self.assertAlmostEqual(
+                result['fermi_energy_ev'],
+                5.4321,
+            )
+        
+            self.assertAlmostEqual(
                 result['total_energy_ry'],
                 -15.12345678,
             )
@@ -637,6 +644,29 @@ class TestQEEngine(unittest.TestCase):
                 result['total_energy_ev'],
                 -15.12345678
                 * 13.605693122994,
+            )
+    
+    def test_parse_pw_output_without_fermi_energy(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = (
+                Path(tmpdir)
+                / 'pw.out'
+            )
+
+            output_file.write_text(
+                "\n".join([
+                    "!    total energy = -10.00000000 Ry",
+                    "JOB DONE.",
+                ]),
+                encoding='utf-8',
+            )
+
+            result = parse_pw_output(
+                output_file
+            )
+
+            self.assertIsNone(
+                result['fermi_energy_ev']
             )
 
     @patch('nanoworks.engine.qe.subprocess.run')

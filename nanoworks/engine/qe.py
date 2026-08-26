@@ -846,6 +846,27 @@ def parse_pw_output(output):
         total_energy_ev = rydberg_to_ev(
             total_energy_ry
         )
+    
+    fermi_matches = re.findall(
+        r'the\s+Fermi\s+energy\s+is\s+'
+        r'([-+]?\d+(?:\.\d*)?(?:[EeDd][-+]?\d+)?)'
+        r'\s+ev',
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    fermi_energy_ev = None
+
+    if fermi_matches:
+        value = (
+            fermi_matches[-1]
+            .replace('D', 'E')
+            .replace('d', 'e')
+        )
+
+        fermi_energy_ev = float(
+            value
+        )
 
     job_done = (
         'JOB DONE.' in text
@@ -855,6 +876,7 @@ def parse_pw_output(output):
         'job_done': job_done,
         'total_energy_ry': total_energy_ry,
         'total_energy_ev': total_energy_ev,
+        'fermi_energy_ev': fermi_energy_ev,
     }
 
 def run_scf(
