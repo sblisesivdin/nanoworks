@@ -1944,10 +1944,166 @@ class dftsolve:
             plt.close(fig)
 
     def _doscalc_qe(self):
-        """Run the DOS workflow using Quantum ESPRESSO."""
-        raise NotImplementedError(
-            "Quantum ESPRESSO DOS calculations are not implemented yet."
+        """Run the DOS preparation workflow using Quantum ESPRESSO."""
+        time21 = time.time()
+
+        parprint(
+            "Starting QE DOS NSCF calculation..."
         )
+
+        if self.Mode != 'PW':
+            parprint(
+                "\033[91mERROR:\033[0m "
+                "Quantum ESPRESSO DOS calculations "
+                "support PW mode only."
+            )
+            sys.exit(1)
+
+        if self.SOC_calc:
+            parprint(
+                "\033[91mERROR:\033[0m "
+                "Quantum ESPRESSO SOC DOS calculations are not "
+                "supported yet."
+            )
+            sys.exit(1)
+
+        try:
+            self.engine.validate_qe_xc(
+                self.XC_calc,
+                pseudo_xc='pbe',
+            )
+        except ValueError as exc:
+            parprint(
+                f"\033[91mERROR:\033[0m {exc}"
+            )
+            sys.exit(1)
+
+        state_dir = Path(
+            self.struct
+            + '-GROUND-Result-State'
+        )
+
+        if not self.engine.has_qe_state(
+            state_dir,
+            prefix='nanoworks',
+        ):
+            parprint(
+                "\033[91mERROR:\033[0m "
+                + str(state_dir)
+                + " does not contain a valid QE ground-state result. "
+                "Complete the ground-state calculation first."
+            )
+            sys.exit(1)
+
+        pseudo_dir = get_qe_pseudo_dir(
+            relativistic='scalar',
+        )
+
+        try:
+            pseudopotentials = (
+                resolve_qe_pseudopotentials(
+                    self.bulk_configuration,
+                    relativistic='scalar',
+                )
+            )
+        except (FileNotFoundError, RuntimeError) as exc:
+            parprint(
+                f"\033[91mERROR:\033[0m {exc}"
+            )
+            sys.exit(1)
+
+        ground_gamma = (
+            self.Gamma
+            if self.Ground_gamma is None
+            else self.Ground_gamma
+        )
+
+        (
+            dos_kpoint_density,
+            dos_kpoint_size,
+            dos_gamma,
+        ) = resolve_stage_kpoint_settings(
+            stage_density=self.DOS_kpts_density,
+            stage_size=(
+                self.DOS_kpts_x,
+                self.DOS_kpts_y,
+                self.DOS_kpts_z,
+            ),
+            stage_gamma=self.DOS_gamma,
+            ground_density=self.Ground_kpts_density,
+            ground_size=(
+                self.Ground_kpts_x,
+                self.Ground_kpts_y,
+                self.Ground_kpts_z,
+            ),
+            ground_gamma=ground_gamma,
+        )
+
+        dos_occupation = resolve_stage_occupation(
+            self.DOS_occupation,
+            self.Occupation,
+        )
+
+        input_file = Path(
+            self.struct
+            + '-DOS-Input-QE-NSCF.in'
+        )
+
+        output_file = Path(
+            self.struct
+            + '-DOS-Log-NSCF.txt'
+        )
+
+        try:
+            workflow = self.engine.run_nscf(
+                atoms=self.bulk_configuration,
+                input_file=input_file,
+                output_file=output_file,
+                state_dir=state_dir,
+                pseudopotentials=pseudopotentials,
+                pseudo_dir=pseudo_dir,
+                cutoff_ev=self.Cut_off_energy,
+                kpoint_density=dos_kpoint_density,
+                kpoint_size=dos_kpoint_size,
+                gamma=dos_gamma,
+                total_charge=self.Total_charge,
+                nbands=self.DOS_num_of_bands,
+                spinpol=self.Spin_calc,
+                occupation=dos_occupation,
+                parallel_cores=self.parallel_cores,
+                executable='pw.x',
+                prefix='nanoworks',
+            )
+        except Exception as exc:
+            parprint(
+                "\033[91mERROR:\033[0m "
+                f"QE DOS NSCF calculation failed: {exc}"
+            )
+            raise
+
+        result = workflow['result']
+
+        parprint(
+            "QE DOS NSCF calculation finished."
+        )
+
+        if result['fermi_energy_ev'] is not None:
+            parprint(
+                "NSCF Fermi energy: "
+                f"{result['fermi_energy_ev']:.8f} eV"
+            )
+
+        time22 = time.time()
+
+        with paropen(
+            self.struct + '-TIMINGS-Log-Timings.txt',
+            'a',
+        ) as f1:
+            print(
+                f'DOS NSCF calculation: '
+                f'{round((time22-time21),2)}',
+                file=f1,
+            )
     
     def bandcalc(self):
         """
