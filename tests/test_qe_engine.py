@@ -38,6 +38,8 @@ from nanoworks.engine.qe import (
     render_dos_input,
     run_dos,
     parse_dos_output,
+    render_projwfc_input,
+    run_projwfc,
 )
 
 
@@ -1292,6 +1294,89 @@ class TestQEEngine(unittest.TestCase):
                 parse_dos_output(
                     dos_file
                 )
+
+def test_render_projwfc_input(self):
+    text = render_projwfc_input(
+        prefix='nanoworks',
+        outdir='/tmp/qe-state',
+        filpdos='/tmp/gaas-pdos',
+        emin=1.0,
+        emax=10.0,
+        delta_e=0.02,
+    )
+
+    self.assertIn(
+        '&PROJWFC',
+        text,
+    )
+
+    self.assertIn(
+        "prefix = 'nanoworks'",
+        text,
+    )
+
+    self.assertIn(
+        "outdir = '/tmp/qe-state'",
+        text,
+    )
+
+    self.assertIn(
+        "filpdos = '/tmp/gaas-pdos'",
+        text,
+    )
+
+    self.assertIn(
+        'Emin = 1',
+        text,
+    )
+
+    self.assertIn(
+        'Emax = 10',
+        text,
+    )
+
+    self.assertIn(
+        'DeltaE = 0.02',
+        text,
+    )
+
+    self.assertIn(
+        'lsym = .true.',
+        text,
+    )
+
+    self.assertNotIn(
+        'degauss',
+        text,
+    )
+    
+def test_render_projwfc_input_rejects_invalid_energy_range(self):
+    with self.assertRaisesRegex(
+        ValueError,
+        'Emax must be greater than Emin',
+    ):
+        render_projwfc_input(
+            emin=5.0,
+            emax=-5.0,
+        )
+
+def test_run_projwfc_requires_qe_state(self):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir = Path(
+            tmpdir
+        )
+
+        with self.assertRaisesRegex(
+            FileNotFoundError,
+            'valid QE electronic state',
+        ):
+            run_projwfc(
+                input_file=tmpdir / 'pdos.in',
+                output_file=tmpdir / 'pdos.out',
+                state_dir=tmpdir / 'state',
+                pdos_prefix=tmpdir / 'pdos',
+            )
+
 
 if __name__ == '__main__':
     unittest.main()

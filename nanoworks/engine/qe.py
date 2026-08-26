@@ -859,6 +859,94 @@ def render_dos_input(
         + '\n'
     )
 
+def render_projwfc_input(
+    prefix='nanoworks',
+    outdir=None,
+    filpdos='nanoworks',
+    emin=None,
+    emax=None,
+    delta_e=None,
+    degauss=None,
+    ngauss=None,
+    lsym=True,
+    diag_basis=False,
+):
+    """Render a complete Quantum ESPRESSO projwfc.x input."""
+    settings = {
+        'prefix': str(prefix),
+    }
+
+    if outdir is not None:
+        settings['outdir'] = str(outdir)
+
+    if emin is not None:
+        settings['Emin'] = float(
+            emin
+        )
+
+    if emax is not None:
+        settings['Emax'] = float(
+            emax
+        )
+
+    if (
+        emin is not None
+        and emax is not None
+        and float(emax) <= float(emin)
+    ):
+        raise ValueError(
+            "QE PDOS Emax must be greater than Emin."
+        )
+
+    if delta_e is not None:
+        delta_e = float(
+            delta_e
+        )
+
+        if delta_e <= 0.0:
+            raise ValueError(
+                "QE PDOS energy step must be greater than zero."
+            )
+
+        settings['DeltaE'] = delta_e
+
+    if degauss is not None:
+        degauss = float(
+            degauss
+        )
+
+        if degauss <= 0.0:
+            raise ValueError(
+                "QE PDOS degauss must be greater than zero."
+            )
+
+        settings['degauss'] = degauss
+
+    if ngauss is not None:
+        settings['ngauss'] = int(
+            ngauss
+        )
+
+    settings['lsym'] = bool(
+        lsym
+    )
+
+    settings['diag_basis'] = bool(
+        diag_basis
+    )
+
+    settings['filpdos'] = str(
+        filpdos
+    )
+
+    return (
+        render_namelist(
+            'PROJWFC',
+            settings,
+        )
+        + '\n'
+    )
+
 def build_qe_launcher(
     parallel_cores=1,
 ):
@@ -1565,5 +1653,114 @@ def run_dos(
         'output_file': output_file,
         'state_dir': state_dir,
         'dos_file': dos_file,
+        'execution': execution,
+    }
+
+def run_projwfc(
+    input_file,
+    output_file,
+    state_dir,
+    pdos_prefix,
+    emin=None,
+    emax=None,
+    delta_e=None,
+    degauss=None,
+    ngauss=None,
+    parallel_cores=1,
+    executable='projwfc.x',
+    prefix='nanoworks',
+):
+    """Render and execute one Quantum ESPRESSO projwfc.x calculation."""
+    input_file = Path(
+        input_file
+    )
+
+    output_file = Path(
+        output_file
+    )
+
+    state_dir = Path(
+        state_dir
+    )
+
+    pdos_prefix = Path(
+        pdos_prefix
+    )
+
+    if not has_qe_state(
+        state_dir,
+        prefix=prefix,
+    ):
+        raise FileNotFoundError(
+            "A valid QE electronic state is required "
+            f"for the PDOS calculation: {state_dir}"
+        )
+
+    input_text = render_projwfc_input(
+        prefix=prefix,
+        outdir=state_dir,
+        filpdos=pdos_prefix,
+        emin=emin,
+        emax=emax,
+        delta_e=delta_e,
+        degauss=degauss,
+        ngauss=ngauss,
+    )
+
+    input_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    pdos_prefix.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    input_file.write_text(
+        input_text,
+        encoding='utf-8',
+    )
+
+    launcher = build_qe_launcher(
+        parallel_cores=parallel_cores
+    )
+
+    execution = run_qe_program(
+        input_file=input_file,
+        output_file=output_file,
+        executable=executable,
+        launcher=launcher,
+    )
+
+    text = output_file.read_text(
+        encoding='utf-8',
+        errors='replace',
+    )
+
+    if 'JOB DONE.' not in text:
+        raise RuntimeError(
+            "Quantum ESPRESSO PDOS calculation finished without a "
+            "'JOB DONE.' marker. "
+            f"See '{output_file}'."
+        )
+
+    pdos_tot_file = Path(
+        str(pdos_prefix)
+        + '.pdos_tot'
+    )
+
+    if not pdos_tot_file.is_file():
+        raise RuntimeError(
+            "Quantum ESPRESSO projwfc.x finished but the "
+            f"PDOS summary file was not created: {pdos_tot_file}"
+        )
+
+    return {
+        'input_file': input_file,
+        'output_file': output_file,
+        'state_dir': state_dir,
+        'pdos_prefix': pdos_prefix,
+        'pdos_tot_file': pdos_tot_file,
         'execution': execution,
     }
