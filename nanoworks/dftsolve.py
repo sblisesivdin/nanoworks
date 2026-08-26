@@ -2304,6 +2304,54 @@ class dftsolve:
                 fig
             )
 
+        pdos_input_file = Path(
+            self.struct
+            + '-DOS-Input-QE-PDOS.in'
+        )
+
+        pdos_output_file = Path(
+            self.struct
+            + '-DOS-Log-PDOS.txt'
+        )
+
+        pdos_prefix = Path(
+            self.struct
+            + '-DOS-Result-QE-PDOS'
+        )
+
+        parprint(
+            "Starting QE projected DOS calculation..."
+        )
+
+        try:
+            pdos_workflow = self.engine.run_projwfc(
+                input_file=pdos_input_file,
+                output_file=pdos_output_file,
+                state_dir=state_dir,
+                pdos_prefix=pdos_prefix,
+                emin=dos_emin_absolute,
+                emax=dos_emax_absolute,
+                delta_e=delta_e,
+                parallel_cores=self.parallel_cores,
+                executable='projwfc.x',
+                prefix='nanoworks',
+            )
+        except Exception as exc:
+            parprint(
+                "\033[91mERROR:\033[0m "
+                f"QE projected DOS calculation failed: {exc}"
+            )
+            raise
+
+        parprint(
+            "QE projected DOS calculation finished."
+        )
+
+        parprint(
+            "QE PDOS summary saved to: "
+            f"{pdos_workflow['pdos_tot_file']}"
+        )
+        
         time22 = time.time()
 
         with paropen(
