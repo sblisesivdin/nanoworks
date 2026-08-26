@@ -1458,6 +1458,165 @@ def parse_projwfc_pdos_file(pdos_file):
         'npoints': len(energies),
     }
 
+def aggregate_projwfc_pdos(pdos_prefix):
+    """Aggregate non-spin QE projwfc.x atomic PDOS files."""
+    pdos_prefix = Path(
+        pdos_prefix
+    )
+
+    pattern = (
+        pdos_prefix.name
+        + '.pdos_atm#*'
+    )
+
+    pdos_files = sorted(
+        pdos_prefix.parent.glob(
+            pattern
+        )
+    )
+
+    if not pdos_files:
+        raise FileNotFoundError(
+            "No Quantum ESPRESSO orbital PDOS files were found "
+            f"for prefix: {pdos_prefix}"
+        )
+
+    energies = None
+
+    totals = {
+        's': None,
+        'p': None,
+        'd': None,
+        'f': None,
+    }
+
+    components = {
+        'pz': None,
+        'px': None,
+        'py': None,
+        'd3z2_r2': None,
+        'dxz': None,
+        'dyz': None,
+        'dx2_y2': None,
+        'dxy': None,
+    }
+
+    parsed_files = []
+
+    for pdos_file in pdos_files:
+        parsed = parse_projwfc_pdos_file(
+            pdos_file
+        )
+
+        parsed_files.append(
+            parsed
+        )
+
+        file_energies = parsed[
+            'energies_ev'
+        ]
+
+        if energies is None:
+            energies = list(
+                file_energies
+            )
+
+            npoints = len(
+                energies
+            )
+
+            for orbital in totals:
+                totals[orbital] = [
+                    0.0
+                ] * npoints
+
+            for component in components:
+                components[component] = [
+                    0.0
+                ] * npoints
+
+        else:
+            if len(file_energies) != len(energies):
+                raise ValueError(
+                    "QE PDOS files do not use the same "
+                    "number of energy points."
+                )
+
+            for reference, value in zip(
+                energies,
+                file_energies,
+            ):
+                if abs(reference - value) > 1.0e-8:
+                    raise ValueError(
+                        "QE PDOS files do not use the same "
+                        "energy grid."
+                    )
+
+        orbital = parsed[
+            'orbital'
+        ]
+
+        if orbital == 'f':
+            raise NotImplementedError(
+                "QE f-orbital PDOS aggregation is not "
+                "implemented yet."
+            )
+
+        for index, value in enumerate(
+            parsed['ldos']
+        ):
+            totals[
+                orbital
+            ][index] += value
+
+        for component_name, values in (
+            parsed['components'].items()
+        ):
+            if component_name not in components:
+                raise ValueError(
+                    "Unexpected QE PDOS component: "
+                    f"{component_name}"
+                )
+
+            for index, value in enumerate(
+                values
+            ):
+                components[
+                    component_name
+                ][index] += value
+
+    total_projected = []
+
+    for index in range(
+        len(energies)
+    ):
+        total_projected.append(
+            totals['s'][index]
+            + totals['p'][index]
+            + totals['d'][index]
+            + totals['f'][index]
+        )
+
+    return {
+        'energies_ev': energies,
+        's_total': totals['s'],
+        'p_total': totals['p'],
+        'pz': components['pz'],
+        'px': components['px'],
+        'py': components['py'],
+        'd_total': totals['d'],
+        'd3z2_r2': components['d3z2_r2'],
+        'dxz': components['dxz'],
+        'dyz': components['dyz'],
+        'dx2_y2': components['dx2_y2'],
+        'dxy': components['dxy'],
+        'f_total': totals['f'],
+        'total': total_projected,
+        'files': pdos_files,
+        'parsed_files': parsed_files,
+        'npoints': len(energies),
+    }
+
 def run_scf(
     atoms,
     input_file,

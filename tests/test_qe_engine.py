@@ -41,6 +41,7 @@ from nanoworks.engine.qe import (
     render_projwfc_input,
     run_projwfc,
     parse_projwfc_pdos_file,
+    aggregate_projwfc_pdos,
 )
 
 
@@ -1501,6 +1502,145 @@ def test_parse_projwfc_pdos_s_file(self):
         result['components']['s'],
         [0.0842],
     )
+
+def test_aggregate_projwfc_pdos(self):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir = Path(
+            tmpdir
+        )
+
+        prefix = (
+            tmpdir
+            / 'nanoworks-pdos'
+        )
+
+        ga_s = Path(
+            str(prefix)
+            + '.pdos_atm#1(Ga)_wfc#2(s)'
+        )
+
+        ga_p = Path(
+            str(prefix)
+            + '.pdos_atm#1(Ga)_wfc#3(p)'
+        )
+
+        as_p = Path(
+            str(prefix)
+            + '.pdos_atm#2(As)_wfc#3(p)'
+        )
+
+        ga_s.write_text(
+            "# E ldos s\n"
+            "1.0 0.10 0.10\n"
+            "2.0 0.20 0.20\n",
+            encoding='utf-8',
+        )
+
+        ga_p.write_text(
+            "# E ldos pz px py\n"
+            "1.0 0.60 0.10 0.20 0.30\n"
+            "2.0 0.90 0.20 0.30 0.40\n",
+            encoding='utf-8',
+        )
+
+        as_p.write_text(
+            "# E ldos pz px py\n"
+            "1.0 0.30 0.05 0.10 0.15\n"
+            "2.0 0.60 0.10 0.20 0.30\n",
+            encoding='utf-8',
+        )
+
+        result = aggregate_projwfc_pdos(
+            prefix
+        )
+
+    self.assertEqual(
+        result['energies_ev'],
+        [1.0, 2.0],
+    )
+
+    self.assertEqual(
+        result['s_total'],
+        [0.1, 0.2],
+    )
+
+    self.assertEqual(
+        result['p_total'],
+        [0.9, 1.5],
+    )
+
+    self.assertEqual(
+        result['pz'],
+        [0.15, 0.30],
+    )
+
+    self.assertEqual(
+        result['px'],
+        [0.30, 0.50],
+    )
+
+    self.assertEqual(
+        result['py'],
+        [0.45, 0.70],
+    )
+
+    self.assertEqual(
+        result['d_total'],
+        [0.0, 0.0],
+    )
+
+    self.assertEqual(
+        result['f_total'],
+        [0.0, 0.0],
+    )
+
+    self.assertEqual(
+        result['total'],
+        [1.0, 1.7],
+    )
+
+def test_aggregate_projwfc_pdos_rejects_mismatched_energy_grid(self):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir = Path(
+            tmpdir
+        )
+
+        prefix = (
+            tmpdir
+            / 'nanoworks-pdos'
+        )
+
+        first = Path(
+            str(prefix)
+            + '.pdos_atm#1(Ga)_wfc#2(s)'
+        )
+
+        second = Path(
+            str(prefix)
+            + '.pdos_atm#2(As)_wfc#2(s)'
+        )
+
+        first.write_text(
+            "# E ldos s\n"
+            "1.0 0.10 0.10\n"
+            "2.0 0.20 0.20\n",
+            encoding='utf-8',
+        )
+
+        second.write_text(
+            "# E ldos s\n"
+            "1.0 0.10 0.10\n"
+            "2.1 0.20 0.20\n",
+            encoding='utf-8',
+        )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            'same energy grid',
+        ):
+            aggregate_projwfc_pdos(
+                prefix
+            )
 
 if __name__ == '__main__':
     unittest.main()
