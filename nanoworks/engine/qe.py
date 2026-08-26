@@ -533,7 +533,8 @@ def render_namelist(name, settings):
 
     return "\n".join(lines)
 
-def render_scf_input(
+def render_pw_input(
+    calculation,
     atoms,
     pseudopotentials,
     cutoff_ev,
@@ -553,14 +554,29 @@ def render_scf_input(
     electron_maxstep=None,
     diagonalization=None,
 ):
-    """Render a complete QE pw.x SCF input."""
+    """Render a complete QE pw.x input."""
+
+    calculation = str(
+        calculation
+    ).strip().lower()
+
+    allowed_calculations = {
+        'scf',
+        'nscf',
+    }
+
+    if calculation not in allowed_calculations:
+        raise ValueError(
+            f"Unsupported QE pw.x calculation type: {calculation}"
+        )
+    
     species = build_atomic_species(
         atoms,
         pseudopotentials,
     )
 
     control = build_control_settings(
-        calculation='scf',
+        calculation=calculation,
         prefix=prefix,
         pseudo_dir=pseudo_dir,
         outdir=outdir,
@@ -643,6 +659,92 @@ def render_scf_input(
         )
 
     return "\n".join(lines) + "\n"
+
+def render_scf_input(
+    atoms,
+    pseudopotentials,
+    cutoff_ev,
+    kpoint_size,
+    gamma=False,
+    total_charge=0.0,
+    nbands=None,
+    spinpol=False,
+    occupations='fixed',
+    smearing=None,
+    width_ev=None,
+    prefix='nanoworks',
+    pseudo_dir=None,
+    outdir=None,
+    conv_thr=None,
+    mixing_beta=None,
+    electron_maxstep=None,
+    diagonalization=None,
+):
+    """Render a complete QE pw.x SCF input."""
+    return render_pw_input(
+        calculation='scf',
+        atoms=atoms,
+        pseudopotentials=pseudopotentials,
+        cutoff_ev=cutoff_ev,
+        kpoint_size=kpoint_size,
+        gamma=gamma,
+        total_charge=total_charge,
+        nbands=nbands,
+        spinpol=spinpol,
+        occupations=occupations,
+        smearing=smearing,
+        width_ev=width_ev,
+        prefix=prefix,
+        pseudo_dir=pseudo_dir,
+        outdir=outdir,
+        conv_thr=conv_thr,
+        mixing_beta=mixing_beta,
+        electron_maxstep=electron_maxstep,
+        diagonalization=diagonalization,
+    )
+
+def render_nscf_input(
+    atoms,
+    pseudopotentials,
+    cutoff_ev,
+    kpoint_size,
+    gamma=False,
+    total_charge=0.0,
+    nbands=None,
+    spinpol=False,
+    occupations='fixed',
+    smearing=None,
+    width_ev=None,
+    prefix='nanoworks',
+    pseudo_dir=None,
+    outdir=None,
+    conv_thr=None,
+    mixing_beta=None,
+    electron_maxstep=None,
+    diagonalization=None,
+):
+    """Render a complete QE pw.x NSCF input."""
+    return render_pw_input(
+        calculation='nscf',
+        atoms=atoms,
+        pseudopotentials=pseudopotentials,
+        cutoff_ev=cutoff_ev,
+        kpoint_size=kpoint_size,
+        gamma=gamma,
+        total_charge=total_charge,
+        nbands=nbands,
+        spinpol=spinpol,
+        occupations=occupations,
+        smearing=smearing,
+        width_ev=width_ev,
+        prefix=prefix,
+        pseudo_dir=pseudo_dir,
+        outdir=outdir,
+        conv_thr=conv_thr,
+        mixing_beta=mixing_beta,
+        electron_maxstep=electron_maxstep,
+        diagonalization=diagonalization,
+    )
 
 def build_qe_launcher(
     parallel_cores=1,

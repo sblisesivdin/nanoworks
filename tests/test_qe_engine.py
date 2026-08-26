@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 from nanoworks.engine import load_engine_module
 from ase import Atoms
+from ase.build import bulk
 from nanoworks.engine.qe import (
     QE_REFERENCE_VERSION,
     ev_to_rydberg,
@@ -18,7 +19,9 @@ from nanoworks.engine.qe import (
     build_electrons_settings,
     format_qe_value,
     render_namelist,
+    render_pw_input,
     render_scf_input,
+    render_nscf_input,
     rydberg_to_ev,
     build_qe_launcher,
     resolve_qe_executable,
@@ -483,7 +486,73 @@ class TestQEEngine(unittest.TestCase):
             "degauss = ",
             text,
         )
-    
+
+    def test_render_nscf_input(self):
+        atoms = bulk(
+            'Si',
+            'diamond',
+            a=5.43,
+        )
+
+        text = render_nscf_input(
+            atoms=atoms,
+            pseudopotentials={
+                'Si': 'Si.upf',
+            },
+            cutoff_ev=400.0,
+            kpoint_size=(8, 8, 8),
+            occupations='tetrahedra',
+            prefix='nanoworks',
+            pseudo_dir='/tmp/pseudos',
+            outdir='/tmp/qe-state',
+        )
+
+        self.assertIn(
+            "calculation = 'nscf'",
+            text,
+        )
+
+        self.assertIn(
+            "occupations = 'tetrahedra'",
+            text,
+        )
+
+        self.assertIn(
+            "8 8 8 1 1 1",
+            text,
+        )
+
+        self.assertIn(
+            "prefix = 'nanoworks'",
+            text,
+        )
+
+        self.assertIn(
+            "outdir = '/tmp/qe-state'",
+            text,
+        )
+
+    def test_render_pw_input_rejects_unsupported_calculation(self):
+        atoms = bulk(
+            'Si',
+            'diamond',
+            a=5.43,
+        )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            'Unsupported QE pw.x calculation type',
+        ):
+            render_pw_input(
+                calculation='relax',
+                atoms=atoms,
+                pseudopotentials={
+                    'Si': 'Si.upf',
+                },
+                cutoff_ev=400.0,
+                kpoint_size=(4, 4, 4),
+            )
+            
     def test_rydberg_to_ev(self):
         self.assertAlmostEqual(
             rydberg_to_ev(1.0),
