@@ -1153,6 +1153,85 @@ def parse_pw_output(output):
         'fermi_energy_ev': fermi_energy_ev,
     }
 
+def parse_dos_output(dos_file):
+    """Parse a non-spin Quantum ESPRESSO dos.x data file."""
+    dos_file = Path(
+        dos_file
+    )
+
+    if not dos_file.is_file():
+        raise FileNotFoundError(
+            f"QE DOS data file was not found: {dos_file}"
+        )
+
+    energies = []
+    dos_values = []
+    integrated_dos = []
+
+    with dos_file.open(
+        'r',
+        encoding='utf-8',
+        errors='replace',
+    ) as fd:
+        for line in fd:
+            stripped = line.strip()
+
+            if not stripped:
+                continue
+
+            if stripped.startswith('#'):
+                continue
+
+            parts = stripped.split()
+
+            if len(parts) < 3:
+                continue
+
+            try:
+                energy = float(
+                    parts[0]
+                    .replace('D', 'E')
+                    .replace('d', 'e')
+                )
+
+                dos_value = float(
+                    parts[1]
+                    .replace('D', 'E')
+                    .replace('d', 'e')
+                )
+
+                integrated = float(
+                    parts[2]
+                    .replace('D', 'E')
+                    .replace('d', 'e')
+                )
+            except ValueError:
+                continue
+
+            energies.append(
+                energy
+            )
+
+            dos_values.append(
+                dos_value
+            )
+
+            integrated_dos.append(
+                integrated
+            )
+
+    if not energies:
+        raise ValueError(
+            f"No DOS data could be parsed from '{dos_file}'."
+        )
+
+    return {
+        'energies_ev': energies,
+        'dos': dos_values,
+        'integrated_dos': integrated_dos,
+        'npoints': len(energies),
+    }
+
 def run_scf(
     atoms,
     input_file,

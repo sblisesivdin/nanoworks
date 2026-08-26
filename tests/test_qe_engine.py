@@ -37,6 +37,7 @@ from nanoworks.engine.qe import (
     has_qe_state,
     render_dos_input,
     run_dos,
+    parse_dos_output,
 )
 
 
@@ -1204,6 +1205,92 @@ class TestQEEngine(unittest.TestCase):
                     },
                     pseudo_dir='/tmp/pseudos',
                     cutoff_ev=400.0,
+                )
+
+    def test_parse_dos_output(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dos_file = (
+                Path(tmpdir)
+                / 'nanoworks.dos'
+            )
+
+            dos_file.write_text(
+                "# E (eV) DOS(E) Int DOS(E)\n"
+                "-1.0000  0.1000  0.0100\n"
+                " 0.0000  0.5000  0.2000\n"
+                " 1.0000  0.2500  0.6000\n",
+                encoding='utf-8',
+            )
+
+            result = parse_dos_output(
+                dos_file
+            )
+
+        self.assertEqual(
+            result['npoints'],
+            3,
+        )
+
+        self.assertEqual(
+            result['energies_ev'],
+            [-1.0, 0.0, 1.0],
+        )
+
+        self.assertEqual(
+            result['dos'],
+            [0.1, 0.5, 0.25],
+        )
+
+        self.assertEqual(
+            result['integrated_dos'],
+            [0.01, 0.2, 0.6],
+        )
+
+    def test_parse_dos_output_supports_fortran_exponents(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dos_file = (
+                Path(tmpdir)
+                / 'nanoworks.dos'
+            )
+
+            dos_file.write_text(
+                "# E DOS IntDOS\n"
+                "1.000D+00 2.500D-01 6.000D-01\n",
+                encoding='utf-8',
+            )
+
+            result = parse_dos_output(
+                dos_file
+            )
+
+        self.assertEqual(
+            result['energies_ev'],
+            [1.0],
+        )
+
+        self.assertEqual(
+            result['dos'],
+            [0.25],
+        )
+
+    def test_parse_dos_output_rejects_missing_data(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dos_file = (
+                Path(tmpdir)
+                / 'nanoworks.dos'
+            )
+
+            dos_file.write_text(
+                "# no DOS data\n",
+                encoding='utf-8',
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                'No DOS data could be parsed',
+            ):
+                parse_dos_output(
+                    dos_file
                 )
 
 if __name__ == '__main__':
