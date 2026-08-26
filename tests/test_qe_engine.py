@@ -33,6 +33,7 @@ from nanoworks.engine.qe import (
     validate_qe_version,
     validate_qe_xc,
     run_scf,
+    run_nscf,
     has_qe_state,
 )
 
@@ -1060,7 +1061,32 @@ class TestQEEngine(unittest.TestCase):
             validate_qe_version(
                 None
             )
-            
+
+    def test_run_nscf_requires_ground_state(self):
+        atoms = bulk(
+            'Si',
+            'diamond',
+            a=5.43,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+
+            with self.assertRaisesRegex(
+                FileNotFoundError,
+                'valid QE ground-state result',
+            ):
+                run_nscf(
+                    atoms=atoms,
+                    input_file=tmpdir / 'nscf.in',
+                    output_file=tmpdir / 'nscf.out',
+                    state_dir=tmpdir / 'state',
+                    pseudopotentials={
+                        'Si': 'Si.upf',
+                    },
+                    pseudo_dir='/tmp/pseudos',
+                    cutoff_ev=400.0,
+                )
 
 if __name__ == '__main__':
     unittest.main()

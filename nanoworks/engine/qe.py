@@ -1155,3 +1155,123 @@ def run_scf(
         'execution': execution,
         'result': result,
     }
+
+def run_nscf(
+    atoms,
+    input_file,
+    output_file,
+    state_dir,
+    pseudopotentials,
+    pseudo_dir,
+    cutoff_ev,
+    kpoint_density=None,
+    kpoint_size=(5, 5, 5),
+    gamma=False,
+    total_charge=0.0,
+    nbands=None,
+    spinpol=False,
+    occupation=None,
+    parallel_cores=1,
+    executable='pw.x',
+    prefix='nanoworks',
+):
+    """Render, execute, and parse one QE pw.x NSCF calculation."""
+    input_file = Path(
+        input_file
+    )
+
+    output_file = Path(
+        output_file
+    )
+
+    state_dir = Path(
+        state_dir
+    )
+
+    if not has_qe_state(
+        state_dir,
+        prefix=prefix,
+    ):
+        raise FileNotFoundError(
+            "A valid QE ground-state result is required "
+            f"for the NSCF calculation: {state_dir}"
+        )
+
+    mesh = resolve_qe_kpoint_size(
+        atoms,
+        density=kpoint_density,
+        size=kpoint_size,
+    )
+
+    occupation_settings = (
+        resolve_qe_occupation(
+            occupation
+        )
+    )
+
+    input_text = render_nscf_input(
+        atoms=atoms,
+        pseudopotentials=pseudopotentials,
+        cutoff_ev=cutoff_ev,
+        kpoint_size=mesh,
+        gamma=gamma,
+        total_charge=total_charge,
+        nbands=nbands,
+        spinpol=spinpol,
+        occupations=occupation_settings['occupations'],
+        smearing=occupation_settings['smearing'],
+        width_ev=occupation_settings['width_ev'],
+        prefix=prefix,
+        pseudo_dir=pseudo_dir,
+        outdir=state_dir,
+    )
+
+    input_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    input_file.write_text(
+        input_text,
+        encoding='utf-8',
+    )
+
+    launcher = build_qe_launcher(
+        parallel_cores=parallel_cores
+    )
+
+    execution = run_qe_program(
+        input_file=input_file,
+        output_file=output_file,
+        executable=executable,
+        launcher=launcher,
+    )
+
+    result = parse_pw_output(
+        output_file
+    )
+
+    try:
+        validate_qe_version(
+            result['qe_version']
+        )
+    except ValueError as exc:
+        raise RuntimeError(
+            f"{exc} See '{output_file}'."
+        ) from exc
+
+    if not result['job_done']:
+        raise RuntimeError(
+            "Quantum ESPRESSO NSCF calculation finished without a "
+            "'JOB DONE.' marker. "
+            f"See '{output_file}'."
+        )
+
+    return {
+        'input_file': input_file,
+        'output_file': output_file,
+        'state_dir': state_dir,
+        'kpoint_size': mesh,
+        'execution': execution,
+        'result': result,
+    }
