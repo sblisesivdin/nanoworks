@@ -1516,6 +1516,18 @@ class dftsolve:
         return 0.0
 
     def doscalc(self):
+        """Run the DOS workflow using the selected DFT engine."""
+        if self.Engine == 'GPAW':
+            return self._doscalc_gpaw()
+
+        if self.Engine == 'QE':
+            return self._doscalc_qe()
+
+        raise ValueError(
+            f"Unsupported DFT engine: {self.Engine}"
+        )
+        
+    def _doscalc_gpaw(self):
         """
         This method performs density of states (DOS) calculations for the given structure using
         the ground state results. It computes the DOS for various energy levels and saves the
@@ -1931,6 +1943,12 @@ class dftsolve:
             # Clear memory to prevent interference with upcoming Band/Optical calculations
             plt.close(fig)
 
+    def _doscalc_qe(self):
+        """Run the DOS workflow using Quantum ESPRESSO."""
+        raise NotImplementedError(
+            "Quantum ESPRESSO DOS calculations are not implemented yet."
+        )
+    
     def bandcalc(self):
         """
         This method performs band structure calculations for the given structure using the
