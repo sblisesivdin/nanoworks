@@ -40,6 +40,7 @@ from nanoworks.engine.qe import (
     parse_dos_output,
     render_projwfc_input,
     run_projwfc,
+    parse_projwfc_pdos_file,
 )
 
 
@@ -1377,6 +1378,129 @@ def test_run_projwfc_requires_qe_state(self):
                 pdos_prefix=tmpdir / 'pdos',
             )
 
+def test_parse_projwfc_pdos_p_file(self):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        pdos_file = (
+            Path(tmpdir)
+            / 'test.pdos_atm#2(As)_wfc#3(p)'
+        )
+
+        pdos_file.write_text(
+            "# E (eV) ldos(E) pdos(E) pdos(E) pdos(E)\n"
+            "2.048 0.186E-01 0.621E-02 0.622E-02 0.623E-02\n"
+            "2.078 0.175E-01 0.583E-02 0.584E-02 0.585E-02\n",
+            encoding='utf-8',
+        )
+
+        result = parse_projwfc_pdos_file(
+            pdos_file
+        )
+
+    self.assertEqual(
+        result['atom_index'],
+        2,
+    )
+
+    self.assertEqual(
+        result['symbol'],
+        'As',
+    )
+
+    self.assertEqual(
+        result['wfc_index'],
+        3,
+    )
+
+    self.assertEqual(
+        result['orbital'],
+        'p',
+    )
+
+    self.assertEqual(
+        result['components']['pz'],
+        [0.00621, 0.00583],
+    )
+
+    self.assertEqual(
+        result['components']['px'],
+        [0.00622, 0.00584],
+    )
+
+    self.assertEqual(
+        result['components']['py'],
+        [0.00623, 0.00585],
+    )
+
+def test_parse_projwfc_pdos_d_file(self):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        pdos_file = (
+            Path(tmpdir)
+            / 'test.pdos_atm#1(Ga)_wfc#1(d)'
+        )
+
+        pdos_file.write_text(
+            "# E ldos d1 d2 d3 d4 d5\n"
+            "2.048 0.198E-02 "
+            "0.654E-03 0.223E-03 0.224E-03 "
+            "0.438E-03 0.439E-03\n",
+            encoding='utf-8',
+        )
+
+        result = parse_projwfc_pdos_file(
+            pdos_file
+        )
+
+    self.assertEqual(
+        result['orbital'],
+        'd',
+    )
+
+    self.assertEqual(
+        result['components']['d3z2_r2'],
+        [0.000654],
+    )
+
+    self.assertEqual(
+        result['components']['dxz'],
+        [0.000223],
+    )
+
+    self.assertEqual(
+        result['components']['dyz'],
+        [0.000224],
+    )
+
+    self.assertEqual(
+        result['components']['dx2_y2'],
+        [0.000438],
+    )
+
+    self.assertEqual(
+        result['components']['dxy'],
+        [0.000439],
+    )
+
+def test_parse_projwfc_pdos_s_file(self):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        pdos_file = (
+            Path(tmpdir)
+            / 'test.pdos_atm#1(Ga)_wfc#2(s)'
+        )
+
+        pdos_file.write_text(
+            "# E ldos pdos\n"
+            "2.048 0.842E-01 0.842E-01\n",
+            encoding='utf-8',
+        )
+
+        result = parse_projwfc_pdos_file(
+            pdos_file
+        )
+
+    self.assertEqual(
+        result['components']['s'],
+        [0.0842],
+    )
 
 if __name__ == '__main__':
     unittest.main()

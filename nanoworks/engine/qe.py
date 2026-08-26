@@ -1320,6 +1320,144 @@ def parse_dos_output(dos_file):
         'npoints': len(energies),
     }
 
+def parse_projwfc_pdos_file(pdos_file):
+    """Parse one non-spin Quantum ESPRESSO projwfc.x PDOS file."""
+    pdos_file = Path(
+        pdos_file
+    )
+
+    if not pdos_file.is_file():
+        raise FileNotFoundError(
+            f"QE PDOS data file was not found: {pdos_file}"
+        )
+
+    name = pdos_file.name
+
+    match = re.search(
+        r'\.pdos_atm#(\d+)\(([^)]+)\)_wfc#(\d+)\(([spdf])\)$',
+        name,
+    )
+
+    if match is None:
+        raise ValueError(
+            f"Unsupported QE PDOS filename: {name}"
+        )
+
+    atom_index = int(
+        match.group(1)
+    )
+
+    symbol = match.group(2)
+
+    wfc_index = int(
+        match.group(3)
+    )
+
+    orbital = match.group(4)
+
+    component_names = {
+        's': [
+            's',
+        ],
+        'p': [
+            'pz',
+            'px',
+            'py',
+        ],
+        'd': [
+            'd3z2_r2',
+            'dxz',
+            'dyz',
+            'dx2_y2',
+            'dxy',
+        ],
+    }
+
+    if orbital not in component_names:
+        raise NotImplementedError(
+            "QE PDOS parsing currently supports "
+            "s, p, and d orbitals only."
+        )
+
+    energies = []
+    ldos = []
+
+    components = {
+        name: []
+        for name in component_names[orbital]
+    }
+
+    expected_columns = (
+        2
+        + len(component_names[orbital])
+    )
+
+    with pdos_file.open(
+        'r',
+        encoding='utf-8',
+        errors='replace',
+    ) as fd:
+        for line in fd:
+            stripped = line.strip()
+
+            if not stripped:
+                continue
+
+            if stripped.startswith('#'):
+                continue
+
+            parts = stripped.split()
+
+            if len(parts) < expected_columns:
+                continue
+
+            try:
+                values = [
+                    float(
+                        value
+                        .replace('D', 'E')
+                        .replace('d', 'e')
+                    )
+                    for value in parts[
+                        :expected_columns
+                    ]
+                ]
+            except ValueError:
+                continue
+
+            energies.append(
+                values[0]
+            )
+
+            ldos.append(
+                values[1]
+            )
+
+            for index, component_name in enumerate(
+                component_names[orbital]
+            ):
+                components[
+                    component_name
+                ].append(
+                    values[index + 2]
+                )
+
+    if not energies:
+        raise ValueError(
+            f"No PDOS data could be parsed from '{pdos_file}'."
+        )
+
+    return {
+        'atom_index': atom_index,
+        'symbol': symbol,
+        'wfc_index': wfc_index,
+        'orbital': orbital,
+        'energies_ev': energies,
+        'ldos': ldos,
+        'components': components,
+        'npoints': len(energies),
+    }
+
 def run_scf(
     atoms,
     input_file,
