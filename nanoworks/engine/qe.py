@@ -761,6 +761,104 @@ def render_nscf_input(
         diagonalization=diagonalization,
     )
 
+def render_dos_input(
+    prefix='nanoworks',
+    outdir=None,
+    fildos='nanoworks.dos',
+    bz_sum=None,
+    emin=None,
+    emax=None,
+    delta_e=None,
+    degauss=None,
+    ngauss=None,
+):
+    """Render a complete Quantum ESPRESSO dos.x input."""
+    settings = {
+        'prefix': str(prefix),
+    }
+
+    if outdir is not None:
+        settings['outdir'] = str(outdir)
+
+    if bz_sum is not None:
+        bz_sum = str(
+            bz_sum
+        ).strip().lower()
+
+        allowed_bz_sum = {
+            'smearing',
+            'tetrahedra',
+            'tetrahedra_lin',
+            'tetrahedra_opt',
+        }
+
+        if bz_sum not in allowed_bz_sum:
+            raise ValueError(
+                f"Unsupported QE DOS BZ summation method: {bz_sum}"
+            )
+
+        settings['bz_sum'] = bz_sum
+
+    if emin is not None:
+        settings['Emin'] = float(
+            emin
+        )
+
+    if emax is not None:
+        settings['Emax'] = float(
+            emax
+        )
+
+    if (
+        emin is not None
+        and emax is not None
+        and float(emax) <= float(emin)
+    ):
+        raise ValueError(
+            "QE DOS Emax must be greater than Emin."
+        )
+
+    if delta_e is not None:
+        delta_e = float(
+            delta_e
+        )
+
+        if delta_e <= 0.0:
+            raise ValueError(
+                "QE DOS energy step must be greater than zero."
+            )
+
+        settings['DeltaE'] = delta_e
+
+    if degauss is not None:
+        degauss = float(
+            degauss
+        )
+
+        if degauss <= 0.0:
+            raise ValueError(
+                "QE DOS degauss must be greater than zero."
+            )
+
+        settings['degauss'] = degauss
+
+    if ngauss is not None:
+        settings['ngauss'] = int(
+            ngauss
+        )
+
+    settings['fildos'] = str(
+        fildos
+    )
+
+    return (
+        render_namelist(
+            'DOS',
+            settings,
+        )
+        + '\n'
+    )
+
 def build_qe_launcher(
     parallel_cores=1,
 ):
@@ -1289,4 +1387,104 @@ def run_nscf(
         'kpoint_size': mesh,
         'execution': execution,
         'result': result,
+    }
+
+def run_dos(
+    input_file,
+    output_file,
+    state_dir,
+    dos_file,
+    emin=None,
+    emax=None,
+    delta_e=None,
+    bz_sum=None,
+    degauss=None,
+    ngauss=None,
+    parallel_cores=1,
+    executable='dos.x',
+    prefix='nanoworks',
+):
+    """Render and execute one Quantum ESPRESSO dos.x calculation."""
+    input_file = Path(
+        input_file
+    )
+
+    output_file = Path(
+        output_file
+    )
+
+    state_dir = Path(
+        state_dir
+    )
+
+    dos_file = Path(
+        dos_file
+    )
+
+    if not has_qe_state(
+        state_dir,
+        prefix=prefix,
+    ):
+        raise FileNotFoundError(
+            "A valid QE electronic state is required "
+            f"for the DOS calculation: {state_dir}"
+        )
+
+    input_text = render_dos_input(
+        prefix=prefix,
+        outdir=state_dir,
+        fildos=dos_file,
+        bz_sum=bz_sum,
+        emin=emin,
+        emax=emax,
+        delta_e=delta_e,
+        degauss=degauss,
+        ngauss=ngauss,
+    )
+
+    input_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    input_file.write_text(
+        input_text,
+        encoding='utf-8',
+    )
+
+    launcher = build_qe_launcher(
+        parallel_cores=parallel_cores
+    )
+
+    execution = run_qe_program(
+        input_file=input_file,
+        output_file=output_file,
+        executable=executable,
+        launcher=launcher,
+    )
+
+    text = output_file.read_text(
+        encoding='utf-8',
+        errors='replace',
+    )
+
+    if 'JOB DONE.' not in text:
+        raise RuntimeError(
+            "Quantum ESPRESSO DOS calculation finished without a "
+            "'JOB DONE.' marker. "
+            f"See '{output_file}'."
+        )
+
+    if not dos_file.is_file():
+        raise RuntimeError(
+            "Quantum ESPRESSO dos.x finished but the DOS data file "
+            f"was not created: {dos_file}"
+        )
+
+    return {
+        'input_file': input_file,
+        'output_file': output_file,
+        'state_dir': state_dir,
+        'dos_file': dos_file,
+        'execution': execution,
     }

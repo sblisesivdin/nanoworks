@@ -35,6 +35,8 @@ from nanoworks.engine.qe import (
     run_scf,
     run_nscf,
     has_qe_state,
+    render_dos_input,
+    run_dos,
 )
 
 
@@ -487,6 +489,98 @@ class TestQEEngine(unittest.TestCase):
             "degauss = ",
             text,
         )
+
+    def test_render_dos_input_for_tetrahedra(self):
+        text = render_dos_input(
+            prefix='nanoworks',
+            outdir='/tmp/qe-state',
+            fildos='/tmp/gaas.dos',
+            bz_sum='tetrahedra',
+            emin=-10.0,
+            emax=10.0,
+            delta_e=0.02,
+        )
+
+        self.assertIn(
+            '&DOS',
+            text,
+        )
+
+        self.assertIn(
+            "prefix = 'nanoworks'",
+            text,
+        )
+
+        self.assertIn(
+            "outdir = '/tmp/qe-state'",
+            text,
+        )
+
+        self.assertIn(
+            "bz_sum = 'tetrahedra'",
+            text,
+        )
+
+        self.assertIn(
+            'Emin = -10',
+            text,
+        )
+
+        self.assertIn(
+            'Emax = 10',
+            text,
+        )
+
+        self.assertIn(
+            'DeltaE = 0.02',
+            text,
+        )
+
+        self.assertIn(
+            "fildos = '/tmp/gaas.dos'",
+            text,
+        )
+
+        self.assertNotIn(
+            'degauss',
+            text,
+        )
+
+    def test_render_dos_input_rejects_invalid_energy_range(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            'Emax must be greater than Emin',
+        ):
+            render_dos_input(
+                emin=5.0,
+                emax=-5.0,
+            )
+
+    def test_render_dos_input_rejects_invalid_bz_sum(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            'Unsupported QE DOS BZ summation method',
+        ):
+            render_dos_input(
+                bz_sum='invalid',
+            )
+
+    def test_run_dos_requires_qe_state(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(
+                tmpdir
+            )
+
+            with self.assertRaisesRegex(
+                FileNotFoundError,
+                'valid QE electronic state',
+            ):
+                run_dos(
+                    input_file=tmpdir / 'dos.in',
+                    output_file=tmpdir / 'dos.out',
+                    state_dir=tmpdir / 'state',
+                    dos_file=tmpdir / 'result.dos',
+                )
 
     def test_render_nscf_input(self):
         atoms = bulk(
