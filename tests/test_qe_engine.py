@@ -629,6 +629,11 @@ class TestQEEngine(unittest.TestCase):
             self.assertTrue(
                 result['job_done']
             )
+            
+            self.assertEqual(
+                result['qe_version'],
+                (7, 2),
+            )
 
             self.assertAlmostEqual(
                 result['fermi_energy_ev'],
@@ -646,6 +651,57 @@ class TestQEEngine(unittest.TestCase):
                 * 13.605693122994,
             )
     
+    def test_parse_pw_output_with_patch_version(self):
+        output_text = """
+         Program PWSCF v.7.2.1 starts
+
+         JOB DONE.
+        """
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = (
+                Path(tmp)
+                / 'pw.out'
+            )
+
+            path.write_text(
+                output_text,
+                encoding='utf-8',
+            )
+
+            result = parse_pw_output(
+                path
+            )
+
+            self.assertEqual(
+                result['qe_version'],
+                (7, 2, 1),
+            )
+        
+    def test_parse_pw_output_without_version(self):
+        output_text = """
+         JOB DONE.
+        """
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = (
+                Path(tmp)
+                / 'pw.out'
+            )
+
+            path.write_text(
+                output_text,
+                encoding='utf-8',
+            )
+
+            result = parse_pw_output(
+                path
+            )
+
+            self.assertIsNone(
+                result['qe_version']
+            )
+            
     def test_parse_pw_output_without_fermi_energy(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             output_file = (

@@ -820,6 +820,22 @@ def parse_pw_output(output):
         encoding='utf-8',
         errors='replace',
     )
+    
+    version_match = re.search(
+        r'Program\s+PWSCF\s+v\.'
+        r'(\d+)\.(\d+)(?:\.(\d+))?',
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    qe_version = None
+
+    if version_match:
+        qe_version = tuple(
+            int(value)
+            for value in version_match.groups()
+            if value is not None
+        )
 
     energy_matches = re.findall(
         r'!\s+total energy\s*=\s*'
@@ -874,6 +890,7 @@ def parse_pw_output(output):
 
     return {
         'job_done': job_done,
+        'qe_version': qe_version,
         'total_energy_ry': total_energy_ry,
         'total_energy_ev': total_energy_ev,
         'fermi_energy_ev': fermi_energy_ev,
