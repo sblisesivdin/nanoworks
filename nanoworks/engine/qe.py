@@ -326,6 +326,21 @@ def resolve_qe_occupation(occupation):
             'smearing': None,
             'width_ev': None,
         }
+    
+    tetrahedra_names = {
+        'tetrahedra': 'tetrahedra',
+        'tetrahedra_lin': 'tetrahedra_lin',
+        'tetrahedra-lin': 'tetrahedra_lin',
+        'tetrahedra_opt': 'tetrahedra_opt',
+        'tetrahedra-opt': 'tetrahedra_opt',
+    }
+
+    if name in tetrahedra_names:
+        return {
+            'occupations': tetrahedra_names[name],
+            'smearing': None,
+            'width_ev': None,
+        }
 
     smearing_aliases = {
         'fermi-dirac': 'fermi-dirac',

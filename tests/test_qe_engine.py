@@ -995,6 +995,30 @@ class TestQEEngine(unittest.TestCase):
             all(value > 0 for value in mesh)
         )
 
+    def test_resolve_qe_occupation_supports_tetrahedra(self):
+        result = resolve_qe_occupation(
+            'tetrahedra'
+        )
+
+        self.assertEqual(
+            result,
+            {
+                'occupations': 'tetrahedra',
+                'smearing': None,
+                'width_ev': None,
+            },
+        )
+
+    def test_resolve_qe_occupation_supports_optimized_tetrahedra(self):
+        result = resolve_qe_occupation(
+            'tetrahedra-opt'
+        )
+
+        self.assertEqual(
+            result['occupations'],
+            'tetrahedra_opt',
+        )
+
     def test_qe_occupation_translates_fermi_dirac(self):
         settings = resolve_qe_occupation(
             {
