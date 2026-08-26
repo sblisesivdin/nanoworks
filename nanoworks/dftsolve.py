@@ -2093,6 +2093,87 @@ class dftsolve:
                 f"{result['fermi_energy_ev']:.8f} eV"
             )
 
+        if self.DOS_npoints is None or int(self.DOS_npoints) < 2:
+            raise ValueError(
+                "DOS_npoints must be at least 2 for QE DOS calculations."
+            )
+
+        delta_e = (
+            float(self.Energy_max)
+            - float(self.Energy_min)
+        ) / (
+            int(self.DOS_npoints) - 1
+        )
+
+        dos_input_file = Path(
+            self.struct
+            + '-DOS-Input-QE.in'
+        )
+
+        dos_output_file = Path(
+            self.struct
+            + '-DOS-Log-Calculation.txt'
+        )
+
+        dos_data_file = Path(
+            self.struct
+            + '-DOS-Result-QE.dat'
+        )
+
+        qe_dos_occupation = (
+            self.engine.resolve_qe_occupation(
+                dos_occupation
+            )
+        )
+
+        bz_sum = qe_dos_occupation[
+            'occupations'
+        ]
+
+        if bz_sum not in {
+            'tetrahedra',
+            'tetrahedra_lin',
+            'tetrahedra_opt',
+        }:
+            raise NotImplementedError(
+                "Quantum ESPRESSO DOS currently supports "
+                "tetrahedra occupations only in Nanoworks."
+            )
+
+        parprint(
+            "Starting QE total DOS calculation..."
+        )
+
+        try:
+            dos_workflow = self.engine.run_dos(
+                input_file=dos_input_file,
+                output_file=dos_output_file,
+                state_dir=state_dir,
+                dos_file=dos_data_file,
+                emin=self.Energy_min,
+                emax=self.Energy_max,
+                delta_e=delta_e,
+                bz_sum=bz_sum,
+                parallel_cores=self.parallel_cores,
+                executable='dos.x',
+                prefix='nanoworks',
+            )
+        except Exception as exc:
+            parprint(
+                "\033[91mERROR:\033[0m "
+                f"QE total DOS calculation failed: {exc}"
+            )
+            raise
+
+        parprint(
+            "QE total DOS calculation finished."
+        )
+
+        parprint(
+            "QE DOS data saved to: "
+            f"{dos_workflow['dos_file']}"
+        )
+
         time22 = time.time()
 
         with paropen(
@@ -2100,7 +2181,7 @@ class dftsolve:
             'a',
         ) as f1:
             print(
-                f'DOS NSCF calculation: '
+                f'DOS calculation: '
                 f'{round((time22-time21),2)}',
                 file=f1,
             )
