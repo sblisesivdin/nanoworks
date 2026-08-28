@@ -15,8 +15,9 @@ General Keywords
     case-insensitive and are normalized internally.
 
     ``GPAW`` remains the default and currently provides the complete
-    Nanoworks DFT workflow. Initial Quantum ESPRESSO support is available
-    with ``QE`` for plane-wave ground-state calculations.
+    Nanoworks DFT workflow. Quantum ESPRESSO support is available with
+    ``QE`` for PBE plane-wave ground-state and non-spin DOS/PDOS
+    calculations.
 
 .. code-block:: python
 
@@ -31,8 +32,11 @@ or:
 .. note::
 
     Quantum ESPRESSO support is currently under active development.
-    At this stage, ``Engine = 'QE'`` supports the basic PW ground-state
-    workflow. Other calculation stages will be added incrementally.
+    At this stage, ``Engine = 'QE'`` supports PBE PW ground-state and
+    non-spin DOS/PDOS workflows using scalar-relativistic PseudoDojo
+    pseudopotentials. Geometry optimization, vdW corrections,
+    spin-polarized DOS, SOC, hybrid functionals and other calculation
+    stages are not supported by the QE backend yet.
 
 .. describe:: Mode
 
@@ -50,7 +54,9 @@ or:
     :Type: ``boolean``
     :Default: ``False``
 
-    Controls execution of the ground-state calculation.
+    Controls execution of the ground-state calculation. For the QE
+    backend, ``Ground_calc = False`` reuses an existing valid QE state
+    from the corresponding ground-state result directory.
 
 .. code-block:: python
 
@@ -89,6 +95,12 @@ or:
 
     DOS_calc = True
 
+.. note::
+
+    The QE backend currently supports total DOS and orbital-projected
+    DOS for non-spin PBE PW calculations. A valid QE ground-state result
+    is required before the DOS workflow is started.
+
 .. describe:: Band_calc
 
     :Type: ``boolean``
@@ -99,6 +111,10 @@ or:
 .. code-block:: python
 
     Band_calc = False
+
+.. note::
+
+    Quantum ESPRESSO band-structure calculations are not available yet.
 
 .. describe:: Density_calc
 
@@ -691,11 +707,15 @@ Electronic Calculations Keywords
 
 .. describe:: DOS_occupation
 
-    :Type: ``python dictionary`` or ``None``
+    :Type: ``python dictionary``, ``string`` or ``None``
     :Default: ``None``
 
-    Occupation scheme used when preparing the DOS calculation.
-    When ``None``, the ground-state ``Occupation`` setting is inherited.
+    Backend-specific occupation scheme used when preparing the DOS
+    calculation. When ``None``, the ground-state ``Occupation``
+    setting is inherited.
+
+    GPAW calculations use the existing GPAW occupation dictionary or
+    occupation object:
 
 .. code-block:: python
 
@@ -703,6 +723,22 @@ Electronic Calculations Keywords
         'name': 'fermi-dirac',
         'width': 0.02,
     }
+
+    QE DOS calculations currently require a tetrahedron occupation
+    string:
+
+.. code-block:: python
+
+    DOS_occupation = 'tetrahedra'
+
+    Accepted QE aliases are ``tetrahedra``, ``tetrahedra_lin``,
+    ``tetrahedra-lin``, ``tetrahedra_opt`` and
+    ``tetrahedra-opt``.
+
+.. warning::
+
+    The QE tetrahedron strings are backend-specific. Do not reuse a QE
+    ``DOS_occupation`` string in a GPAW calculation input.
 
 .. note::
 
