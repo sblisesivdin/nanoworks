@@ -17,7 +17,14 @@ After installation, the following commands will be available in your terminal:
 dftsolve (formerly gpawsolve.py)
 -----------------------------------
 
-The main driver for DFT calculations using GPAW. Can calculate with many cores using -p argument.
+The main driver for DFT calculations using GPAW or Quantum ESPRESSO.
+GPAW runs the complete Python workflow under MPI. For the QE backend,
+Nanoworks remains serial and launches the supported QE executables with
+the number of processes requested by the ``-p`` argument.
+
+GPAW currently provides the complete Nanoworks DFT workflow. Native QE
+support covers PBE plane-wave ground-state and non-spin DOS/PDOS
+calculations.
 
 .. code-block:: console
 
@@ -81,19 +88,27 @@ Optimize a structure using MACE (assuming parameters are in `ml_input.py`)
 nanoworks
 ------------
 
-A helper CLI to locate package resources like examples and optimization scripts. For now, it has only ``-h``, ``-h`` and ``--install-examples`` arguments. In future, it will be equipped with more 
+A helper CLI to locate package resources, install examples and install the default Quantum ESPRESSO pseudopotential library.
 
 .. code-block:: console
 
     (.venv-nw) $ nanoworks
-    usage: nanoworks [-h] [-v] [--install-examples]
+    usage: nanoworks [-h] [-v] [--install-examples] [--install-qe-pseudos]
     
     Nanoworks CLI tool
     
     options:
       -h, --help          show this help message and exit
       -v, --version       Show version and detailed library information
-      --install-examples  Copy example files to ~/.nanoworks/Examples
+      --install-examples  Copy example files to ~/.nanoworks/examples
+      --install-qe-pseudos
+                          Install the default Quantum ESPRESSO pseudopotential library
+
+The QE pseudopotentials can be installed separately with:
+
+.. code-block:: console
+
+    (.venv-nw) $ nanoworks --install-qe-pseudos
 
 qeconverter 
 -----------
