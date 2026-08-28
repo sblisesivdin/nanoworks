@@ -82,8 +82,8 @@ Machine Learning & Molecular Dynamics
 Interoperability with Other Codes
 ---------------------------------
 
-* **Quantum ESPRESSO (QE):**
-  Contains an example demonstrating how Nanoworks can interact with Quantum ESPRESSO input formats (e.g., handling si.scf.in). (Folder: ``Si-qe/``)
+* **Quantum ESPRESSO Input Conversion:**
+  Demonstrates how ``qeconverter`` converts a Quantum ESPRESSO ``pw.x`` input into Nanoworks input and geometry files. This is an input-conversion example and does not demonstrate the native ``Engine = 'QE'`` backend workflow. (Folder: ``Si-qe/``)
 
 * **VASP:**
   Shows compatibility and format conversion capabilities with VASP inputs (INCAR, POSCAR, KPOINTS). (Folder: ``Si-vasp/``)
