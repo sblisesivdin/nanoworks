@@ -16,6 +16,7 @@ from nanoworks.engine.qe import (
     build_atomic_species,
     build_kpoint_settings,
     build_band_path,
+    render_band_kpoints,
     build_occupation_settings,
     build_electrons_settings,
     format_qe_value,
@@ -304,6 +305,49 @@ class TestQEEngine(unittest.TestCase):
                 atoms=atoms,
                 path='GX',
                 npoints=1,
+            )
+
+    def test_render_explicit_band_kpoints(self):
+        rendered = render_band_kpoints(
+            {
+                'option': 'crystal',
+                'kpoints': [
+                    (0.0, 0.0, 0.0),
+                    (0.0, 0.25, 0.0),
+                    (0.0, 0.5, 0.0),
+                ],
+                'npoints': 3,
+            }
+        )
+
+        self.assertEqual(
+            rendered,
+            (
+                "K_POINTS crystal\n"
+                "3\n"
+                "0.000000000000 0.000000000000 "
+                "0.000000000000 1.0\n"
+                "0.000000000000 0.250000000000 "
+                "0.000000000000 1.0\n"
+                "0.000000000000 0.500000000000 "
+                "0.000000000000 1.0"
+            ),
+        )
+
+    def test_render_band_kpoints_rejects_count_mismatch(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            'point count does not match',
+        ):
+            render_band_kpoints(
+                {
+                    'option': 'crystal',
+                    'kpoints': [
+                        (0.0, 0.0, 0.0),
+                        (0.0, 0.5, 0.0),
+                    ],
+                    'npoints': 3,
+                }
             )
 
     def test_fixed_occupation_settings(self):

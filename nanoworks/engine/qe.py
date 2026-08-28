@@ -257,6 +257,58 @@ def build_band_path(atoms, path, npoints):
         'npoints': len(kpoints),
     }
 
+def render_band_kpoints(settings):
+    """Render an explicit QE K_POINTS crystal card."""
+    option = str(
+        settings.get('option', '')
+    ).strip().lower()
+
+    if option != 'crystal':
+        raise ValueError(
+            "QE explicit band k-points must use crystal coordinates."
+        )
+
+    kpoints = list(
+        settings.get('kpoints', [])
+    )
+
+    if not kpoints:
+        raise ValueError(
+            "QE band path does not contain any k-points."
+        )
+
+    declared_npoints = settings.get('npoints')
+
+    if (
+        declared_npoints is not None
+        and int(declared_npoints) != len(kpoints)
+    ):
+        raise ValueError(
+            "QE band path point count does not match its metadata."
+        )
+
+    lines = [
+        'K_POINTS crystal',
+        str(len(kpoints)),
+    ]
+
+    for kpoint in kpoints:
+        if len(kpoint) != 3:
+            raise ValueError(
+                "Each QE band k-point must contain exactly 3 coordinates."
+            )
+
+        x, y, z = (
+            float(value)
+            for value in kpoint
+        )
+
+        lines.append(
+            f"{x:.12f} {y:.12f} {z:.12f} 1.0"
+        )
+
+    return "\n".join(lines)
+
 def validate_qe_version(
     version,
     minimum=QE_REFERENCE_VERSION,
