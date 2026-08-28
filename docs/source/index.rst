@@ -27,7 +27,7 @@ Core Modules
 
 Nanoworks simplifies complex simulation workflows by providing three specialized solvers:
 
-*   **dftsolve**: A robust driver for DFT calculations using GPAW, with initial Quantum ESPRESSO backend support. GPAW currently provides the complete Nanoworks DFT workflow, while native QE support is being introduced incrementally, starting with PW ground-state calculations.
+*   **dftsolve**: A robust driver for DFT calculations using GPAW, with native Quantum ESPRESSO backend support. GPAW currently provides the complete Nanoworks DFT workflow, while QE supports PBE plane-wave ground-state and non-spin DOS/PDOS calculations. Additional QE workflows are being introduced incrementally.
 *   **mdsolve**: A fast solver for molecular dynamics and geometric optimization using interatomic potentials via ASAP3 and OpenKIM.
 *   **mlsolve**: A next-generation solver leveraging machine learning force fields (MACE, CHGNet, SevenNet) for efficient, high-accuracy simulations.
 
