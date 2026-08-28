@@ -18,7 +18,7 @@
 It acts as a wrapper and orchestrator for several powerful scientific libraries, making advanced materials simulation accessible through simple command-line tools.
 
 **Core Capabilities:**
-1.  **DFT (via GPAW & ASE):**  The `dftsolve` tool runs PW or LCAO mode calculations. It handles structure optimization, equations of state, elastic tensors, spin-polarized DOS/Band structure, electron densities, phonon calculations, and optical properties (RPA/BSE).
+1.  **DFT (via GPAW, Quantum ESPRESSO & ASE):** The `dftsolve` tool provides the complete existing Nanoworks workflow through GPAW. Native Quantum ESPRESSO support currently covers PBE plane-wave ground-state and non-spin DOS/PDOS calculations.
 2.  **MD (via ASAP3 & OpenKIM):** The `mdsolve` tool provides quick geometric optimization and molecular dynamics using interatomic potentials from OpenKIM.
 3.  **ML Potentials (New!):** The `mlsolve` tool enables geometry optimization and static calculations using state-of-the-art Machine Learning Force Fields (MLFF), including **MACE**, **CHGNet**, and **SevenNet**.
 
@@ -41,7 +41,7 @@ Prefer a proper and controlled setup? Nanoworks is a Python package. You can ins
 After installation, the following commands will be available in your terminal:
 
 ### 1. dftsolve (formerly gpawsolve.py)
-The main driver for DFT calculations using GPAW. Uses many cores with -p argument.
+The main driver for DFT calculations using GPAW or Quantum ESPRESSO. GPAW runs the complete Python workflow under MPI, while Nanoworks launches the supported QE executables with the number of processes requested by the `-p` argument.
 
 **Usage:**
 ```bash
@@ -98,14 +98,16 @@ A helper CLI to locate package resources like examples and optimization scripts.
 
 ```bash
 $ nanoworks
-usage: nanoworks [-h] [-v] [--install-examples]
+usage: nanoworks [-h] [-v] [--install-examples] [--install-qe-pseudos]
 
 Nanoworks CLI tool
 
 options:
   -h, --help          show this help message and exit
   -v, --version       Show version and detailed library information
-  --install-examples  Copy example files to ~/.nanoworks/Examples
+  --install-examples  Copy example files to ~/.nanoworks/examples
+  --install-qe-pseudos
+                      Install the default Quantum ESPRESSO pseudopotential library
 ```
 
 ### 5. qeconverter and vaspconverter
@@ -131,13 +133,16 @@ Nanoworks includes several optimization scripts (found via the `nanoworks` comma
 The package includes an `examples/` directory covering various scenarios. You can find the location of these examples by running the `nanoworks` command.
 
 ## Citing
-Please do not forget that Nanoworks is a wrapper/orchestrator software. For the main DFT calculations, it uses ASE and GPAW. It also uses the Elastic Python package for elastic tensor solutions and ASAP with the KIM database for interatomic interaction calculations and Phonopy for the phonon calculations. Therefore, you must know what you use and cite them properly. Here, the basic citation information of each package is given.
+Please do not forget that Nanoworks is a wrapper/orchestrator software. For DFT calculations, it uses ASE together with GPAW or Quantum ESPRESSO, depending on the selected workflow and backend. It also uses the Elastic Python package for elastic tensor solutions and ASAP with the KIM database for interatomic interaction calculations and Phonopy for the phonon calculations. Therefore, you must know what you use and cite them properly. Here, the basic citation information of each package is given.
 
 ### ASE 
 * Ask Hjorth Larsen et al. "[The Atomic Simulation Environment—A Python library for working with atoms](https://doi.org/10.1088/1361-648X/aa680e)" J. Phys.: Condens. Matter Vol. 29 273002, 2017.
 
 ### GPAW
 * J. J. Mortensen, L. B. Hansen, and K. W. Jacobsen "[Real-space grid implementation of the projector augmented wave method](https://doi.org/10.1103/PhysRevB.71.035109)" Phys. Rev. B 71, 035109 (2005) and J. Enkovaara, C. Rostgaard, J. J. Mortensen et al. "[Electronic structure calculations with GPAW: a real-space implementation of the projector augmented-wave method](https://doi.org/10.1088/0953-8984/22/25/253202)" J. Phys.: Condens. Matter 22, 253202 (2010).
+
+### Quantum ESPRESSO
+* P. Giannozzi et al. "[QUANTUM ESPRESSO: a modular and open-source software project for quantum simulations of materials](https://doi.org/10.1088/0953-8984/21/39/395502)" J. Phys.: Condens. Matter 21, 395502 (2009) and P. Giannozzi et al. "[Advanced capabilities for materials modelling with Quantum ESPRESSO](https://doi.org/10.1088/1361-648X/aa8f79)" J. Phys.: Condens. Matter 29, 465901 (2017).
 
 ### KIM
 * E. B. Tadmor, R. S. Elliott, J. P. Sethna, R. E. Miller, and C. A. Becker "[The Potential of Atomistic Simulations and the Knowledgebase of Interatomic Models](https://doi.org/10.1007/s11837-011-0102-6)" JOM, 63, 17 (2011).
@@ -161,7 +166,7 @@ And for `Nanoworks` usage, please use the following citation:
 
 * B. Sarikavak-Lisesivdin, S.B. Lisesivdin "[Nanoworks: A multi-scale python-based orchestrator for materials science simulations](https://doi.org/10.1016/j.cocom.2026.e01362)" Comput. Condens. Mat. 48, e01362 (2026).
 
-Many other packages need to be cited. With GPAW, you may need to cite LibXC or cite for LCAO, TDDFT, and linear-response calculations. Please visit their pages for many other citation possibilities. For more you can visit [https://wiki.fysik.dtu.dk/ase/faq.html#how-should-i-cite-ase](https://wiki.fysik.dtu.dk/ase/faq.html#how-should-i-cite-ase), [https://wiki.fysik.dtu.dk/gpaw/faq.html#citation-how-should-i-cite-gpaw](https://wiki.fysik.dtu.dk/gpaw/faq.html#citation-how-should-i-cite-gpaw), and [https://openkim.org/how-to-cite/](https://openkim.org/how-to-cite/).
+Many other packages need to be cited. With GPAW, you may need to cite LibXC or cite for LCAO, TDDFT, and linear-response calculations. With Quantum ESPRESSO, you must also cite the pseudopotential library and any additional QE components used by the calculation. Please visit their pages for many other citation possibilities. For more you can visit [https://wiki.fysik.dtu.dk/ase/faq.html#how-should-i-cite-ase](https://wiki.fysik.dtu.dk/ase/faq.html#how-should-i-cite-ase), [https://wiki.fysik.dtu.dk/gpaw/faq.html#citation-how-should-i-cite-gpaw](https://wiki.fysik.dtu.dk/gpaw/faq.html#citation-how-should-i-cite-gpaw), and [https://openkim.org/how-to-cite/](https://openkim.org/how-to-cite/).
 
 ## Licensing
 This project is licensed under the terms of the [MIT license](https://opensource.org/licenses/MIT).
