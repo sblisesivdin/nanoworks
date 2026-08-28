@@ -210,6 +210,53 @@ def build_kpoint_settings(size, gamma=False):
         'shift': shifts,
     }
 
+def build_band_path(atoms, path, npoints):
+    """Build an explicit QE band path from an ASE Atoms object."""
+    npoints = int(npoints)
+
+    if npoints < 2:
+        raise ValueError(
+            "QE band path must contain at least 2 k-points."
+        )
+
+    if path is not None:
+        path = str(path).strip()
+
+        if not path:
+            raise ValueError(
+                "QE band path must not be empty."
+            )
+
+    band_path = atoms.cell.bandpath(
+        path=path,
+        npoints=npoints,
+    )
+
+    distances, special_distances, labels = (
+        band_path.get_linear_kpoint_axis()
+    )
+
+    kpoints = [
+        tuple(float(value) for value in kpoint)
+        for kpoint in band_path.kpts
+    ]
+
+    return {
+        'option': 'crystal',
+        'path': band_path.path,
+        'kpoints': kpoints,
+        'distances': [
+            float(value)
+            for value in distances
+        ],
+        'special_distances': [
+            float(value)
+            for value in special_distances
+        ],
+        'labels': list(labels),
+        'npoints': len(kpoints),
+    }
+
 def validate_qe_version(
     version,
     minimum=QE_REFERENCE_VERSION,

@@ -15,6 +15,7 @@ from nanoworks.engine.qe import (
     build_atomic_positions,
     build_atomic_species,
     build_kpoint_settings,
+    build_band_path,
     build_occupation_settings,
     build_electrons_settings,
     format_qe_value,
@@ -247,7 +248,64 @@ class TestQEEngine(unittest.TestCase):
     def test_kpoint_mesh_rejects_nonpositive_values(self):
         with self.assertRaises(ValueError):
             build_kpoint_settings((4, 0, 4))
-    
+
+    def test_band_path_builds_explicit_crystal_kpoints(self):
+        atoms = Atoms(
+            'Si',
+            cell=[4.0, 4.0, 4.0],
+            pbc=True,
+        )
+
+        settings = build_band_path(
+            atoms=atoms,
+            path='GX',
+            npoints=5,
+        )
+
+        self.assertEqual(settings['option'], 'crystal')
+        self.assertEqual(settings['path'], 'GX')
+        self.assertEqual(settings['npoints'], 5)
+        self.assertEqual(len(settings['kpoints']), 5)
+        self.assertEqual(len(settings['distances']), 5)
+        self.assertEqual(settings['labels'], ['G', 'X'])
+
+        self.assertEqual(
+            settings['kpoints'][0],
+            (0.0, 0.0, 0.0),
+        )
+
+        for actual, expected in zip(
+            settings['kpoints'][-1],
+            (0.0, 0.5, 0.0),
+        ):
+            self.assertAlmostEqual(actual, expected)
+
+        self.assertAlmostEqual(
+            settings['distances'][0],
+            settings['special_distances'][0],
+        )
+        self.assertAlmostEqual(
+            settings['distances'][-1],
+            settings['special_distances'][-1],
+        )
+
+    def test_band_path_rejects_too_few_points(self):
+        atoms = Atoms(
+            'Si',
+            cell=[4.0, 4.0, 4.0],
+            pbc=True,
+        )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            'at least 2 k-points',
+        ):
+            build_band_path(
+                atoms=atoms,
+                path='GX',
+                npoints=1,
+            )
+
     def test_fixed_occupation_settings(self):
         settings = build_occupation_settings('fixed')
 
