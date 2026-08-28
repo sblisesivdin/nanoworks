@@ -1569,6 +1569,16 @@ def test_aggregate_projwfc_pdos(self):
         [0.9, 1.5],
     )
 
+    self.assertAlmostEqual(
+        result['total'][0],
+        1.0,
+    )
+
+    self.assertAlmostEqual(
+        result['total'][1],
+        1.7,
+    )
+
     self.assertEqual(
         result['pz'],
         [0.15, 0.30],
@@ -1592,11 +1602,6 @@ def test_aggregate_projwfc_pdos(self):
     self.assertEqual(
         result['f_total'],
         [0.0, 0.0],
-    )
-
-    self.assertEqual(
-        result['total'],
-        [1.0, 1.7],
     )
 
 def test_aggregate_projwfc_pdos_rejects_mismatched_energy_grid(self):

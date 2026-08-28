@@ -2352,6 +2352,73 @@ class dftsolve:
             f"{pdos_workflow['pdos_tot_file']}"
         )
         
+        pdos_result = self.engine.aggregate_projwfc_pdos(
+            pdos_workflow['pdos_prefix']
+        )
+
+        pdos_shifted_energies = [
+            energy - fermi_energy
+            for energy in pdos_result['energies_ev']
+        ]
+
+        pdos_csv_file = Path(
+            self.struct
+            + '-DOS-Result-PDOS.csv'
+        )
+
+        with pdos_csv_file.open(
+            'w',
+            encoding='utf-8',
+        ) as fd:
+            print(
+                "Energy, "
+                "s-total, "
+                "p-total, "
+                "pz, "
+                "px, "
+                "py, "
+                "d-total, "
+                "d3z2_r2, "
+                "dxz, "
+                "dyz, "
+                "dx2_y2, "
+                "dxy, "
+                "f-total, "
+                "TOTAL",
+                file=fd,
+            )
+
+            for values in zip(
+                pdos_shifted_energies,
+                pdos_result['s_total'],
+                pdos_result['p_total'],
+                pdos_result['pz'],
+                pdos_result['px'],
+                pdos_result['py'],
+                pdos_result['d_total'],
+                pdos_result['d3z2_r2'],
+                pdos_result['dxz'],
+                pdos_result['dyz'],
+                pdos_result['dx2_y2'],
+                pdos_result['dxy'],
+                pdos_result['f_total'],
+                pdos_result['total'],
+            ):
+                print(
+                    *values,
+                    sep=', ',
+                    file=fd,
+                )
+
+        parprint(
+            "Saving PDOS..."
+        )
+
+        parprint(
+            "Nanoworks PDOS data saved to: "
+            f"{pdos_csv_file}"
+        )
+        
         time22 = time.time()
 
         with paropen(

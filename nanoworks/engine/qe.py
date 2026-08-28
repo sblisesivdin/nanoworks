@@ -1572,6 +1572,9 @@ def aggregate_projwfc_pdos(pdos_prefix):
         for component_name, values in (
             parsed['components'].items()
         ):
+            if orbital == 's' and component_name == 's':
+                continue
+
             if component_name not in components:
                 raise ValueError(
                     "Unexpected QE PDOS component: "
