@@ -2429,6 +2429,27 @@ class dftsolve:
             )
     
     def bandcalc(self):
+        """Run the band-structure workflow using the selected DFT engine."""
+        if self.Engine == 'GPAW':
+            return self._bandcalc_gpaw()
+
+        if self.Engine == 'QE':
+            return self._bandcalc_qe()
+
+        raise ValueError(
+            f"Unsupported DFT engine: {self.Engine}"
+        )
+
+    def _bandcalc_qe(self):
+        """Run the Quantum ESPRESSO band-structure workflow."""
+        parprint(
+            "\033[91mERROR:\033[0m "
+            "Band-structure calculations are not implemented "
+            "for the QE backend yet."
+        )
+        sys.exit(1)
+
+    def _bandcalc_gpaw(self):
         """
         This method performs band structure calculations for the given structure using the
         ground state results. It computes the electronic band structure along specified
