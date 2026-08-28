@@ -5,14 +5,22 @@
 - Initial Quantum ESPRESSO backend support is added to the new DFT engine infrastructure.
 - Quantum ESPRESSO 7.2 is used as the initial validated QE version.
 - Basic Quantum ESPRESSO PW ground-state calculations are now supported with `Engine = 'QE'` and `Ground_calc = True`.
+- Existing Quantum ESPRESSO ground-state results can now be reused with `Ground_calc = False` after validating the saved QE state.
 - Existing Nanoworks input concepts such as plane-wave cutoff energy, k-point density or explicit k-point meshes, Gamma centering, occupations, total charge and spin polarization are translated to Quantum ESPRESSO input syntax.
 - The existing `dftsolve -p N` parallel execution interface is retained for both backends. GPAW runs the complete Python workflow under MPI, while Quantum ESPRESSO keeps Nanoworks serial and launches the QE executable with the requested number of MPI processes.
-- A Quantum ESPRESSO execution and output parsing layer is added, including executable discovery, MPI launcher construction, SCF input generation, output logging and basic total-energy parsing.
+- A Quantum ESPRESSO execution and output parsing layer is added, including executable discovery, MPI launcher construction, input generation, output logging, QE version validation, successful-completion detection, total-energy parsing and Fermi-energy parsing.
 - Quantum ESPRESSO child processes are restricted to one OpenMP/BLAS thread per MPI rank to prevent CPU oversubscription during parallel calculations.
 - A PseudoDojo pseudopotential installation and resolution infrastructure is added for Quantum ESPRESSO. Standard PBE scalar-relativistic and fully-relativistic UPF sets can be installed with the `nanoworks` command.
 - The first validated Nanoworks Quantum ESPRESSO calculation is a parallel PW ground-state calculation for the `Bulk-GaAs-noCIF` example using PBE and PseudoDojo pseudopotentials.
+- Quantum ESPRESSO DOS and PDOS calculations are now supported for non-spin PBE plane-wave workflows.
+- The QE DOS workflow reuses the converged ground-state data, performs an NSCF calculation with `pw.x`, calculates the total DOS with `dos.x` and calculates the orbital-projected DOS with `projwfc.x`.
+- QE DOS calculations currently use tetrahedron occupations. Spin-polarized DOS, SOC, hybrid functionals and smearing-based QE DOS workflows are not supported yet.
+- The existing Nanoworks `Energy_min` and `Energy_max` semantics are preserved for QE DOS calculations. The user-defined energy window is interpreted relative to the Fermi level, while the corresponding absolute energy limits are passed internally to `dos.x`.
+- Quantum ESPRESSO total DOS and projected DOS results are written using the existing Nanoworks CSV naming scheme. Total DOS graphs are also created with energies referenced to the Fermi level.
+- A Quantum ESPRESSO `projwfc.x` output parser and orbital PDOS aggregation layer are added for s, p and d orbitals. Unsupported f-orbital data is rejected instead of being interpreted incorrectly.
+- GPAW and Quantum ESPRESSO PDOS CSV outputs now use the same canonical orbital column order.
 - A major internal refactorization of the DFT calculation workflow has started. GPAW-specific calculator construction, state loading and preparation functions are being moved from `dftsolve.py` into the new `nanoworks.engine` infrastructure.
-- A new `Engine` keyword and engine-name normalization infrastructure are added as the basis for supporting multiple DFT engines in Nanoworks. GPAW is still the active DFT engine.
+- A new `Engine` keyword and engine-name normalization infrastructure are added as the basis for supporting multiple DFT engines in Nanoworks. GPAW remains the default engine, while Quantum ESPRESSO is available for the currently supported PW ground-state and DOS/PDOS workflows.
 - Regular PW, hybrid PW and LCAO ground-state calculator construction are moved to the GPAW engine layer while preserving the previous calculation behavior.
 - Elastic, phonon, DOS, band and optical calculator preparation is moved to the GPAW engine layer.
 - GPAW state loading is centralized. Hybrid calculations continue to use the legacy GPAW path where required, while regular calculations continue to use the new GPAW implementation.
