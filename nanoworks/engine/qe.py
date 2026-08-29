@@ -667,6 +667,7 @@ def render_pw_input(
     mixing_beta=None,
     electron_maxstep=None,
     diagonalization=None,
+    band_path=None,
 ):
     """Render a complete QE pw.x input."""
 
@@ -677,6 +678,7 @@ def render_pw_input(
     allowed_calculations = {
         'scf',
         'nscf',
+        'bands',
     }
 
     if calculation not in allowed_calculations:
@@ -722,10 +724,36 @@ def render_pw_input(
 
     positions = build_atomic_positions(atoms)
     cell = build_cell_parameters(atoms)
-    kpoints = build_kpoint_settings(
-        kpoint_size,
-        gamma=gamma,
-    )
+
+    if calculation == 'bands':
+        if band_path is None:
+            raise ValueError(
+                "QE bands calculation requires an explicit band path."
+            )
+
+        kpoint_card = render_band_kpoints(
+            band_path
+        )
+
+    else:
+        if band_path is not None:
+            raise ValueError(
+                "QE band paths can only be used with "
+                "calculation='bands'."
+            )
+
+        kpoints = build_kpoint_settings(
+            kpoint_size,
+            gamma=gamma,
+        )
+
+        nk1, nk2, nk3 = kpoints['size']
+        sk1, sk2, sk3 = kpoints['shift']
+
+        kpoint_card = "\n".join([
+            f"K_POINTS {kpoints['option']}",
+            f"{nk1} {nk2} {nk3} {sk1} {sk2} {sk3}",
+        ])
 
     lines = [
         render_namelist('CONTROL', control),
@@ -752,15 +780,8 @@ def render_pw_input(
 
     lines.extend([
         '',
-        f"K_POINTS {kpoints['option']}",
+        kpoint_card,
     ])
-
-    nk1, nk2, nk3 = kpoints['size']
-    sk1, sk2, sk3 = kpoints['shift']
-
-    lines.append(
-        f"{nk1} {nk2} {nk3} {sk1} {sk2} {sk3}"
-    )
 
     lines.extend([
         '',

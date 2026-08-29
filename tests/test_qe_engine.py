@@ -734,6 +734,113 @@ class TestQEEngine(unittest.TestCase):
             text,
         )
 
+    def test_render_complete_bands_input(self):
+        atoms = bulk(
+            'Si',
+            'diamond',
+            a=5.43,
+        )
+
+        band_path = build_band_path(
+            atoms=atoms,
+            path='GX',
+            npoints=5,
+        )
+
+        text = render_pw_input(
+            calculation='bands',
+            atoms=atoms,
+            pseudopotentials={
+                'Si': 'Si.upf',
+            },
+            cutoff_ev=400.0,
+            kpoint_size=None,
+            occupations='fixed',
+            prefix='nanoworks',
+            outdir='/tmp/qe-state',
+            band_path=band_path,
+        )
+
+        self.assertIn(
+            "calculation = 'bands'",
+            text,
+        )
+
+        self.assertIn(
+            "K_POINTS crystal",
+            text,
+        )
+
+        self.assertIn(
+            (
+                "0.000000000000 0.000000000000 "
+                "0.000000000000 1.0"
+            ),
+            text,
+        )
+
+        self.assertIn(
+            (
+                "0.500000000000 0.000000000000 "
+                "0.500000000000 1.0"
+            ),
+            text,
+        )
+
+        self.assertNotIn(
+            "K_POINTS automatic",
+            text,
+        )
+
+    def test_render_bands_input_requires_band_path(self):
+        atoms = bulk(
+            'Si',
+            'diamond',
+            a=5.43,
+        )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            'requires an explicit band path',
+        ):
+            render_pw_input(
+                calculation='bands',
+                atoms=atoms,
+                pseudopotentials={
+                    'Si': 'Si.upf',
+                },
+                cutoff_ev=400.0,
+                kpoint_size=None,
+            )
+
+    def test_render_scf_input_rejects_band_path(self):
+        atoms = bulk(
+            'Si',
+            'diamond',
+            a=5.43,
+        )
+
+        band_path = build_band_path(
+            atoms=atoms,
+            path='GX',
+            npoints=5,
+        )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            'can only be used',
+        ):
+            render_pw_input(
+                calculation='scf',
+                atoms=atoms,
+                pseudopotentials={
+                    'Si': 'Si.upf',
+                },
+                cutoff_ev=400.0,
+                kpoint_size=(4, 4, 4),
+                band_path=band_path,
+            )
+
     def test_render_pw_input_rejects_unsupported_calculation(self):
         atoms = bulk(
             'Si',
