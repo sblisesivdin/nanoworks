@@ -31,6 +31,7 @@ from nanoworks.engine.qe import (
     build_qe_command,
     run_qe_program,
     parse_pw_output,
+    resolve_qe_band_reference,
     parse_pw_bands_output,
     resolve_qe_kpoint_size,
     resolve_qe_occupation,
@@ -1168,6 +1169,93 @@ class TestQEEngine(unittest.TestCase):
             self.assertIsNone(
                 result['fermi_energy_ev']
             )
+
+    def test_parse_pw_output_resolves_band_edges(self):
+        output_text = """
+         Program PWSCF v.7.2 starts
+
+         highest occupied, lowest unoccupied level (ev):
+             5.0000  6.0000
+
+         JOB DONE.
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = (
+                Path(tmpdir)
+                / 'pw.out'
+            )
+
+            output_file.write_text(
+                output_text,
+                encoding='utf-8',
+            )
+
+            result = parse_pw_output(
+                output_file
+            )
+
+        self.assertAlmostEqual(
+            result['highest_occupied_ev'],
+            5.0,
+        )
+
+        self.assertAlmostEqual(
+            result['lowest_unoccupied_ev'],
+            6.0,
+        )
+
+        reference = resolve_qe_band_reference(
+            result
+        )
+
+        self.assertAlmostEqual(
+            reference['energy_ev'],
+            5.5,
+        )
+
+        self.assertEqual(
+            reference['source'],
+            'midgap',
+        )
+
+    def test_qe_band_reference_prefers_fermi_energy(self):
+        reference = resolve_qe_band_reference(
+            {
+                'fermi_energy_ev': 5.25,
+                'highest_occupied_ev': 5.0,
+                'lowest_unoccupied_ev': 6.0,
+            }
+        )
+
+        self.assertAlmostEqual(
+            reference['energy_ev'],
+            5.25,
+        )
+
+        self.assertEqual(
+            reference['source'],
+            'fermi',
+        )
+
+    def test_qe_band_reference_uses_highest_occupied_fallback(self):
+        reference = resolve_qe_band_reference(
+            {
+                'fermi_energy_ev': None,
+                'highest_occupied_ev': 5.0,
+                'lowest_unoccupied_ev': None,
+            }
+        )
+
+        self.assertAlmostEqual(
+            reference['energy_ev'],
+            5.0,
+        )
+
+        self.assertEqual(
+            reference['source'],
+            'highest_occupied',
+        )
 
     def test_parse_pw_bands_output(self):
         output_text = """

@@ -1392,6 +1392,60 @@ def parse_pw_output(output):
             value
         )
 
+    number_pattern = (
+        r'[-+]?(?:\d+(?:\.\d*)?|\.\d+)'
+        r'(?:[EeDd][-+]?\d+)?'
+    )
+
+    band_edge_matches = re.findall(
+        r'highest\s+occupied\s*,\s*'
+        r'lowest\s+unoccupied\s+level\s*'
+        r'\(\s*ev\s*\)\s*:\s*'
+        rf'({number_pattern})\s+'
+        rf'({number_pattern})',
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    highest_occupied_matches = re.findall(
+        r'highest\s+occupied\s+level\s*'
+        r'\(\s*ev\s*\)\s*:\s*'
+        rf'({number_pattern})',
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    highest_occupied_ev = None
+    lowest_unoccupied_ev = None
+
+    if band_edge_matches:
+        highest, lowest = (
+            band_edge_matches[-1]
+        )
+
+        highest_occupied_ev = float(
+            highest
+            .replace('D', 'E')
+            .replace('d', 'e')
+        )
+
+        lowest_unoccupied_ev = float(
+            lowest
+            .replace('D', 'E')
+            .replace('d', 'e')
+        )
+
+    elif highest_occupied_matches:
+        highest = (
+            highest_occupied_matches[-1]
+        )
+
+        highest_occupied_ev = float(
+            highest
+            .replace('D', 'E')
+            .replace('d', 'e')
+        )
+
     job_done = (
         'JOB DONE.' in text
     )
@@ -1402,7 +1456,69 @@ def parse_pw_output(output):
         'total_energy_ry': total_energy_ry,
         'total_energy_ev': total_energy_ev,
         'fermi_energy_ev': fermi_energy_ev,
+        'highest_occupied_ev': highest_occupied_ev,
+        'lowest_unoccupied_ev': lowest_unoccupied_ev,
     }
+
+def resolve_qe_band_reference(result):
+    """Resolve the energy reference used for QE band outputs."""
+    fermi_energy = result.get(
+        'fermi_energy_ev'
+    )
+
+    if fermi_energy is not None:
+        return {
+            'energy_ev': float(
+                fermi_energy
+            ),
+            'source': 'fermi',
+        }
+
+    highest_occupied = result.get(
+        'highest_occupied_ev'
+    )
+
+    lowest_unoccupied = result.get(
+        'lowest_unoccupied_ev'
+    )
+
+    if (
+        highest_occupied is not None
+        and lowest_unoccupied is not None
+    ):
+        highest_occupied = float(
+            highest_occupied
+        )
+
+        lowest_unoccupied = float(
+            lowest_unoccupied
+        )
+
+        if lowest_unoccupied < highest_occupied:
+            raise ValueError(
+                "QE lowest unoccupied level is below "
+                "the highest occupied level."
+            )
+
+        return {
+            'energy_ev': (
+                highest_occupied
+                + lowest_unoccupied
+            ) / 2.0,
+            'source': 'midgap',
+        }
+
+    if highest_occupied is not None:
+        return {
+            'energy_ev': float(
+                highest_occupied
+            ),
+            'source': 'highest_occupied',
+        }
+
+    raise ValueError(
+        "QE band reference energy could not be resolved."
+    )
 
 def parse_pw_bands_output(output):
     """Parse non-spin band eigenvalues from a QE pw.x output."""
