@@ -1718,6 +1718,112 @@ def parse_pw_bands_output(output):
         ],
     }
 
+def prepare_qe_band_data(
+    bands,
+    band_path,
+    reference_energy,
+):
+    """Prepare non-spin QE band data for output and plotting."""
+    if (
+        bands.get('spin_polarized')
+        or int(bands.get('nspins', 0)) != 1
+    ):
+        raise NotImplementedError(
+            "Spin-polarized QE band data preparation "
+            "is not supported yet."
+        )
+
+    nkpoints = int(
+        bands['nkpoints']
+    )
+
+    nbands = int(
+        bands['nbands']
+    )
+
+    eigenvalues_by_spin = bands[
+        'eigenvalues_ev'
+    ]
+
+    if len(eigenvalues_by_spin) != 1:
+        raise ValueError(
+            "Non-spin QE band data must contain "
+            "exactly one spin channel."
+        )
+
+    eigenvalues = eigenvalues_by_spin[
+        0
+    ]
+
+    if len(eigenvalues) != nkpoints:
+        raise ValueError(
+            "QE band eigenvalue count does not match "
+            "the reported number of k-points."
+        )
+
+    if any(
+        len(values) != nbands
+        for values in eigenvalues
+    ):
+        raise ValueError(
+            "QE band eigenvalue rows do not match "
+            "the reported number of bands."
+        )
+
+    distances = [
+        float(value)
+        for value in band_path[
+            'distances'
+        ]
+    ]
+
+    if len(distances) != nkpoints:
+        raise ValueError(
+            "QE band-path distances do not match "
+            "the number of parsed k-points."
+        )
+
+    special_distances = [
+        float(value)
+        for value in band_path[
+            'special_distances'
+        ]
+    ]
+
+    labels = list(
+        band_path[
+            'labels'
+        ]
+    )
+
+    if len(special_distances) != len(labels):
+        raise ValueError(
+            "QE band-path labels and special-point "
+            "distances do not match."
+        )
+
+    reference_energy = float(
+        reference_energy
+    )
+
+    shifted_eigenvalues = [
+        [
+            float(value) - reference_energy
+            for value in values
+        ]
+        for values in eigenvalues
+    ]
+
+    return {
+        'nkpoints': nkpoints,
+        'nbands': nbands,
+        'distances': distances,
+        'special_distances': special_distances,
+        'labels': labels,
+        'reference_energy_ev': reference_energy,
+        'eigenvalues_ev': shifted_eigenvalues,
+    }
+
 def parse_dos_output(dos_file):
     """Parse a non-spin Quantum ESPRESSO dos.x data file."""
     dos_file = Path(

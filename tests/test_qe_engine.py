@@ -48,6 +48,7 @@ from nanoworks.engine.qe import (
     run_projwfc,
     parse_projwfc_pdos_file,
     aggregate_projwfc_pdos,
+    prepare_qe_band_data,
 )
 
 
@@ -1327,6 +1328,73 @@ class TestQEEngine(unittest.TestCase):
                 [-5.0, -1.0, 1.0, 3.0, 5.0],
                 [-4.5, -0.5, 1.5, 3.5, 5.5],
             ]],
+        )
+
+    def test_prepare_qe_band_data_shifts_reference(self):
+        bands = {
+            'spin_polarized': False,
+            'nspins': 1,
+            'nkpoints': 2,
+            'nbands': 3,
+            'eigenvalues_ev': [[
+                [0.0, 1.0, 2.0],
+                [0.5, 1.5, 2.5],
+            ]],
+        }
+
+        band_path = {
+            'distances': [
+                0.0,
+                0.5,
+            ],
+            'special_distances': [
+                0.0,
+                0.5,
+            ],
+            'labels': [
+                'G',
+                'X',
+            ],
+        }
+
+        result = prepare_qe_band_data(
+            bands=bands,
+            band_path=band_path,
+            reference_energy=1.0,
+        )
+
+        self.assertEqual(
+            result['nkpoints'],
+            2,
+        )
+
+        self.assertEqual(
+            result['nbands'],
+            3,
+        )
+
+        self.assertEqual(
+            result['eigenvalues_ev'],
+            [
+                [-1.0, 0.0, 1.0],
+                [-0.5, 0.5, 1.5],
+            ],
+        )
+
+        self.assertEqual(
+            result['distances'],
+            [
+                0.0,
+                0.5,
+            ],
+        )
+
+        self.assertEqual(
+            result['labels'],
+            [
+                'G',
+                'X',
+            ],
         )
 
     def test_parse_pw_bands_output_rejects_inconsistent_band_counts(self):
