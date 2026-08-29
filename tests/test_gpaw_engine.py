@@ -125,13 +125,13 @@ class TestGPAWEngine(unittest.TestCase):
     @patch('nanoworks.engine.gpaw.GPAW')
     def test_hybrid_state_loading_uses_legacy_gpaw(self, mock_gpaw):
         load_gpaw_calc(
-            'system-GROUND-Result-State.gpw',
+            'system-GROUND-GPAW-Result-State.gpw',
             hybrid=True,
             symmetry='off',
         )
 
         mock_gpaw.assert_called_once_with(
-            'system-GROUND-Result-State.gpw',
+            'system-GROUND-GPAW-Result-State.gpw',
             symmetry='off',
             legacy_gpaw=True,
         )
@@ -139,25 +139,25 @@ class TestGPAWEngine(unittest.TestCase):
     @patch('nanoworks.engine.gpaw.GPAW')
     def test_regular_state_loading_uses_new_gpaw(self, mock_gpaw):
         load_gpaw_calc(
-            'system-GROUND-Result-State.gpw',
+            'system-GROUND-GPAW-Result-State.gpw',
             symmetry='off',
         )
 
         mock_gpaw.assert_called_once_with(
-            'system-GROUND-Result-State.gpw',
+            'system-GROUND-GPAW-Result-State.gpw',
             symmetry='off',
         )
 
     @patch('nanoworks.engine.gpaw.GPAW')
     def test_explicit_state_loading_mode_is_preserved(self, mock_gpaw):
         load_gpaw_calc(
-            'system-GROUND-Result-State.gpw',
+            'system-GROUND-GPAW-Result-State.gpw',
             hybrid=True,
             legacy_gpaw=False,
         )
 
         mock_gpaw.assert_called_once_with(
-            'system-GROUND-Result-State.gpw',
+            'system-GROUND-GPAW-Result-State.gpw',
             legacy_gpaw=False,
         )
     
@@ -227,7 +227,7 @@ class TestGPAWEngine(unittest.TestCase):
             mixer=mixer,
             charge=-1.0,
             spinpol=True,
-            txt='sample-GROUND-Log-Calculation.txt',
+            txt='sample-GROUND-GPAW-Log-SCF.txt',
             convergence=convergence,
             occupations=occupations,
         )
@@ -238,7 +238,7 @@ class TestGPAWEngine(unittest.TestCase):
         self.assertTrue(result['spinpol'])
         self.assertEqual(
             result['txt'],
-            'sample-GROUND-Log-Calculation.txt',
+            'sample-GROUND-GPAW-Log-SCF.txt',
         )
         self.assertIs(result['convergence'], convergence)
         self.assertIs(result['occupations'], occupations)
@@ -274,7 +274,7 @@ class TestGPAWEngine(unittest.TestCase):
             mixer=mixer,
             charge=0.0,
             spinpol=True,
-            txt='sample-GROUND-Log-Calculation.txt',
+            txt='sample-GROUND-GPAW-Log-SCF.txt',
             convergence={'energy': 1.0e-5},
             occupations={
                 'name': 'fermi-dirac',
@@ -328,7 +328,7 @@ class TestGPAWEngine(unittest.TestCase):
             mixer=mixer,
             charge=1.0,
             spinpol=True,
-            txt='hybrid-GROUND-Log-Calculation.txt',
+            txt='hybrid-GROUND-GPAW-Log-SCF.txt',
             convergence={'energy': 1.0e-5},
             occupations={
                 'name': 'fermi-dirac',
@@ -392,7 +392,7 @@ class TestGPAWEngine(unittest.TestCase):
             mixer=mixer,
             charge=0.0,
             spinpol=False,
-            txt='lcao-GROUND-Log-Calculation.txt',
+            txt='lcao-GROUND-GPAW-Log-SCF.txt',
             convergence={'energy': 1.0e-5},
             occupations={
                 'name': 'fermi-dirac',
@@ -480,7 +480,7 @@ class TestGPAWEngine(unittest.TestCase):
             kpoint_size=(5, 5, 3),
             gamma=False,
             mixer=mixer,
-            txt='sample-ELASTIC-Log-Elastic-deformations.txt',
+            txt='sample-ELASTIC-GPAW-Log-Elastic-deformations.txt',
             charge=0.0,
             convergence={'energy': 1.0e-5},
             occupations={
@@ -573,7 +573,7 @@ class TestGPAWEngine(unittest.TestCase):
             kpoint_size=(3, 3, 3),
             gamma=False,
             mixer=None,
-            txt='hybrid-ELASTIC-Log-Elastic-deformations.txt',
+            txt='hybrid-ELASTIC-GPAW-Log-Elastic-deformations.txt',
             charge=1.0,
             convergence={},
             occupations={},
@@ -614,7 +614,7 @@ class TestGPAWEngine(unittest.TestCase):
         result = create_phonon_calc(
             cutoff=350,
             kpoint_size=(3, 3, 2),
-            txt='sample-PHONON-Log-Phonon-GPAW.txt',
+            txt='sample-PHONON-GPAW-Log-Calculation.txt',
         )
 
         self.assertIs(result, calculator)
@@ -635,7 +635,7 @@ class TestGPAWEngine(unittest.TestCase):
         )
         self.assertEqual(
             kwargs['txt'],
-            'sample-PHONON-Log-Phonon-GPAW.txt',
+            'sample-PHONON-GPAW-Log-Calculation.txt',
         )
     
     def test_resolve_regular_elastic_settings(self):
@@ -714,9 +714,9 @@ class TestGPAWEngine(unittest.TestCase):
         fermi_dirac.return_value = occupation
 
         result = prepare_optical_calc(
-            filename='sample-GROUND-Result-State.gpw',
+            filename='sample-GROUND-GPAW-Result-State.gpw',
             hybrid=False,
-            txt='sample-OPTICAL-Log-Calculation.txt',
+            txt='sample-OPTICAL-GPAW-Log-Calculation.txt',
             nbands=16,
             smearing=0.05,
             kpoint_density=None,
@@ -727,13 +727,13 @@ class TestGPAWEngine(unittest.TestCase):
         self.assertIs(result, prepared_calc)
 
         load_calc.assert_called_once_with(
-            'sample-GROUND-Result-State.gpw',
+            'sample-GROUND-GPAW-Result-State.gpw',
         )
 
         fermi_dirac.assert_called_once_with(0.05)
 
         loaded_calc.fixed_density.assert_called_once_with(
-            txt='sample-OPTICAL-Log-Calculation.txt',
+            txt='sample-OPTICAL-GPAW-Log-Calculation.txt',
             nbands=16,
             parallel={
                 'domain': 1,
@@ -755,9 +755,9 @@ class TestGPAWEngine(unittest.TestCase):
         load_calc.return_value = prepared_calc
 
         result = prepare_optical_calc(
-            filename='hybrid-GROUND-Result-State.gpw',
+            filename='hybrid-GROUND-GPAW-Result-State.gpw',
             hybrid=True,
-            txt='hybrid-OPTICAL-Log-Calculation.txt',
+            txt='hybrid-OPTICAL-GPAW-Log-Calculation.txt',
             nbands=24,
             smearing=0.10,
             kpoint_density=None,
@@ -768,9 +768,9 @@ class TestGPAWEngine(unittest.TestCase):
         self.assertIs(result, prepared_calc)
 
         load_calc.assert_called_once_with(
-            'hybrid-GROUND-Result-State.gpw',
+            'hybrid-GROUND-GPAW-Result-State.gpw',
             hybrid=True,
-            txt='hybrid-OPTICAL-Log-Calculation.txt',
+            txt='hybrid-OPTICAL-GPAW-Log-Calculation.txt',
             parallel={
                 'domain': 1,
                 'band': 1,
@@ -802,9 +802,9 @@ class TestGPAWEngine(unittest.TestCase):
         }
 
         result = prepare_dos_calc(
-            filename='sample-GROUND-Result-State.gpw',
+            filename='sample-GROUND-GPAW-Result-State.gpw',
             hybrid=False,
-            txt='sample-DOS-Log-Calculation.txt',
+            txt='sample-DOS-GPAW-Log-DOS.txt',
             convergence=convergence,
             occupations=occupations,
             kpoint_density=None,
@@ -816,7 +816,7 @@ class TestGPAWEngine(unittest.TestCase):
         self.assertIs(result, prepared_calc)
 
         load_calc.assert_called_once_with(
-            'sample-GROUND-Result-State.gpw',
+            'sample-GROUND-GPAW-Result-State.gpw',
         )
 
         self.assertNotIn(
@@ -829,7 +829,7 @@ class TestGPAWEngine(unittest.TestCase):
         )
 
         loaded_calc.fixed_density.assert_called_once_with(
-            txt='sample-DOS-Log-Calculation.txt',
+            txt='sample-DOS-GPAW-Log-DOS.txt',
             convergence=convergence,
             occupations=occupations,
             kpts={
@@ -848,9 +848,9 @@ class TestGPAWEngine(unittest.TestCase):
         load_calc.return_value = prepared_calc
 
         result = prepare_dos_calc(
-            filename='hybrid-GROUND-Result-State.gpw',
+            filename='hybrid-GROUND-GPAW-Result-State.gpw',
             hybrid=True,
-            txt='hybrid-DOS-Log-Calculation.txt',
+            txt='hybrid-DOS-GPAW-Log-DOS.txt',
             convergence={'bands': 8},
             occupations={
                 'name': 'fermi-dirac',
@@ -865,7 +865,7 @@ class TestGPAWEngine(unittest.TestCase):
         self.assertIs(result, prepared_calc)
 
         load_calc.assert_called_once_with(
-            'hybrid-GROUND-Result-State.gpw',
+            'hybrid-GROUND-GPAW-Result-State.gpw',
             hybrid=True,
         )
 
@@ -889,11 +889,11 @@ class TestGPAWEngine(unittest.TestCase):
         convergence = {'bands': 8}
 
         result = prepare_band_calc(
-            filename='sample-GROUND-Result-State.gpw',
+            filename='sample-GROUND-GPAW-Result-State.gpw',
             hybrid=False,
             path='GXW',
             npoints=61,
-            txt='sample-BAND-Log-Calculation.txt',
+            txt='sample-BAND-GPAW-Log-Bands.txt',
             occupations=occupations,
             convergence=convergence,
             nbands=48,
@@ -902,7 +902,7 @@ class TestGPAWEngine(unittest.TestCase):
         self.assertIs(result, prepared_calc)
 
         load_calc.assert_called_once_with(
-            'sample-GROUND-Result-State.gpw',
+            'sample-GROUND-GPAW-Result-State.gpw',
         )
 
         loaded_calc.fixed_density.assert_called_once_with(
@@ -910,7 +910,7 @@ class TestGPAWEngine(unittest.TestCase):
                 'path': 'GXW',
                 'npoints': 61,
             },
-            txt='sample-BAND-Log-Calculation.txt',
+            txt='sample-BAND-GPAW-Log-Bands.txt',
             symmetry='off',
             occupations=occupations,
             convergence=convergence,
@@ -932,11 +932,11 @@ class TestGPAWEngine(unittest.TestCase):
         convergence = {'bands': 8}
 
         result = prepare_band_calc(
-            filename='hybrid-GROUND-Result-State.gpw',
+            filename='hybrid-GROUND-GPAW-Result-State.gpw',
             hybrid=True,
             path='GXW',
             npoints=61,
-            txt='hybrid-BAND-Log-Calculation.txt',
+            txt='hybrid-BAND-GPAW-Log-Bands.txt',
             occupations=occupations,
             convergence=convergence,
             nbands=None,
@@ -945,7 +945,7 @@ class TestGPAWEngine(unittest.TestCase):
         self.assertIs(result, prepared_calc)
 
         load_calc.assert_called_once_with(
-            'hybrid-GROUND-Result-State.gpw',
+            'hybrid-GROUND-GPAW-Result-State.gpw',
             hybrid=True,
             symmetry='off',
             kpts={
@@ -957,7 +957,7 @@ class TestGPAWEngine(unittest.TestCase):
                 'kpt': 1,
             },
             occupations=occupations,
-            txt='hybrid-BAND-Log-Calculation.txt',
+            txt='hybrid-BAND-GPAW-Log-Bands.txt',
             convergence=convergence,
         )
 
