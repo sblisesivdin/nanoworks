@@ -2442,12 +2442,202 @@ class dftsolve:
 
     def _bandcalc_qe(self):
         """Run the Quantum ESPRESSO band-structure workflow."""
+        time31 = time.time()
+
         parprint(
-            "\033[91mERROR:\033[0m "
-            "Band-structure calculations are not implemented "
-            "for the QE backend yet."
+            "Starting QE band structure calculation..."
         )
-        sys.exit(1)
+
+        if self.Mode != 'PW':
+            parprint(
+                "\033[91mERROR:\033[0m "
+                "Quantum ESPRESSO band calculations "
+                "support PW mode only."
+            )
+            sys.exit(1)
+
+        if self.SOC_calc:
+            parprint(
+                "\033[91mERROR:\033[0m "
+                "Quantum ESPRESSO SOC band calculations "
+                "are not supported yet."
+            )
+            sys.exit(1)
+
+        if self.Spin_calc:
+            parprint(
+                "\033[91mERROR:\033[0m "
+                "Quantum ESPRESSO spin-polarized band calculations "
+                "are not supported yet."
+            )
+            sys.exit(1)
+
+        try:
+            self.engine.validate_qe_xc(
+                self.XC_calc,
+                pseudo_xc='pbe',
+            )
+        except ValueError as exc:
+            parprint(
+                f"\033[91mERROR:\033[0m {exc}"
+            )
+            sys.exit(1)
+
+        state_dir = Path(
+            self.struct
+            + '-GROUND-Result-State'
+        )
+
+        if not self.engine.has_qe_state(
+            state_dir,
+            prefix='nanoworks',
+        ):
+            parprint(
+                "\033[91mERROR:\033[0m "
+                + str(state_dir)
+                + " does not contain a valid QE ground-state result. "
+                "Complete the ground-state calculation first."
+            )
+            sys.exit(1)
+
+        pseudo_dir = get_qe_pseudo_dir(
+            relativistic='scalar',
+        )
+
+        try:
+            pseudopotentials = (
+                resolve_qe_pseudopotentials(
+                    self.bulk_configuration,
+                    relativistic='scalar',
+                )
+            )
+        except (FileNotFoundError, RuntimeError) as exc:
+            parprint(
+                f"\033[91mERROR:\033[0m {exc}"
+            )
+            sys.exit(1)
+
+        try:
+            band_path = self.engine.build_band_path(
+                self.bulk_configuration,
+                path=self.Band_path,
+                npoints=self.Band_npoints,
+            )
+        except (TypeError, ValueError) as exc:
+            parprint(
+                "\033[91mERROR:\033[0m "
+                f"QE band path could not be prepared: {exc}"
+            )
+            raise
+
+        input_file = Path(
+            self.struct
+            + '-BAND-Input-QE.in'
+        )
+
+        output_file = Path(
+            self.struct
+            + '-BAND-Log-Calculation.txt'
+        )
+
+        try:
+            workflow = self.engine.run_bands(
+                atoms=self.bulk_configuration,
+                input_file=input_file,
+                output_file=output_file,
+                state_dir=state_dir,
+                pseudopotentials=pseudopotentials,
+                pseudo_dir=pseudo_dir,
+                cutoff_ev=self.Cut_off_energy,
+                band_path=band_path,
+                total_charge=self.Total_charge,
+                nbands=self.Band_num_of_bands,
+                spinpol=False,
+                occupation=self.Occupation,
+                parallel_cores=self.parallel_cores,
+                executable='pw.x',
+                prefix='nanoworks',
+            )
+        except Exception as exc:
+            parprint(
+                "\033[91mERROR:\033[0m "
+                f"QE band calculation failed: {exc}"
+            )
+            raise
+
+        reference_candidates = []
+
+        ground_output_file = Path(
+            self.struct
+            + '-GROUND-Log-Calculation.txt'
+        )
+
+        if ground_output_file.is_file():
+            reference_candidates.append(
+                self.engine.parse_pw_output(
+                    ground_output_file
+                )
+            )
+
+        reference_candidates.append(
+            workflow['result']
+        )
+
+        reference = None
+
+        for candidate in reference_candidates:
+            try:
+                reference = (
+                    self.engine.resolve_qe_band_reference(
+                        candidate
+                    )
+                )
+                break
+            except ValueError:
+                continue
+
+        if reference is None:
+            raise RuntimeError(
+                "QE band reference energy could not be resolved "
+                "from either the ground-state or band calculation."
+            )
+
+        bands = workflow[
+            'bands'
+        ]
+
+        parprint(
+            "QE band calculation finished."
+        )
+
+        parprint(
+            "QE band k-points: "
+            f"{bands['nkpoints']}"
+        )
+
+        parprint(
+            "QE bands per k-point: "
+            f"{bands['nbands']}"
+        )
+
+        parprint(
+            "QE band reference energy: "
+            f"{reference['energy_ev']:.8f} eV "
+            f"({reference['source']})"
+        )
+
+        time32 = time.time()
+
+        with paropen(
+            self.struct
+            + '-TIMINGS-Log-Timings.txt',
+            'a',
+        ) as f1:
+            print(
+                f'Band calculation: '
+                f'{round((time32-time31), 2)}',
+                file=f1,
+            )
 
     def _bandcalc_gpaw(self):
         """

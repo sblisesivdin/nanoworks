@@ -31,10 +31,17 @@ def build_control_settings(
     outdir=None,
 ):
     """Build the QE &CONTROL namelist settings."""
+    calculation = str(
+        calculation
+    ).lower()
+
     settings = {
-        'calculation': str(calculation).lower(),
+        'calculation': calculation,
         'prefix': str(prefix),
     }
+
+    if calculation == 'bands':
+        settings['verbosity'] = 'high'
 
     if pseudo_dir is not None:
         settings['pseudo_dir'] = str(pseudo_dir)
@@ -1553,9 +1560,9 @@ def parse_pw_bands_output(output):
 
     kpoint_pattern = re.compile(
         r'^\s*k\s*=\s*'
-        rf'({number_pattern})\s+'
-        rf'({number_pattern})\s+'
-        rf'({number_pattern})',
+        rf'({number_pattern})\s*'
+        rf'({number_pattern})\s*'
+        rf'({number_pattern})(?=\s|\()',
         flags=re.IGNORECASE,
     )
 

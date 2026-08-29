@@ -771,6 +771,11 @@ class TestQEEngine(unittest.TestCase):
         )
 
         self.assertIn(
+            "verbosity = 'high'",
+            text,
+        )
+
+        self.assertIn(
             "K_POINTS crystal",
             text,
         )
@@ -1266,7 +1271,7 @@ class TestQEEngine(unittest.TestCase):
             -5.0000  -1.0000   1.0000
              3.0000   5.0000
 
-              k = 0.5000 0.0000 0.5000 ( 120 PWs)   bands (ev):
+              k =-0.5000-0.2887 0.4083 ( 120 PWs)   bands (ev):
 
             -4.5000  -0.5000   1.5000
              3.5000   5.5000
@@ -1312,7 +1317,7 @@ class TestQEEngine(unittest.TestCase):
             result['kpoints'],
             [
                 (0.0, 0.0, 0.0),
-                (0.5, 0.0, 0.5),
+                (-0.5, -0.2887, 0.4083),
             ],
         )
 
