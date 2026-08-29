@@ -2626,6 +2626,81 @@ class dftsolve:
             f"({reference['source']})"
         )
 
+        band_data = (
+            self.engine.prepare_qe_band_data(
+                bands=bands,
+                band_path=band_path,
+                reference_energy=reference[
+                    'energy_ev'
+                ],
+            )
+        )
+
+        eigenvalues = band_data[
+            'eigenvalues_ev'
+        ]
+
+        distances = band_data[
+            'distances'
+        ]
+
+        band_file = Path(
+            self.struct
+            + '-BAND-Result-Band.dat'
+        )
+
+        with paropen(
+            band_file,
+            'w',
+        ) as fd:
+            for band_index in range(
+                band_data['nbands']
+            ):
+                for kpoint_index in range(
+                    band_data['nkpoints']
+                ):
+                    print(
+                        kpoint_index,
+                        eigenvalues[
+                            kpoint_index
+                        ][
+                            band_index
+                        ],
+                        file=fd,
+                    )
+
+                print(
+                    file=fd,
+                )
+
+        xyyy_file = Path(
+            self.struct
+            + '-BAND-Result-Band-XYYY.dat'
+        )
+
+        with paropen(
+            xyyy_file,
+            'w',
+        ) as fd:
+            for kpoint_index, values in enumerate(
+                eigenvalues
+            ):
+                print(
+                    kpoint_index,
+                    *values,
+                    file=fd,
+                )
+
+        parprint(
+            "QE band data saved to: "
+            f"{band_file}"
+        )
+
+        parprint(
+            "QE XYYY band data saved to: "
+            f"{xyyy_file}"
+        )
+
         time32 = time.time()
 
         with paropen(
@@ -2637,6 +2712,107 @@ class dftsolve:
                 f'Band calculation: '
                 f'{round((time32-time31), 2)}',
                 file=f1,
+            )
+
+        if world.rank == 0:
+            fig, ax = plt.subplots(
+                figsize=(8, 6)
+            )
+
+            energy_array = np.array(
+                eigenvalues
+            )
+
+            for band_index in range(
+                band_data['nbands']
+            ):
+                ax.plot(
+                    distances,
+                    energy_array[
+                        :,
+                        band_index,
+                    ],
+                    color='blue',
+                    linewidth=1.0,
+                )
+
+            for special_distance in band_data[
+                'special_distances'
+            ]:
+                ax.axvline(
+                    x=special_distance,
+                    color='black',
+                    linewidth=0.6,
+                    alpha=0.5,
+                )
+
+            ax.axhline(
+                y=0.0,
+                color='black',
+                linestyle='--',
+                linewidth=0.8,
+            )
+
+            labels = [
+                (
+                    r'$\Gamma$'
+                    if label in {
+                        'G',
+                        'Gamma',
+                        'Γ',
+                    }
+                    else label
+                )
+                for label in band_data[
+                    'labels'
+                ]
+            ]
+
+            ax.set_xticks(
+                band_data[
+                    'special_distances'
+                ]
+            )
+
+            ax.set_xticklabels(
+                labels
+            )
+
+            ax.set_ylabel(
+                self._t(
+                    "fig_band_ylabel"
+                )
+            )
+
+            ax.set_xlim(
+                distances[0],
+                distances[-1],
+            )
+
+            ax.set_ylim(
+                self.Energy_min,
+                self.Energy_max,
+            )
+
+            plt.tight_layout()
+
+            graph_file = Path(
+                self.struct
+                + '-BAND-Graph-Band.png'
+            )
+
+            plt.savefig(
+                graph_file,
+                dpi=300,
+            )
+
+            plt.close(
+                fig
+            )
+
+            parprint(
+                "QE band graph saved to: "
+                f"{graph_file}"
             )
 
     def _bandcalc_gpaw(self):
