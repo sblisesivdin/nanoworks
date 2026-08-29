@@ -15,7 +15,7 @@ import os, glob
 import shutil
 import subprocess
 
-def log_energy_consumption(meter, struct_name):
+def log_energy_consumption(meter, struct_name, engine):
     """
     Reads pyRAPL results, write energy consumption to a file MPI-safe 
     """
@@ -32,7 +32,11 @@ def log_energy_consumption(meter, struct_name):
     pkg_energy = sum(energyresult.pkg) if energyresult.pkg is not None else 0.0
     dram_energy = sum(energyresult.dram) if energyresult.dram is not None else 0.0
    
-    with paropen(struct_name + '-ENERGY-Log-Energy_consumption.txt', 'a') as f1:
+    with paropen(
+        struct_name
+        + f'-ENERGY-{engine}-Log-Energy_consumption.txt',
+        'a',
+    ) as f1:
         print("Energy measurement:-----------------------------------------", end="\n", file=f1)
         print(1e-6 * duration, " Computation time in seconds", end="\n", file=f1)
         print(1e-6 * pkg_energy, " CPU energy consumption in Joules", end="\n", file=f1)
@@ -520,7 +524,10 @@ def struct_from_auto(geometryfile):
     struct = os.path.join(str(structpath), struct_name)
     
     # Write input file for future use
-    input_filename = struct + '_input.py'
+    input_filename = (
+        struct
+        + '-CONFIG-NANOWORKS-Input-Auto.py'
+    )
     with open(input_filename, 'w') as f:
         f.write("from ase.io import read\n")
         f.write("import numpy as np\n\n")
@@ -749,7 +756,7 @@ class dftsolve:
         # STRUCTURE
         # -------------------------------------------------------------
 
-        with paropen(self.struct+'-STRUCTURE-Result-Spacegroup-and-SpecialPoints.txt', "w") as fd:
+        with paropen(self.struct+'-STRUCTURE-ASE-Result-Spacegroup-and-SpecialPoints.txt', "w") as fd:
             print("Number of atoms imported from CIF file:"+str(self.bulk_configuration.get_global_number_of_atoms()), file=fd)
             print("Spacegroup of CIF file:",get_spacegroup(self.bulk_configuration, symprec=1e-2), file=fd)
             print("Special Points usable for this spacegroup:",get_special_points(self.bulk_configuration.get_cell()), file=fd)
@@ -773,7 +780,7 @@ class dftsolve:
 
         with paropen(
             self.struct
-            + '-TIMINGS-Log-Timings.txt',
+            + f'-TIMINGS-{self.Engine}-Log-Timings.txt',
             'a',
         ) as f1:
             print(
@@ -834,7 +841,7 @@ class dftsolve:
 
         state_dir = Path(
             self.struct
-            + '-GROUND-Result-State'
+            + '-GROUND-QE-Result-State'
         )
 
         if not self.Ground_calc:
@@ -887,12 +894,12 @@ class dftsolve:
 
         input_file = Path(
             self.struct
-            + '-GROUND-Input-QE.in'
+            + '-GROUND-QE-Input-SCF.in'
         )
 
         output_file = Path(
             self.struct
-            + '-GROUND-Log-Calculation.txt'
+            + f'-GROUND-{self.Engine}-Log-SCF.txt'
         )
 
         try:
@@ -939,7 +946,7 @@ class dftsolve:
         )
 
         write_cif(
-            self.struct + '-Final.cif',
+            self.struct + f'-GROUND-{self.Engine}-Result-Final.cif',
             self.bulk_configuration,
         )
 
@@ -1000,7 +1007,7 @@ class dftsolve:
                         mixer=self.Mixer_type,
                         charge=self.Total_charge,
                         spinpol=self.Spin_calc,
-                        txt=self.struct+'-GROUND-Log-Calculation.txt',
+                        txt=self.struct+f'-GROUND-{self.Engine}-Log-SCF.txt',
                         convergence=self.Ground_convergence,
                         occupations=self.Occupation,
                         kpoint_density=self.Ground_kpts_density,
@@ -1028,7 +1035,7 @@ class dftsolve:
                         mixer=self.Mixer_type,
                         charge=self.Total_charge,
                         spinpol=self.Spin_calc,
-                        txt=self.struct+'-GROUND-Log-Calculation.txt',
+                        txt=self.struct+f'-GROUND-{self.Engine}-Log-SCF.txt',
                         convergence=self.Ground_convergence,
                         occupations=self.Occupation,
                         kpoint_density=self.Ground_kpts_density,
@@ -1059,28 +1066,28 @@ class dftsolve:
                         # Optimizer Selection
                         if self.Optimizer == 'FIRE':
                             from ase.optimize.fire import FIRE
-                            relax = FIRE(uf, maxstep=self.Max_step, trajectory=self.struct+'-GROUND-Result-Trajectory.traj')
+                            relax = FIRE(uf, maxstep=self.Max_step, trajectory=self.struct+'-GROUND-GPAW-Result-Trajectory.traj')
                         elif  self.Optimizer == 'LBFGS':
                             from ase.optimize.lbfgs import LBFGS
-                            relax = LBFGS(uf, maxstep=self.Max_step, alpha=self.Alpha, damping=self.Damping, trajectory=self.struct+'-GROUND-Result-Trajectory.traj')
+                            relax = LBFGS(uf, maxstep=self.Max_step, alpha=self.Alpha, damping=self.Damping, trajectory=self.struct+'-GROUND-GPAW-Result-Trajectory.traj')
                         elif  self.Optimizer == 'GPMin':
                             from ase.optimize import GPMin
-                            relax = GPMin(uf, trajectory=self.struct+'-GROUND-Result-Trajectory.traj')
+                            relax = GPMin(uf, trajectory=self.struct+'-GROUND-GPAW-Result-Trajectory.traj')
                         else:
-                            relax = QuasiNewton(uf, maxstep=self.Max_step, trajectory=self.struct+'-GROUND-Result-Trajectory.traj')
+                            relax = QuasiNewton(uf, maxstep=self.Max_step, trajectory=self.struct+'-GROUND-GPAW-Result-Trajectory.traj')
                     else:
                         # Optimizer Selection
                         if self.Optimizer == 'FIRE':
                             from ase.optimize.fire import FIRE
-                            relax = FIRE(self.bulk_configuration, maxstep=self.Max_step, trajectory=self.struct+'-GROUND-Result-Trajectory.traj')
+                            relax = FIRE(self.bulk_configuration, maxstep=self.Max_step, trajectory=self.struct+'-GROUND-GPAW-Result-Trajectory.traj')
                         elif  self.Optimizer == 'LBFGS':
                             from ase.optimize.lbfgs import LBFGS
-                            relax = LBFGS(self.bulk_configuration, maxstep=self.Max_step, alpha=self.Alpha, damping=self.Damping, trajectory=self.struct+'-GROUND-Result-Trajectory.traj')
+                            relax = LBFGS(self.bulk_configuration, maxstep=self.Max_step, alpha=self.Alpha, damping=self.Damping, trajectory=self.struct+'-GROUND-GPAW-Result-Trajectory.traj')
                         elif  self.Optimizer == 'GPMin':
                             from ase.optimize import GPMin
-                            relax = GPMin(self.bulk_configuration, trajectory=self.struct+'-GROUND-Result-Trajectory.traj')
+                            relax = GPMin(self.bulk_configuration, trajectory=self.struct+'-GROUND-GPAW-Result-Trajectory.traj')
                         else:
-                            relax = QuasiNewton(self.bulk_configuration, maxstep=self.Max_step, trajectory=self.struct+'-GROUND-Result-Trajectory.traj')
+                            relax = QuasiNewton(self.bulk_configuration, maxstep=self.Max_step, trajectory=self.struct+'-GROUND-GPAW-Result-Trajectory.traj')
                     relax.run(fmax=self.Max_F_tolerance)  # Consider tighter fmax!
 
                 else:
@@ -1095,15 +1102,15 @@ class dftsolve:
                 except Exception:
                     self.Ground_fermi_level = None
 
-                calc.write(self.struct+'-GROUND-Result-State.gpw', mode="all")
+                calc.write(self.struct+'-GROUND-GPAW-Result-State.gpw', mode="all")
 
                 # Writes final configuration as CIF file
-                write_cif(self.struct+'-Final.cif', self.bulk_configuration)
+                write_cif(self.struct+f'-GROUND-{self.Engine}-Result-Final.cif', self.bulk_configuration)
             else:
                 parprint("Passing PW ground state calculation...")
                 # Control the ground state GPW file
-                if not os.path.exists(self.struct+'-GROUND-Result-State.gpw'):
-                    parprint('\033[91mERROR:\033[0m'+self.struct+'-GROUND-Result-State.gpw file can not be found. It is needed in other calculations. Firstly, finish the ground state calculation. You must have \033[95mGround_calc = True\033[0m line in your input file. Exiting.')
+                if not os.path.exists(self.struct+'-GROUND-GPAW-Result-State.gpw'):
+                    parprint('\033[91mERROR:\033[0m'+self.struct+'-GROUND-GPAW-Result-State.gpw file can not be found. It is needed in other calculations. Firstly, finish the ground state calculation. You must have \033[95mGround_calc = True\033[0m line in your input file. Exiting.')
                     sys.exit(1)
 
             # A little clean-up
@@ -1144,7 +1151,7 @@ class dftsolve:
                     mixer=self.Mixer_type,
                     charge=self.Total_charge,
                     spinpol=self.Spin_calc,
-                    txt=self.struct+'-GROUND-Log-Calculation.txt',
+                    txt=self.struct+f'-GROUND-{self.Engine}-Log-SCF.txt',
                     convergence=self.Ground_convergence,
                     occupations=self.Occupation,
                     kpoint_density=self.Ground_kpts_density,
@@ -1177,41 +1184,41 @@ class dftsolve:
                 if self.Geo_optim == True:
                     if True in self.Relax_cell:
                         #uf = FrechetCellFilter(self.bulk_configuration, mask=self.Relax_cell)
-                        #relax = LBFGS(uf, maxstep=self.Max_step, alpha=self.Alpha, damping=self.Damping, trajectory=self.struct+'-GROUND-Result-Trajectory.traj')
+                        #relax = LBFGS(uf, maxstep=self.Max_step, alpha=self.Alpha, damping=self.Damping, trajectory=self.struct+'-GROUND-GPAW-Result-Trajectory.traj')
                         parprint('\033[91mERROR:\033[0mModifying supercell and atom positions with a filter (Relax_cell keyword) is not implemented in LCAO mode.')
                         sys.exit(1)
                     else:
                         # Optimizer Selection
                         if self.Optimizer == 'FIRE':
                             from ase.optimize.fire import FIRE
-                            relax = FIRE(self.bulk_configuration, maxstep=self.Max_step, trajectory=self.struct+'-GROUND-Result-Trajectory.traj')
+                            relax = FIRE(self.bulk_configuration, maxstep=self.Max_step, trajectory=self.struct+'-GROUND-GPAW-Result-Trajectory.traj')
                         elif self.Optimizer == 'LBFGS':
                             from ase.optimize.lbfgs import LBFGS
-                            relax = LBFGS(self.bulk_configuration, maxstep=self.Max_step, alpha=self.Alpha, damping=self.Damping, trajectory=self.struct+'-GROUND-Result-Trajectory.traj')
+                            relax = LBFGS(self.bulk_configuration, maxstep=self.Max_step, alpha=self.Alpha, damping=self.Damping, trajectory=self.struct+'-GROUND-GPAW-Result-Trajectory.traj')
                         elif self.Optimizer == 'GPMin':
                             from ase.optimize import GPMin
-                            relax = GPMin(self.bulk_configuration, trajectory=self.struct+'-GROUND-Result-Trajectory.traj')
+                            relax = GPMin(self.bulk_configuration, trajectory=self.struct+'-GROUND-GPAW-Result-Trajectory.traj')
                         else:
-                            relax = QuasiNewton(self.bulk_configuration, maxstep=self.Max_step, trajectory=self.struct+'-GROUND-Result-Trajectory.traj')
+                            relax = QuasiNewton(self.bulk_configuration, maxstep=self.Max_step, trajectory=self.struct+'-GROUND-GPAW-Result-Trajectory.traj')
                     relax.run(fmax=self.Max_F_tolerance)  # Consider tighter fmax!
                 else:
                     self.bulk_configuration.set_calculator(calc)
                     self.bulk_configuration.get_potential_energy()
-                #relax = LBFGS(self.bulk_configuration, maxstep=self.Max_step, alpha=self.Alpha, damping=self.Damping, trajectory=self.struct+'-GROUND-Result-Trajectory.traj')
+                #relax = LBFGS(self.bulk_configuration, maxstep=self.Max_step, alpha=self.Alpha, damping=self.Damping, trajectory=self.struct+'-GROUND-GPAW-Result-Trajectory.traj')
                 #relax.run(fmax=self.Max_F_tolerance)  # Consider much tighter fmax!
                 #self.bulk_configuration.get_potential_energy()
                 
-                calc.write(self.struct+'-GROUND-Result-State.gpw', mode="all")
+                calc.write(self.struct+'-GROUND-GPAW-Result-State.gpw', mode="all")
 
                 # Writes final configuration as CIF file
-                write_cif(self.struct+'-Final.cif', self.bulk_configuration)
+                write_cif(self.struct+f'-GROUND-{self.Engine}-Result-Final.cif', self.bulk_configuration)
                 # Print final spacegroup information
                 parprint("Final Spacegroup:",get_spacegroup(self.bulk_configuration, symprec=1e-2))
             else:
                 parprint("Passing LCAO ground state calculation...")
                 # Control the ground state GPW file
-                if not os.path.exists(self.struct+'-GROUND-Result-State.gpw'):
-                    parprint('\033[91mERROR:\033[0m'+self.struct+'-GROUND-Result-State.gpw file can not be found. It is needed in other calculations. Firstly, finish the ground state calculation. You must have \033[95mGround_calc = True\033[0m line in your input file. Exiting.')
+                if not os.path.exists(self.struct+'-GROUND-GPAW-Result-State.gpw'):
+                    parprint('\033[91mERROR:\033[0m'+self.struct+'-GROUND-GPAW-Result-State.gpw file can not be found. It is needed in other calculations. Firstly, finish the ground state calculation. You must have \033[95mGround_calc = True\033[0m line in your input file. Exiting.')
                     sys.exit(1)
 
         elif self.Mode == 'FD':
@@ -1301,7 +1308,7 @@ class dftsolve:
                 gamma=elastic_gamma,
                 mixer=self.config.Mixer_type,
                 txt=self.struct
-                    + '-ELASTIC-Log-Elastic-deformations.txt',
+                    + '-ELASTIC-GPAW-Log-Elastic-deformations.txt',
                 charge=self.config.Total_charge,
                 convergence=self.config.Ground_convergence,
                 occupations=self.config.Occupation,
@@ -1311,7 +1318,7 @@ class dftsolve:
         # Load the optimized (reference) structure
         bulk_atoms = self.bulk_configuration
         ref_calc = self.engine.load_gpaw_calc(
-            self.struct + '-GROUND-Result-State.gpw',
+            self.struct + '-GROUND-GPAW-Result-State.gpw',
             hybrid=hybrid,
         )
         bulk_atoms.set_calculator(ref_calc)
@@ -1347,7 +1354,7 @@ class dftsolve:
         # Define names for each strain mode (following Voigt notation)
         strain_names = ['ε_xx', 'ε_yy', 'ε_zz', 'ε_xy', 'ε_xz', 'ε_yz']
         # --- Cache file for deformed systems ---
-        cache_file = self.struct + '-ELASTIC-Result-Elastic-deformations.traj'
+        cache_file = self.struct + '-ELASTIC-GPAW-Result-Elastic-deformations.traj'
         if os.path.exists(cache_file):
             parprint("Loading deformed systems from cache.")
             systems = read(cache_file, index=':')
@@ -1459,7 +1466,7 @@ class dftsolve:
             E_hill = (9 * B_hill * G_hill) / (3 * B_hill + G_hill)
             nu_hill = (3 * B_hill - 2 * G_hill) / (2 * (3 * B_hill + G_hill))
         
-        with paropen(self.struct + '-ELASTIC-Result-Elastic-AllResults.txt', 'w') as fd:
+        with paropen(self.struct + '-ELASTIC-GPAW-Result-Elastic-AllResults.txt', 'w') as fd:
             print("Elastic tensor Cij (GPa):", file=fd)
             print(np.array2string(Cij_GPa, precision=2, floatmode='fixed'), file=fd)
             if is2D:
@@ -1478,7 +1485,7 @@ class dftsolve:
         time152 = time.time()
 
         # Write timings of calculation
-        with paropen(self.struct+'-TIMINGS-Log-Timings.txt', 'a') as f1:
+        with paropen(self.struct+f'-TIMINGS-{self.Engine}-Log-Timings.txt', 'a') as f1:
             print('Elastic Calculation: ', round((time152-time151),2), end="\n", file=f1)
 
 
@@ -1496,7 +1503,7 @@ class dftsolve:
         # Try reading the converged ground-state .gpw written by groundcalc().
         try:
             ref_calc = self.engine.load_gpaw_calc(
-                self.struct+'-GROUND-Result-State.gpw',
+                self.struct+'-GROUND-GPAW-Result-State.gpw',
                 hybrid=True,
             )
             ef = ref_calc.get_fermi_level()
@@ -1584,9 +1591,9 @@ class dftsolve:
         )
 
         calc = self.engine.prepare_dos_calc(
-            filename=self.struct+'-GROUND-Result-State.gpw',
+            filename=self.struct+'-GROUND-GPAW-Result-State.gpw',
             hybrid=hybrid,
-            txt=self.struct+'-DOS-Log-Calculation.txt',
+            txt=self.struct+f'-DOS-{self.Engine}-Log-DOS.txt',
             convergence=self.DOS_convergence,
             occupations=dos_occupation,
             kpoint_density=dos_kpoint_density,
@@ -1640,7 +1647,7 @@ class dftsolve:
                 parprint("WARNING: Computed SOC-DOS array is empty or NaN. Matplotlib crash prevented.")
                 dos[:] = 0.0
 
-            with paropen(self.struct+'-DOS-Result-DOS-SOC.csv', "w") as fd:
+            with paropen(self.struct+'-DOS-GPAW-Result-DOS-SOC.csv', "w") as fd:
                 for en, d in zip(energies, dos):
                     print(f"{en}, {d}", file=fd)
 
@@ -1660,7 +1667,7 @@ class dftsolve:
                     ax_soc.set_ylim(0, 1)
 
                 plt.tight_layout()
-                plt.savefig(self.struct+'-DOS-Graph-DOS-SOC.png', dpi=300)
+                plt.savefig(self.struct+'-DOS-GPAW-Graph-DOS-SOC.png', dpi=300)
                 plt.close(fig_soc)
 
             parprint("Spin-Orbit Total DOS is computed. PDOS is not computed for SOC.")
@@ -1674,7 +1681,7 @@ class dftsolve:
             
             from gpaw.dos import DOSCalculator
             
-            rawdos = DOSCalculator.from_calculator(filename=self.struct+'-GROUND-Result-State.gpw', soc=False, theta=0.0, phi=0.0, shift_fermi_level=False)
+            rawdos = DOSCalculator.from_calculator(filename=self.struct+'-GROUND-GPAW-Result-State.gpw', soc=False, theta=0.0, phi=0.0, shift_fermi_level=False)
             energies = rawdos.get_energies(npoints=self.DOS_npoints)
 
             # Weights initialization
@@ -1693,7 +1700,7 @@ class dftsolve:
             totaldosweightsdown = [0.0] * self.DOS_npoints
 
             # Writing RawPDOS
-            with paropen(self.struct+'-DOS-Result-RawPDOS-EachAtom-Down.csv', "w") as fd:
+            with paropen(self.struct+'-DOS-GPAW-Result-Raw-PDOS-Each-Atom-Down.csv', "w") as fd:
                 print("Energy, s-total, p-total, pz, px, py, d-total, d3z2_r2, dzx, dyz, dx2_y2, dxy, f-total, TOTAL", file=fd)
                 for j in range(0, self.bulk_configuration.get_global_number_of_atoms()):
                     print(f"Atom no: {j+1}, Atom Symbol: {chem_sym[j]} --------------------", file=fd)
@@ -1729,13 +1736,13 @@ class dftsolve:
 
             # Writing DOS
             parprint("Saving DOS for spin down...")
-            with paropen(self.struct+'-DOS-Result-DOS-Down.csv', "w") as fd:
+            with paropen(self.struct+f'-DOS-{self.Engine}-Result-DOS-Down.csv', "w") as fd:
                 for x in zip(energies, totaldosweightsdown):
                     print(*x, sep=", ", file=fd)
 
             # Writing PDOS
             parprint("Saving PDOS for spin down...")
-            with paropen(self.struct+'-DOS-Result-PDOS-Down.csv', "w") as fd:
+            with paropen(self.struct+f'-DOS-{self.Engine}-Result-PDOS-Down.csv', "w") as fd:
                 print("Energy, s-total, p-total, pz, px, py, d-total, d3z2_r2, dzx, dyz, dx2_y2, dxy, f-total, TOTAL", file=fd)
                 for x in zip(energies, pdossweightsdown, pdospweightsdown, pdospzweightsdown, pdospxweightsdown, pdospyweightsdown, pdosdweightsdown, pdosd3z2_r2weightsdown, pdosdzxweightsdown, pdosdyzweightsdown, pdosdx2_y2weightsdown, pdosdxyweightsdown, pdosfweightsdown, totaldosweightsdown):
                     print(*x, sep=", ", file=fd)
@@ -1744,7 +1751,7 @@ class dftsolve:
             # SPIN UP CALCULATIONS
             # ==========================================
             parprint("Calculating and saving Raw PDOS for spin up...")
-            rawdos = DOSCalculator.from_calculator(self.struct+'-GROUND-Result-State.gpw', soc=False, theta=0.0, phi=0.0, shift_fermi_level=False)
+            rawdos = DOSCalculator.from_calculator(self.struct+'-GROUND-GPAW-Result-State.gpw', soc=False, theta=0.0, phi=0.0, shift_fermi_level=False)
             energies = rawdos.get_energies(npoints=self.DOS_npoints)
 
             # Weights initialization
@@ -1763,7 +1770,7 @@ class dftsolve:
             totaldosweightsup = [0.0] * self.DOS_npoints
 
             # Writing RawPDOS
-            with paropen(self.struct+'-DOS-Result-RawPDOS-EachAtom-Up.csv', "w") as fd:
+            with paropen(self.struct+'-DOS-GPAW-Result-Raw-PDOS-Each-Atom-Up.csv', "w") as fd:
                 print("Energy, s-total, p-total, pz, px, py, d-total, d3z2_r2, dzx, dyz, dx2_y2, dxy, f-total, TOTAL", file=fd)
                 for j in range(0, self.bulk_configuration.get_global_number_of_atoms()):
                     print(f"Atom no: {j+1}, Atom Symbol: {chem_sym[j]} --------------------", file=fd)
@@ -1799,13 +1806,13 @@ class dftsolve:
 
             # Writing DOS
             parprint("Saving DOS for spin up...")
-            with paropen(self.struct+'-DOS-Result-DOS-Up.csv', "w") as fd:
+            with paropen(self.struct+f'-DOS-{self.Engine}-Result-DOS-Up.csv', "w") as fd:
                 for x in zip(energies, totaldosweightsup):
                     print(*x, sep=", ", file=fd)
 
             # Writing PDOS
             parprint("Saving PDOS for spin up...")
-            with paropen(self.struct+'-DOS-Result-PDOS-Up.csv', "w") as fd:
+            with paropen(self.struct+f'-DOS-{self.Engine}-Result-PDOS-Up.csv', "w") as fd:
                 print("Energy, s-total, p-total, pz, px, py, d-total, d3z2_r2, dzx, dyz, dx2_y2, dxy, f-total, TOTAL", file=fd)
                 for x in zip(energies, pdossweightsup, pdospweightsup, pdospzweightsup, pdospxweightsup, pdospyweightsup, pdosdweightsup, pdosd3z2_r2weightsup, pdosdzxweightsup, pdosdyzweightsup, pdosdx2_y2weightsup, pdosdxyweightsup, pdosfweightsup, totaldosweightsup):
                     print(*x, sep=", ", file=fd)
@@ -1818,7 +1825,7 @@ class dftsolve:
             
             from gpaw.dos import DOSCalculator
             
-            rawdos = DOSCalculator.from_calculator(self.struct+'-GROUND-Result-State.gpw', soc=False, theta=0.0, phi=0.0, shift_fermi_level=False)
+            rawdos = DOSCalculator.from_calculator(self.struct+'-GROUND-GPAW-Result-State.gpw', soc=False, theta=0.0, phi=0.0, shift_fermi_level=False)
             energies = rawdos.get_energies(npoints=self.DOS_npoints)
 
             totaldosweights = [0.0] * self.DOS_npoints
@@ -1836,7 +1843,7 @@ class dftsolve:
             pdosfweights = [0.0] * self.DOS_npoints
 
             # Writing RawPDOS
-            with paropen(self.struct+'-DOS-Result-RawPDOS-EachAtom.csv', "w") as fd:
+            with paropen(self.struct+'-DOS-GPAW-Result-Raw-PDOS-Each-Atom.csv', "w") as fd:
                 print("Energy, s-total, p-total, pz, px, py, d-total, d3z2_r2, dzx, dyz, dx2_y2, dxy, f-total, TOTAL", file=fd)
                 for j in range(0, self.bulk_configuration.get_global_number_of_atoms()):
                     print(f"Atom no: {j+1}, Atom Symbol: {chem_sym[j]} ----------------------------------------", file=fd)
@@ -1875,13 +1882,13 @@ class dftsolve:
 
             # Writing DOS
             parprint("Saving DOS...")
-            with paropen(self.struct+'-DOS-Result-DOS.csv', "w") as fd:
+            with paropen(self.struct+f'-DOS-{self.Engine}-Result-DOS.csv', "w") as fd:
                 for x in zip(energies, totaldosweights):
                     print(*x, sep=", ", file=fd)
 
             # Writing PDOS
             parprint("Saving PDOS...")
-            with paropen(self.struct+'-DOS-Result-PDOS.csv', "w") as fd:
+            with paropen(self.struct+f'-DOS-{self.Engine}-Result-PDOS.csv', "w") as fd:
                 print("Energy, s-total, p-total, pz, px, py, d-total, d3z2_r2, dzx, dyz, dx2_y2, dxy, f-total, TOTAL", file=fd)
                 for x in zip(energies, pdossweights, pdospweights, pdospzweights, pdospxweights, pdospyweights, pdosdweights, pdosd3z2_r2weights, pdosdzxweights, pdosdyzweights, pdosdx2_y2weights, pdosdxyweights, pdosfweights, totaldosweights):
                     print(*x, sep=", ", file=fd)
@@ -1890,7 +1897,7 @@ class dftsolve:
         time22 = time.time()
 
         # Write timings of calculation
-        with paropen(self.struct+'-TIMINGS-Log-Timings.txt', 'a') as f1:
+        with paropen(self.struct+f'-TIMINGS-{self.Engine}-Log-Timings.txt', 'a') as f1:
             print(f'DOS calculation: {round((time22-time21),2)}', file=f1)
 
         if world.rank == 0:
@@ -1898,8 +1905,8 @@ class dftsolve:
             fig, ax = plt.subplots(figsize=(8, 6))
 
             if self.Spin_calc == True:
-                downf = pd.read_csv(self.struct+'-DOS-Result-DOS-Down.csv', header=None)
-                upf = pd.read_csv(self.struct+'-DOS-Result-DOS-Up.csv', header=None)
+                downf = pd.read_csv(self.struct+f'-DOS-{self.Engine}-Result-DOS-Down.csv', header=None)
+                upf = pd.read_csv(self.struct+f'-DOS-{self.Engine}-Result-DOS-Up.csv', header=None)
 
                 # SUBTRACT the Fermi level (Ef) to shift the 0 point accurately.
                 downf[0] = downf[0] - ef
@@ -1912,7 +1919,7 @@ class dftsolve:
                 ax.fill_between(upf[0], 0, upf[1], facecolor='blue', alpha=0.2)
 
             else:
-                dosf = pd.read_csv(self.struct+'-DOS-Result-DOS.csv', header=None)
+                dosf = pd.read_csv(self.struct+f'-DOS-{self.Engine}-Result-DOS.csv', header=None)
 
                 # SUBTRACT the Fermi level (Ef) to shift the 0 point accurately
                 dosf[0] = dosf[0] - ef
@@ -1935,7 +1942,7 @@ class dftsolve:
 
             # Layout and Saving
             plt.tight_layout()
-            plt.savefig(self.struct+'-DOS-Graph-DOS.png', dpi=300)
+            plt.savefig(self.struct+f'-DOS-{self.Engine}-Graph-DOS.png', dpi=300)
 
             # Clear memory to prevent interference with upcoming Band/Optical calculations
             plt.close(fig)
@@ -1985,7 +1992,7 @@ class dftsolve:
 
         state_dir = Path(
             self.struct
-            + '-GROUND-Result-State'
+            + '-GROUND-QE-Result-State'
         )
 
         if not self.engine.has_qe_state(
@@ -2051,12 +2058,12 @@ class dftsolve:
 
         input_file = Path(
             self.struct
-            + '-DOS-Input-QE-NSCF.in'
+            + '-DOS-QE-Input-NSCF.in'
         )
 
         output_file = Path(
             self.struct
-            + '-DOS-Log-NSCF.txt'
+            + '-DOS-QE-Log-NSCF.txt'
         )
 
         try:
@@ -2131,17 +2138,17 @@ class dftsolve:
 
         dos_input_file = Path(
             self.struct
-            + '-DOS-Input-QE.in'
+            + '-DOS-QE-Input-DOS.in'
         )
 
         dos_output_file = Path(
             self.struct
-            + '-DOS-Log-Calculation.txt'
+            + f'-DOS-{self.Engine}-Log-DOS.txt'
         )
 
         dos_data_file = Path(
             self.struct
-            + '-DOS-Result-QE.dat'
+            + '-DOS-QE-Result-Raw-DOS.dat'
         )
 
         qe_dos_occupation = (
@@ -2209,7 +2216,7 @@ class dftsolve:
 
         csv_file = Path(
             self.struct
-            + '-DOS-Result-DOS.csv'
+            + f'-DOS-{self.Engine}-Result-DOS.csv'
         )
 
         with csv_file.open(
@@ -2293,7 +2300,7 @@ class dftsolve:
 
             plt.savefig(
                 self.struct
-                + '-DOS-Graph-DOS.png',
+                + f'-DOS-{self.Engine}-Graph-DOS.png',
                 dpi=300,
             )
 
@@ -2303,17 +2310,17 @@ class dftsolve:
 
         pdos_input_file = Path(
             self.struct
-            + '-DOS-Input-QE-PDOS.in'
+            + '-DOS-QE-Input-PDOS.in'
         )
 
         pdos_output_file = Path(
             self.struct
-            + '-DOS-Log-PDOS.txt'
+            + '-DOS-QE-Log-PDOS.txt'
         )
 
         pdos_prefix = Path(
             self.struct
-            + '-DOS-Result-QE-PDOS'
+            + '-DOS-QE-Result-Raw-PDOS'
         )
 
         parprint(
@@ -2360,7 +2367,7 @@ class dftsolve:
 
         pdos_csv_file = Path(
             self.struct
-            + '-DOS-Result-PDOS.csv'
+            + f'-DOS-{self.Engine}-Result-PDOS.csv'
         )
 
         with pdos_csv_file.open(
@@ -2419,7 +2426,7 @@ class dftsolve:
         time22 = time.time()
 
         with paropen(
-            self.struct + '-TIMINGS-Log-Timings.txt',
+            self.struct + f'-TIMINGS-{self.Engine}-Log-Timings.txt',
             'a',
         ) as f1:
             print(
@@ -2485,7 +2492,7 @@ class dftsolve:
 
         state_dir = Path(
             self.struct
-            + '-GROUND-Result-State'
+            + '-GROUND-QE-Result-State'
         )
 
         if not self.engine.has_qe_state(
@@ -2532,12 +2539,12 @@ class dftsolve:
 
         input_file = Path(
             self.struct
-            + '-BAND-Input-QE.in'
+            + '-BAND-QE-Input-Bands.in'
         )
 
         output_file = Path(
             self.struct
-            + '-BAND-Log-Calculation.txt'
+            + f'-BAND-{self.Engine}-Log-Bands.txt'
         )
 
         try:
@@ -2569,7 +2576,7 @@ class dftsolve:
 
         ground_output_file = Path(
             self.struct
-            + '-GROUND-Log-Calculation.txt'
+            + f'-GROUND-{self.Engine}-Log-SCF.txt'
         )
 
         if ground_output_file.is_file():
@@ -2646,7 +2653,7 @@ class dftsolve:
 
         band_file = Path(
             self.struct
-            + '-BAND-Result-Band.dat'
+            + f'-BAND-{self.Engine}-Result-Band.dat'
         )
 
         with paropen(
@@ -2675,7 +2682,7 @@ class dftsolve:
 
         xyyy_file = Path(
             self.struct
-            + '-BAND-Result-Band-XYYY.dat'
+            + f'-BAND-{self.Engine}-Result-Band-XYYY.dat'
         )
 
         with paropen(
@@ -2705,7 +2712,7 @@ class dftsolve:
 
         with paropen(
             self.struct
-            + '-TIMINGS-Log-Timings.txt',
+            + f'-TIMINGS-{self.Engine}-Log-Timings.txt',
             'a',
         ) as f1:
             print(
@@ -2798,7 +2805,7 @@ class dftsolve:
 
             graph_file = Path(
                 self.struct
-                + '-BAND-Graph-Band.png'
+                + f'-BAND-{self.Engine}-Graph-Band.png'
             )
 
             plt.savefig(
@@ -2834,11 +2841,11 @@ class dftsolve:
         hybrid = self.engine.is_hybrid(self.XC_calc)
 
         calc = self.engine.prepare_band_calc(
-            filename=self.struct+'-GROUND-Result-State.gpw',
+            filename=self.struct+'-GROUND-GPAW-Result-State.gpw',
             hybrid=hybrid,
             path=self.Band_path,
             npoints=self.Band_npoints,
-            txt=self.struct+'-BAND-Log-Calculation.txt',
+            txt=self.struct+f'-BAND-{self.Engine}-Log-Bands.txt',
             occupations=self.Occupation,
             convergence=self.Band_convergence,
             nbands=self.Band_num_of_bands,
@@ -2869,21 +2876,21 @@ class dftsolve:
         parprint('Num of bands:'+str(Band_num_of_bands))
 
         # No need to write an additional gpaw file. Use json file to use with ase band-structure command
-        #calc.write(self.struct+'-BAND-Result-Band.gpw')
-        bs.write(self.struct+'-BAND-Result-State.json')
+        #calc.write(self.struct+'-BAND-GPAW-Result-Band.gpw')
+        bs.write(self.struct+'-BAND-GPAW-Result-State.json')
 
         if self.Spin_calc == True:
             eps_skn = np.array([[calc.get_eigenvalues(k,s)
                                 for k in range(self.Band_npoints)]
                                 for s in range(2)]) - ef
             parprint(eps_skn.shape)
-            with paropen(self.struct+'-BAND-Result-Band-Down.dat', 'w') as f1:
+            with paropen(self.struct+f'-BAND-{self.Engine}-Result-Band-Down.dat', 'w') as f1:
                 for n1 in range(Band_num_of_bands):
                     for k1 in range(self.Band_npoints):
                         print(k1, eps_skn[0, k1, n1], end="\n", file=f1)
                     print (end="\n", file=f1)
 
-            with paropen(self.struct+'-BAND-Result-Band-Up.dat', 'w') as f2:
+            with paropen(self.struct+f'-BAND-{self.Engine}-Result-Band-Up.dat', 'w') as f2:
                 for n2 in range(Band_num_of_bands):
                     for k2 in range(self.Band_npoints):
                         print(k2, eps_skn[1, k2, n2], end="\n", file=f2)
@@ -2891,7 +2898,7 @@ class dftsolve:
 
             # Thanks to Andrej Kesely (https://stackoverflow.com/users/10035985/andrej-kesely) for helping the problem of general XYYY writer
             currentd, all_groupsd = [], []
-            with open(self.struct+'-BAND-Result-Band-Down.dat', 'r') as f_in1:
+            with open(self.struct+f'-BAND-{self.Engine}-Result-Band-Down.dat', 'r') as f_in1:
                 for line in map(str.strip, f_in1):
                     if line == "" and currentd:
                         all_groupsd.append(currentd)
@@ -2903,7 +2910,7 @@ class dftsolve:
                 all_groupsd.append(currentd)
 
             try:
-                with paropen(self.struct+'-BAND-Result-Band-Down-XYYY.dat', 'w') as f1:
+                with paropen(self.struct+f'-BAND-{self.Engine}-Result-Band-Down-XYYY.dat', 'w') as f1:
                     for g in zip(*all_groupsd):
                         print('{} {} {}'.format(g[0][0], g[0][1], ' '.join(v for _, v in g[1:])), file=f1)
             except Exception as e:
@@ -2911,7 +2918,7 @@ class dftsolve:
                 print(e)
 
             currentu, all_groupsu = [], []
-            with open(self.struct+'-BAND-Result-Band-Up.dat', 'r') as f_in2:
+            with open(self.struct+f'-BAND-{self.Engine}-Result-Band-Up.dat', 'r') as f_in2:
                 for line in map(str.strip, f_in2):
                     if line == "" and currentu:
                         all_groupsu.append(currentu)
@@ -2922,7 +2929,7 @@ class dftsolve:
             if currentu:
                 all_groupsu.append(currentu)
             try:
-                with paropen(self.struct+'-BAND-Result-Band-Up-XYYY.dat', 'w') as f2:
+                with paropen(self.struct+f'-BAND-{self.Engine}-Result-Band-Up-XYYY.dat', 'w') as f2:
                     for g in zip(*all_groupsu):
                         print('{} {} {}'.format(g[0][0], g[0][1], ' '.join(v for _, v in g[1:])), file=f2)
             except Exception as e:
@@ -2943,7 +2950,7 @@ class dftsolve:
                 eps_skn = np.array([[calc.get_eigenvalues(k,s)
                                 for k in range(self.Band_npoints)]
                                 for s in range(1)]) - ef
-            with paropen(self.struct+'-BAND-Result-Band.dat', 'w') as f:
+            with paropen(self.struct+f'-BAND-{self.Engine}-Result-Band.dat', 'w') as f:
                 for n in range(Band_num_of_bands):
                     for k in range(self.Band_npoints):
                         print(k, eps_skn[0, k, n], end="\n", file=f)
@@ -2951,7 +2958,7 @@ class dftsolve:
 
             # Thanks to Andrej Kesely (https://stackoverflow.com/users/10035985/andrej-kesely) for helping the problem of general XYYY writer
             current, all_groups = [], []
-            with open(self.struct+'-BAND-Result-Band.dat', 'r') as f_in:
+            with open(self.struct+f'-BAND-{self.Engine}-Result-Band.dat', 'r') as f_in:
                 for line in map(str.strip, f_in):
                     if line == "" and current:
                         all_groups.append(current)
@@ -2962,7 +2969,7 @@ class dftsolve:
             if current:
                 all_groups.append(current)
             try:
-                with paropen(self.struct+'-BAND-Result-Band-XYYY.dat', 'w') as f1:
+                with paropen(self.struct+f'-BAND-{self.Engine}-Result-Band-XYYY.dat', 'w') as f1:
                     for g in zip(*all_groups):
                         print('{} {} {}'.format(g[0][0], g[0][1], ' '.join(v for _, v in g[1:])), file=f1)
             except Exception as e:
@@ -2972,7 +2979,7 @@ class dftsolve:
         # Finish Band calc
         time32 = time.time()
         # Write timings of calculation
-        with paropen(self.struct+'-TIMINGS-Log-Timings.txt', 'a') as f1:
+        with paropen(self.struct+f'-TIMINGS-{self.Engine}-Log-Timings.txt', 'a') as f1:
             print('Band calculation: ', round((time32-time31),2), end="\n", file=f1)
 
         # Write or draw figures
@@ -2982,7 +2989,7 @@ class dftsolve:
             if self.SOC_calc and not self.Spin_calc:
                 from ase.spectrum.band_structure import BandStructure
                 bs = BandStructure(path=bs.path, energies=np.array([soc_evals]), reference=ef)
-            bs.plot(filename=self.struct+'-BAND-Graph-Band.png', show=False, emax=self.Energy_max + bs.reference, emin=self.Energy_min + bs.reference, ylabel=self._t("fig_band_ylabel"))
+            bs.plot(filename=self.struct+f'-BAND-{self.Engine}-Graph-Band.png', show=False, emax=self.Energy_max + bs.reference, emin=self.Energy_min + bs.reference, ylabel=self._t("fig_band_ylabel"))
             
         # Projected band
         if self.Projected_band_plot == True:
@@ -3000,7 +3007,7 @@ class dftsolve:
         # Get number of spins (1 for non-magnetic, 2 for spin-polarized)
         nspins = calc.get_number_of_spins()
         
-        filename = f"{self.struct}-BAND-Result-Projected_band.png"
+        filename = f"{self.struct}-BAND-GPAW-Graph-Projected-Band.png"
         
         if not self.Projections:
             if world.rank == 0:
@@ -3021,10 +3028,10 @@ class dftsolve:
         for spin_index in range(nspins):
             # Dynamic filename based on spin index
             if nspins == 1:
-                filename = f"{self.struct}-BAND-Result-Projected_band.png"
+                filename = f"{self.struct}-BAND-GPAW-Graph-Projected-Band.png"
             else:
                 spin_label = "Up" if spin_index == 0 else "Down"
-                filename = f"{self.struct}-BAND-Result-Projected_band_Spin_{spin_label}.png"
+                filename = f"{self.struct}-BAND-GPAW-Graph-Projected-Band-Spin-{spin_label}.png"
             
             energies = bs.energies[spin_index]  
             nbands = energies.shape[1]
@@ -3133,7 +3140,7 @@ class dftsolve:
         #Start Density calc
         time41 = time.time()
         parprint("Starting All-electron density calculation...")
-        calc = self.engine.load_gpaw_calc(self.struct+'-GROUND-Result-State.gpw', txt=self.struct+'-EDENSITY-Log-Calculation.txt')
+        calc = self.engine.load_gpaw_calc(self.struct+'-GROUND-GPAW-Result-State.gpw', txt=self.struct+'-EDENSITY-GPAW-Log-Calculation.txt')
         self.bulk_configuration.calc = calc
         if self.Spin_calc == True:
             np = calc.get_pseudo_density()
@@ -3147,28 +3154,28 @@ class dftsolve:
             nzeta = (nup - ndown) / (nup + ndown)
             npzeta = (npup - npdown) / (npup + npdown)
             # Writing spin down pseudo and all electron densities to cube file with Bohr unit
-            write(self.struct+'-EDENSITY-Result-All-electron_nall-Down.cube', self.bulk_configuration, data=ndown * Bohr**3)
-            write(self.struct+'-EDENSITY-Result-All-electron_npseudo-Down.cube', self.bulk_configuration, data=npdown * Bohr**3)
+            write(self.struct+'-EDENSITY-GPAW-Result-All-electron_nall-Down.cube', self.bulk_configuration, data=ndown * Bohr**3)
+            write(self.struct+'-EDENSITY-GPAW-Result-All-electron_npseudo-Down.cube', self.bulk_configuration, data=npdown * Bohr**3)
             # Writing spin up pseudo and all electron densities to cube file with Bohr unit
-            write(self.struct+'-EDENSITY-Result-All-electron_nall-Up.cube', self.bulk_configuration, data=nup * Bohr**3)
-            write(self.struct+'-EDENSITY-Result-All-electron_npseudo-Up.cube', self.bulk_configuration, data=npup * Bohr**3)
+            write(self.struct+'-EDENSITY-GPAW-Result-All-electron_nall-Up.cube', self.bulk_configuration, data=nup * Bohr**3)
+            write(self.struct+'-EDENSITY-GPAW-Result-All-electron_npseudo-Up.cube', self.bulk_configuration, data=npup * Bohr**3)
             # Writing total pseudo and all electron densities to cube file with Bohr unit
-            write(self.struct+'-EDENSITY-Result-All-electron_nall-Total.cube', self.bulk_configuration, data=n * Bohr**3)
-            write(self.struct+'-EDENSITY-Result-All-electron_npseudo-Total.cube', self.bulk_configuration, data=np * Bohr**3)
+            write(self.struct+'-EDENSITY-GPAW-Result-All-electron_nall-Total.cube', self.bulk_configuration, data=n * Bohr**3)
+            write(self.struct+'-EDENSITY-GPAW-Result-All-electron_npseudo-Total.cube', self.bulk_configuration, data=np * Bohr**3)
             # Writing zeta pseudo and all electron densities to cube file with Bohr unit
-            write(self.struct+'-EDENSITY-Result-All-electron_nall-Zeta.cube', self.bulk_configuration, data=nzeta * Bohr**3)
-            write(self.struct+'-EDENSITY-Result-All-electron_npseudo-Zeta.cube', self.bulk_configuration, data=npzeta * Bohr**3)
+            write(self.struct+'-EDENSITY-GPAW-Result-All-electron_nall-Zeta.cube', self.bulk_configuration, data=nzeta * Bohr**3)
+            write(self.struct+'-EDENSITY-GPAW-Result-All-electron_npseudo-Zeta.cube', self.bulk_configuration, data=npzeta * Bohr**3)
         else:
             np = calc.get_pseudo_density()
             n = calc.get_all_electron_density(gridrefinement=self.Refine_grid)
             # Writing pseudo and all electron densities to cube file with Bohr unit
-            write(self.struct+'-EDENSITY-Result-All-electron_nall-Total.cube', self.bulk_configuration, data=n * Bohr**3)
-            write(self.struct+'-EDENSITY-Result-All-electron_npseudo-Total.cube', self.bulk_configuration, data=np * Bohr**3)
+            write(self.struct+'-EDENSITY-GPAW-Result-All-electron_nall-Total.cube', self.bulk_configuration, data=n * Bohr**3)
+            write(self.struct+'-EDENSITY-GPAW-Result-All-electron_npseudo-Total.cube', self.bulk_configuration, data=np * Bohr**3)
             
         # Finish Density calc
         time42 = time.time()
         # Write timings of calculation
-        with paropen(self.struct+'-TIMINGS-Log-Timings.txt', 'a') as f1:
+        with paropen(self.struct+f'-TIMINGS-{self.Engine}-Log-Timings.txt', 'a') as f1:
             print('Density calculation: ', round((time42-time41),2), end="\n", file=f1)
 
     def phononcalc(self):
@@ -3194,14 +3201,14 @@ class dftsolve:
             parprint("It is recommended to compute phonons with PBE and use hybrids only for the electronic structure.")
             sys.exit(1)
 
-        calc = self.engine.load_gpaw_calc(self.struct+'-GROUND-Result-State.gpw')
+        calc = self.engine.load_gpaw_calc(self.struct+'-GROUND-GPAW-Result-State.gpw')
         self.bulk_configuration.calc = calc
 
         # Pre-process
         bulk_configuration_ph = convert_atoms_to_phonopy(self.bulk_configuration)
         phonon = Phonopy(bulk_configuration_ph, self.Phonon_supercell, log_level=1)
         phonon.generate_displacements(distance=self.Phonon_displacement)
-        with paropen(self.struct+'-PHONON-Log-Phonon-Phonopy.txt', 'a') as f2:
+        with paropen(self.struct+'-PHONON-GPAW-Log-Phonopy.txt', 'a') as f2:
             print("[Phonopy] Atomic displacements:", end="\n", file=f2)
             disps = phonon.displacements
             for d in disps:
@@ -3214,42 +3221,42 @@ class dftsolve:
                 self.Phonon_kpts_y,
                 self.Phonon_kpts_z,
             ),
-            txt=self.struct+'-PHONON-Log-Phonon-GPAW.txt',
+            txt=self.struct+'-PHONON-GPAW-Log-Calculation.txt',
         )
 
         self.bulk_configuration.calc = calc
 
         path = get_band_path(self.bulk_configuration, self.Phonon_path, self.Phonon_npoints)
 
-        phonon_path = self.struct+'-PHONON-Results-force-constants.npy'
+        phonon_path = self.struct+'-PHONON-GPAW-Result-Force-Constants.npy'
         sum_rule=self.Phonon_acoustic_sum_rule
 
         if os.path.exists(phonon_path):
-            with paropen(self.struct+'-PHONON-Log-Phonon-Phonopy.txt', 'a') as f2:
+            with paropen(self.struct+'-PHONON-GPAW-Log-Phonopy.txt', 'a') as f2:
                 print('Reading FCs from {!r}'.format(phonon_path), end="\n", file=f2)
             phonon.force_constants = np.load(phonon_path)
 
         else:
-            with paropen(self.struct+'-PHONON-Log-Phonon-Phonopy.txt', 'a') as f2:
+            with paropen(self.struct+'-PHONON-GPAW-Log-Phonopy.txt', 'a') as f2:
                 print('Computing FCs',end="\n", file=f2)
                 #os.makedirs('force-sets', exist_ok=True)
             supercells = list(phonon.supercells_with_displacements)
-            fnames = [self.struct+'-PHONON-Results-sc-{:04}.npy'.format(i) for i in range(len(supercells))]
+            fnames = [self.struct+'-PHONON-GPAW-Result-Supercell-{:04}.npy'.format(i) for i in range(len(supercells))]
             set_of_forces = [
                 self.load_or_compute_force(fname, calc, supercell)
                 for (fname, supercell) in zip(fnames, supercells)
             ]
-            with paropen(self.struct+'-PHONON-Log-Phonon-Phonopy.txt', 'a') as f2:
+            with paropen(self.struct+'-PHONON-GPAW-Log-Phonopy.txt', 'a') as f2:
                 print('Building FC matrix', end="\n", file=f2)
             phonon.produce_force_constants(forces=set_of_forces, calculate_full_force_constants=False)
             if sum_rule:
                 phonon.symmetrize_force_constants()
-            with paropen(self.struct+'-PHONON-Log-Phonon-Phonopy.txt', 'a') as f2:
+            with paropen(self.struct+'-PHONON-GPAW-Log-Phonopy.txt', 'a') as f2:
                 print('Writing FCs to {!r}'.format(phonon_path), end="\n", file=f2)
             np.save(phonon_path, phonon.force_constants)
             #shutil.rmtree('force-sets')
 
-        with paropen(self.struct+'-PHONON-Log-Phonon-Phonopy.txt', 'a') as f2:
+        with paropen(self.struct+'-PHONON-GPAW-Log-Phonopy.txt', 'a') as f2:
             print('', end="\n", file=f2)
             print("[Phonopy] Phonon frequencies at Gamma:", end="\n", file=f2)
             for i, freq in enumerate(phonon.get_frequencies((0, 0, 0))):
@@ -3320,10 +3327,10 @@ class dftsolve:
         # phonon.run_mesh([20, 20, 20], with_eigenvectors=True, is_mesh_symmetry=False)
         # fig = phonon.plot_band_structure_and_dos(pdoc_indices=[[0], [1]])
 
-        fig.savefig(self.struct+'-PHONON-Graph-Phonon.png', dpi=300)
+        fig.savefig(self.struct+'-PHONON-GPAW-Graph-Phonon.png', dpi=300)
         # Standard Phonopy YAML format export
         try:
-            phonon.write_yaml_band_structure(filename=self.struct+'-PHONON-Result-Band.yaml')
+            phonon.write_yaml_band_structure(filename=self.struct+'-PHONON-GPAW-Result-Band.yaml')
         except Exception as e:
             parprint("YAML band data can not be saved:", e)
 
@@ -3333,7 +3340,7 @@ class dftsolve:
             distances = band_dict['distances']
             frequencies = band_dict['frequencies']
             
-            with paropen(self.struct+'-PHONON-Result-Band.dat', 'w') as f_band:
+            with paropen(self.struct+'-PHONON-GPAW-Result-Band.dat', 'w') as f_band:
                 f_band.write("Distance(1/A)    Frequencies(THz)...\n")
                 # Return for every k-way segment
                 for dist_path, freq_path in zip(distances, frequencies):
@@ -3354,7 +3361,7 @@ class dftsolve:
                                           t_step=self.Phonon_T_step)
             
             # Phonopy standard YAML output
-            phonon.write_yaml_thermal_properties(filename=self.struct+'-PHONON-Result-Thermal_properties.yaml')
+            phonon.write_yaml_thermal_properties(filename=self.struct+'-PHONON-GPAW-Result-Thermal-Properties.yaml')
             
             # convert to CSV format
             tp_dict = phonon.get_thermal_properties_dict()
@@ -3363,7 +3370,7 @@ class dftsolve:
             entropy = tp_dict['entropy']
             heat_capacity = tp_dict['heat_capacity']
             
-            with paropen(self.struct+"-PHONON-Result-Thermal_properties.csv", "w") as f:
+            with paropen(self.struct+"-PHONON-GPAW-Result-Thermal-Properties.csv", "w") as f:
                 f.write("T(K),Free_Energy(kJ/mol),Entropy(J/K/mol),Cv(J/K/mol)\n")
                 for i in range(len(temperatures)):
                     f.write(f"{temperatures[i]:.2f},{free_energy[i]:.6f},{entropy[i]:.6f},{heat_capacity[i]:.6f}\n")
@@ -3372,7 +3379,7 @@ class dftsolve:
         
         time52 = time.time()
         # Write timings of calculation
-        with paropen(self.struct+'-TIMINGS-Log-Timings.txt', 'a') as f1:
+        with paropen(self.struct+f'-TIMINGS-{self.Engine}-Log-Timings.txt', 'a') as f1:
             print('Phonon calculation: ', round((time52-time51),2), end="\n", file=f1)
 
     def opticalcalc(self):
@@ -3427,9 +3434,9 @@ class dftsolve:
                     )
 
                 calc = self.engine.prepare_optical_calc(
-                    filename=self.struct+'-GROUND-Result-State.gpw',
+                    filename=self.struct+'-GROUND-GPAW-Result-State.gpw',
                     hybrid=hybrid,
-                    txt=self.struct+'-OPTICAL-Log-Calculation.txt',
+                    txt=self.struct+'-OPTICAL-GPAW-Log-Calculation.txt',
                     nbands=self.Opt_num_of_bands,
                     smearing=self.Opt_FD_smearing,
                     kpoint_density=opt_kpoint_density,
@@ -3444,7 +3451,7 @@ class dftsolve:
             calc.get_potential_energy()
 
             calc.diagonalize_full_hamiltonian(nbands=self.Opt_num_of_bands)  # diagonalize Hamiltonian
-            calc.write(self.struct+'-OPTICAL-Result-State.gpw', mode= 'all')  # write wavefunctions
+            calc.write(self.struct+'-OPTICAL-GPAW-Result-State.gpw', mode= 'all')  # write wavefunctions
 
             #from mpi4py import MPI
             if self.Opt_calc_type == 'BSE':
@@ -3454,21 +3461,21 @@ class dftsolve:
                    parprint('\033[91mERROR:\033[0mBSE calculations can not run with spin dependent data.')
                    sys.exit(1)
                 parprint('Starting BSE calculations')
-                bse = BSE(calc= self.struct+'-OPTICAL-Result-State.gpw', ecut=self.Opt_cut_of_energy,
+                bse = BSE(calc= self.struct+'-OPTICAL-GPAW-Result-State.gpw', ecut=self.Opt_cut_of_energy,
                              valence_bands=self.Opt_BSE_valence,
                              conduction_bands=self.Opt_BSE_conduction,
                              nbands=self.Opt_num_of_bands,
                              mode='BSE',
-                             integrate_gamma='sphere', txt=self.struct+'-OPTICAL-Log-Calculation-BSE.txt')
+                             integrate_gamma='sphere', txt=self.struct+'-OPTICAL-GPAW-Log-Calculation-BSE.txt')
 
                 # Getting dielectric function spectrum
                 parprint("Starting dielectric function calculation...")
                 # Writing to files
-                bse.get_dielectric_function(filename=self.struct+'-OPTICAL-Result-Calculation-BSE_dielec.csv',
+                bse.get_dielectric_function(filename=self.struct+'-OPTICAL-GPAW-Result-Calculation-BSE_dielec.csv',
                                             eta=self.Opt_eta, w_w=np.linspace(self.Opt_BSE_min_en, self.Opt_BSE_max_en, self.Opt_BSE_num_of_data),
-                                            write_eig=self.struct+'-OPTICAL-Result-Calculation-BSE_eig.dat')
+                                            write_eig=self.struct+'-OPTICAL-GPAW-Result-Calculation-BSE_eig.dat')
                 # Loading dielectric function spectrum to numpy
-                dielec = genfromtxt(self.struct+'-OPTICAL-Result-Calculation-BSE_dielec.csv', delimiter=',')
+                dielec = genfromtxt(self.struct+'-OPTICAL-GPAW-Result-Calculation-BSE_dielec.csv', delimiter=',')
                 # dielec.shape[0] will give us the length of data.
                 c_opt = 29979245800
                 h_opt = 6.58E-16
@@ -3485,7 +3492,7 @@ class dftsolve:
                     opt_ref_bse[n] = (np.square(1-opt_n_bse[n])+np.square(opt_k_bse[n]))/(np.square(1+opt_n_bse[n])+np.square(opt_k_bse[n]))
                 
                 # Saving other data
-                with paropen(self.struct+'-OPTICAL-Result-Calculation-BSE-AllData.dat', 'w') as f1:
+                with paropen(self.struct+'-OPTICAL-GPAW-Result-Calculation-BSE-AllData.dat', 'w') as f1:
                     print("Energy(eV) Eps_real Eps_img Refractive_Index Extinction_Index Absorption(1/cm) Reflectivity", end="\n", file=f1)
                     for n in range(dielec.shape[0]):
                         print(dielec[n][0], dielec[n][1], dielec[n][2], opt_n_bse[n], opt_k_bse[n], opt_abs_bse[n], opt_ref_bse[n], end="\n", file=f1)
@@ -3493,23 +3500,23 @@ class dftsolve:
                     
                 '''
                 # DIRECTION IS NOT WORKING FOR A WHILE, IN FUTURE THESE LINES CAN BE USED
-                bse.get_dielectric_function(filename=self.struct+'-OPTICAL-Result-Calculation-BSE_dielec_xdirection.csv',
+                bse.get_dielectric_function(filename=self.struct+'-OPTICAL-GPAW-Result-Calculation-BSE_dielec_xdirection.csv',
                                             q_c = [0.0, 0.0, 0.0], direction=0, eta=self.Opt_eta,
                                             w_w=np.linspace(self.Opt_BSE_min_en, self.Opt_BSE_max_en, self.Opt_BSE_num_of_data),
-                                            write_eig=self.struct+'-OPTICAL-Result-Calculation-BSE_eig_xdirection.dat')
+                                            write_eig=self.struct+'-OPTICAL-GPAW-Result-Calculation-BSE_eig_xdirection.dat')
                 bse.get_dielectric_function(q_c = [0.0, 0.0, 0.0], direction=1, eta=self.Opt_eta,
                                             w_w=np.linspace(self.Opt_BSE_min_en, self.Opt_BSE_max_en, self.Opt_BSE_num_of_data),
-                                            filename=self.struct+'-OPTICAL-Result-Calculation-BSE_dielec_ydirection.csv',
-                                            write_eig=self.struct+'-OPTICAL-Result-Calculation-BSE_eig_ydirection.dat')
+                                            filename=self.struct+'-OPTICAL-GPAW-Result-Calculation-BSE_dielec_ydirection.csv',
+                                            write_eig=self.struct+'-OPTICAL-GPAW-Result-Calculation-BSE_eig_ydirection.dat')
                 bse.get_dielectric_function(q_c = [0.0, 0.0, 0.0], direction=2, eta=self.Opt_eta,
                                             w_w=np.linspace(self.Opt_BSE_min_en, self.Opt_BSE_max_en, self.Opt_BSE_num_of_data),
-                                            filename=self.struct+'-OPTICAL-Result-Calculation-BSE_dielec_zdirection.csv',
-                                            write_eig=self.struct+'-OPTICAL-Result-Calculation-BSE_eig_zdirection.dat')
+                                            filename=self.struct+'-OPTICAL-GPAW-Result-Calculation-BSE_dielec_zdirection.csv',
+                                            write_eig=self.struct+'-OPTICAL-GPAW-Result-Calculation-BSE_eig_zdirection.dat')
 
                 # Loading dielectric function spectrum to numpy
-                dielec_x = genfromtxt(self.struct+'-OPTICAL-Result-Calculation-BSE_dielec_xdirection.csv', delimiter=',')
-                dielec_y = genfromtxt(self.struct+'-OPTICAL-Result-Calculation-BSE_dielec_ydirection.csv', delimiter=',')
-                dielec_z = genfromtxt(self.struct+'-OPTICAL-Result-Calculation-BSE_dielec_zdirection.csv', delimiter=',')
+                dielec_x = genfromtxt(self.struct+'-OPTICAL-GPAW-Result-Calculation-BSE_dielec_xdirection.csv', delimiter=',')
+                dielec_y = genfromtxt(self.struct+'-OPTICAL-GPAW-Result-Calculation-BSE_dielec_ydirection.csv', delimiter=',')
+                dielec_z = genfromtxt(self.struct+'-OPTICAL-GPAW-Result-Calculation-BSE_dielec_zdirection.csv', delimiter=',')
                 # dielec_x.shape[0] will give us the length of data.
                 # c and h
                 c_opt = 29979245800
@@ -3550,21 +3557,21 @@ class dftsolve:
                     opt_ref_bse_z[n] = (np.square(1-opt_n_bse_z[n])+np.square(opt_k_bse_z[n]))/(np.square(1+opt_n_bse_z[n])+np.square(opt_k_bse_z[n]))
 
                 # Saving other data for x-direction
-                with paropen(self.struct+'-OPTICAL-Result-Calculation-BSE-AllData_xdirection.dat', 'w') as f1:
+                with paropen(self.struct+'-OPTICAL-GPAW-Result-Calculation-BSE-AllData_xdirection.dat', 'w') as f1:
                     print("Energy(eV) Eps_real Eps_img Refractive_Index Extinction_Index Absorption(1/cm) Reflectivity", end="\n", file=f1)
                     for n in range(dielec_x.shape[0]):
                         print(dielec_x[n][0], dielec_x[n][1], dielec_x[n][2], opt_n_bse_x[n], opt_k_bse_x[n], opt_abs_bse_x[n], opt_ref_bse_x[n], end="\n", file=f1)
                     print (end="\n", file=f1)
 
                 # Saving other data for y-direction
-                with paropen(self.struct+'-OPTICAL-Result-Calculation-BSE-AllData_ydirection.dat', 'w') as f1:
+                with paropen(self.struct+'-OPTICAL-GPAW-Result-Calculation-BSE-AllData_ydirection.dat', 'w') as f1:
                     print("Energy(eV) Eps_real Eps_img Refractive_Index Extinction_Index Absorption(1/cm) Reflectivity", end="\n", file=f1)
                     for n in range(dielec_y.shape[0]):
                         print(dielec_y[n][0], dielec_y[n][1], dielec_y[n][2], opt_n_bse_y[n], opt_k_bse_y[n], opt_abs_bse_y[n], opt_ref_bse_y[n], end="\n", file=f1)
                     print (end="\n", file=f1)
 
                 # Saving other data for z-direction
-                with paropen(self.struct+'-OPTICAL-Result-Calculation-BSE-AllData_zdirection.dat', 'w') as f1:
+                with paropen(self.struct+'-OPTICAL-GPAW-Result-Calculation-BSE-AllData_zdirection.dat', 'w') as f1:
                     print("Energy(eV) Eps_real Eps_img Refractive_Index Extinction_Index Absorption(1/cm) Reflectivity", end="\n", file=f1)
                     for n in range(dielec_z.shape[0]):
                         print(dielec_z[n][0], dielec_z[n][1], dielec_z[n][2], opt_n_bse_z[n], opt_k_bse_z[n], opt_abs_bse_z[n], opt_ref_bse_z[n], end="\n", file=f1)
@@ -3574,22 +3581,22 @@ class dftsolve:
             elif self.Opt_calc_type == 'RPA':
                 parprint('Starting RPA calculations')
                 from gpaw.response.df import DielectricFunction
-                df = DielectricFunction(calc=self.struct+'-OPTICAL-Result-State.gpw',
+                df = DielectricFunction(calc=self.struct+'-OPTICAL-GPAW-Result-State.gpw',
                                         frequencies={'type': 'nonlinear', 'domega0': self.Opt_domega0, 'omega2': self.Opt_omega2},
                                         eta=self.Opt_eta, intraband=False, hilbert=False,
-                                        ecut=self.Opt_cut_of_energy, txt=self.struct+'-OPTICAL-Log-Calculation-RPA.txt')
+                                        ecut=self.Opt_cut_of_energy, txt=self.struct+'-OPTICAL-GPAW-Log-Calculation-RPA.txt')
                 # Writing to files as: omega, nlfc.real, nlfc.imag, lfc.real, lfc.imag
                 # Here lfc is local field correction
                 # Getting dielectric function spectrum
                 parprint("Starting dielectric function calculation...")
-                df.get_dielectric_function(direction='x', filename=self.struct+'-OPTICAL-Result-Calculation-RPA_dielec_xdirection.csv')
-                df.get_dielectric_function(direction='y', filename=self.struct+'-OPTICAL-Result-Calculation-RPA_dielec_ydirection.csv')
-                df.get_dielectric_function(direction='z', filename=self.struct+'-OPTICAL-Result-Calculation-RPA_dielec_zdirection.csv')
+                df.get_dielectric_function(direction='x', filename=self.struct+'-OPTICAL-GPAW-Result-Calculation-RPA_dielec_xdirection.csv')
+                df.get_dielectric_function(direction='y', filename=self.struct+'-OPTICAL-GPAW-Result-Calculation-RPA_dielec_ydirection.csv')
+                df.get_dielectric_function(direction='z', filename=self.struct+'-OPTICAL-GPAW-Result-Calculation-RPA_dielec_zdirection.csv')
 
                 # Loading dielectric function spectrum to numpy
-                dielec_x = genfromtxt(self.struct+'-OPTICAL-Result-Calculation-RPA_dielec_xdirection.csv', delimiter=',')
-                dielec_y = genfromtxt(self.struct+'-OPTICAL-Result-Calculation-RPA_dielec_ydirection.csv', delimiter=',')
-                dielec_z = genfromtxt(self.struct+'-OPTICAL-Result-Calculation-RPA_dielec_zdirection.csv', delimiter=',')
+                dielec_x = genfromtxt(self.struct+'-OPTICAL-GPAW-Result-Calculation-RPA_dielec_xdirection.csv', delimiter=',')
+                dielec_y = genfromtxt(self.struct+'-OPTICAL-GPAW-Result-Calculation-RPA_dielec_ydirection.csv', delimiter=',')
+                dielec_z = genfromtxt(self.struct+'-OPTICAL-GPAW-Result-Calculation-RPA_dielec_zdirection.csv', delimiter=',')
                 # dielec_x.shape[0] will give us the length of data.
                 # c and h
                 c_opt = 29979245800
@@ -3630,21 +3637,21 @@ class dftsolve:
                     opt_ref_nlfc_z[n] = (np.square(1-opt_n_nlfc_z[n])+np.square(opt_k_nlfc_z[n]))/(np.square(1+opt_n_nlfc_z[n])+np.square(opt_k_nlfc_z[n]))
 
                 # Saving NLFC other optical spectrum for x-direction
-                with paropen(self.struct+'-OPTICAL-Result-Calculation-RPA-NLFC-AllData_xdirection.dat', 'w') as f1:
+                with paropen(self.struct+'-OPTICAL-GPAW-Result-Calculation-RPA-NLFC-AllData_xdirection.dat', 'w') as f1:
                     print("Energy(eV) Eps_real Eps_img Refractive_Index Extinction_Index Absorption(1/cm) Reflectivity", end="\n", file=f1)
                     for n in range(dielec_x.shape[0]):
                         print(dielec_x[n][0], dielec_x[n][1], dielec_x[n][2], opt_n_nlfc_x[n], opt_k_nlfc_x[n], opt_abs_nlfc_x[n], opt_ref_nlfc_x[n], end="\n", file=f1)
                     print (end="\n", file=f1)
 
                 # Saving NLFC other optical spectrum for y-direction
-                with paropen(self.struct+'-OPTICAL-Result-Calculation-RPA-NLFC-AllData_ydirection.dat', 'w') as f1:
+                with paropen(self.struct+'-OPTICAL-GPAW-Result-Calculation-RPA-NLFC-AllData_ydirection.dat', 'w') as f1:
                     print("Energy(eV) Eps_real Eps_img Refractive_Index Extinction_Index Absorption(1/cm) Reflectivity", end="\n", file=f1)
                     for n in range(dielec_y.shape[0]):
                         print(dielec_y[n][0], dielec_y[n][1], dielec_y[n][2], opt_n_nlfc_y[n], opt_k_nlfc_y[n], opt_abs_nlfc_y[n], opt_ref_nlfc_y[n], end="\n", file=f1)
                     print (end="\n", file=f1)
 
                 # Saving NLFC other optical spectrum for z-direction
-                with paropen(self.struct+'-OPTICAL-Result-Calculation-RPA-NLFC-AllData_zdirection.dat', 'w') as f1:
+                with paropen(self.struct+'-OPTICAL-GPAW-Result-Calculation-RPA-NLFC-AllData_zdirection.dat', 'w') as f1:
                     print("Energy(eV) Eps_real Eps_img Refractive_Index Extinction_Index Absorption(1/cm) Reflectivity", end="\n", file=f1)
                     for n in range(dielec_z.shape[0]):
                         print(dielec_z[n][0], dielec_z[n][1], dielec_z[n][2], opt_n_nlfc_z[n], opt_k_nlfc_z[n], opt_abs_nlfc_z[n], opt_ref_nlfc_z[n], end="\n", file=f1)
@@ -3684,21 +3691,21 @@ class dftsolve:
                     opt_ref_lfc_z[n] = (np.square(1-opt_n_lfc_z[n])+np.square(opt_k_lfc_z[n]))/(np.square(1+opt_n_lfc_z[n])+np.square(opt_k_lfc_z[n]))
 
                 # Saving LFC other optical spectrum for x-direction
-                with paropen(self.struct+'-OPTICAL-Result-Calculation-RPA-LFC-AllData_xdirection.dat', 'w') as f1:
+                with paropen(self.struct+'-OPTICAL-GPAW-Result-Calculation-RPA-LFC-AllData_xdirection.dat', 'w') as f1:
                     print("Energy(eV) Eps_real Eps_img Refractive_Index Extinction_Index Absorption(1/cm) Reflectivity", end="\n", file=f1)
                     for n in range(dielec_x.shape[0]):
                         print(dielec_x[n][0], dielec_x[n][3], dielec_x[n][4], opt_n_lfc_x[n], opt_k_lfc_x[n], opt_abs_lfc_x[n], opt_ref_lfc_x[n], end="\n", file=f1)
                     print (end="\n", file=f1)
 
                 # Saving LFC other optical spectrum for y-direction
-                with paropen(self.struct+'-OPTICAL-Result-Calculation-RPA-LFC-AllData_ydirection.dat', 'w') as f1:
+                with paropen(self.struct+'-OPTICAL-GPAW-Result-Calculation-RPA-LFC-AllData_ydirection.dat', 'w') as f1:
                     print("Energy(eV) Eps_real Eps_img Refractive_Index Extinction_Index Absorption(1/cm) Reflectivity", end="\n", file=f1)
                     for n in range(dielec_y.shape[0]):
                         print(dielec_y[n][0], dielec_y[n][3], dielec_y[n][4], opt_n_lfc_y[n], opt_k_lfc_y[n], opt_abs_lfc_y[n], opt_ref_lfc_y[n], end="\n", file=f1)
                     print (end="\n", file=f1)
 
                 # Saving LFC other optical spectrum for z-direction
-                with paropen(self.struct+'-OPTICAL-Result-Calculation-RPA-LFC-AllData_zdirection.dat', 'w') as f1:
+                with paropen(self.struct+'-OPTICAL-GPAW-Result-Calculation-RPA-LFC-AllData_zdirection.dat', 'w') as f1:
                     print("Energy(eV) Eps_real Eps_img Refractive_Index Extinction_Index Absorption(1/cm) Reflectivity", end="\n", file=f1)
                     for n in range(dielec_z.shape[0]):
                         print(dielec_z[n][0], dielec_z[n][3], dielec_z[n][4], opt_n_lfc_z[n], opt_k_lfc_z[n], opt_abs_lfc_z[n], opt_ref_lfc_z[n], end="\n", file=f1)
@@ -3715,7 +3722,7 @@ class dftsolve:
         # Finish Optical calc
         time62 = time.time()
         # Write timings of calculation
-        with paropen(self.struct+'-TIMINGS-Log-Timings.txt', 'a') as f1:
+        with paropen(self.struct+f'-TIMINGS-{self.Engine}-Log-Timings.txt', 'a') as f1:
             print('Optical calculation: ', round((time62-time61),2), end="\n", file=f1)
         
         # Plot generated optical data
@@ -3823,12 +3830,12 @@ class dftsolve:
             parprint("Generating optical property figures...")
             
             # 1. Process BSE Data
-            bse_filename = f"{self.struct}-OPTICAL-Result-Calculation-BSE-AllData.dat"
+            bse_filename = f"{self.struct}-OPTICAL-GPAW-Result-Calculation-BSE-AllData.dat"
             if os.path.exists(bse_filename):
                 try:
                     bse_data = np.loadtxt(bse_filename, skiprows=1)
                     # Create prefix aligning with Nanoworks standard
-                    file_prefix = f"{self.struct}-OPTICAL-Result-Figure-BSE"
+                    file_prefix = f"{self.struct}-OPTICAL-GPAW-Graph-BSE"
                     self._generate_optical_figures(bse_data, file_prefix, "BSE")
                 except Exception as e:
                     print(f"Error plotting BSE data: {e}")
@@ -3839,12 +3846,12 @@ class dftsolve:
 
             for rtype in rpa_types:
                 for direction in directions:
-                    rpa_filename = f"{self.struct}-OPTICAL-Result-Calculation-RPA-{rtype}-AllData_{direction}.dat"
+                    rpa_filename = f"{self.struct}-OPTICAL-GPAW-Result-Calculation-RPA-{rtype}-AllData_{direction}.dat"
                     if os.path.exists(rpa_filename):
                         try:
                             rpa_data = np.loadtxt(rpa_filename, skiprows=1)
                             # Create prefix aligning with Nanoworks standard
-                            file_prefix = f"{self.struct}-OPTICAL-Result-Figure-RPA-{rtype}-{direction}"
+                            file_prefix = f"{self.struct}-OPTICAL-GPAW-Graph-RPA-{rtype}-{direction}"
                             title_suffix = f"RPA {rtype} ({direction})"
                             self._generate_optical_figures(rpa_data, file_prefix, title_suffix)
                         except Exception as e:
@@ -3855,7 +3862,7 @@ class dftsolve:
         cell.set_calculator(calc)
         forces = cell.get_forces()
         drift_force = forces.sum(axis=0)
-        with paropen(self.struct+'-PHONON-Log-Phonon-Phonopy.txt', 'a') as f2:
+        with paropen(self.struct+'-PHONON-GPAW-Log-Phonopy.txt', 'a') as f2:
             print(("[Phonopy] Drift force:" + "%11.5f" * 3) % tuple(drift_force), end="\n", file=f2)
         # Simple translational invariance
         for force in forces:
@@ -3864,12 +3871,12 @@ class dftsolve:
 
     def load_or_compute_force(self, path, calc, atoms):
         if os.path.exists(path):
-            with paropen(self.struct+'-PHONON-Log-Phonon-Phonopy.txt', 'a') as f2:
+            with paropen(self.struct+'-PHONON-GPAW-Log-Phonopy.txt', 'a') as f2:
                 print('Reading {!r}'.format(path), end="\n", file=f2)
             return np.load(path)
 
         else:
-            with paropen(self.struct+'-PHONON-Log-Phonon-Phonopy.txt', 'a') as f2:
+            with paropen(self.struct+'-PHONON-GPAW-Log-Phonopy.txt', 'a') as f2:
                 print('Computing {!r}'.format(path), end="\n", file=f2)
             force_set = self.run_gpaw(calc, atoms)
             np.save(path, force_set)
@@ -4166,7 +4173,11 @@ def main():
         parallel_cores = world.size
     
     # Write timings of calculation
-    with paropen(struct+'-TIMINGS-Log-Timings.txt', 'a') as f1:
+    with paropen(
+        struct
+        + f'-TIMINGS-{config.Engine}-Log-Timings.txt',
+        'a',
+    ) as f1:
         print("dftsolve.py execution timings (seconds):", end="\n", file=f1)
         print("Execution started:", time0, end="\n", file=f1)
 
@@ -4208,11 +4219,19 @@ def main():
         dftsolver.opticalcalc()
 
     # Ending of timings
-    with paropen(struct+'-TIMINGS-Log-Timings.txt', 'a') as f1:
+    with paropen(
+        struct
+        + f'-TIMINGS-{config.Engine}-Log-Timings.txt',
+        'a',
+    ) as f1:
         print("---------------------------------------", end="\n", file=f1)
 
     if args.energymeas == True and meter is not None:
-        log_energy_consumption(meter, struct)
+        log_energy_consumption(
+            meter,
+            struct,
+            config.Engine,
+        )
 
 if __name__ == "__main__":
     main()
