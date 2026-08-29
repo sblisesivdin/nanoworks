@@ -881,6 +881,49 @@ def render_nscf_input(
         diagonalization=diagonalization,
     )
 
+def render_bands_input(
+    atoms,
+    pseudopotentials,
+    cutoff_ev,
+    band_path,
+    total_charge=0.0,
+    nbands=None,
+    spinpol=False,
+    occupations='fixed',
+    smearing=None,
+    width_ev=None,
+    prefix='nanoworks',
+    pseudo_dir=None,
+    outdir=None,
+    conv_thr=None,
+    mixing_beta=None,
+    electron_maxstep=None,
+    diagonalization=None,
+):
+    """Render a complete QE pw.x bands input."""
+    return render_pw_input(
+        calculation='bands',
+        atoms=atoms,
+        pseudopotentials=pseudopotentials,
+        cutoff_ev=cutoff_ev,
+        kpoint_size=None,
+        gamma=False,
+        total_charge=total_charge,
+        nbands=nbands,
+        spinpol=spinpol,
+        occupations=occupations,
+        smearing=smearing,
+        width_ev=width_ev,
+        prefix=prefix,
+        pseudo_dir=pseudo_dir,
+        outdir=outdir,
+        conv_thr=conv_thr,
+        mixing_beta=mixing_beta,
+        electron_maxstep=electron_maxstep,
+        diagonalization=diagonalization,
+        band_path=band_path,
+    )
+
 def render_dos_input(
     prefix='nanoworks',
     outdir=None,

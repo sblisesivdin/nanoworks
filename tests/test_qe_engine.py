@@ -24,6 +24,7 @@ from nanoworks.engine.qe import (
     render_pw_input,
     render_scf_input,
     render_nscf_input,
+    render_bands_input,
     rydberg_to_ev,
     build_qe_launcher,
     resolve_qe_executable,
@@ -784,6 +785,68 @@ class TestQEEngine(unittest.TestCase):
                 "0.500000000000 0.000000000000 "
                 "0.500000000000 1.0"
             ),
+            text,
+        )
+
+        self.assertNotIn(
+            "K_POINTS automatic",
+            text,
+        )
+
+    def test_render_bands_input_wrapper(self):
+        atoms = bulk(
+            'Si',
+            'diamond',
+            a=5.43,
+        )
+
+        band_path = build_band_path(
+            atoms=atoms,
+            path='GX',
+            npoints=5,
+        )
+
+        text = render_bands_input(
+            atoms=atoms,
+            pseudopotentials={
+                'Si': 'Si.upf',
+            },
+            cutoff_ev=400.0,
+            band_path=band_path,
+            nbands=12,
+            occupations='fixed',
+            prefix='nanoworks',
+            pseudo_dir='/tmp/pseudos',
+            outdir='/tmp/qe-state',
+        )
+
+        self.assertIn(
+            "calculation = 'bands'",
+            text,
+        )
+
+        self.assertIn(
+            "nbnd = 12",
+            text,
+        )
+
+        self.assertIn(
+            "K_POINTS crystal",
+            text,
+        )
+
+        self.assertIn(
+            "\n5\n",
+            text,
+        )
+
+        self.assertIn(
+            "pseudo_dir = '/tmp/pseudos'",
+            text,
+        )
+
+        self.assertIn(
+            "outdir = '/tmp/qe-state'",
             text,
         )
 
