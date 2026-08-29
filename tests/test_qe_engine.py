@@ -37,6 +37,7 @@ from nanoworks.engine.qe import (
     validate_qe_xc,
     run_scf,
     run_nscf,
+    run_bands,
     has_qe_state,
     render_dos_input,
     run_dos,
@@ -1481,6 +1482,39 @@ class TestQEEngine(unittest.TestCase):
                     },
                     pseudo_dir='/tmp/pseudos',
                     cutoff_ev=400.0,
+                )
+
+    def test_run_bands_requires_ground_state(self):
+        atoms = bulk(
+            'Si',
+            'diamond',
+            a=5.43,
+        )
+
+        band_path = build_band_path(
+            atoms=atoms,
+            path='GX',
+            npoints=5,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+
+            with self.assertRaisesRegex(
+                FileNotFoundError,
+                'valid QE ground-state result',
+            ):
+                run_bands(
+                    atoms=atoms,
+                    input_file=tmpdir / 'bands.in',
+                    output_file=tmpdir / 'bands.out',
+                    state_dir=tmpdir / 'state',
+                    pseudopotentials={
+                        'Si': 'Si.upf',
+                    },
+                    pseudo_dir='/tmp/pseudos',
+                    cutoff_ev=400.0,
+                    band_path=band_path,
                 )
 
     def test_parse_dos_output(self):

@@ -2019,6 +2019,117 @@ def run_nscf(
         'result': result,
     }
 
+def run_bands(
+    atoms,
+    input_file,
+    output_file,
+    state_dir,
+    pseudopotentials,
+    pseudo_dir,
+    cutoff_ev,
+    band_path,
+    total_charge=0.0,
+    nbands=None,
+    spinpol=False,
+    occupation=None,
+    parallel_cores=1,
+    executable='pw.x',
+    prefix='nanoworks',
+):
+    """Render, execute, and parse one QE pw.x bands calculation."""
+    input_file = Path(
+        input_file
+    )
+
+    output_file = Path(
+        output_file
+    )
+
+    state_dir = Path(
+        state_dir
+    )
+
+    if not has_qe_state(
+        state_dir,
+        prefix=prefix,
+    ):
+        raise FileNotFoundError(
+            "A valid QE ground-state result is required "
+            f"for the bands calculation: {state_dir}"
+        )
+
+    occupation_settings = (
+        resolve_qe_occupation(
+            occupation
+        )
+    )
+
+    input_text = render_bands_input(
+        atoms=atoms,
+        pseudopotentials=pseudopotentials,
+        cutoff_ev=cutoff_ev,
+        band_path=band_path,
+        total_charge=total_charge,
+        nbands=nbands,
+        spinpol=spinpol,
+        occupations=occupation_settings['occupations'],
+        smearing=occupation_settings['smearing'],
+        width_ev=occupation_settings['width_ev'],
+        prefix=prefix,
+        pseudo_dir=pseudo_dir,
+        outdir=state_dir,
+    )
+
+    input_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    input_file.write_text(
+        input_text,
+        encoding='utf-8',
+    )
+
+    launcher = build_qe_launcher(
+        parallel_cores=parallel_cores
+    )
+
+    execution = run_qe_program(
+        input_file=input_file,
+        output_file=output_file,
+        executable=executable,
+        launcher=launcher,
+    )
+
+    result = parse_pw_output(
+        output_file
+    )
+
+    try:
+        validate_qe_version(
+            result['qe_version']
+        )
+    except ValueError as exc:
+        raise RuntimeError(
+            f"{exc} See '{output_file}'."
+        ) from exc
+
+    if not result['job_done']:
+        raise RuntimeError(
+            "Quantum ESPRESSO bands calculation finished without a "
+            "'JOB DONE.' marker. "
+            f"See '{output_file}'."
+        )
+
+    return {
+        'input_file': input_file,
+        'output_file': output_file,
+        'state_dir': state_dir,
+        'band_path': band_path,
+        'execution': execution,
+        'result': result,
+    }
+
 def run_dos(
     input_file,
     output_file,
