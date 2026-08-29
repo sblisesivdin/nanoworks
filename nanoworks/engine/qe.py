@@ -2312,6 +2312,21 @@ def run_bands(
             f"See '{output_file}'."
         )
 
+    bands = parse_pw_bands_output(
+        output_file
+    )
+
+    requested_npoints = int(
+        band_path['npoints']
+    )
+
+    if bands['nkpoints'] != requested_npoints:
+        raise RuntimeError(
+            "Quantum ESPRESSO bands output contains "
+            f"{bands['nkpoints']} k-points, but "
+            f"{requested_npoints} were requested."
+        )
+
     return {
         'input_file': input_file,
         'output_file': output_file,
@@ -2319,6 +2334,7 @@ def run_bands(
         'band_path': band_path,
         'execution': execution,
         'result': result,
+        'bands': bands,
     }
 
 def run_dos(

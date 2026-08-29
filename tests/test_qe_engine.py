@@ -1617,6 +1617,139 @@ class TestQEEngine(unittest.TestCase):
                     band_path=band_path,
                 )
 
+    def test_run_bands_parses_eigenvalues(self):
+        atoms = bulk(
+            'Si',
+            'diamond',
+            a=5.43,
+        )
+
+        band_path = build_band_path(
+            atoms=atoms,
+            path='GX',
+            npoints=2,
+        )
+
+        output_text = """
+         Program PWSCF v.7.2 starts
+
+         End of band structure calculation
+
+              k = 0.0000 0.0000 0.0000 ( 123 PWs)   bands (ev):
+
+            -5.0000  -1.0000   1.0000
+
+              k = 0.5000 0.0000 0.5000 ( 120 PWs)   bands (ev):
+
+            -4.5000  -0.5000   1.5000
+
+         JOB DONE.
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+
+            state_dir = (
+                tmpdir
+                / 'state'
+            )
+
+            save_dir = (
+                state_dir
+                / 'nanoworks.save'
+            )
+
+            save_dir.mkdir(
+                parents=True
+            )
+
+            (
+                save_dir
+                / 'data-file-schema.xml'
+            ).write_text(
+                '<qes/>',
+                encoding='utf-8',
+            )
+
+            def fake_run_qe_program(**kwargs):
+                Path(
+                    kwargs['output_file']
+                ).write_text(
+                    output_text,
+                    encoding='utf-8',
+                )
+
+                return {
+                    'returncode': 0,
+                }
+
+            with patch(
+                'nanoworks.engine.qe.run_qe_program',
+                side_effect=fake_run_qe_program,
+            ) as run:
+                workflow = run_bands(
+                    atoms=atoms,
+                    input_file=tmpdir / 'bands.in',
+                    output_file=tmpdir / 'bands.out',
+                    state_dir=state_dir,
+                    pseudopotentials={
+                        'Si': 'Si.upf',
+                    },
+                    pseudo_dir='/tmp/pseudos',
+                    cutoff_ev=400.0,
+                    band_path=band_path,
+                    nbands=3,
+                )
+
+            self.assertEqual(
+                run.call_count,
+                1,
+            )
+
+            self.assertTrue(
+                workflow['input_file'].is_file()
+            )
+
+            input_text = (
+                workflow['input_file']
+                .read_text(
+                    encoding='utf-8'
+                )
+            )
+
+        self.assertIn(
+            "calculation = 'bands'",
+            input_text,
+        )
+
+        self.assertIn(
+            "K_POINTS crystal",
+            input_text,
+        )
+
+        self.assertEqual(
+            workflow['bands']['nspins'],
+            1,
+        )
+
+        self.assertEqual(
+            workflow['bands']['nkpoints'],
+            2,
+        )
+
+        self.assertEqual(
+            workflow['bands']['nbands'],
+            3,
+        )
+
+        self.assertEqual(
+            workflow['bands']['eigenvalues_ev'],
+            [[
+                [-5.0, -1.0, 1.0],
+                [-4.5, -0.5, 1.5],
+            ]],
+        )
+
     def test_parse_dos_output(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             dos_file = (
