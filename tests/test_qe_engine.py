@@ -31,6 +31,7 @@ from nanoworks.engine.qe import (
     build_qe_command,
     run_qe_program,
     parse_pw_output,
+    parse_pw_bands_output,
     resolve_qe_kpoint_size,
     resolve_qe_occupation,
     validate_qe_version,
@@ -1167,6 +1168,105 @@ class TestQEEngine(unittest.TestCase):
             self.assertIsNone(
                 result['fermi_energy_ev']
             )
+
+    def test_parse_pw_bands_output(self):
+        output_text = """
+         End of band structure calculation
+
+              k = 0.0000 0.0000 0.0000 ( 123 PWs)   bands (ev):
+
+            -5.0000  -1.0000   1.0000
+             3.0000   5.0000
+
+              k = 0.5000 0.0000 0.5000 ( 120 PWs)   bands (ev):
+
+            -4.5000  -0.5000   1.5000
+             3.5000   5.5000
+
+         JOB DONE.
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = (
+                Path(tmpdir)
+                / 'bands.out'
+            )
+
+            output_file.write_text(
+                output_text,
+                encoding='utf-8',
+            )
+
+            result = parse_pw_bands_output(
+                output_file
+            )
+
+        self.assertFalse(
+            result['spin_polarized']
+        )
+
+        self.assertEqual(
+            result['nspins'],
+            1,
+        )
+
+        self.assertEqual(
+            result['nkpoints'],
+            2,
+        )
+
+        self.assertEqual(
+            result['nbands'],
+            5,
+        )
+
+        self.assertEqual(
+            result['kpoints'],
+            [
+                (0.0, 0.0, 0.0),
+                (0.5, 0.0, 0.5),
+            ],
+        )
+
+        self.assertEqual(
+            result['eigenvalues_ev'],
+            [[
+                [-5.0, -1.0, 1.0, 3.0, 5.0],
+                [-4.5, -0.5, 1.5, 3.5, 5.5],
+            ]],
+        )
+
+    def test_parse_pw_bands_output_rejects_inconsistent_band_counts(self):
+        output_text = """
+              k = 0.0000 0.0000 0.0000 ( 123 PWs)   bands (ev):
+
+            -5.0000  -1.0000   1.0000
+
+              k = 0.5000 0.0000 0.5000 ( 120 PWs)   bands (ev):
+
+            -4.5000  -0.5000
+
+         JOB DONE.
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = (
+                Path(tmpdir)
+                / 'bands.out'
+            )
+
+            output_file.write_text(
+                output_text,
+                encoding='utf-8',
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                'inconsistent numbers of bands',
+            ):
+                parse_pw_bands_output(
+                    output_file
+                )
 
     @patch('nanoworks.engine.qe.subprocess.run')
     @patch('nanoworks.engine.qe.resolve_qe_executable')
