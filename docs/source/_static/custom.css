@@ -1,0 +1,109 @@
+/* Nanoworks documentation landing page */
+.nw-hero {
+  margin: -1.2rem 0 2.2rem;
+  padding: 3.5rem 2.5rem;
+  border-radius: .6rem;
+  background: linear-gradient(135deg, #123b50 0%, #176b73 100%);
+  color: #fff;
+  text-align: center;
+}
+.nw-hero h1 {
+  max-width: 850px;
+  margin: .25rem auto 1rem;
+  color: #fff;
+  font-size: 2.55rem;
+  line-height: 1.15;
+}
+.nw-eyebrow {
+  margin: 0;
+  color: #aee7df;
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+.nw-lead {
+  max-width: 760px;
+  margin: 0 auto;
+  color: #e9f7f5;
+  font-size: 1.15rem;
+  line-height: 1.65;
+}
+.nw-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: .75rem;
+  margin: 1.6rem 0 1rem;
+}
+.nw-actions-left { justify-content: flex-start; }
+.nw-button {
+  display: inline-block;
+  padding: .7rem 1.15rem;
+  border: 2px solid transparent;
+  border-radius: .3rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.nw-button-primary { background: #fff; color: #155d64; }
+.nw-button-primary:hover { background: #e8f5f3; color: #103f45; }
+.nw-button-secondary { border-color: currentColor; color: inherit; }
+.nw-actions-left .nw-button-primary { background: #176b73; color: #fff; }
+.nw-actions-left .nw-button-secondary { color: #176b73; }
+.nw-trust { margin: 1.2rem 0 0; color: #cbe9e5; font-size: .85rem; }
+.nw-card-grid {
+  display: grid;
+  gap: 1rem;
+  margin: 1.2rem 0 2rem;
+}
+.nw-card-grid-three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.nw-card-grid-two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.nw-card {
+  padding: 1.25rem;
+  border: 1px solid #d9e2e6;
+  border-radius: .45rem;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(23, 51, 64, .06);
+}
+.nw-card h3 { margin-top: .5rem; color: #174f5b; }
+.nw-card p:last-child { margin-bottom: 0; }
+.nw-card-compact h3, .nw-link-card h3 { margin-top: 0; }
+.nw-command {
+  display: inline-block;
+  padding: .15rem .45rem;
+  border-radius: .25rem;
+  background: #e6f3f2;
+  color: #155d64;
+  font-family: monospace;
+  font-size: .85rem;
+}
+.nw-feature-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .6rem;
+  margin: 1rem 0 1.5rem;
+}
+.nw-feature-list span {
+  padding: .65rem .8rem;
+  border-left: 3px solid #2a8b87;
+  background: #f2f8f8;
+}
+.nw-ecosystem {
+  padding: 1rem 1.2rem;
+  border-radius: .35rem;
+  background: #f2f8f8;
+  color: #174f5b;
+  font-weight: 600;
+  line-height: 1.8;
+  text-align: center;
+}
+@media (max-width: 850px) {
+  .nw-card-grid-three, .nw-feature-list { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 600px) {
+  .nw-hero { padding: 2.4rem 1.25rem; }
+  .nw-hero h1 { font-size: 1.9rem; }
+  .nw-card-grid-three, .nw-card-grid-two, .nw-feature-list {
+    grid-template-columns: 1fr;
+  }
+}
