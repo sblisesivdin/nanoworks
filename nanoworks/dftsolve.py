@@ -795,28 +795,16 @@ class dftsolve:
 
     def _groundcalc_qe(self):
         """Run the Quantum ESPRESSO PW ground-state workflow."""
-        
+
         # -------------------------------------------------------------
         # GROUND STATE - QE
         # -------------------------------------------------------------
-        
+
         if self.Mode != 'PW':
             parprint(
                 "\033[91mERROR:\033[0m "
                 "Quantum ESPRESSO backend currently supports "
                 "PW mode only."
-            )
-            sys.exit(1)
-
-        if self.Geo_optim:
-            parprint(
-                "\033[91mERROR:\033[0m "
-                "Geometry optimization is not implemented "
-                "for the QE backend yet."
-            )
-            parprint(
-                "For the first QE ground-state workflow, "
-                "use Geo_optim = False."
             )
             sys.exit(1)
 
@@ -844,6 +832,11 @@ class dftsolve:
             + '-GROUND-QE-Result-State'
         )
 
+        final_structure_file = Path(
+            self.struct
+            + f'-GROUND-{self.Engine}-Result-Final.cif'
+        )
+
         if not self.Ground_calc:
             parprint(
                 "Passing QE PW ground state calculation..."
@@ -863,11 +856,42 @@ class dftsolve:
                 )
                 sys.exit(1)
 
-            return
+            if self.Geo_optim:
+                if not final_structure_file.is_file():
+                    parprint(
+                        "\033[91mERROR:\033[0m "
+                        "The optimized QE structure could not be found: "
+                        + str(final_structure_file)
+                    )
+                    parprint(
+                        "Run the ground-state calculation once with "
+                        "Ground_calc = True and Geo_optim = True."
+                    )
+                    sys.exit(1)
 
-        parprint(
-            "Starting QE PW ground state calculation..."
-        )
+                try:
+                    self.bulk_configuration = read(
+                        final_structure_file,
+                        index='-1',
+                    )
+                except Exception as exc:
+                    parprint(
+                        "\033[91mERROR:\033[0m "
+                        "The optimized QE structure could not be loaded: "
+                        f"{exc}"
+                    )
+                    raise
+
+                self.config.bulk_configuration = (
+                    self.bulk_configuration
+                )
+
+                parprint(
+                    "Loaded the optimized QE structure from: "
+                    + str(final_structure_file)
+                )
+
+            return
 
         pseudo_dir = get_qe_pseudo_dir(
             relativistic='scalar',
@@ -892,52 +916,153 @@ class dftsolve:
             else self.Ground_gamma
         )
 
-        input_file = Path(
-            self.struct
-            + '-GROUND-QE-Input-SCF.in'
-        )
-
-        output_file = Path(
-            self.struct
-            + f'-GROUND-{self.Engine}-Log-SCF.txt'
-        )
-
-        try:
-            workflow = self.engine.run_scf(
-                atoms=self.bulk_configuration,
-                input_file=input_file,
-                output_file=output_file,
-                state_dir=state_dir,
-                pseudopotentials=pseudopotentials,
-                pseudo_dir=pseudo_dir,
-                cutoff_ev=self.Cut_off_energy,
-                kpoint_density=self.Ground_kpts_density,
-                kpoint_size=(
-                    self.Ground_kpts_x,
-                    self.Ground_kpts_y,
-                    self.Ground_kpts_z,
-                ),
-                gamma=ground_gamma,
-                total_charge=self.Total_charge,
-                nbands=self.Ground_num_of_bands,
-                spinpol=self.Spin_calc,
-                occupation=self.Occupation,
-                parallel_cores=self.parallel_cores,
-                executable='pw.x',
-                prefix='nanoworks',
+        if self.Geo_optim:
+            variable_cell = (
+                True in self.Relax_cell
             )
-        except Exception as exc:
+
+            relaxation_label = (
+                'VC-RELAX'
+                if variable_cell
+                else 'RELAX'
+            )
+
+            if variable_cell:
+                parprint(
+                    "Starting QE PW variable-cell "
+                    "geometry optimization..."
+                )
+            else:
+                parprint(
+                    "Starting QE PW atomic "
+                    "geometry optimization..."
+                )
+
+            input_file = Path(
+                self.struct
+                + f'-GROUND-QE-Input-{relaxation_label}.in'
+            )
+
+            output_file = Path(
+                self.struct
+                + f'-GROUND-{self.Engine}-Log-'
+                + f'{relaxation_label}.txt'
+            )
+
+            try:
+                workflow = self.engine.run_relax(
+                    atoms=self.bulk_configuration,
+                    input_file=input_file,
+                    output_file=output_file,
+                    state_dir=state_dir,
+                    pseudopotentials=pseudopotentials,
+                    pseudo_dir=pseudo_dir,
+                    cutoff_ev=self.Cut_off_energy,
+                    optimizer=self.Optimizer,
+                    max_force=self.Max_F_tolerance,
+                    max_step=self.Max_step,
+                    relax_cell=self.Relax_cell,
+                    hydrostatic_pressure=(
+                        self.Hydrostatic_pressure
+                    ),
+                    fix_symmetry=self.Fix_symmetry,
+                    kpoint_density=self.Ground_kpts_density,
+                    kpoint_size=(
+                        self.Ground_kpts_x,
+                        self.Ground_kpts_y,
+                        self.Ground_kpts_z,
+                    ),
+                    gamma=ground_gamma,
+                    total_charge=self.Total_charge,
+                    nbands=self.Ground_num_of_bands,
+                    spinpol=self.Spin_calc,
+                    occupation=self.Occupation,
+                    parallel_cores=self.parallel_cores,
+                    executable='pw.x',
+                    prefix='nanoworks',
+                )
+            except Exception as exc:
+                parprint(
+                    "\033[91mERROR:\033[0m "
+                    f"QE geometry optimization failed: {exc}"
+                )
+                raise
+
+            self.bulk_configuration = workflow[
+                'atoms'
+            ]
+
+            self.config.bulk_configuration = (
+                self.bulk_configuration
+            )
+
+            result = workflow[
+                'result'
+            ]
+
+            if variable_cell:
+                parprint(
+                    "QE variable-cell geometry "
+                    "optimization finished."
+                )
+            else:
+                parprint(
+                    "QE atomic geometry optimization finished."
+                )
+
+        else:
             parprint(
-                "\033[91mERROR:\033[0m "
-                f"QE ground-state calculation failed: {exc}"
+                "Starting QE PW ground state calculation..."
             )
-            raise
 
-        result = workflow['result']
+            input_file = Path(
+                self.struct
+                + '-GROUND-QE-Input-SCF.in'
+            )
 
-        parprint(
-            "QE ground state calculation finished."
-        )
+            output_file = Path(
+                self.struct
+                + f'-GROUND-{self.Engine}-Log-SCF.txt'
+            )
+
+            try:
+                workflow = self.engine.run_scf(
+                    atoms=self.bulk_configuration,
+                    input_file=input_file,
+                    output_file=output_file,
+                    state_dir=state_dir,
+                    pseudopotentials=pseudopotentials,
+                    pseudo_dir=pseudo_dir,
+                    cutoff_ev=self.Cut_off_energy,
+                    kpoint_density=self.Ground_kpts_density,
+                    kpoint_size=(
+                        self.Ground_kpts_x,
+                        self.Ground_kpts_y,
+                        self.Ground_kpts_z,
+                    ),
+                    gamma=ground_gamma,
+                    total_charge=self.Total_charge,
+                    nbands=self.Ground_num_of_bands,
+                    spinpol=self.Spin_calc,
+                    occupation=self.Occupation,
+                    parallel_cores=self.parallel_cores,
+                    executable='pw.x',
+                    prefix='nanoworks',
+                )
+            except Exception as exc:
+                parprint(
+                    "\033[91mERROR:\033[0m "
+                    f"QE ground-state calculation failed: {exc}"
+                )
+                raise
+
+            result = workflow[
+                'result'
+            ]
+
+            parprint(
+                "QE ground state calculation finished."
+            )
 
         parprint(
             "Total energy: "
@@ -946,7 +1071,7 @@ class dftsolve:
         )
 
         write_cif(
-            self.struct + f'-GROUND-{self.Engine}-Result-Final.cif',
+            final_structure_file,
             self.bulk_configuration,
         )
 
