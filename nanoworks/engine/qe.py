@@ -901,6 +901,7 @@ def render_pw_input(
     electron_maxstep=None,
     diagonalization=None,
     band_path=None,
+    relaxation_settings=None,
 ):
     """Render a complete QE pw.x input."""
 
@@ -912,13 +913,46 @@ def render_pw_input(
         'scf',
         'nscf',
         'bands',
+        'relax',
+        'vc-relax',
     }
 
     if calculation not in allowed_calculations:
         raise ValueError(
             f"Unsupported QE pw.x calculation type: {calculation}"
         )
-    
+
+    relaxation_calculations = {
+        'relax',
+        'vc-relax',
+    }
+
+    if calculation in relaxation_calculations:
+        if relaxation_settings is None:
+            raise ValueError(
+                f"QE {calculation} calculation requires "
+                "relaxation settings."
+            )
+
+        resolved_calculation = str(
+            relaxation_settings.get(
+                'calculation',
+                '',
+            )
+        ).strip().lower()
+
+        if resolved_calculation != calculation:
+            raise ValueError(
+                "QE relaxation calculation type does not match "
+                "the resolved relaxation settings."
+            )
+
+    elif relaxation_settings is not None:
+        raise ValueError(
+            "QE relaxation settings can only be used with "
+            "calculation='relax' or calculation='vc-relax'."
+        )
+
     species = build_atomic_species(
         atoms,
         pseudopotentials,
@@ -954,6 +988,37 @@ def render_pw_input(
         electron_maxstep=electron_maxstep,
         diagonalization=diagonalization,
     )
+
+    ions = None
+    cell_dynamics = None
+
+    if relaxation_settings is not None:
+        control.update(
+            relaxation_settings['control']
+        )
+
+        system.update(
+            relaxation_settings['system']
+        )
+
+        ions = relaxation_settings['ions']
+        cell_dynamics = relaxation_settings['cell']
+
+        if (
+            calculation == 'relax'
+            and cell_dynamics is not None
+        ):
+            raise ValueError(
+                "QE atomic relaxation cannot contain CELL settings."
+            )
+
+        if (
+            calculation == 'vc-relax'
+            and cell_dynamics is None
+        ):
+            raise ValueError(
+                "QE variable-cell relaxation requires CELL settings."
+            )
 
     positions = build_atomic_positions(atoms)
     cell = build_cell_parameters(atoms)
@@ -992,9 +1057,28 @@ def render_pw_input(
         render_namelist('CONTROL', control),
         render_namelist('SYSTEM', system),
         render_namelist('ELECTRONS', electrons),
+    ]
+
+    if ions is not None:
+        lines.append(
+            render_namelist(
+                'IONS',
+                ions,
+            )
+        )
+
+    if cell_dynamics is not None:
+        lines.append(
+            render_namelist(
+                'CELL',
+                cell_dynamics,
+            )
+        )
+
+    lines.extend([
         '',
         'ATOMIC_SPECIES',
-    ]
+    ])
 
     for symbol, mass, pseudo in species:
         lines.append(
@@ -1112,6 +1196,65 @@ def render_nscf_input(
         mixing_beta=mixing_beta,
         electron_maxstep=electron_maxstep,
         diagonalization=diagonalization,
+    )
+
+def render_relax_input(
+    atoms,
+    pseudopotentials,
+    cutoff_ev,
+    kpoint_size,
+    optimizer,
+    max_force,
+    max_step,
+    relax_cell,
+    hydrostatic_pressure=0.0,
+    fix_symmetry=False,
+    gamma=False,
+    total_charge=0.0,
+    nbands=None,
+    spinpol=False,
+    occupations='fixed',
+    smearing=None,
+    width_ev=None,
+    prefix='nanoworks',
+    pseudo_dir=None,
+    outdir=None,
+    conv_thr=None,
+    mixing_beta=None,
+    electron_maxstep=None,
+    diagonalization=None,
+):
+    """Render a complete QE pw.x relaxation input."""
+    relaxation_settings = resolve_qe_relaxation_settings(
+        optimizer=optimizer,
+        max_force=max_force,
+        max_step=max_step,
+        relax_cell=relax_cell,
+        hydrostatic_pressure=hydrostatic_pressure,
+        fix_symmetry=fix_symmetry,
+    )
+
+    return render_pw_input(
+        calculation=relaxation_settings['calculation'],
+        atoms=atoms,
+        pseudopotentials=pseudopotentials,
+        cutoff_ev=cutoff_ev,
+        kpoint_size=kpoint_size,
+        gamma=gamma,
+        total_charge=total_charge,
+        nbands=nbands,
+        spinpol=spinpol,
+        occupations=occupations,
+        smearing=smearing,
+        width_ev=width_ev,
+        prefix=prefix,
+        pseudo_dir=pseudo_dir,
+        outdir=outdir,
+        conv_thr=conv_thr,
+        mixing_beta=mixing_beta,
+        electron_maxstep=electron_maxstep,
+        diagonalization=diagonalization,
+        relaxation_settings=relaxation_settings,
     )
 
 def render_bands_input(

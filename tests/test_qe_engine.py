@@ -26,6 +26,7 @@ from nanoworks.engine.qe import (
     render_scf_input,
     render_nscf_input,
     render_bands_input,
+    render_relax_input,
     rydberg_to_ev,
     build_qe_launcher,
     resolve_qe_executable,
@@ -1105,7 +1106,7 @@ class TestQEEngine(unittest.TestCase):
             'Unsupported QE pw.x calculation type',
         ):
             render_pw_input(
-                calculation='relax',
+                calculation='md',
                 atoms=atoms,
                 pseudopotentials={
                     'Si': 'Si.upf',
@@ -1113,7 +1114,177 @@ class TestQEEngine(unittest.TestCase):
                 cutoff_ev=400.0,
                 kpoint_size=(4, 4, 4),
             )
-            
+
+    def test_render_atomic_relax_input(self):
+        atoms = bulk(
+            'Si',
+            'diamond',
+            a=5.43,
+        )
+
+        text = render_relax_input(
+            atoms=atoms,
+            pseudopotentials={
+                'Si': 'Si.upf',
+            },
+            cutoff_ev=400.0,
+            kpoint_size=(4, 4, 4),
+            optimizer='LBFGS',
+            max_force=0.05,
+            max_step=0.20,
+            relax_cell=[
+                False,
+                False,
+                False,
+                False,
+                False,
+                False,
+            ],
+            hydrostatic_pressure=0.0,
+            fix_symmetry=False,
+            prefix='nanoworks',
+            pseudo_dir='/tmp/pseudos',
+            outdir='/tmp/qe-state',
+        )
+
+        self.assertIn(
+            "calculation = 'relax'",
+            text,
+        )
+        self.assertIn(
+            'forc_conv_thr =',
+            text,
+        )
+        self.assertIn(
+            'nosym = .true.',
+            text,
+        )
+        self.assertIn(
+            '&IONS',
+            text,
+        )
+        self.assertIn(
+            "ion_dynamics = 'bfgs'",
+            text,
+        )
+        self.assertIn(
+            'trust_radius_max =',
+            text,
+        )
+        self.assertIn(
+            'trust_radius_ini =',
+            text,
+        )
+        self.assertNotIn(
+            '&CELL',
+            text,
+        )
+
+    def test_render_variable_cell_relax_input(self):
+        atoms = bulk(
+            'Si',
+            'diamond',
+            a=5.43,
+        )
+
+        text = render_relax_input(
+            atoms=atoms,
+            pseudopotentials={
+                'Si': 'Si.upf',
+            },
+            cutoff_ev=400.0,
+            kpoint_size=(4, 4, 4),
+            optimizer='QuasiNewton',
+            max_force=0.05,
+            max_step=0.20,
+            relax_cell=[
+                True,
+                True,
+                True,
+                False,
+                False,
+                False,
+            ],
+            hydrostatic_pressure=2.5,
+            fix_symmetry=True,
+            prefix='nanoworks',
+            pseudo_dir='/tmp/pseudos',
+            outdir='/tmp/qe-state',
+        )
+
+        self.assertIn(
+            "calculation = 'vc-relax'",
+            text,
+        )
+        self.assertIn(
+            'nosym = .false.',
+            text,
+        )
+        self.assertIn(
+            '&IONS',
+            text,
+        )
+        self.assertIn(
+            '&CELL',
+            text,
+        )
+        self.assertIn(
+            "cell_dynamics = 'bfgs'",
+            text,
+        )
+        self.assertIn(
+            "cell_dofree = 'xyz'",
+            text,
+        )
+        self.assertIn(
+            'press = 25',
+            text,
+        )
+        self.assertLess(
+            text.index('&IONS'),
+            text.index('&CELL'),
+        )
+        self.assertLess(
+            text.index('&CELL'),
+            text.index('ATOMIC_SPECIES'),
+        )
+
+    def test_render_pw_input_rejects_mismatched_relaxation_type(self):
+        atoms = bulk(
+            'Si',
+            'diamond',
+            a=5.43,
+        )
+
+        settings = resolve_qe_relaxation_settings(
+            optimizer='LBFGS',
+            max_force=0.05,
+            max_step=0.20,
+            relax_cell=[
+                False,
+                False,
+                False,
+                False,
+                False,
+                False,
+            ],
+        )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            'does not match',
+        ):
+            render_pw_input(
+                calculation='vc-relax',
+                atoms=atoms,
+                pseudopotentials={
+                    'Si': 'Si.upf',
+                },
+                cutoff_ev=400.0,
+                kpoint_size=(4, 4, 4),
+                relaxation_settings=settings,
+            )
+        
     def test_rydberg_to_ev(self):
         self.assertAlmostEqual(
             rydberg_to_ev(1.0),
