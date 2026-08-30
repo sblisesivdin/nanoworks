@@ -5,7 +5,7 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-
+from ase.units import Bohr
 from ase.data import atomic_masses, atomic_numbers
 from ase.calculators.calculator import kptdensity2monkhorstpack
 
@@ -619,6 +619,232 @@ def build_electrons_settings(
             )
 
         settings['diagonalization'] = diagonalization
+
+    return settings
+
+def resolve_qe_cell_dofree(
+    relax_cell,
+):
+    """Map a Nanoworks strain mask to QE cell_dofree."""
+    mask = tuple(
+        relax_cell
+    )
+
+    if len(mask) != 6:
+        raise ValueError(
+            "QE Relax_cell must contain exactly six "
+            "boolean components."
+        )
+
+    if not all(
+        isinstance(value, bool)
+        for value in mask
+    ):
+        raise TypeError(
+            "QE Relax_cell components must be boolean values."
+        )
+
+    mappings = {
+        (
+            False,
+            False,
+            False,
+            False,
+            False,
+            False,
+        ): None,
+        (
+            True,
+            False,
+            False,
+            False,
+            False,
+            False,
+        ): 'x',
+        (
+            False,
+            True,
+            False,
+            False,
+            False,
+            False,
+        ): 'y',
+        (
+            False,
+            False,
+            True,
+            False,
+            False,
+            False,
+        ): 'z',
+        (
+            True,
+            True,
+            False,
+            False,
+            False,
+            False,
+        ): 'xy',
+        (
+            True,
+            False,
+            True,
+            False,
+            False,
+            False,
+        ): 'xz',
+        (
+            False,
+            True,
+            True,
+            False,
+            False,
+            False,
+        ): 'yz',
+        (
+            True,
+            True,
+            True,
+            False,
+            False,
+            False,
+        ): 'xyz',
+        (
+            True,
+            True,
+            False,
+            False,
+            False,
+            True,
+        ): '2Dxy',
+        (
+            True,
+            True,
+            True,
+            True,
+            True,
+            True,
+        ): 'all',
+    }
+
+    try:
+        return mappings[
+            mask
+        ]
+    except KeyError:
+        raise NotImplementedError(
+            "The requested Relax_cell mask cannot be "
+            "represented safely by QE cell_dofree."
+        )
+
+
+def resolve_qe_relaxation_settings(
+    optimizer,
+    max_force,
+    max_step,
+    relax_cell,
+    hydrostatic_pressure=0.0,
+    fix_symmetry=False,
+):
+    """Resolve Nanoworks geometry settings to QE namelists."""
+    optimizer_key = (
+        str(optimizer)
+        .strip()
+        .lower()
+    )
+
+    optimizer_mappings = {
+        'quasinewton': 'bfgs',
+        'lbfgs': 'bfgs',
+        'bfgs': 'bfgs',
+    }
+
+    try:
+        ion_dynamics = optimizer_mappings[
+            optimizer_key
+        ]
+    except KeyError:
+        raise NotImplementedError(
+            "QE geometry optimization currently supports "
+            "QuasiNewton and LBFGS only."
+        )
+
+    max_force = float(
+        max_force
+    )
+
+    if max_force <= 0.0:
+        raise ValueError(
+            "QE geometry force tolerance must be greater than zero."
+        )
+
+    max_step = float(
+        max_step
+    )
+
+    if max_step <= 0.0:
+        raise ValueError(
+            "QE geometry maximum step must be greater than zero."
+        )
+
+    hydrostatic_pressure = float(
+        hydrostatic_pressure
+    )
+
+    cell_dofree = resolve_qe_cell_dofree(
+        relax_cell
+    )
+
+    if (
+        cell_dofree is None
+        and hydrostatic_pressure != 0.0
+    ):
+        raise ValueError(
+            "QE hydrostatic pressure requires cell relaxation."
+        )
+
+    trust_radius_max = (
+        max_step
+        / Bohr
+    )
+
+    settings = {
+        'calculation': (
+            'vc-relax'
+            if cell_dofree is not None
+            else 'relax'
+        ),
+        'control': {
+            'forc_conv_thr': ev_to_rydberg(
+                max_force
+                * Bohr
+            ),
+        },
+        'system': {
+            'nosym': not bool(
+                fix_symmetry
+            ),
+        },
+        'ions': {
+            'ion_dynamics': ion_dynamics,
+            'trust_radius_max': trust_radius_max,
+            'trust_radius_ini': min(
+                0.5,
+                trust_radius_max,
+            ),
+        },
+        'cell': None,
+    }
+
+    if cell_dofree is not None:
+        settings['cell'] = {
+            'cell_dynamics': 'bfgs',
+            'cell_dofree': cell_dofree,
+            'press': (
+                hydrostatic_pressure
+                * 10.0
+            ),
+        }
 
     return settings
 

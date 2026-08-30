@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from nanoworks.engine import load_engine_module
+from ase.units import Bohr
 from ase import Atoms
 from ase.build import bulk
 from nanoworks.engine.qe import (
@@ -49,6 +50,8 @@ from nanoworks.engine.qe import (
     parse_projwfc_pdos_file,
     aggregate_projwfc_pdos,
     prepare_qe_band_data,
+    resolve_qe_cell_dofree,
+    resolve_qe_relaxation_settings,
 )
 
 
@@ -429,6 +432,183 @@ class TestQEEngine(unittest.TestCase):
         self.assertEqual(settings['mixing_beta'], 0.3)
         self.assertEqual(settings['electron_maxstep'], 200)
         self.assertEqual(settings['diagonalization'], 'david')
+
+    def test_resolve_qe_cell_dofree(self):
+        cases = [
+            (
+                [
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                ],
+                None,
+            ),
+            (
+                [
+                    True,
+                    True,
+                    False,
+                    False,
+                    False,
+                    False,
+                ],
+                'xy',
+            ),
+            (
+                [
+                    True,
+                    True,
+                    True,
+                    False,
+                    False,
+                    False,
+                ],
+                'xyz',
+            ),
+            (
+                [
+                    True,
+                    True,
+                    False,
+                    False,
+                    False,
+                    True,
+                ],
+                '2Dxy',
+            ),
+            (
+                [
+                    True,
+                    True,
+                    True,
+                    True,
+                    True,
+                    True,
+                ],
+                'all',
+            ),
+        ]
+
+        for mask, expected in cases:
+            with self.subTest(
+                mask=mask
+            ):
+                self.assertEqual(
+                    resolve_qe_cell_dofree(
+                        mask
+                    ),
+                    expected,
+                )
+
+    def test_resolve_qe_atomic_relaxation_settings(self):
+        settings = resolve_qe_relaxation_settings(
+            optimizer='LBFGS',
+            max_force=0.05,
+            max_step=0.2,
+            relax_cell=[
+                False,
+                False,
+                False,
+                False,
+                False,
+                False,
+            ],
+            fix_symmetry=False,
+        )
+
+        self.assertEqual(
+            settings['calculation'],
+            'relax',
+        )
+
+        self.assertIsNone(
+            settings['cell']
+        )
+
+        self.assertEqual(
+            settings['ions']['ion_dynamics'],
+            'bfgs',
+        )
+
+        self.assertTrue(
+            settings['system']['nosym']
+        )
+
+        self.assertAlmostEqual(
+            settings['control']['forc_conv_thr'],
+            ev_to_rydberg(
+                0.05
+                * Bohr
+            ),
+        )
+
+        self.assertAlmostEqual(
+            settings['ions']['trust_radius_max'],
+            0.2 / Bohr,
+        )
+
+    def test_resolve_qe_variable_cell_settings(self):
+        settings = resolve_qe_relaxation_settings(
+            optimizer='QuasiNewton',
+            max_force=0.03,
+            max_step=0.1,
+            relax_cell=[
+                True,
+                True,
+                True,
+                False,
+                False,
+                False,
+            ],
+            hydrostatic_pressure=2.5,
+            fix_symmetry=True,
+        )
+
+        self.assertEqual(
+            settings['calculation'],
+            'vc-relax',
+        )
+
+        self.assertFalse(
+            settings['system']['nosym']
+        )
+
+        self.assertEqual(
+            settings['cell']['cell_dynamics'],
+            'bfgs',
+        )
+
+        self.assertEqual(
+            settings['cell']['cell_dofree'],
+            'xyz',
+        )
+
+        self.assertAlmostEqual(
+            settings['cell']['press'],
+            25.0,
+        )
+
+    def test_qe_relaxation_rejects_unsupported_optimizer(self):
+        with self.assertRaisesRegex(
+            NotImplementedError,
+            'QuasiNewton and LBFGS',
+        ):
+            resolve_qe_relaxation_settings(
+                optimizer='FIRE',
+                max_force=0.05,
+                max_step=0.2,
+                relax_cell=[
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                ],
+            )
 
     def test_qe_value_formatter(self):
         self.assertEqual(
