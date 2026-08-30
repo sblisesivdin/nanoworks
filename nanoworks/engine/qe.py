@@ -1836,6 +1836,281 @@ def parse_pw_output(output):
         'lowest_unoccupied_ev': lowest_unoccupied_ev,
     }
 
+def parse_pw_relaxed_structure(
+    output,
+    reference_atoms,
+):
+    """Read the final relaxed structure from QE pw.x output."""
+    output = Path(
+        output
+    )
+
+    if not output.exists():
+        raise FileNotFoundError(
+            f"QE output file was not found: {output}"
+        )
+
+    text = output.read_text(
+        encoding='utf-8',
+        errors='replace',
+    )
+
+    coordinate_blocks = re.findall(
+        r'Begin\s+final\s+coordinates'
+        r'(.*?)'
+        r'End\s+final\s+coordinates',
+        text,
+        flags=(
+            re.IGNORECASE
+            | re.DOTALL
+        ),
+    )
+
+    if not coordinate_blocks:
+        raise ValueError(
+            "No final relaxed coordinates were found "
+            f"in the QE output file: {output}"
+        )
+
+    block = coordinate_blocks[-1]
+
+    alat_matches = re.findall(
+        r'lattice\s+parameter\s+\(alat\)\s*=\s*'
+        r'([-+]?\d+(?:\.\d*)?(?:[EeDd][-+]?\d+)?)'
+        r'\s*a\.u\.',
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    alat_angstrom = None
+
+    if alat_matches:
+        alat_angstrom = (
+            float(
+                alat_matches[-1]
+                .replace('D', 'E')
+                .replace('d', 'e')
+            )
+            * Bohr
+        )
+
+    def find_card(name):
+        match = re.search(
+            rf'{name}\s*'
+            r'(?:\(\s*([^)]+?)\s*\)|([A-Za-z_]+))?'
+            r'[^\n]*\n',
+            block,
+            flags=re.IGNORECASE,
+        )
+
+        if match is None:
+            return None
+
+        option = (
+            match.group(1)
+            or match.group(2)
+            or 'alat'
+        )
+
+        return (
+            option.strip().lower(),
+            block[match.end():],
+        )
+
+    def read_rows(card_text, count):
+        rows = []
+
+        for line in card_text.splitlines():
+            fields = line.split()
+
+            if not fields:
+                continue
+
+            if len(fields) < 4:
+                break
+
+            try:
+                values = [
+                    float(
+                        value
+                        .replace('D', 'E')
+                        .replace('d', 'e')
+                    )
+                    for value in fields[1:4]
+                ]
+            except ValueError:
+                break
+
+            rows.append(
+                (
+                    fields[0],
+                    values,
+                )
+            )
+
+            if len(rows) == count:
+                break
+
+        if len(rows) != count:
+            raise ValueError(
+                "QE final coordinate block does not contain "
+                f"{count} atomic positions."
+            )
+
+        return rows
+
+    atoms = reference_atoms.copy()
+    natoms = len(atoms)
+
+    cell_card = find_card(
+        'CELL_PARAMETERS'
+    )
+
+    if cell_card is not None:
+        cell_option, cell_text = cell_card
+        cell_rows = []
+
+        for line in cell_text.splitlines():
+            fields = line.split()
+
+            if not fields:
+                continue
+
+            if len(fields) < 3:
+                break
+
+            try:
+                row = [
+                    float(
+                        value
+                        .replace('D', 'E')
+                        .replace('d', 'e')
+                    )
+                    for value in fields[:3]
+                ]
+            except ValueError:
+                break
+
+            cell_rows.append(
+                row
+            )
+
+            if len(cell_rows) == 3:
+                break
+
+        if len(cell_rows) != 3:
+            raise ValueError(
+                "QE final coordinate block does not contain "
+                "three cell vectors."
+            )
+
+        if cell_option == 'angstrom':
+            cell_scale = 1.0
+
+        elif cell_option == 'bohr':
+            cell_scale = Bohr
+
+        elif cell_option == 'alat':
+            if alat_angstrom is None:
+                raise ValueError(
+                    "QE alat could not be determined for "
+                    "the final cell parameters."
+                )
+
+            cell_scale = alat_angstrom
+
+        else:
+            raise ValueError(
+                "Unsupported QE final cell unit: "
+                f"{cell_option}"
+            )
+
+        atoms.set_cell(
+            [
+                [
+                    value * cell_scale
+                    for value in row
+                ]
+                for row in cell_rows
+            ],
+            scale_atoms=False,
+        )
+
+    position_card = find_card(
+        'ATOMIC_POSITIONS'
+    )
+
+    if position_card is None:
+        raise ValueError(
+            "No ATOMIC_POSITIONS card was found in "
+            "the QE final coordinate block."
+        )
+
+    position_option, position_text = position_card
+
+    position_rows = read_rows(
+        position_text,
+        natoms,
+    )
+
+    symbols = [
+        symbol
+        for symbol, values in position_rows
+    ]
+
+    if symbols != atoms.get_chemical_symbols():
+        raise ValueError(
+            "QE final atom ordering does not match "
+            "the input structure."
+        )
+
+    coordinates = [
+        values
+        for symbol, values in position_rows
+    ]
+
+    if position_option == 'crystal':
+        atoms.set_scaled_positions(
+            coordinates
+        )
+
+    elif position_option == 'angstrom':
+        atoms.set_positions(
+            coordinates
+        )
+
+    elif position_option == 'bohr':
+        atoms.set_positions([
+            [
+                value * Bohr
+                for value in position
+            ]
+            for position in coordinates
+        ])
+
+    elif position_option == 'alat':
+        if alat_angstrom is None:
+            raise ValueError(
+                "QE alat could not be determined for "
+                "the final atomic positions."
+            )
+
+        atoms.set_positions([
+            [
+                value * alat_angstrom
+                for value in position
+            ]
+            for position in coordinates
+        ])
+
+    else:
+        raise ValueError(
+            "Unsupported QE final position unit: "
+            f"{position_option}"
+        )
+
+    return atoms
+
 def resolve_qe_band_reference(result):
     """Resolve the energy reference used for QE band outputs."""
     fermi_energy = result.get(

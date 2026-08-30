@@ -53,6 +53,7 @@ from nanoworks.engine.qe import (
     prepare_qe_band_data,
     resolve_qe_cell_dofree,
     resolve_qe_relaxation_settings,
+    parse_pw_relaxed_structure,
 )
 
 
@@ -2697,6 +2698,136 @@ def test_aggregate_projwfc_pdos_rejects_mismatched_energy_grid(self):
             aggregate_projwfc_pdos(
                 prefix
             )
+
+    def test_parse_pw_relaxed_atomic_positions(self):
+        atoms = bulk(
+            'Si',
+            'diamond',
+            a=5.43,
+        )
+
+        output_text = """
+        Begin final coordinates
+        ATOMIC_POSITIONS (angstrom)
+        Si 0.100000 0.200000 0.300000
+        Si 1.400000 1.500000 1.600000
+        End final coordinates
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = (
+                Path(tmpdir)
+                / 'relax.out'
+            )
+
+            output_file.write_text(
+                output_text,
+                encoding='utf-8',
+            )
+
+            relaxed = parse_pw_relaxed_structure(
+                output_file,
+                atoms,
+            )
+
+        self.assertAlmostEqual(
+            relaxed.positions[0, 0],
+            0.1,
+        )
+        self.assertAlmostEqual(
+            relaxed.positions[0, 1],
+            0.2,
+        )
+        self.assertAlmostEqual(
+            relaxed.positions[1, 2],
+            1.6,
+        )
+        self.assertTrue(
+            relaxed.cell == atoms.cell
+        )
+
+    def test_parse_pw_relaxed_cell_and_crystal_positions(self):
+        atoms = bulk(
+            'Si',
+            'diamond',
+            a=5.43,
+        )
+
+        output_text = """
+        Begin final coordinates
+        CELL_PARAMETERS (angstrom)
+        3.000000 0.000000 0.000000
+        0.000000 3.000000 0.000000
+        0.000000 0.000000 3.000000
+        ATOMIC_POSITIONS (crystal)
+        Si 0.000000 0.000000 0.000000
+        Si 0.250000 0.250000 0.250000
+        End final coordinates
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = (
+                Path(tmpdir)
+                / 'vc-relax.out'
+            )
+
+            output_file.write_text(
+                output_text,
+                encoding='utf-8',
+            )
+
+            relaxed = parse_pw_relaxed_structure(
+                output_file,
+                atoms,
+            )
+
+        self.assertAlmostEqual(
+            relaxed.cell[0, 0],
+            3.0,
+        )
+        self.assertAlmostEqual(
+            relaxed.cell[1, 1],
+            3.0,
+        )
+        self.assertAlmostEqual(
+            relaxed.positions[1, 0],
+            0.75,
+        )
+        self.assertAlmostEqual(
+            relaxed.positions[1, 1],
+            0.75,
+        )
+        self.assertAlmostEqual(
+            relaxed.positions[1, 2],
+            0.75,
+        )
+
+    def test_parse_pw_relaxed_structure_requires_final_coordinates(self):
+        atoms = bulk(
+            'Si',
+            'diamond',
+            a=5.43,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = (
+                Path(tmpdir)
+                / 'relax.out'
+            )
+
+            output_file.write_text(
+                "Program PWSCF v.7.2\nJOB DONE.\n",
+                encoding='utf-8',
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                'No final relaxed coordinates',
+            ):
+                parse_pw_relaxed_structure(
+                    output_file,
+                    atoms,
+                )
 
 if __name__ == '__main__':
     unittest.main()
