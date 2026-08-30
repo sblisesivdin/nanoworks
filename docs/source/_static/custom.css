@@ -2,37 +2,30 @@
 .nw-hero {
   margin: -1.2rem 0 2.2rem;
   padding: 3.5rem 2.5rem;
+  border: 1px solid #d6dce1;
   border-radius: .6rem;
-  background: linear-gradient(135deg, #123b50 0%, #176b73 100%);
-  color: #fff;
-  text-align: center;
+  background: #fff;
+  color: #404040;
+  text-align: left;
 }
 .nw-hero h1 {
   max-width: 850px;
-  margin: .25rem auto 1rem;
-  color: #fff;
+  margin: 0 0 1rem;
+  color: #2980b9;
   font-size: 2.55rem;
   line-height: 1.15;
 }
-.nw-eyebrow {
-  margin: 0;
-  color: #aee7df;
-  font-size: .78rem;
-  font-weight: 700;
-  letter-spacing: .09em;
-  text-transform: uppercase;
-}
 .nw-lead {
   max-width: 760px;
-  margin: 0 auto;
-  color: #e9f7f5;
+  margin: 0;
+  color: #505050;
   font-size: 1.15rem;
   line-height: 1.65;
 }
 .nw-actions {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
+  justify-content: flex-start;
   gap: .75rem;
   margin: 1.6rem 0 1rem;
 }
@@ -45,12 +38,12 @@
   font-weight: 700;
   text-decoration: none;
 }
-.nw-button-primary { background: #fff; color: #155d64; }
-.nw-button-primary:hover { background: #e8f5f3; color: #103f45; }
-.nw-button-secondary { border-color: currentColor; color: inherit; }
-.nw-actions-left .nw-button-primary { background: #176b73; color: #fff; }
-.nw-actions-left .nw-button-secondary { color: #176b73; }
-.nw-trust { margin: 1.2rem 0 0; color: #cbe9e5; font-size: .85rem; }
+.nw-button-primary { background: #2980b9; color: #fff; }
+.nw-button-primary:hover { background: #1f618d; color: #fff; }
+.nw-button-secondary { border-color: #2980b9; color: #2980b9; }
+.nw-actions-left .nw-button-primary { background: #2980b9; color: #fff; }
+.nw-actions-left .nw-button-secondary { color: #2980b9; }
+.nw-trust { margin: 1.2rem 0 0; color: #6b7280; font-size: .85rem; }
 .nw-card-grid {
   display: grid;
   gap: 1rem;
@@ -65,15 +58,15 @@
   background: #fff;
   box-shadow: 0 2px 8px rgba(23, 51, 64, .06);
 }
-.nw-card h3 { margin-top: .5rem; color: #174f5b; }
+.nw-card h3 { margin-top: .5rem; color: #2980b9; }
 .nw-card p:last-child { margin-bottom: 0; }
 .nw-card-compact h3, .nw-link-card h3 { margin-top: 0; }
 .nw-command {
   display: inline-block;
   padding: .15rem .45rem;
   border-radius: .25rem;
-  background: #e6f3f2;
-  color: #155d64;
+  background: #eaf3f8;
+  color: #1f618d;
   font-family: monospace;
   font-size: .85rem;
 }
@@ -85,14 +78,14 @@
 }
 .nw-feature-list span {
   padding: .65rem .8rem;
-  border-left: 3px solid #2a8b87;
-  background: #f2f8f8;
+  border-left: 3px solid #2980b9;
+  background: #f0f6fa;
 }
 .nw-ecosystem {
   padding: 1rem 1.2rem;
   border-radius: .35rem;
-  background: #f2f8f8;
-  color: #174f5b;
+  background: #f0f6fa;
+  color: #1f618d;
   font-weight: 600;
   line-height: 1.8;
   text-align: center;

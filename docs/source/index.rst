@@ -4,7 +4,6 @@ Nanoworks
 .. raw:: html
 
    <section class="nw-hero">
-     <p class="nw-eyebrow">Open-source computational materials science</p>
      <h1>One Workflow for DFT, MD, and Machine-Learned Potentials</h1>
      <p class="nw-lead">Configure and run computational materials simulations through a consistent, open-source Python interface.</p>
      <div class="nw-actions">
