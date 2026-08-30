@@ -122,12 +122,13 @@ its required scientific software:
      <a class="nw-button nw-button-secondary" href="examples.html#running-the-examples">Run the Examples</a>
    </div>
 
-Built on the Scientific Python Ecosystem
-----------------------------------------
+Built on the Scientific Python Ecosystem—and More!
+--------------------------------------------------
 
-Nanoworks coordinates established electronic-structure, atomistic-simulation,
-phonon, interatomic-potential, and machine-learning tools through consistent
-workflows.
+Nanoworks brings established scientific Python libraries together with
+external simulation engines such as Quantum ESPRESSO. It coordinates
+electronic-structure, atomistic-simulation, phonon, interatomic-potential, and
+machine-learning tools through consistent workflows.
 
 .. raw:: html
 
