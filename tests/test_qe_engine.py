@@ -54,6 +54,7 @@ from nanoworks.engine.qe import (
     resolve_qe_cell_dofree,
     resolve_qe_relaxation_settings,
     parse_pw_relaxed_structure,
+    run_relax,
 )
 
 
@@ -2828,6 +2829,184 @@ def test_aggregate_projwfc_pdos_rejects_mismatched_energy_grid(self):
                     output_file,
                     atoms,
                 )
+
+    def test_run_relax_returns_optimized_structure(self):
+        atoms = bulk(
+            'Si',
+            'diamond',
+            a=5.43,
+        )
+
+        output_text = """
+        Program PWSCF v.7.2 starts
+
+        !    total energy              =    -15.00000000 Ry
+
+        bfgs converged in 5 scf cycles and 4 bfgs steps
+
+        Begin final coordinates
+        ATOMIC_POSITIONS (angstrom)
+        Si 0.100000 0.200000 0.300000
+        Si 1.400000 1.500000 1.600000
+        End final coordinates
+
+        JOB DONE.
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(
+                tmpdir
+            )
+
+            def fake_run_qe_program(**kwargs):
+                Path(
+                    kwargs['output_file']
+                ).write_text(
+                    output_text,
+                    encoding='utf-8',
+                )
+
+                return {
+                    'returncode': 0,
+                }
+
+            with patch(
+                'nanoworks.engine.qe.run_qe_program',
+                side_effect=fake_run_qe_program,
+            ) as run:
+                workflow = run_relax(
+                    atoms=atoms,
+                    input_file=tmpdir / 'relax.in',
+                    output_file=tmpdir / 'relax.out',
+                    state_dir=tmpdir / 'state',
+                    pseudopotentials={
+                        'Si': 'Si.upf',
+                    },
+                    pseudo_dir='/tmp/pseudos',
+                    cutoff_ev=400.0,
+                    optimizer='LBFGS',
+                    max_force=0.05,
+                    max_step=0.20,
+                    relax_cell=[
+                        False,
+                        False,
+                        False,
+                        False,
+                        False,
+                        False,
+                    ],
+                )
+
+            self.assertEqual(
+                run.call_count,
+                1,
+            )
+
+            self.assertTrue(
+                workflow['input_file'].is_file()
+            )
+
+            input_text = (
+                workflow['input_file']
+                .read_text(
+                    encoding='utf-8',
+                )
+            )
+
+        self.assertIn(
+            "calculation = 'relax'",
+            input_text,
+        )
+        self.assertEqual(
+            workflow['calculation'],
+            'relax',
+        )
+        self.assertTrue(
+            workflow['geometry_converged']
+        )
+        self.assertAlmostEqual(
+            workflow['result']['total_energy_ry'],
+            -15.0,
+        )
+        self.assertAlmostEqual(
+            workflow['atoms'].positions[0, 0],
+            0.1,
+        )
+        self.assertAlmostEqual(
+            workflow['atoms'].positions[1, 2],
+            1.6,
+        )
+
+    def test_run_relax_rejects_unconverged_geometry(self):
+        atoms = bulk(
+            'Si',
+            'diamond',
+            a=5.43,
+        )
+
+        output_text = """
+        Program PWSCF v.7.2 starts
+
+        !    total energy              =    -15.00000000 Ry
+
+        The maximum number of steps has been reached.
+
+        Begin final coordinates
+        ATOMIC_POSITIONS (angstrom)
+        Si 0.100000 0.200000 0.300000
+        Si 1.400000 1.500000 1.600000
+        End final coordinates
+
+        JOB DONE.
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(
+                tmpdir
+            )
+
+            def fake_run_qe_program(**kwargs):
+                Path(
+                    kwargs['output_file']
+                ).write_text(
+                    output_text,
+                    encoding='utf-8',
+                )
+
+                return {
+                    'returncode': 0,
+                }
+
+            with patch(
+                'nanoworks.engine.qe.run_qe_program',
+                side_effect=fake_run_qe_program,
+            ):
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    'did not report BFGS convergence',
+                ):
+                    run_relax(
+                        atoms=atoms,
+                        input_file=tmpdir / 'relax.in',
+                        output_file=tmpdir / 'relax.out',
+                        state_dir=tmpdir / 'state',
+                        pseudopotentials={
+                            'Si': 'Si.upf',
+                        },
+                        pseudo_dir='/tmp/pseudos',
+                        cutoff_ev=400.0,
+                        optimizer='LBFGS',
+                        max_force=0.05,
+                        max_step=0.20,
+                        relax_cell=[
+                            False,
+                            False,
+                            False,
+                            False,
+                            False,
+                            False,
+                        ],
+                    )
 
 if __name__ == '__main__':
     unittest.main()
