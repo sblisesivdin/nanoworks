@@ -2643,7 +2643,7 @@ def parse_pw_bands_output(output):
         }
 
     spin_pattern = re.compile(
-        r'^\s*SPIN\s+(UP|DOWN)\s*$',
+        r'^\s*[-=]*\s*SPIN\s+(UP|DOWN)\s*[-=]*\s*$',
         flags=(
             re.IGNORECASE
             | re.MULTILINE

@@ -3641,7 +3641,7 @@ def test_aggregate_projwfc_pdos_rejects_mismatched_energy_grid(self):
 
     def test_parse_spin_polarized_pw_bands_output(self):
         output_text = """
-        SPIN UP
+        ------ SPIN UP ------------
 
         k = 0.0000 0.0000 0.0000 (100 PWs) bands (ev):
         -5.0 -1.0 1.0
@@ -3649,7 +3649,7 @@ def test_aggregate_projwfc_pdos_rejects_mismatched_energy_grid(self):
         k = 0.5000 0.0000 0.5000 (90 PWs) bands (ev):
         -4.5 -0.5 1.5
 
-        SPIN DOWN
+        ------ SPIN DOWN ----------
 
         k = 0.0000 0.0000 0.0000 (100 PWs) bands (ev):
         -4.8 -0.8 1.2

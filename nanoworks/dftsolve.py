@@ -2772,14 +2772,6 @@ class dftsolve:
             )
             sys.exit(1)
 
-        if self.Spin_calc:
-            parprint(
-                "\033[91mERROR:\033[0m "
-                "Quantum ESPRESSO spin-polarized band calculations "
-                "are not supported yet."
-            )
-            sys.exit(1)
-
         try:
             self.engine.validate_qe_xc(
                 self.XC_calc,
@@ -2825,6 +2817,19 @@ class dftsolve:
             )
             sys.exit(1)
 
+        magnetic_moments = None
+
+        if self.Spin_calc:
+            magnetic_moments = (
+                resolve_initial_magnetic_moments(
+                    atoms=self.bulk_configuration,
+                    magmom_per_atom=self.Magmom_per_atom,
+                    magmom_single_atom=(
+                        self.Magmom_single_atom
+                    ),
+                )
+            )
+
         try:
             band_path = self.engine.build_band_path(
                 self.bulk_configuration,
@@ -2860,7 +2865,8 @@ class dftsolve:
                 band_path=band_path,
                 total_charge=self.Total_charge,
                 nbands=self.Band_num_of_bands,
-                spinpol=False,
+                spinpol=self.Spin_calc,
+                magnetic_moments=magnetic_moments,
                 occupation=self.Occupation,
                 parallel_cores=self.parallel_cores,
                 executable='pw.x',
@@ -2944,70 +2950,102 @@ class dftsolve:
             )
         )
 
-        eigenvalues = band_data[
-            'eigenvalues_ev'
-        ]
-
         distances = band_data[
             'distances'
         ]
 
-        band_file = Path(
-            self.struct
-            + f'-BAND-{self.Engine}-Result-Band.dat'
-        )
+        if band_data['spin_polarized']:
+            band_channels = [
+                (
+                    'Up',
+                    band_data[
+                        'eigenvalues_up_ev'
+                    ],
+                ),
+                (
+                    'Down',
+                    band_data[
+                        'eigenvalues_down_ev'
+                    ],
+                ),
+            ]
+        else:
+            band_channels = [
+                (
+                    None,
+                    band_data[
+                        'eigenvalues_ev'
+                    ],
+                ),
+            ]
 
-        with paropen(
-            band_file,
-            'w',
-        ) as fd:
-            for band_index in range(
-                band_data['nbands']
-            ):
-                for kpoint_index in range(
-                    band_data['nkpoints']
+        for spin_label, eigenvalues in band_channels:
+            suffix = (
+                f'-{spin_label}'
+                if spin_label is not None
+                else ''
+            )
+
+            band_file = Path(
+                self.struct
+                + f'-BAND-{self.Engine}-Result-Band'
+                + suffix
+                + '.dat'
+            )
+
+            with paropen(
+                band_file,
+                'w',
+            ) as fd:
+                for band_index in range(
+                    band_data['nbands']
                 ):
+                    for kpoint_index in range(
+                        band_data['nkpoints']
+                    ):
+                        print(
+                            kpoint_index,
+                            eigenvalues[
+                                kpoint_index
+                            ][
+                                band_index
+                            ],
+                            file=fd,
+                        )
+
                     print(
-                        kpoint_index,
-                        eigenvalues[
-                            kpoint_index
-                        ][
-                            band_index
-                        ],
                         file=fd,
                     )
 
-                print(
-                    file=fd,
-                )
+            xyyy_file = Path(
+                self.struct
+                + f'-BAND-{self.Engine}-Result-Band'
+                + suffix
+                + '-XYYY.dat'
+            )
 
-        xyyy_file = Path(
-            self.struct
-            + f'-BAND-{self.Engine}-Result-Band-XYYY.dat'
-        )
+            with paropen(
+                xyyy_file,
+                'w',
+            ) as fd:
+                for kpoint_index, values in enumerate(
+                    eigenvalues
+                ):
+                    print(
+                        kpoint_index,
+                        *values,
+                        file=fd,
+                    )
 
-        with paropen(
-            xyyy_file,
-            'w',
-        ) as fd:
-            for kpoint_index, values in enumerate(
-                eigenvalues
-            ):
-                print(
-                    kpoint_index,
-                    *values,
-                    file=fd,
-                )
+            parprint(
+                "QE band data saved to: "
+                f"{band_file}"
+            )
 
-        parprint(
-            "QE band data saved to: "
-            f"{band_file}"
-        )
-
-        parprint(
-            "QE XYYY band data saved to: "
-            f"{xyyy_file}"
-        )
+            parprint(
+                "QE XYYY band data saved to: "
+                f"{xyyy_file}"
+            )
 
         time32 = time.time()
 
@@ -3027,22 +3065,68 @@ class dftsolve:
                 figsize=(8, 6)
             )
 
-            energy_array = np.array(
-                eigenvalues
-            )
+            if band_data['spin_polarized']:
+                plot_channels = [
+                    (
+                        band_data[
+                            'eigenvalues_up_ev'
+                        ],
+                        'blue',
+                        '-',
+                        'Spin up',
+                    ),
+                    (
+                        band_data[
+                            'eigenvalues_down_ev'
+                        ],
+                        'red',
+                        '--',
+                        'Spin down',
+                    ),
+                ]
+            else:
+                plot_channels = [
+                    (
+                        band_data[
+                            'eigenvalues_ev'
+                        ],
+                        'blue',
+                        '-',
+                        None,
+                    ),
+                ]
 
-            for band_index in range(
-                band_data['nbands']
-            ):
-                ax.plot(
-                    distances,
-                    energy_array[
-                        :,
-                        band_index,
-                    ],
-                    color='blue',
-                    linewidth=1.0,
+            for (
+                channel_values,
+                color,
+                linestyle,
+                channel_label,
+            ) in plot_channels:
+                energy_array = np.array(
+                    channel_values
                 )
+
+                for band_index in range(
+                    band_data['nbands']
+                ):
+                    ax.plot(
+                        distances,
+                        energy_array[
+                            :,
+                            band_index,
+                        ],
+                        color=color,
+                        linestyle=linestyle,
+                        linewidth=1.0,
+                        label=(
+                            channel_label
+                            if band_index == 0
+                            else None
+                        ),
+                    )
+
+            if band_data['spin_polarized']:
+                ax.legend()
 
             for special_distance in band_data[
                 'special_distances'
