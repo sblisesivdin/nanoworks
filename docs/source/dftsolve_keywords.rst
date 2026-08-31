@@ -939,19 +939,6 @@ Electronic Calculations Keywords
     from atoms listed in the same ``atoms`` entry are summed before
     plotting.
 
-.. describe:: Refine_grid
-
-    :Type: ``int``
-    :Default: ``4``
-
-    Grid-refinement factor used when writing GPAW electron-density output.
-    This keyword is relevant when ``Density_calc = True`` in the GPAW
-    backend.
-
-.. code-block:: python
-
-    Refine_grid = 4
-
 .. code-block:: python
 
     Projected_band_plot = True
@@ -994,6 +981,20 @@ Electronic Calculations Keywords
             'label': 'O-s'
         }
     ]
+
+
+.. describe:: Refine_grid
+
+    :Type: ``int``
+    :Default: ``4``
+
+    Grid-refinement factor used when writing GPAW electron-density output.
+    This keyword is relevant when ``Density_calc = True`` in the GPAW
+    backend.
+
+.. code-block:: python
+
+    Refine_grid = 4
 
 Phonon Calculations Keywords
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
