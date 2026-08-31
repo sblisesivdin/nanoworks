@@ -2469,7 +2469,7 @@ def prepare_qe_band_data(
     }
 
 def parse_dos_output(dos_file):
-    """Parse a non-spin Quantum ESPRESSO dos.x data file."""
+    """Parse non-spin or collinear-spin QE dos.x data."""
     dos_file = Path(
         dos_file
     )
@@ -2481,7 +2481,11 @@ def parse_dos_output(dos_file):
 
     energies = []
     dos_values = []
+    dos_up = []
+    dos_down = []
     integrated_dos = []
+
+    spin_polarized = None
 
     with dos_file.open(
         'r',
@@ -2503,37 +2507,68 @@ def parse_dos_output(dos_file):
                 continue
 
             try:
-                energy = float(
-                    parts[0]
-                    .replace('D', 'E')
-                    .replace('d', 'e')
-                )
-
-                dos_value = float(
-                    parts[1]
-                    .replace('D', 'E')
-                    .replace('d', 'e')
-                )
-
-                integrated = float(
-                    parts[2]
-                    .replace('D', 'E')
-                    .replace('d', 'e')
-                )
+                values = [
+                    float(
+                        value
+                        .replace('D', 'E')
+                        .replace('d', 'e')
+                    )
+                    for value in parts
+                ]
             except ValueError:
                 continue
 
+            row_is_spin_polarized = (
+                len(values) >= 4
+            )
+
+            if spin_polarized is None:
+                spin_polarized = (
+                    row_is_spin_polarized
+                )
+
+            elif (
+                row_is_spin_polarized
+                != spin_polarized
+            ):
+                raise ValueError(
+                    "QE DOS data contains inconsistent "
+                    "spin column counts."
+                )
+
             energies.append(
-                energy
+                values[0]
             )
 
-            dos_values.append(
-                dos_value
-            )
+            if spin_polarized:
+                up_value = values[1]
+                down_value = values[2]
 
-            integrated_dos.append(
-                integrated
-            )
+                dos_up.append(
+                    up_value
+                )
+
+                dos_down.append(
+                    down_value
+                )
+
+                dos_values.append(
+                    up_value
+                    + down_value
+                )
+
+                integrated_dos.append(
+                    values[3]
+                )
+
+            else:
+                dos_values.append(
+                    values[1]
+                )
+
+                integrated_dos.append(
+                    values[2]
+                )
 
     if not energies:
         raise ValueError(
@@ -2543,7 +2578,18 @@ def parse_dos_output(dos_file):
     return {
         'energies_ev': energies,
         'dos': dos_values,
+        'dos_up': (
+            dos_up
+            if spin_polarized
+            else None
+        ),
+        'dos_down': (
+            dos_down
+            if spin_polarized
+            else None
+        ),
         'integrated_dos': integrated_dos,
+        'spin_polarized': spin_polarized,
         'npoints': len(energies),
     }
 

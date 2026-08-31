@@ -2303,6 +2303,88 @@ class TestQEEngine(unittest.TestCase):
             [0.01, 0.2, 0.6],
         )
 
+        self.assertFalse(
+            result['spin_polarized']
+        )
+
+        self.assertIsNone(
+            result['dos_up']
+        )
+
+        self.assertIsNone(
+            result['dos_down']
+        )
+
+    def test_parse_spin_polarized_dos_output(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dos_file = (
+                Path(tmpdir)
+                / 'nanoworks.dos'
+            )
+
+            dos_file.write_text(
+                "# E (eV) dosup(E) dosdw(E) Int dos(E)\n"
+                "-1.0000  0.1000  0.0400  0.0100\n"
+                " 0.0000  0.5000  0.2000  0.2500\n"
+                " 1.0000  0.2500  0.1500  0.7000\n",
+                encoding='utf-8',
+            )
+
+            result = parse_dos_output(
+                dos_file
+            )
+
+        self.assertTrue(
+            result['spin_polarized']
+        )
+
+        self.assertEqual(
+            result['energies_ev'],
+            [-1.0, 0.0, 1.0],
+        )
+
+        self.assertEqual(
+            result['dos_up'],
+            [0.1, 0.5, 0.25],
+        )
+
+        self.assertEqual(
+            result['dos_down'],
+            [0.04, 0.2, 0.15],
+        )
+
+        self.assertEqual(
+            result['dos'],
+            [0.14, 0.7, 0.4],
+        )
+
+        self.assertEqual(
+            result['integrated_dos'],
+            [0.01, 0.25, 0.7],
+        )
+
+    def test_parse_dos_output_rejects_mixed_spin_columns(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dos_file = (
+                Path(tmpdir)
+                / 'nanoworks.dos'
+            )
+
+            dos_file.write_text(
+                "# inconsistent DOS data\n"
+                "-1.0 0.1 0.01\n"
+                " 0.0 0.5 0.2 0.25\n",
+                encoding='utf-8',
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                'inconsistent spin column counts',
+            ):
+                parse_dos_output(
+                    dos_file
+                )
+
     def test_parse_dos_output_supports_fortran_exponents(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             dos_file = (
