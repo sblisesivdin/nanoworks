@@ -2096,14 +2096,6 @@ class dftsolve:
             )
             sys.exit(1)
 
-        if self.Spin_calc:
-            parprint(
-                "\033[91mERROR:\033[0m "
-                "Quantum ESPRESSO spin-polarized DOS calculations "
-                "are not supported yet."
-            )
-            sys.exit(1)
-
         try:
             self.engine.validate_qe_xc(
                 self.XC_calc,
@@ -2334,35 +2326,90 @@ class dftsolve:
             dos_workflow['dos_file']
         )
 
+        if (
+            dos_result['spin_polarized']
+            != bool(self.Spin_calc)
+        ):
+            raise RuntimeError(
+                "QE DOS spin channels do not match "
+                "the requested Spin_calc setting."
+            )
+
         shifted_energies = [
             energy - fermi_energy
             for energy in dos_result['energies_ev']
         ]
 
-        csv_file = Path(
-            self.struct
-            + f'-DOS-{self.Engine}-Result-DOS.csv'
-        )
+        if self.Spin_calc:
+            dos_up_file = Path(
+                self.struct
+                + f'-DOS-{self.Engine}-Result-DOS-Up.csv'
+            )
 
-        with csv_file.open(
-            'w',
-            encoding='utf-8',
-        ) as fd:
-            for energy, dos_value in zip(
-                shifted_energies,
-                dos_result['dos'],
-            ):
-                print(
-                    energy,
-                    dos_value,
-                    sep=', ',
-                    file=fd,
-                )
+            dos_down_file = Path(
+                self.struct
+                + f'-DOS-{self.Engine}-Result-DOS-Down.csv'
+            )
 
-        parprint(
-            "Saving DOS..."
-        )
-        
+            with dos_up_file.open(
+                'w',
+                encoding='utf-8',
+            ) as fd:
+                for energy, dos_value in zip(
+                    shifted_energies,
+                    dos_result['dos_up'],
+                ):
+                    print(
+                        energy,
+                        dos_value,
+                        sep=', ',
+                        file=fd,
+                    )
+
+            with dos_down_file.open(
+                'w',
+                encoding='utf-8',
+            ) as fd:
+                for energy, dos_value in zip(
+                    shifted_energies,
+                    dos_result['dos_down'],
+                ):
+                    print(
+                        energy,
+                        dos_value,
+                        sep=', ',
+                        file=fd,
+                    )
+
+            parprint(
+                "Saving spin-resolved DOS..."
+            )
+
+        else:
+            csv_file = Path(
+                self.struct
+                + f'-DOS-{self.Engine}-Result-DOS.csv'
+            )
+
+            with csv_file.open(
+                'w',
+                encoding='utf-8',
+            ) as fd:
+                for energy, dos_value in zip(
+                    shifted_energies,
+                    dos_result['dos'],
+                ):
+                    print(
+                        energy,
+                        dos_value,
+                        sep=', ',
+                        file=fd,
+                    )
+
+            parprint(
+                "Saving DOS..."
+            )
+
         if world.rank == 0:
             fig, ax = plt.subplots(
                 figsize=(8, 6)
@@ -2372,24 +2419,68 @@ class dftsolve:
                 shifted_energies
             )
 
-            dos_values = np.array(
-                dos_result['dos']
-            )
+            if self.Spin_calc:
+                dos_up = np.array(
+                    dos_result['dos_up']
+                )
 
-            ax.plot(
-                energies,
-                dos_values,
-                'b',
-                linewidth=1.5,
-            )
+                dos_down = np.array(
+                    dos_result['dos_down']
+                )
 
-            ax.fill_between(
-                energies,
-                0,
-                dos_values,
-                facecolor='blue',
-                alpha=0.2,
-            )
+                ax.plot(
+                    energies,
+                    dos_up,
+                    'b',
+                    linewidth=1.5,
+                    label='Spin Up',
+                )
+
+                ax.plot(
+                    energies,
+                    -dos_down,
+                    'r',
+                    linewidth=1.5,
+                    label='Spin Down',
+                )
+
+                ax.fill_between(
+                    energies,
+                    0,
+                    dos_up,
+                    facecolor='blue',
+                    alpha=0.2,
+                )
+
+                ax.fill_between(
+                    energies,
+                    0,
+                    -dos_down,
+                    facecolor='red',
+                    alpha=0.2,
+                )
+
+                ax.legend()
+
+            else:
+                dos_values = np.array(
+                    dos_result['dos']
+                )
+
+                ax.plot(
+                    energies,
+                    dos_values,
+                    'b',
+                    linewidth=1.5,
+                )
+
+                ax.fill_between(
+                    energies,
+                    0,
+                    dos_values,
+                    facecolor='blue',
+                    alpha=0.2,
+                )
 
             ax.set_xlabel(
                 self._t("fig_dos_xlabel")
