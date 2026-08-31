@@ -219,6 +219,64 @@ def _read_upf_element(path):
         f"Could not determine element for UPF file '{path}'."
     )
 
+def read_upf_z_valence(path):
+    """Read the valence-electron count from a UPF file."""
+    path = Path(
+        path
+    )
+
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"QE pseudopotential file was not found: {path}"
+        )
+
+    with path.open(
+        'r',
+        encoding='utf-8',
+        errors='ignore',
+    ) as fd:
+        text = fd.read(
+            65536
+        )
+
+    match = re.search(
+        r'\bz_valence\s*=\s*["\']\s*'
+        r'([-+]?\d+(?:\.\d*)?(?:[EeDd][-+]?\d+)?)',
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    if match is None:
+        match = re.search(
+            r'^\s*'
+            r'([-+]?\d+(?:\.\d*)?(?:[EeDd][-+]?\d+)?)'
+            r'\s+Z\s+valence\b',
+            text,
+            flags=(
+                re.IGNORECASE
+                | re.MULTILINE
+            ),
+        )
+
+    if match is None:
+        raise ValueError(
+            "Could not determine z_valence from "
+            f"UPF file '{path}'."
+        )
+
+    z_valence = float(
+        match.group(1)
+        .replace('D', 'E')
+        .replace('d', 'e')
+    )
+
+    if z_valence <= 0.0:
+        raise ValueError(
+            "UPF z_valence must be greater than zero: "
+            f"'{path}'."
+        )
+
+    return z_valence
 
 def _install_pseudodojo_set(
     relativistic,

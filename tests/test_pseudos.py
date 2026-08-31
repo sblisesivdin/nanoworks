@@ -20,6 +20,7 @@ from nanoworks.pseudos import (
     load_qe_pseudo_manifest,
     install_qe_pseudopotentials,
     resolve_qe_pseudopotentials,
+    read_upf_z_valence,
 )
 
 
@@ -282,6 +283,71 @@ class TestPseudopotentials(unittest.TestCase):
                 'Si.upf',
             )
 
+    def test_read_upf_z_valence_from_xml_header(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            pseudo_file = (
+                Path(tmp)
+                / 'Fe.upf'
+            )
+
+            pseudo_file.write_text(
+                '<UPF version="2.0.1">\n'
+                '<PP_HEADER '
+                'element="Fe" '
+                'z_valence="8.0000000000E+00" />\n'
+                '</UPF>\n',
+                encoding='utf-8',
+            )
+
+            z_valence = read_upf_z_valence(
+                pseudo_file
+            )
+
+        self.assertEqual(
+            z_valence,
+            8.0,
+        )
+
+    def test_read_upf_z_valence_supports_fortran_exponent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            pseudo_file = (
+                Path(tmp)
+                / 'Ga.upf'
+            )
+
+            pseudo_file.write_text(
+                '<PP_HEADER z_valence="1.300D+01" />\n',
+                encoding='utf-8',
+            )
+
+            z_valence = read_upf_z_valence(
+                pseudo_file
+            )
+
+        self.assertEqual(
+            z_valence,
+            13.0,
+        )
+
+    def test_read_upf_z_valence_rejects_missing_value(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            pseudo_file = (
+                Path(tmp)
+                / 'Si.upf'
+            )
+
+            pseudo_file.write_text(
+                '<UPF version="2.0.1"></UPF>\n',
+                encoding='utf-8',
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                'Could not determine z_valence',
+            ):
+                read_upf_z_valence(
+                    pseudo_file
+                )
 
 if __name__ == '__main__':
     unittest.main()
