@@ -3265,6 +3265,282 @@ class dftsolve:
                 f"{graph_file}"
             )
 
+        if self.Projected_band_plot:
+            parprint(
+                "Drawing QE projected bands..."
+            )
+
+            self._draw_projectedband_qe(
+                band_data=band_data,
+                band_projections=(
+                    band_projections
+                ),
+            )
+
+    def _draw_projectedband_qe(
+        self,
+        band_data,
+        band_projections,
+    ):
+        """Draw QE projected-band graphs."""
+        if world.rank != 0:
+            return
+
+        if band_projections is None:
+            raise RuntimeError(
+                "QE projected-band data is missing."
+            )
+
+        from matplotlib.lines import Line2D
+
+        distances = np.asarray(
+            band_data['distances'],
+            dtype=float,
+        )
+
+        labels = [
+            (
+                r'$\Gamma$'
+                if label in {
+                    'G',
+                    'Gamma',
+                    'Γ',
+                }
+                else label
+            )
+            for label in band_data[
+                'labels'
+            ]
+        ]
+
+        if band_data['spin_polarized']:
+            channels = [
+                (
+                    'Up',
+                    band_data[
+                        'eigenvalues_up_ev'
+                    ],
+                    band_projections[
+                        'up'
+                    ],
+                ),
+                (
+                    'Down',
+                    band_data[
+                        'eigenvalues_down_ev'
+                    ],
+                    band_projections[
+                        'down'
+                    ],
+                ),
+            ]
+        else:
+            channels = [
+                (
+                    None,
+                    band_data[
+                        'eigenvalues_ev'
+                    ],
+                    band_projections[
+                        'up'
+                    ],
+                ),
+            ]
+
+        for (
+            spin_label,
+            eigenvalues,
+            projection_data,
+        ) in channels:
+            if projection_data is None:
+                raise RuntimeError(
+                    "QE projected-band data is missing "
+                    f"for spin channel: {spin_label}"
+                )
+
+            energy_array = np.asarray(
+                eigenvalues,
+                dtype=float,
+            )
+
+            expected_shape = (
+                band_data['nkpoints'],
+                band_data['nbands'],
+            )
+
+            if energy_array.shape != expected_shape:
+                raise RuntimeError(
+                    "QE projected-band energies have "
+                    "an inconsistent shape."
+                )
+
+            fig, ax = plt.subplots(
+                figsize=(8, 6)
+            )
+
+            for band_index in range(
+                band_data['nbands']
+            ):
+                ax.plot(
+                    distances,
+                    energy_array[
+                        :,
+                        band_index,
+                    ],
+                    color='gray',
+                    linewidth=0.5,
+                    zorder=1,
+                )
+
+            legend_handles = []
+
+            for projection in projection_data[
+                'projections'
+            ]:
+                weight_array = np.asarray(
+                    projection[
+                        'weights'
+                    ],
+                    dtype=float,
+                )
+
+                if weight_array.shape != expected_shape:
+                    plt.close(
+                        fig
+                    )
+
+                    raise RuntimeError(
+                        "QE projected-band weights have "
+                        "an inconsistent shape."
+                    )
+
+                marker_sizes = (
+                    np.maximum(
+                        weight_array,
+                        0.0,
+                    )
+                    * 80.0
+                )
+
+                for band_index in range(
+                    band_data['nbands']
+                ):
+                    ax.scatter(
+                        distances,
+                        energy_array[
+                            :,
+                            band_index,
+                        ],
+                        s=marker_sizes[
+                            :,
+                            band_index,
+                        ],
+                        color=projection[
+                            'color'
+                        ],
+                        zorder=2,
+                        alpha=0.6,
+                        edgecolors='none',
+                    )
+
+                legend_handles.append(
+                    Line2D(
+                        [0],
+                        [0],
+                        marker='o',
+                        linestyle='None',
+                        markerfacecolor=(
+                            projection[
+                                'color'
+                            ]
+                        ),
+                        markeredgecolor='none',
+                        markersize=8,
+                        label=projection[
+                            'label'
+                        ],
+                    )
+                )
+
+            ax.set_xticks(
+                band_data[
+                    'special_distances'
+                ]
+            )
+
+            ax.set_xticklabels(
+                labels
+            )
+
+            ax.set_ylabel(
+                self._t(
+                    "fig_band_ylabel"
+                )
+            )
+
+            ax.set_ylim(
+                self.Energy_min,
+                self.Energy_max,
+            )
+
+            ax.set_xlim(
+                distances[0],
+                distances[-1],
+            )
+
+            ax.axhline(
+                y=0.0,
+                color='black',
+                linewidth=1.0,
+                linestyle='-',
+            )
+
+            for special_distance in band_data[
+                'special_distances'
+            ]:
+                ax.axvline(
+                    x=special_distance,
+                    color='black',
+                    linewidth=0.5,
+                    linestyle='--',
+                )
+
+            if legend_handles:
+                ax.legend(
+                    handles=legend_handles,
+                    loc='lower left',
+                    frameon=True,
+                    fontsize=10,
+                )
+
+            plt.tight_layout()
+
+            if spin_label is None:
+                graph_file = Path(
+                    self.struct
+                    + '-BAND-QE-Graph-Projected-Band.png'
+                )
+            else:
+                graph_file = Path(
+                    self.struct
+                    + '-BAND-QE-Graph-Projected-Band'
+                    + f'-Spin-{spin_label}.png'
+                )
+
+            plt.savefig(
+                graph_file,
+                dpi=300,
+            )
+
+            plt.close(
+                fig
+            )
+
+            parprint(
+                "QE projected-band graph saved to: "
+                f"{graph_file}"
+            )
+
     def _bandcalc_gpaw(self):
         """
         This method performs band structure calculations for the given structure using the
