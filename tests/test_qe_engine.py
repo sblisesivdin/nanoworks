@@ -55,6 +55,7 @@ from nanoworks.engine.qe import (
     resolve_qe_relaxation_settings,
     parse_pw_relaxed_structure,
     run_relax,
+    build_qe_magnetic_species,
 )
 
 
@@ -3269,6 +3270,207 @@ def test_aggregate_projwfc_pdos_rejects_mismatched_energy_grid(self):
                             False,
                         ],
                     )
+
+    def test_qe_magnetic_species_support_uniform_moment(self):
+        atoms = Atoms(
+            'Fe2',
+            positions=[
+                [0.0, 0.0, 0.0],
+                [1.0, 1.0, 1.0],
+            ],
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(
+                tmpdir
+            )
+
+            (
+                tmpdir
+                / 'Fe.upf'
+            ).write_text(
+                '<PP_HEADER z_valence="8.0" />\n',
+                encoding='utf-8',
+            )
+
+            model = build_qe_magnetic_species(
+                atoms=atoms,
+                pseudopotentials={
+                    'Fe': 'Fe.upf',
+                },
+                pseudo_dir=tmpdir,
+                magnetic_moments=[
+                    2.0,
+                    2.0,
+                ],
+            )
+
+        self.assertEqual(
+            model['ntyp'],
+            1,
+        )
+
+        self.assertEqual(
+            model['species_labels'],
+            [
+                'Fe',
+                'Fe',
+            ],
+        )
+
+        self.assertAlmostEqual(
+            model[
+                'starting_magnetizations'
+            ][
+                'starting_magnetization(1)'
+            ],
+            0.25,
+        )
+
+    def test_qe_magnetic_species_split_antiferromagnetic_atoms(self):
+        atoms = Atoms(
+            'Fe2O3',
+            positions=[
+                [0.0, 0.0, 0.0],
+                [1.0, 1.0, 1.0],
+                [2.0, 0.0, 0.0],
+                [0.0, 2.0, 0.0],
+                [0.0, 0.0, 2.0],
+            ],
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(
+                tmpdir
+            )
+
+            (
+                tmpdir
+                / 'Fe.upf'
+            ).write_text(
+                '<PP_HEADER z_valence="8.0" />\n',
+                encoding='utf-8',
+            )
+
+            (
+                tmpdir
+                / 'O.upf'
+            ).write_text(
+                '<PP_HEADER z_valence="6.0" />\n',
+                encoding='utf-8',
+            )
+
+            model = build_qe_magnetic_species(
+                atoms=atoms,
+                pseudopotentials={
+                    'Fe': 'Fe.upf',
+                    'O': 'O.upf',
+                },
+                pseudo_dir=tmpdir,
+                magnetic_moments=[
+                    4.0,
+                    -4.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                ],
+            )
+
+        self.assertEqual(
+            model['ntyp'],
+            3,
+        )
+
+        self.assertEqual(
+            model['species_labels'],
+            [
+                'Fe1',
+                'Fe2',
+                'O',
+                'O',
+                'O',
+            ],
+        )
+
+        self.assertEqual(
+            [
+                species[0]
+                for species in model['species']
+            ],
+            [
+                'Fe1',
+                'Fe2',
+                'O',
+            ],
+        )
+
+        self.assertAlmostEqual(
+            model[
+                'starting_magnetizations'
+            ][
+                'starting_magnetization(1)'
+            ],
+            0.5,
+        )
+
+        self.assertAlmostEqual(
+            model[
+                'starting_magnetizations'
+            ][
+                'starting_magnetization(2)'
+            ],
+            -0.5,
+        )
+
+        self.assertEqual(
+            model[
+                'starting_magnetizations'
+            ][
+                'starting_magnetization(3)'
+            ],
+            0.0,
+        )
+
+        self.assertEqual(
+            model[
+                'positions'
+            ][
+                'positions'
+            ][0][0],
+            'Fe1',
+        )
+
+        self.assertEqual(
+            model[
+                'positions'
+            ][
+                'positions'
+            ][1][0],
+            'Fe2',
+        )
+
+    def test_qe_magnetic_species_rejects_zero_moments(self):
+        atoms = Atoms(
+            'Fe',
+            positions=[
+                [0.0, 0.0, 0.0],
+            ],
+        )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            'at least one non-zero',
+        ):
+            build_qe_magnetic_species(
+                atoms=atoms,
+                pseudopotentials={
+                    'Fe': 'Fe.upf',
+                },
+                pseudo_dir='/tmp',
+                magnetic_moments=[
+                    0.0,
+                ],
+            )
 
 if __name__ == '__main__':
     unittest.main()

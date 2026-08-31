@@ -8,6 +8,7 @@ from pathlib import Path
 from ase.units import Bohr
 from ase.data import atomic_masses, atomic_numbers
 from ase.calculators.calculator import kptdensity2monkhorstpack
+from nanoworks.pseudos import read_upf_z_valence
 
 QE_REFERENCE_VERSION = (7, 2)
 
@@ -146,6 +147,243 @@ def build_atomic_species(atoms, pseudopotentials):
         )
 
     return species
+
+def build_qe_magnetic_species(
+    atoms,
+    pseudopotentials,
+    pseudo_dir,
+    magnetic_moments,
+):
+    """Build QE species and positions for collinear magnetism."""
+    chemical_symbols = (
+        atoms.get_chemical_symbols()
+    )
+
+    moments = [
+        float(value)
+        for value in magnetic_moments
+    ]
+
+    if len(moments) != len(atoms):
+        raise ValueError(
+            "QE magnetic moment count must match "
+            "the number of atoms."
+        )
+
+    if not any(
+        abs(moment) > 1.0e-12
+        for moment in moments
+    ):
+        raise ValueError(
+            "QE spin-polarized calculations require at least "
+            "one non-zero initial magnetic moment."
+        )
+
+    missing = sorted({
+        symbol
+        for symbol in chemical_symbols
+        if symbol not in pseudopotentials
+    })
+
+    if missing:
+        raise ValueError(
+            "Missing pseudopotential mapping for: "
+            + ", ".join(missing)
+        )
+
+    moment_groups = {}
+    atom_group_keys = []
+
+    for symbol, moment in zip(
+        chemical_symbols,
+        moments,
+    ):
+        groups = moment_groups.setdefault(
+            symbol,
+            [],
+        )
+
+        group_index = None
+
+        for index, existing_moment in enumerate(
+            groups
+        ):
+            if abs(
+                existing_moment
+                - moment
+            ) <= 1.0e-12:
+                group_index = index
+                break
+
+        if group_index is None:
+            groups.append(
+                moment
+            )
+
+            group_index = (
+                len(groups) - 1
+            )
+
+        atom_group_keys.append(
+            (
+                symbol,
+                group_index,
+            )
+        )
+
+    labels = {}
+
+    for symbol, groups in moment_groups.items():
+        if len(groups) == 1:
+            labels[
+                (
+                    symbol,
+                    0,
+                )
+            ] = symbol
+
+            continue
+
+        if len(groups) > 9:
+            raise ValueError(
+                "QE magnetic species labeling supports at most "
+                f"nine distinct moments for element {symbol}."
+            )
+
+        for group_index in range(
+            len(groups)
+        ):
+            label = (
+                f"{symbol}"
+                f"{group_index + 1}"
+            )
+
+            if len(label) > 3:
+                raise ValueError(
+                    "QE atomic species labels must not exceed "
+                    f"three characters: {label}"
+                )
+
+            labels[
+                (
+                    symbol,
+                    group_index,
+                )
+            ] = label
+
+    z_valence_by_symbol = {}
+
+    for symbol in moment_groups:
+        pseudo_file = Path(
+            pseudopotentials[symbol]
+        )
+
+        if not pseudo_file.is_absolute():
+            pseudo_file = (
+                Path(pseudo_dir)
+                / pseudo_file
+            )
+
+        z_valence_by_symbol[
+            symbol
+        ] = read_upf_z_valence(
+            pseudo_file
+        )
+
+    species = []
+    starting_magnetizations = {}
+    seen_group_keys = set()
+
+    for group_key in atom_group_keys:
+        if group_key in seen_group_keys:
+            continue
+
+        seen_group_keys.add(
+            group_key
+        )
+
+        symbol, group_index = group_key
+
+        moment = moment_groups[
+            symbol
+        ][group_index]
+
+        fraction = (
+            moment
+            / z_valence_by_symbol[symbol]
+        )
+
+        if abs(fraction) > 1.0:
+            raise ValueError(
+                "QE 7.2 starting magnetization must be "
+                "between -1 and 1. The requested moment is "
+                f"too large for species {symbol}."
+            )
+
+        atomic_number = atomic_numbers[
+            symbol
+        ]
+
+        species.append(
+            (
+                labels[group_key],
+                float(
+                    atomic_masses[
+                        atomic_number
+                    ]
+                ),
+                str(
+                    pseudopotentials[
+                        symbol
+                    ]
+                ),
+            )
+        )
+
+        species_index = len(
+            species
+        )
+
+        starting_magnetizations[
+            f'starting_magnetization({species_index})'
+        ] = fraction
+
+    if len(species) > 10:
+        raise ValueError(
+            "QE 7.2 supports at most ten atomic species."
+        )
+
+    positions = []
+
+    for group_key, position in zip(
+        atom_group_keys,
+        atoms.get_positions(),
+    ):
+        positions.append(
+            (
+                labels[group_key],
+                float(position[0]),
+                float(position[1]),
+                float(position[2]),
+            )
+        )
+
+    return {
+        'species': species,
+        'positions': {
+            'option': 'angstrom',
+            'positions': positions,
+        },
+        'starting_magnetizations': (
+            starting_magnetizations
+        ),
+        'species_labels': [
+            labels[group_key]
+            for group_key in atom_group_keys
+        ],
+        'magnetic_moments': moments,
+        'ntyp': len(species),
+    }
 
 def resolve_qe_kpoint_size(
     atoms,
