@@ -3472,5 +3472,172 @@ def test_aggregate_projwfc_pdos_rejects_mismatched_energy_grid(self):
                 ],
             )
 
+    def test_render_spin_polarized_scf_input(self):
+        atoms = Atoms(
+            'Fe2O3',
+            positions=[
+                [0.0, 0.0, 0.0],
+                [1.0, 1.0, 1.0],
+                [2.0, 0.0, 0.0],
+                [0.0, 2.0, 0.0],
+                [0.0, 0.0, 2.0],
+            ],
+            cell=[
+                [4.0, 0.0, 0.0],
+                [0.0, 4.0, 0.0],
+                [0.0, 0.0, 4.0],
+            ],
+            pbc=True,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(
+                tmpdir
+            )
+
+            (
+                tmpdir
+                / 'Fe.upf'
+            ).write_text(
+                '<PP_HEADER z_valence="8.0" />\n',
+                encoding='utf-8',
+            )
+
+            (
+                tmpdir
+                / 'O.upf'
+            ).write_text(
+                '<PP_HEADER z_valence="6.0" />\n',
+                encoding='utf-8',
+            )
+
+            text = render_scf_input(
+                atoms=atoms,
+                pseudopotentials={
+                    'Fe': 'Fe.upf',
+                    'O': 'O.upf',
+                },
+                pseudo_dir=tmpdir,
+                cutoff_ev=500.0,
+                kpoint_size=(
+                    4,
+                    4,
+                    4,
+                ),
+                spinpol=True,
+                magnetic_moments=[
+                    4.0,
+                    -4.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                ],
+            )
+
+        self.assertIn(
+            'ntyp = 3',
+            text,
+        )
+
+        self.assertIn(
+            'nspin = 2',
+            text,
+        )
+
+        self.assertIn(
+            'starting_magnetization(1) = 0.5',
+            text,
+        )
+
+        self.assertIn(
+            'starting_magnetization(2) = -0.5',
+            text,
+        )
+
+        self.assertIn(
+            'starting_magnetization(3) = 0',
+            text,
+        )
+
+        self.assertIn(
+            'Fe1 55.84500000 Fe.upf',
+            text,
+        )
+
+        self.assertIn(
+            'Fe2 55.84500000 Fe.upf',
+            text,
+        )
+
+        self.assertIn(
+            'O 15.99900000 O.upf',
+            text,
+        )
+
+        self.assertIn(
+            'Fe1 0.000000000000 0.000000000000 0.000000000000',
+            text,
+        )
+
+        self.assertIn(
+            'Fe2 1.000000000000 1.000000000000 1.000000000000',
+            text,
+        )
+
+    def test_render_spin_input_requires_magnetic_moments(self):
+        atoms = bulk(
+            'Fe',
+            'bcc',
+            a=2.87,
+        )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            'requires initial magnetic moments',
+        ):
+            render_scf_input(
+                atoms=atoms,
+                pseudopotentials={
+                    'Fe': 'Fe.upf',
+                },
+                pseudo_dir='/tmp',
+                cutoff_ev=500.0,
+                kpoint_size=(
+                    4,
+                    4,
+                    4,
+                ),
+                spinpol=True,
+            )
+
+    def test_render_nonspin_input_rejects_magnetic_moments(self):
+        atoms = bulk(
+            'Fe',
+            'bcc',
+            a=2.87,
+        )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            'require spinpol=True',
+        ):
+            render_scf_input(
+                atoms=atoms,
+                pseudopotentials={
+                    'Fe': 'Fe.upf',
+                },
+                pseudo_dir='/tmp',
+                cutoff_ev=500.0,
+                kpoint_size=(
+                    4,
+                    4,
+                    4,
+                ),
+                spinpol=False,
+                magnetic_moments=[
+                    2.0,
+                ],
+            )
+
 if __name__ == '__main__':
     unittest.main()

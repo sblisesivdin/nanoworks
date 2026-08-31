@@ -1128,6 +1128,7 @@ def render_pw_input(
     total_charge=0.0,
     nbands=None,
     spinpol=False,
+    magnetic_moments=None,
     occupations='fixed',
     smearing=None,
     width_ev=None,
@@ -1191,10 +1192,53 @@ def render_pw_input(
             "calculation='relax' or calculation='vc-relax'."
         )
 
-    species = build_atomic_species(
-        atoms,
-        pseudopotentials,
-    )
+    if spinpol:
+        if magnetic_moments is None:
+            raise ValueError(
+                "QE spin-polarized input requires "
+                "initial magnetic moments."
+            )
+
+        magnetic_model = (
+            build_qe_magnetic_species(
+                atoms=atoms,
+                pseudopotentials=pseudopotentials,
+                pseudo_dir=pseudo_dir,
+                magnetic_moments=magnetic_moments,
+            )
+        )
+
+        species = magnetic_model[
+            'species'
+        ]
+
+        positions = magnetic_model[
+            'positions'
+        ]
+
+        starting_magnetizations = (
+            magnetic_model[
+                'starting_magnetizations'
+            ]
+        )
+
+    else:
+        if magnetic_moments is not None:
+            raise ValueError(
+                "QE initial magnetic moments require "
+                "spinpol=True."
+            )
+
+        species = build_atomic_species(
+            atoms,
+            pseudopotentials,
+        )
+
+        positions = build_atomic_positions(
+            atoms
+        )
+
+        starting_magnetizations = {}
 
     control = build_control_settings(
         calculation=calculation,
@@ -1211,7 +1255,11 @@ def render_pw_input(
         nbands=nbands,
         spinpol=spinpol,
     )
-
+    
+    system.update(
+        starting_magnetizations
+    )
+    
     system.update(
         build_occupation_settings(
             occupations=occupations,
@@ -1258,7 +1306,6 @@ def render_pw_input(
                 "QE variable-cell relaxation requires CELL settings."
             )
 
-    positions = build_atomic_positions(atoms)
     cell = build_cell_parameters(atoms)
 
     if calculation == 'bands':
@@ -1359,6 +1406,7 @@ def render_scf_input(
     total_charge=0.0,
     nbands=None,
     spinpol=False,
+    magnetic_moments=None,
     occupations='fixed',
     smearing=None,
     width_ev=None,
@@ -1381,6 +1429,7 @@ def render_scf_input(
         total_charge=total_charge,
         nbands=nbands,
         spinpol=spinpol,
+        magnetic_moments=magnetic_moments,
         occupations=occupations,
         smearing=smearing,
         width_ev=width_ev,
@@ -1402,6 +1451,7 @@ def render_nscf_input(
     total_charge=0.0,
     nbands=None,
     spinpol=False,
+    magnetic_moments=None,
     occupations='fixed',
     smearing=None,
     width_ev=None,
@@ -1424,6 +1474,7 @@ def render_nscf_input(
         total_charge=total_charge,
         nbands=nbands,
         spinpol=spinpol,
+        magnetic_moments=magnetic_moments,
         occupations=occupations,
         smearing=smearing,
         width_ev=width_ev,
@@ -1451,6 +1502,7 @@ def render_relax_input(
     total_charge=0.0,
     nbands=None,
     spinpol=False,
+    magnetic_moments=None,
     occupations='fixed',
     smearing=None,
     width_ev=None,
@@ -1482,6 +1534,7 @@ def render_relax_input(
         total_charge=total_charge,
         nbands=nbands,
         spinpol=spinpol,
+        magnetic_moments=magnetic_moments,
         occupations=occupations,
         smearing=smearing,
         width_ev=width_ev,
@@ -1503,6 +1556,7 @@ def render_bands_input(
     total_charge=0.0,
     nbands=None,
     spinpol=False,
+    magnetic_moments=None,
     occupations='fixed',
     smearing=None,
     width_ev=None,
@@ -1525,6 +1579,7 @@ def render_bands_input(
         total_charge=total_charge,
         nbands=nbands,
         spinpol=spinpol,
+        magnetic_moments=magnetic_moments,
         occupations=occupations,
         smearing=smearing,
         width_ev=width_ev,
@@ -3570,6 +3625,7 @@ def run_relax(
         total_charge=total_charge,
         nbands=nbands,
         spinpol=spinpol,
+        magnetic_moments=magnetic_moments,
         occupations=occupation_settings['occupations'],
         smearing=occupation_settings['smearing'],
         width_ev=occupation_settings['width_ev'],
