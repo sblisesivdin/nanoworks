@@ -202,6 +202,7 @@ import pickle
 import nanoworks
 from nanoworks.engine import (
     normalize_engine_name,
+    resolve_initial_magnetic_moments,
     resolve_stage_kpoint_settings,
     resolve_stage_occupation,
     load_engine_module,
@@ -292,7 +293,7 @@ class DFTConfig:
     Occupation: Dict = field(default_factory=lambda: {'name': 'fermi-dirac', 'width': 0.05})
     Mixer_type: Any = None
     Spin_calc: bool = False
-    Magmom_per_atom: float = 1.0
+    Magmom_per_atom: Any = 1.0
     Magmom_single_atom: Optional[List] = None
     Total_charge: float = 0.0
     
@@ -1096,14 +1097,22 @@ class dftsolve:
             else self.Ground_gamma
         )
         
+        if self.Spin_calc:
+            initial_moments = (
+                resolve_initial_magnetic_moments(
+                    atoms=self.bulk_configuration,
+                    magmom_per_atom=self.Magmom_per_atom,
+                    magmom_single_atom=(
+                        self.Magmom_single_atom
+                    ),
+                )
+            )
+
+            self.bulk_configuration.set_initial_magnetic_moments(
+                initial_moments
+            )
+
         if self.Mode == 'PW':
-            if self.Spin_calc == True:
-                if self.Magmom_single_atom is not None:
-                    numm = [0.0]*self.bulk_configuration.get_global_number_of_atoms()
-                    numm[self.Magmom_single_atom[0]] = self.Magmom_single_atom[1]
-                else:
-                    numm = [self.Magmom_per_atom]*self.bulk_configuration.get_global_number_of_atoms()
-                self.bulk_configuration.set_initial_magnetic_moments(numm)
             if self.config.Ground_calc == True:
                 # PW Ground State Calculations
                 parprint("Starting PW ground state calculation...")
@@ -1255,13 +1264,6 @@ class dftsolve:
                         pass
 
         elif self.Mode == 'LCAO':
-            if self.Spin_calc == True:
-                if self.Magmom_single_atom is not None:
-                    numm = [0.0]*self.bulk_configuration.get_global_number_of_atoms()
-                    numm[self.Magmom_single_atom[0]] = self.Magmom_single_atom[1]
-                else:
-                    numm = [self.Magmom_per_atom]*self.bulk_configuration.get_global_number_of_atoms()
-                self.bulk_configuration.set_initial_magnetic_moments(numm)
             if self.Ground_calc == True:
                 parprint("Starting LCAO ground state calculation...")
                 # Fix the spacegroup in the geometric optimization if wanted
