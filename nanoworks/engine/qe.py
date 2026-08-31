@@ -2760,6 +2760,468 @@ def parse_pw_bands_output(output):
         ],
     }
 
+def parse_projwfc_band_file(
+    projection_file,
+):
+    """Parse one QE projwfc.x band-projection file."""
+    projection_file = Path(
+        projection_file
+    )
+
+    if not projection_file.is_file():
+        raise FileNotFoundError(
+            "QE band projection file was not found: "
+            f"{projection_file}"
+        )
+
+    lines = projection_file.read_text(
+        encoding='utf-8',
+        errors='replace',
+    ).splitlines()
+
+    line_index = 0
+
+    def next_fields(description):
+        nonlocal line_index
+
+        while (
+            line_index < len(lines)
+            and not lines[line_index].strip()
+        ):
+            line_index += 1
+
+        if line_index >= len(lines):
+            raise ValueError(
+                "Unexpected end of QE band projection file "
+                f"while reading {description}: "
+                f"{projection_file}"
+            )
+
+        fields = lines[
+            line_index
+        ].split()
+
+        line_index += 1
+
+        return fields
+
+    def parse_integer(value):
+        return int(
+            float(
+                value
+                .replace('D', 'E')
+                .replace('d', 'e')
+            )
+        )
+
+    def parse_float(value):
+        return float(
+            value
+            .replace('D', 'E')
+            .replace('d', 'e')
+        )
+
+    def parse_logical(value):
+        return (
+            value
+            .strip()
+            .strip('.')
+            .upper()
+            .startswith('T')
+        )
+
+    try:
+        grid_fields = next_fields(
+            'FFT-grid dimensions'
+        )
+
+        if len(grid_fields) < 8:
+            raise ValueError(
+                "The FFT-grid header must contain "
+                "eight integer values."
+            )
+
+        natoms = parse_integer(
+            grid_fields[6]
+        )
+
+        ntypes = parse_integer(
+            grid_fields[7]
+        )
+
+        lattice_fields = next_fields(
+            'lattice information'
+        )
+
+        if len(lattice_fields) < 7:
+            raise ValueError(
+                "The lattice header must contain "
+                "ibrav and six celldm values."
+            )
+
+        ibrav = parse_integer(
+            lattice_fields[0]
+        )
+
+        if ibrav == 0:
+            for vector_index in range(3):
+                vector_fields = next_fields(
+                    'lattice vector'
+                )
+
+                if len(vector_fields) < 3:
+                    raise ValueError(
+                        "A QE lattice vector must contain "
+                        "three values."
+                    )
+
+                for value in vector_fields[:3]:
+                    parse_float(
+                        value
+                    )
+
+        cutoff_fields = next_fields(
+            'cutoff information'
+        )
+
+        if len(cutoff_fields) < 4:
+            raise ValueError(
+                "The QE cutoff header is incomplete."
+            )
+
+        species = {}
+
+        for species_index in range(
+            ntypes
+        ):
+            species_fields = next_fields(
+                'atomic species'
+            )
+
+            if len(species_fields) < 2:
+                raise ValueError(
+                    "A QE atomic-species row is incomplete."
+                )
+
+            qe_species_index = parse_integer(
+                species_fields[0]
+            )
+
+            species[
+                qe_species_index
+            ] = species_fields[1]
+
+        atom_species = {}
+
+        for atom_index in range(
+            natoms
+        ):
+            atom_fields = next_fields(
+                'atomic position'
+            )
+
+            if len(atom_fields) < 5:
+                raise ValueError(
+                    "A QE atomic-position row is incomplete."
+                )
+
+            qe_atom_index = parse_integer(
+                atom_fields[0]
+            )
+
+            qe_species_index = parse_integer(
+                atom_fields[4]
+            )
+
+            if qe_species_index not in species:
+                raise ValueError(
+                    "QE band projection file references "
+                    "an unknown atomic species."
+                )
+
+            atom_species[
+                qe_atom_index
+            ] = species[
+                qe_species_index
+            ]
+
+        dimension_fields = next_fields(
+            'projection dimensions'
+        )
+
+        if len(dimension_fields) < 3:
+            raise ValueError(
+                "The QE projection-dimension header "
+                "is incomplete."
+            )
+
+        natomic_states = parse_integer(
+            dimension_fields[0]
+        )
+
+        nkpoints = parse_integer(
+            dimension_fields[1]
+        )
+
+        nbands = parse_integer(
+            dimension_fields[2]
+        )
+
+        if (
+            natomic_states <= 0
+            or nkpoints <= 0
+            or nbands <= 0
+        ):
+            raise ValueError(
+                "QE band projection dimensions "
+                "must be positive."
+            )
+
+        spin_fields = next_fields(
+            'spin flags'
+        )
+
+        if len(spin_fields) < 2:
+            raise ValueError(
+                "The QE projection spin header "
+                "is incomplete."
+            )
+
+        noncollinear = parse_logical(
+            spin_fields[0]
+        )
+
+        spin_orbit = parse_logical(
+            spin_fields[1]
+        )
+
+    except (TypeError, ValueError) as exc:
+        if isinstance(exc, ValueError) and str(
+            exc
+        ).startswith(
+            (
+                'Unexpected end',
+                'The ',
+                'A QE ',
+                'QE band ',
+            )
+        ):
+            raise
+
+        raise ValueError(
+            "Invalid QE band projection header in "
+            f"{projection_file}: {exc}"
+        ) from exc
+
+    if noncollinear or spin_orbit:
+        raise NotImplementedError(
+            "Noncollinear and spin-orbit QE band "
+            "projections are not supported."
+        )
+
+    orbital_names = {
+        0: 's',
+        1: 'p',
+        2: 'd',
+        3: 'f',
+    }
+
+    states = []
+
+    for expected_state in range(
+        1,
+        natomic_states + 1,
+    ):
+        state_fields = next_fields(
+            'atomic-state header'
+        )
+
+        if len(state_fields) < 7:
+            raise ValueError(
+                "A QE atomic-state header must contain "
+                "seven fields."
+            )
+
+        try:
+            state_index = parse_integer(
+                state_fields[0]
+            )
+
+            qe_atom_index = parse_integer(
+                state_fields[1]
+            )
+
+            wfc_index = parse_integer(
+                state_fields[4]
+            )
+
+            angular_momentum = parse_integer(
+                state_fields[5]
+            )
+
+            magnetic_component = parse_integer(
+                state_fields[6]
+            )
+
+        except ValueError as exc:
+            raise ValueError(
+                "Invalid QE atomic-state header in "
+                f"{projection_file}: {exc}"
+            ) from exc
+
+        if state_index != expected_state:
+            raise ValueError(
+                "Unexpected QE atomic-state index "
+                f"{state_index}; expected {expected_state}."
+            )
+
+        if qe_atom_index not in atom_species:
+            raise ValueError(
+                "QE band projection state references "
+                f"unknown atom index {qe_atom_index}."
+            )
+
+        weights = [
+            [
+                None
+                for band_index in range(
+                    nbands
+                )
+            ]
+            for kpoint_index in range(
+                nkpoints
+            )
+        ]
+
+        for value_index in range(
+            nkpoints * nbands
+        ):
+            value_fields = next_fields(
+                'projection weight'
+            )
+
+            if len(value_fields) < 3:
+                raise ValueError(
+                    "A QE projection-weight row must "
+                    "contain three values."
+                )
+
+            try:
+                raw_kpoint_index = parse_integer(
+                    value_fields[0]
+                )
+
+                band_index = (
+                    parse_integer(
+                        value_fields[1]
+                    )
+                    - 1
+                )
+
+                weight = parse_float(
+                    value_fields[2]
+                )
+
+            except ValueError as exc:
+                raise ValueError(
+                    "Invalid QE projection weight in "
+                    f"{projection_file}: {exc}"
+                ) from exc
+
+            if (
+                1
+                <= raw_kpoint_index
+                <= nkpoints
+            ):
+                kpoint_index = (
+                    raw_kpoint_index
+                    - 1
+                )
+
+            elif (
+                nkpoints + 1
+                <= raw_kpoint_index
+                <= 2 * nkpoints
+            ):
+                kpoint_index = (
+                    raw_kpoint_index
+                    - nkpoints
+                    - 1
+                )
+
+            else:
+                raise ValueError(
+                    "QE projection k-point index is "
+                    f"out of range: {raw_kpoint_index}"
+                )
+
+            if not (
+                0
+                <= band_index
+                < nbands
+            ):
+                raise ValueError(
+                    "QE projection band index is "
+                    f"out of range: {band_index + 1}"
+                )
+
+            if weights[
+                kpoint_index
+            ][band_index] is not None:
+                raise ValueError(
+                    "Duplicate QE projection weight for "
+                    f"k-point {raw_kpoint_index}, "
+                    f"band {band_index + 1}."
+                )
+
+            weights[
+                kpoint_index
+            ][band_index] = weight
+
+        if any(
+            weight is None
+            for kpoint_weights in weights
+            for weight in kpoint_weights
+        ):
+            raise ValueError(
+                "QE band projection file contains "
+                "incomplete projection weights."
+            )
+
+        states.append({
+            'state_index': state_index,
+            'atom_index': (
+                qe_atom_index
+                - 1
+            ),
+            'qe_atom_index': qe_atom_index,
+            'symbol': state_fields[2],
+            'species': atom_species[
+                qe_atom_index
+            ],
+            'orbital_label': state_fields[3],
+            'wfc_index': wfc_index,
+            'l': angular_momentum,
+            'm': magnetic_component,
+            'orbital': orbital_names.get(
+                angular_momentum,
+                f'l={angular_momentum}',
+            ),
+            'weights': weights,
+        })
+
+    return {
+        'file': projection_file,
+        'natoms': natoms,
+        'ntypes': ntypes,
+        'natomic_states': natomic_states,
+        'nkpoints': nkpoints,
+        'nbands': nbands,
+        'noncollinear': noncollinear,
+        'spin_orbit': spin_orbit,
+        'states': states,
+    }
+
 def prepare_qe_band_data(
     bands,
     band_path,

@@ -57,6 +57,7 @@ from nanoworks.engine.qe import (
     run_relax,
     build_qe_magnetic_species,
     run_band_projections,
+    parse_projwfc_band_file,
 )
 
 
@@ -3914,6 +3915,152 @@ def test_run_spin_polarized_band_projections(self):
         ),
         2,
     )
+
+    def test_parse_projwfc_band_file(self):
+        projection_text = """
+        8 8 8 8 8 8 1 1
+        0 5.0 0.0 0.0 0.0 0.0 0.0
+        1.0 0.0 0.0
+        0.0 1.0 0.0
+        0.0 0.0 1.0
+        10.0 4.0 30.0 9
+        1 Fe 16.0
+        1 0.0 0.0 0.0 1
+        2 2 2
+        F F
+        1 1 Fe 4S 1 0 1
+        1 1 0.10
+        1 2 0.20
+        2 1 0.30
+        2 2 0.40
+        2 1 Fe 3D 2 2 1
+        1 1 0.50
+        1 2 0.60
+        2 1 0.70
+        2 2 0.80
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            projection_file = (
+                Path(tmpdir)
+                / 'bands.projwfc_up'
+            )
+
+            projection_file.write_text(
+                projection_text,
+                encoding='utf-8',
+            )
+
+            result = parse_projwfc_band_file(
+                projection_file
+            )
+
+        self.assertEqual(
+            result['natoms'],
+            1,
+        )
+        self.assertEqual(
+            result['natomic_states'],
+            2,
+        )
+        self.assertEqual(
+            result['nkpoints'],
+            2,
+        )
+        self.assertEqual(
+            result['nbands'],
+            2,
+        )
+        self.assertEqual(
+            result['states'][0]['atom_index'],
+            0,
+        )
+        self.assertEqual(
+            result['states'][0]['orbital'],
+            's',
+        )
+        self.assertEqual(
+            result['states'][1]['orbital'],
+            'd',
+        )
+        self.assertEqual(
+            result['states'][1]['weights'],
+            [
+                [0.5, 0.6],
+                [0.7, 0.8],
+            ],
+        )
+
+    def test_parse_projwfc_band_file_normalizes_spin_down_indices(
+        self,
+    ):
+        projection_text = """
+        8 8 8 8 8 8 1 1
+        1 5.0 0.0 0.0 0.0 0.0 0.0
+        10.0 4.0 30.0 9
+        1 Fe 16.0
+        1 0.0 0.0 0.0 1
+        1 2 1
+        F F
+        1 1 Fe 3D 1 2 1
+        3 1 0.25
+        4 1 0.75
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            projection_file = (
+                Path(tmpdir)
+                / 'bands.projwfc_down'
+            )
+
+            projection_file.write_text(
+                projection_text,
+                encoding='utf-8',
+            )
+
+            result = parse_projwfc_band_file(
+                projection_file
+            )
+
+        self.assertEqual(
+            result['states'][0]['weights'],
+            [
+                [0.25],
+                [0.75],
+            ],
+        )
+
+    def test_parse_projwfc_band_file_rejects_spin_orbit(
+        self,
+    ):
+        projection_text = """
+        8 8 8 8 8 8 1 1
+        1 5.0 0.0 0.0 0.0 0.0 0.0
+        10.0 4.0 30.0 9
+        1 Fe 16.0
+        1 0.0 0.0 0.0 1
+        1 1 1
+        F T
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            projection_file = (
+                Path(tmpdir)
+                / 'bands.projwfc_up'
+            )
+
+            projection_file.write_text(
+                projection_text,
+                encoding='utf-8',
+            )
+
+            with self.assertRaisesRegex(
+                NotImplementedError,
+                'spin-orbit',
+            ):
+                parse_projwfc_band_file(
+                    projection_file
+                )
 
 if __name__ == '__main__':
     unittest.main()
