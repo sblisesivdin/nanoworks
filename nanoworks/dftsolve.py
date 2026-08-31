@@ -917,6 +917,19 @@ class dftsolve:
             else self.Ground_gamma
         )
 
+        magnetic_moments = None
+
+        if self.Spin_calc:
+            magnetic_moments = (
+                resolve_initial_magnetic_moments(
+                    atoms=self.bulk_configuration,
+                    magmom_per_atom=self.Magmom_per_atom,
+                    magmom_single_atom=(
+                        self.Magmom_single_atom
+                    ),
+                )
+            )
+
         if self.Geo_optim:
             variable_cell = (
                 True in self.Relax_cell
@@ -977,6 +990,7 @@ class dftsolve:
                     total_charge=self.Total_charge,
                     nbands=self.Ground_num_of_bands,
                     spinpol=self.Spin_calc,
+                    magnetic_moments=magnetic_moments,
                     occupation=self.Occupation,
                     parallel_cores=self.parallel_cores,
                     executable='pw.x',
@@ -1045,6 +1059,7 @@ class dftsolve:
                     total_charge=self.Total_charge,
                     nbands=self.Ground_num_of_bands,
                     spinpol=self.Spin_calc,
+                    magnetic_moments=magnetic_moments,
                     occupation=self.Occupation,
                     parallel_cores=self.parallel_cores,
                     executable='pw.x',
@@ -2175,6 +2190,19 @@ class dftsolve:
             self.Occupation,
         )
 
+        magnetic_moments = None
+
+        if self.Spin_calc:
+            magnetic_moments = (
+                resolve_initial_magnetic_moments(
+                    atoms=self.bulk_configuration,
+                    magmom_per_atom=self.Magmom_per_atom,
+                    magmom_single_atom=(
+                        self.Magmom_single_atom
+                    ),
+                )
+            )
+
         input_file = Path(
             self.struct
             + '-DOS-QE-Input-NSCF.in'
@@ -2200,6 +2228,7 @@ class dftsolve:
                 total_charge=self.Total_charge,
                 nbands=self.DOS_num_of_bands,
                 spinpol=self.Spin_calc,
+                magnetic_moments=magnetic_moments,
                 occupation=dos_occupation,
                 parallel_cores=self.parallel_cores,
                 executable='pw.x',
