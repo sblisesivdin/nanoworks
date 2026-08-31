@@ -3699,5 +3699,69 @@ def test_aggregate_projwfc_pdos_rejects_mismatched_energy_grid(self):
             [-4.3, -0.3, 1.7],
         )
 
+    def test_prepare_spin_polarized_qe_band_data(self):
+        bands = {
+            'spin_polarized': True,
+            'nspins': 2,
+            'nkpoints': 2,
+            'nbands': 2,
+            'eigenvalues_ev': [
+                [
+                    [0.0, 2.0],
+                    [0.5, 2.5],
+                ],
+                [
+                    [0.2, 2.2],
+                    [0.7, 2.7],
+                ],
+            ],
+        }
+
+        band_path = {
+            'distances': [
+                0.0,
+                0.5,
+            ],
+            'special_distances': [
+                0.0,
+                0.5,
+            ],
+            'labels': [
+                'G',
+                'X',
+            ],
+        }
+
+        result = prepare_qe_band_data(
+            bands=bands,
+            band_path=band_path,
+            reference_energy=1.0,
+        )
+
+        self.assertTrue(
+            result['spin_polarized']
+        )
+        self.assertEqual(
+            result['nspins'],
+            2,
+        )
+        self.assertIsNone(
+            result['eigenvalues_ev']
+        )
+        self.assertEqual(
+            result['eigenvalues_up_ev'],
+            [
+                [-1.0, 1.0],
+                [-0.5, 1.5],
+            ],
+        )
+        self.assertEqual(
+            result['eigenvalues_down_ev'],
+            [
+                [-0.8, 1.2],
+                [-0.3, 1.7],
+            ],
+        )
+
 if __name__ == '__main__':
     unittest.main()

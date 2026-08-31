@@ -2759,14 +2759,30 @@ def prepare_qe_band_data(
     band_path,
     reference_energy,
 ):
-    """Prepare non-spin QE band data for output and plotting."""
-    if (
-        bands.get('spin_polarized')
-        or int(bands.get('nspins', 0)) != 1
-    ):
-        raise NotImplementedError(
-            "Spin-polarized QE band data preparation "
-            "is not supported yet."
+    """Prepare non-spin or collinear-spin QE band data."""
+    spin_polarized = bool(
+        bands.get(
+            'spin_polarized',
+            False,
+        )
+    )
+
+    nspins = int(
+        bands.get(
+            'nspins',
+            0,
+        )
+    )
+
+    expected_nspins = (
+        2
+        if spin_polarized
+        else 1
+    )
+
+    if nspins != expected_nspins:
+        raise ValueError(
+            "QE band spin metadata is inconsistent."
         )
 
     nkpoints = int(
@@ -2781,30 +2797,27 @@ def prepare_qe_band_data(
         'eigenvalues_ev'
     ]
 
-    if len(eigenvalues_by_spin) != 1:
+    if len(eigenvalues_by_spin) != nspins:
         raise ValueError(
-            "Non-spin QE band data must contain "
-            "exactly one spin channel."
+            "QE band data does not contain the reported "
+            "number of spin channels."
         )
 
-    eigenvalues = eigenvalues_by_spin[
-        0
-    ]
+    for eigenvalues in eigenvalues_by_spin:
+        if len(eigenvalues) != nkpoints:
+            raise ValueError(
+                "QE band eigenvalue count does not match "
+                "the reported number of k-points."
+            )
 
-    if len(eigenvalues) != nkpoints:
-        raise ValueError(
-            "QE band eigenvalue count does not match "
-            "the reported number of k-points."
-        )
-
-    if any(
-        len(values) != nbands
-        for values in eigenvalues
-    ):
-        raise ValueError(
-            "QE band eigenvalue rows do not match "
-            "the reported number of bands."
-        )
+        if any(
+            len(values) != nbands
+            for values in eigenvalues
+        ):
+            raise ValueError(
+                "QE band eigenvalue rows do not match "
+                "the reported number of bands."
+            )
 
     distances = [
         float(value)
@@ -2842,22 +2855,43 @@ def prepare_qe_band_data(
         reference_energy
     )
 
-    shifted_eigenvalues = [
+    shifted_by_spin = [
         [
-            float(value) - reference_energy
-            for value in values
+            [
+                float(value)
+                - reference_energy
+                for value in values
+            ]
+            for values in eigenvalues
         ]
-        for values in eigenvalues
+        for eigenvalues in eigenvalues_by_spin
     ]
 
     return {
+        'spin_polarized': spin_polarized,
+        'nspins': nspins,
         'nkpoints': nkpoints,
         'nbands': nbands,
         'distances': distances,
         'special_distances': special_distances,
         'labels': labels,
         'reference_energy_ev': reference_energy,
-        'eigenvalues_ev': shifted_eigenvalues,
+        'eigenvalues_by_spin_ev': shifted_by_spin,
+        'eigenvalues_ev': (
+            shifted_by_spin[0]
+            if not spin_polarized
+            else None
+        ),
+        'eigenvalues_up_ev': (
+            shifted_by_spin[0]
+            if spin_polarized
+            else None
+        ),
+        'eigenvalues_down_ev': (
+            shifted_by_spin[1]
+            if spin_polarized
+            else None
+        ),
     }
 
 def parse_dos_output(dos_file):
