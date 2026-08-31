@@ -4249,5 +4249,281 @@ def test_run_spin_polarized_band_projections(self):
                 ],
             )
 
+    def test_run_bands_prepares_projected_band_data(self):
+        atoms = bulk(
+            'Si',
+            'diamond',
+            a=5.43,
+        )
+
+        band_path = build_band_path(
+            atoms=atoms,
+            path='GX',
+            npoints=2,
+        )
+
+        output_text = """
+         Program PWSCF v.7.2 starts
+
+         End of band structure calculation
+
+              k = 0.0000 0.0000 0.0000 ( 123 PWs)   bands (ev):
+
+            -5.0000  -1.0000
+
+              k = 0.5000 0.0000 0.5000 ( 120 PWs)   bands (ev):
+
+            -4.5000  -0.5000
+
+         JOB DONE.
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(
+                tmpdir
+            )
+
+            state_dir = (
+                tmpdir
+                / 'state'
+            )
+
+            save_dir = (
+                state_dir
+                / 'nanoworks.save'
+            )
+
+            save_dir.mkdir(
+                parents=True
+            )
+
+            (
+                save_dir
+                / 'data-file-schema.xml'
+            ).write_text(
+                '<qes/>',
+                encoding='utf-8',
+            )
+
+            def fake_run_qe_program(**kwargs):
+                Path(
+                    kwargs['output_file']
+                ).write_text(
+                    output_text,
+                    encoding='utf-8',
+                )
+
+                return {
+                    'returncode': 0,
+                }
+
+            projection_workflow = {
+                'projection_up_file': (
+                    tmpdir
+                    / 'projection.projwfc_up'
+                ),
+                'projection_down_file': None,
+            }
+
+            raw_projection = {
+                'natoms': 2,
+                'nkpoints': 2,
+                'nbands': 2,
+                'states': [],
+            }
+
+            prepared_projection = {
+                'natoms': 2,
+                'nkpoints': 2,
+                'nbands': 2,
+                'projections': [],
+            }
+
+            with patch(
+                'nanoworks.engine.qe.run_qe_program',
+                side_effect=fake_run_qe_program,
+            ), patch(
+                'nanoworks.engine.qe.run_band_projections',
+                return_value=projection_workflow,
+            ) as run_projection, patch(
+                'nanoworks.engine.qe.parse_projwfc_band_file',
+                return_value=raw_projection,
+            ) as parse_projection, patch(
+                'nanoworks.engine.qe.prepare_qe_band_projection_data',
+                return_value=prepared_projection,
+            ) as prepare_projection:
+                workflow = run_bands(
+                    atoms=atoms,
+                    input_file=tmpdir / 'bands.in',
+                    output_file=tmpdir / 'bands.out',
+                    state_dir=state_dir,
+                    pseudopotentials={
+                        'Si': 'Si.upf',
+                    },
+                    pseudo_dir='/tmp/pseudos',
+                    cutoff_ev=400.0,
+                    band_path=band_path,
+                    nbands=2,
+                    projected_band=True,
+                    projections=[
+                        {
+                            'atoms': [0],
+                            'orbital': 'p',
+                            'color': 'red',
+                            'label': 'Si p',
+                        },
+                    ],
+                    projection_input_file=(
+                        tmpdir
+                        / 'projection.in'
+                    ),
+                    projection_output_file=(
+                        tmpdir
+                        / 'projection.out'
+                    ),
+                    projection_prefix=(
+                        tmpdir
+                        / 'projection'
+                    ),
+                )
+
+        self.assertEqual(
+            run_projection.call_count,
+            1,
+        )
+
+        self.assertEqual(
+            parse_projection.call_count,
+            1,
+        )
+
+        prepare_projection.assert_called_once_with(
+            raw_projection,
+            projections=[
+                {
+                    'atoms': [0],
+                    'orbital': 'p',
+                    'color': 'red',
+                    'label': 'Si p',
+                },
+            ],
+        )
+
+        self.assertFalse(
+            workflow[
+                'band_projections'
+            ][
+                'spin_polarized'
+            ]
+        )
+
+        self.assertEqual(
+            workflow[
+                'band_projections'
+            ][
+                'up'
+            ],
+            prepared_projection,
+        )
+
+        self.assertIsNone(
+            workflow[
+                'band_projections'
+            ][
+                'down'
+            ]
+        )
+
+    def test_run_bands_requires_projected_band_paths(self):
+        atoms = bulk(
+            'Si',
+            'diamond',
+            a=5.43,
+        )
+
+        band_path = build_band_path(
+            atoms=atoms,
+            path='GX',
+            npoints=1,
+        )
+
+        output_text = """
+         Program PWSCF v.7.2 starts
+
+              k = 0.0000 0.0000 0.0000 ( 123 PWs)   bands (ev):
+
+            -5.0000
+
+         JOB DONE.
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(
+                tmpdir
+            )
+
+            state_dir = (
+                tmpdir
+                / 'state'
+            )
+
+            save_dir = (
+                state_dir
+                / 'nanoworks.save'
+            )
+
+            save_dir.mkdir(
+                parents=True
+            )
+
+            (
+                save_dir
+                / 'data-file-schema.xml'
+            ).write_text(
+                '<qes/>',
+                encoding='utf-8',
+            )
+
+            def fake_run_qe_program(**kwargs):
+                Path(
+                    kwargs['output_file']
+                ).write_text(
+                    output_text,
+                    encoding='utf-8',
+                )
+
+                return {
+                    'returncode': 0,
+                }
+
+            with patch(
+                'nanoworks.engine.qe.run_qe_program',
+                side_effect=fake_run_qe_program,
+            ):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    'projection_input_file',
+                ):
+                    run_bands(
+                        atoms=atoms,
+                        input_file=(
+                            tmpdir
+                            / 'bands.in'
+                        ),
+                        output_file=(
+                            tmpdir
+                            / 'bands.out'
+                        ),
+                        state_dir=state_dir,
+                        pseudopotentials={
+                            'Si': 'Si.upf',
+                        },
+                        pseudo_dir='/tmp/pseudos',
+                        cutoff_ev=400.0,
+                        band_path=band_path,
+                        nbands=1,
+                        projected_band=True,
+                    )
+
 if __name__ == '__main__':
     unittest.main()

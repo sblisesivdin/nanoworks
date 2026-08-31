@@ -4679,6 +4679,12 @@ def run_bands(
     parallel_cores=1,
     executable='pw.x',
     prefix='nanoworks',
+    projected_band=False,
+    projections=None,
+    projection_input_file=None,
+    projection_output_file=None,
+    projection_prefix=None,
+    projection_executable='projwfc.x',
 ):
     """Render, execute, and parse one QE pw.x bands calculation."""
     input_file = Path(
@@ -4781,6 +4787,123 @@ def run_bands(
             f"{requested_npoints} were requested."
         )
 
+    band_projections = None
+
+    if projected_band:
+        projection_paths = {
+            'projection_input_file': (
+                projection_input_file
+            ),
+            'projection_output_file': (
+                projection_output_file
+            ),
+            'projection_prefix': (
+                projection_prefix
+            ),
+        }
+
+        missing_paths = [
+            name
+            for name, value in (
+                projection_paths.items()
+            )
+            if value is None
+        ]
+
+        if missing_paths:
+            raise ValueError(
+                "QE projected bands require: "
+                + ', '.join(
+                    missing_paths
+                )
+            )
+
+        projection_workflow = (
+            run_band_projections(
+                input_file=(
+                    projection_input_file
+                ),
+                output_file=(
+                    projection_output_file
+                ),
+                state_dir=state_dir,
+                projection_prefix=(
+                    projection_prefix
+                ),
+                spinpol=spinpol,
+                parallel_cores=parallel_cores,
+                executable=(
+                    projection_executable
+                ),
+                prefix=prefix,
+            )
+        )
+
+        raw_up = parse_projwfc_band_file(
+            projection_workflow[
+                'projection_up_file'
+            ]
+        )
+
+        if (
+            raw_up['nkpoints']
+            != bands['nkpoints']
+            or raw_up['nbands']
+            != bands['nbands']
+        ):
+            raise RuntimeError(
+                "QE spin-up band projections do not "
+                "match the calculated band dimensions."
+            )
+
+        prepared_up = (
+            prepare_qe_band_projection_data(
+                raw_up,
+                projections=projections,
+            )
+        )
+
+        raw_down = None
+        prepared_down = None
+
+        if spinpol:
+            raw_down = (
+                parse_projwfc_band_file(
+                    projection_workflow[
+                        'projection_down_file'
+                    ]
+                )
+            )
+
+            if (
+                raw_down['nkpoints']
+                != bands['nkpoints']
+                or raw_down['nbands']
+                != bands['nbands']
+            ):
+                raise RuntimeError(
+                    "QE spin-down band projections do not "
+                    "match the calculated band dimensions."
+                )
+
+            prepared_down = (
+                prepare_qe_band_projection_data(
+                    raw_down,
+                    projections=projections,
+                )
+            )
+
+        band_projections = {
+            'workflow': projection_workflow,
+            'spin_polarized': bool(
+                spinpol
+            ),
+            'raw_up': raw_up,
+            'raw_down': raw_down,
+            'up': prepared_up,
+            'down': prepared_down,
+        }
+
     return {
         'input_file': input_file,
         'output_file': output_file,
@@ -4789,6 +4912,7 @@ def run_bands(
         'execution': execution,
         'result': result,
         'bands': bands,
+        'band_projections': band_projections,
     }
 
 def run_dos(
