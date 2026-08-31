@@ -2594,7 +2594,7 @@ def parse_dos_output(dos_file):
     }
 
 def parse_projwfc_pdos_file(pdos_file):
-    """Parse one non-spin Quantum ESPRESSO projwfc.x PDOS file."""
+    """Parse one collinear-spin or non-spin QE PDOS file."""
     pdos_file = Path(
         pdos_file
     )
@@ -2652,18 +2652,41 @@ def parse_projwfc_pdos_file(pdos_file):
             "s, p, and d orbitals only."
         )
 
+    names = component_names[
+        orbital
+    ]
+
+    nonspin_columns = (
+        2
+        + len(names)
+    )
+
+    spin_columns = (
+        3
+        + 2 * len(names)
+    )
+
     energies = []
     ldos = []
+    ldos_up = []
+    ldos_down = []
 
     components = {
         name: []
-        for name in component_names[orbital]
+        for name in names
     }
 
-    expected_columns = (
-        2
-        + len(component_names[orbital])
-    )
+    components_up = {
+        name: []
+        for name in names
+    }
+
+    components_down = {
+        name: []
+        for name in names
+    }
+
+    spin_polarized = None
 
     with pdos_file.open(
         'r',
@@ -2681,9 +2704,6 @@ def parse_projwfc_pdos_file(pdos_file):
 
             parts = stripped.split()
 
-            if len(parts) < expected_columns:
-                continue
-
             try:
                 values = [
                     float(
@@ -2691,29 +2711,98 @@ def parse_projwfc_pdos_file(pdos_file):
                         .replace('D', 'E')
                         .replace('d', 'e')
                     )
-                    for value in parts[
-                        :expected_columns
-                    ]
+                    for value in parts
                 ]
             except ValueError:
                 continue
+
+            if len(values) == nonspin_columns:
+                row_is_spin_polarized = False
+
+            elif len(values) == spin_columns:
+                row_is_spin_polarized = True
+
+            else:
+                continue
+
+            if spin_polarized is None:
+                spin_polarized = (
+                    row_is_spin_polarized
+                )
+
+            elif (
+                row_is_spin_polarized
+                != spin_polarized
+            ):
+                raise ValueError(
+                    "QE PDOS data contains inconsistent "
+                    "spin column counts."
+                )
 
             energies.append(
                 values[0]
             )
 
-            ldos.append(
-                values[1]
-            )
+            if spin_polarized:
+                up_value = values[1]
+                down_value = values[2]
 
-            for index, component_name in enumerate(
-                component_names[orbital]
-            ):
-                components[
-                    component_name
-                ].append(
-                    values[index + 2]
+                ldos_up.append(
+                    up_value
                 )
+
+                ldos_down.append(
+                    down_value
+                )
+
+                ldos.append(
+                    up_value
+                    + down_value
+                )
+
+                for index, component_name in enumerate(
+                    names
+                ):
+                    component_up = values[
+                        3 + 2 * index
+                    ]
+
+                    component_down = values[
+                        4 + 2 * index
+                    ]
+
+                    components_up[
+                        component_name
+                    ].append(
+                        component_up
+                    )
+
+                    components_down[
+                        component_name
+                    ].append(
+                        component_down
+                    )
+
+                    components[
+                        component_name
+                    ].append(
+                        component_up
+                        + component_down
+                    )
+
+            else:
+                ldos.append(
+                    values[1]
+                )
+
+                for index, component_name in enumerate(
+                    names
+                ):
+                    components[
+                        component_name
+                    ].append(
+                        values[index + 2]
+                    )
 
     if not energies:
         raise ValueError(
@@ -2727,7 +2816,28 @@ def parse_projwfc_pdos_file(pdos_file):
         'orbital': orbital,
         'energies_ev': energies,
         'ldos': ldos,
+        'ldos_up': (
+            ldos_up
+            if spin_polarized
+            else None
+        ),
+        'ldos_down': (
+            ldos_down
+            if spin_polarized
+            else None
+        ),
         'components': components,
+        'components_up': (
+            components_up
+            if spin_polarized
+            else None
+        ),
+        'components_down': (
+            components_down
+            if spin_polarized
+            else None
+        ),
+        'spin_polarized': spin_polarized,
         'npoints': len(energies),
     }
 

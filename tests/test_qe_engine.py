@@ -2566,6 +2566,83 @@ def test_parse_projwfc_pdos_p_file(self):
         result['components']['py'],
         [0.00623, 0.00585],
     )
+    
+    self.assertFalse(
+        result['spin_polarized']
+    )
+
+    self.assertIsNone(
+        result['ldos_up']
+    )
+
+    self.assertIsNone(
+        result['components_up']
+    )
+
+def test_parse_spin_polarized_projwfc_pdos_p_file(self):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        pdos_file = (
+            Path(tmpdir)
+            / 'test.pdos_atm#2(As)_wfc#3(p)'
+        )
+
+        pdos_file.write_text(
+            "# E ldosup ldosdw "
+            "pzup pzdw pxup pxdw pyup pydw\n"
+            "1.0 0.60 0.30 "
+            "0.10 0.05 0.20 0.10 0.30 0.15\n"
+            "2.0 0.90 0.60 "
+            "0.20 0.10 0.30 0.20 0.40 0.30\n",
+            encoding='utf-8',
+        )
+
+        result = parse_projwfc_pdos_file(
+            pdos_file
+        )
+
+    self.assertTrue(
+        result['spin_polarized']
+    )
+
+    self.assertEqual(
+        result['ldos_up'],
+        [0.6, 0.9],
+    )
+
+    self.assertEqual(
+        result['ldos_down'],
+        [0.3, 0.6],
+    )
+
+    self.assertEqual(
+        result['components_up']['pz'],
+        [0.1, 0.2],
+    )
+
+    self.assertEqual(
+        result['components_down']['pz'],
+        [0.05, 0.1],
+    )
+
+    self.assertEqual(
+        result['components_up']['px'],
+        [0.2, 0.3],
+    )
+
+    self.assertEqual(
+        result['components_down']['py'],
+        [0.15, 0.3],
+    )
+
+    self.assertAlmostEqual(
+        result['components']['pz'][0],
+        0.15,
+    )
+
+    self.assertAlmostEqual(
+        result['ldos'][1],
+        1.5,
+    )
 
 def test_parse_projwfc_pdos_d_file(self):
     with tempfile.TemporaryDirectory() as tmpdir:
