@@ -2438,6 +2438,7 @@ def test_render_projwfc_input(self):
         prefix='nanoworks',
         outdir='/tmp/qe-state',
         filpdos='/tmp/gaas-pdos',
+        filproj='/tmp/gaas-projections.dat',
         emin=1.0,
         emax=10.0,
         delta_e=0.02,
@@ -2460,6 +2461,11 @@ def test_render_projwfc_input(self):
 
     self.assertIn(
         "filpdos = '/tmp/gaas-pdos'",
+        text,
+    )
+
+    self.assertIn(
+        "filproj = '/tmp/gaas-projections.dat'",
         text,
     )
 
@@ -2487,7 +2493,19 @@ def test_render_projwfc_input(self):
         'degauss',
         text,
     )
-    
+
+def test_render_projwfc_input_omits_optional_projection_file(self):
+    text = render_projwfc_input(
+        prefix='nanoworks',
+        outdir='/tmp/qe-state',
+        filpdos='/tmp/gaas-pdos',
+    )
+
+    self.assertNotIn(
+        'filproj',
+        text,
+    )
+
 def test_render_projwfc_input_rejects_invalid_energy_range(self):
     with self.assertRaisesRegex(
         ValueError,

@@ -1695,6 +1695,7 @@ def render_projwfc_input(
     prefix='nanoworks',
     outdir=None,
     filpdos='nanoworks',
+    filproj=None,
     emin=None,
     emax=None,
     delta_e=None,
@@ -1770,6 +1771,11 @@ def render_projwfc_input(
     settings['filpdos'] = str(
         filpdos
     )
+
+    if filproj is not None:
+        settings['filproj'] = str(
+            filproj
+        )
 
     return (
         render_namelist(
