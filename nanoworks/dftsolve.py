@@ -3728,15 +3728,26 @@ class dftsolve:
         
         filename = f"{self.struct}-BAND-GPAW-Graph-Projected-Band.png"
         
-        if not self.Projections:
+        Projections = self.Projections
+
+        if not Projections:
             if world.rank == 0:
-                print("Warning: 'Projections' list is missing in config. Auto-generating total projection...")
-            total_atoms = len(calc.get_atoms())
+                print(
+                    "Warning: 'Projections' list is missing "
+                    "in config. Auto-generating total projection..."
+                )
+
+            total_atoms = len(
+                calc.get_atoms()
+            )
+
             Projections = [{
-                'atoms': list(range(total_atoms)), 
-                'orbital': None, 
-                'color': 'blue', 
-                'label': 'Total Contribution'
+                'atoms': list(
+                    range(total_atoms)
+                ),
+                'orbital': None,
+                'color': 'blue',
+                'label': 'Total Contribution',
             }]
         
         bs = calc.band_structure()
@@ -3757,7 +3768,7 @@ class dftsolve:
             projection_data = []
             
             
-            for proj in self.Projections:
+            for proj in Projections:
                 atom_indices = proj.get('atoms', [])
                 orbital = proj.get('orbital', None)
                 color = proj.get('color', 'blue')
