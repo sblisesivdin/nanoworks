@@ -2853,6 +2853,21 @@ class dftsolve:
             + f'-BAND-{self.Engine}-Log-Bands.txt'
         )
 
+        projection_input_file = Path(
+            self.struct
+            + '-BAND-QE-Input-Projections.in'
+        )
+
+        projection_output_file = Path(
+            self.struct
+            + '-BAND-QE-Log-Projections.txt'
+        )
+
+        projection_prefix = Path(
+            self.struct
+            + '-BAND-QE-Result-Projections'
+        )
+
         try:
             workflow = self.engine.run_bands(
                 atoms=self.bulk_configuration,
@@ -2871,6 +2886,20 @@ class dftsolve:
                 parallel_cores=self.parallel_cores,
                 executable='pw.x',
                 prefix='nanoworks',
+                projected_band=(
+                    self.Projected_band_plot
+                ),
+                projections=self.Projections,
+                projection_input_file=(
+                    projection_input_file
+                ),
+                projection_output_file=(
+                    projection_output_file
+                ),
+                projection_prefix=(
+                    projection_prefix
+                ),
+                projection_executable='projwfc.x',
             )
         except Exception as exc:
             parprint(
@@ -2919,6 +2948,35 @@ class dftsolve:
         bands = workflow[
             'bands'
         ]
+
+        band_projections = workflow[
+            'band_projections'
+        ]
+
+        if self.Projected_band_plot:
+            if band_projections is None:
+                raise RuntimeError(
+                    "QE projected-band calculation "
+                    "did not return projection data."
+                )
+
+            projection_count = len(
+                band_projections[
+                    'up'
+                ][
+                    'projections'
+                ]
+            )
+
+            parprint(
+                "QE band projections prepared: "
+                f"{projection_count} selection(s)."
+            )
+
+            parprint(
+                "QE band projection data prefix: "
+                f"{projection_prefix}"
+            )
 
         parprint(
             "QE band calculation finished."
