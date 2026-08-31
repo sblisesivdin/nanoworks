@@ -16,8 +16,8 @@ General Keywords
 
     ``GPAW`` remains the default and currently provides the complete
     Nanoworks DFT workflow. Quantum ESPRESSO support is available with
-    ``QE`` for PBE plane-wave ground-state and non-spin DOS/PDOS
-    calculations.
+    ``QE`` for PBE plane-wave ground-state, geometry-optimization,
+    DOS/PDOS, band-structure, and projected-band workflows.
 
 .. code-block:: python
 
@@ -32,11 +32,13 @@ or:
 .. note::
 
     Quantum ESPRESSO support is currently under active development.
-    At this stage, ``Engine = 'QE'`` supports PBE PW ground-state and
-    non-spin DOS/PDOS workflows using scalar-relativistic PseudoDojo
-    pseudopotentials. Geometry optimization, vdW corrections,
-    spin-polarized DOS, SOC, hybrid functionals and other calculation
-    stages are not supported by the QE backend yet.
+    At this stage, ``Engine = 'QE'`` supports PBE PW ground-state,
+    fixed-cell and variable-cell geometry optimization, non-spin DOS/PDOS,
+    band-structure, and projected-band workflows using scalar-relativistic
+    PseudoDojo pseudopotentials. Spin-polarized QE initialization is being
+    completed and is not yet a supported end-to-end workflow. QE vdW, SOC,
+    hybrid-functional, elastic, phonon, and optical workflows are not
+    supported yet.
 
 .. describe:: Mode
 
@@ -67,7 +69,9 @@ or:
     :Type: ``boolean``
     :Default: ``False``
 
-    Controls execution of geometric optimization.
+    Controls execution of geometric optimization. GPAW uses its established
+    ASE-based optimization path. The QE PW backend supports both fixed-cell
+    ``relax`` and variable-cell ``vc-relax`` calculations.
 
 .. code-block:: python
 
@@ -97,9 +101,11 @@ or:
 
 .. note::
 
-    The QE backend currently supports total DOS and orbital-projected
-    DOS for non-spin PBE PW calculations. A valid QE ground-state result
-    is required before the DOS workflow is started.
+    The QE backend currently supports total DOS and orbital-projected DOS
+    for non-spin PBE PW calculations. A valid QE ground-state result is
+    required before the DOS workflow is started. Spin-resolved QE DOS/PDOS
+    output support is present, but the QE magnetic ground-state initialization
+    is still being completed.
 
 .. describe:: Band_calc
 
@@ -114,7 +120,9 @@ or:
 
 .. note::
 
-    Quantum ESPRESSO band-structure calculations are not available yet.
+    The QE backend supports non-spin PBE PW band structures and
+    orbital-projected band plots. A valid QE ground-state result is required.
+    Spin-polarized QE band structures are not supported yet.
 
 .. describe:: Density_calc
 
@@ -165,7 +173,9 @@ or:
     :Type: ``str``
     :Default: ``None``
 
-    Whether van der Walls correction are added to calculation or not. For now only Grimme-D3 correction is supported.
+    Whether a van der Waals correction is added. The established GPAW
+    workflow currently supports the Grimme-D3 correction. QE vdW corrections
+    are not supported yet.
 
 .. code-block:: python
 
@@ -204,7 +214,38 @@ or:
 
 .. code-block:: python
 
-    Localisation = "tr_TR"
+    Localization = "tr_TR"
+
+.. describe:: Outdirname
+
+    :Type: ``str``
+    :Default: ``''``
+
+    Optional output-directory name, resolved relative to the input-file
+    directory. When empty, Nanoworks uses the structure name.
+
+.. code-block:: python
+
+    Outdirname = 'gaas-results'
+
+.. describe:: bulk_configuration
+
+    :Type: ASE ``Atoms`` object or ``None``
+    :Default: ``None``
+
+    Programmatic structure input used by Python input files that construct
+    an ASE ``Atoms`` object directly. It is normally populated
+    automatically when a geometry file is supplied.
+
+.. code-block:: python
+
+    from ase.build import bulk
+
+    bulk_configuration = bulk(
+        'GaAs',
+        'zincblende',
+        a=5.75,
+    )
 
 Geometric Optimization Keywords
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -215,7 +256,10 @@ Geometric Optimization Keywords
     :Default: ``QuasiNewton``
     :Options: ``LBFGS``, ``FIRE``, ``QuasiNewton``
     
-    Energy minimization algorithm for geometry optimization. Options: ``LBFGS``, ``FIRE`` and ``QuasiNewton``.
+    Energy-minimization algorithm for geometry optimization. GPAW supports
+    ``LBFGS``, ``FIRE``, and ``QuasiNewton``. The QE backend maps
+    ``LBFGS``, ``BFGS``, and ``QuasiNewton`` to QE's BFGS ionic
+    optimizer; ``FIRE`` is not supported by QE.
 
 .. code-block:: python
 
@@ -283,11 +327,32 @@ Geometric Optimization Keywords
     :Type: ``list``
     :Default: ``[False, False, False, False, False, False]``
 
-    Controls which components of strain will be relaxed (six components: EpsilonX, EpsilonY, EpsilonZ, ShearYZ, ShearXZ, ShearXY).
+    Controls which components of strain will be relaxed. The six values are
+    ordered as ``xx``, ``yy``, ``zz``, ``yz``, ``xz``, and
+    ``xy``.
+
+    For QE, a mask containing at least one ``True`` value selects
+    ``vc-relax`` and is translated to a compatible ``cell_dofree``
+    setting. Unsupported masks are rejected rather than approximated.
 
 .. code-block:: python
 
-    Relax_cell = [True, True, False, False, False, False]  # For an x-y 2D nanosheet
+    Relax_cell = [True, True, False, False, False, False]  # x-y relaxation
+
+.. describe:: Hydrostatic_pressure
+
+    :Type: ``float``
+    :Default: ``0.0``
+    :Unit: GPa
+
+    External hydrostatic pressure used during variable-cell optimization.
+    A non-zero value requires at least one enabled ``Relax_cell``
+    component. Nanoworks converts this value to the pressure unit expected
+    by the active engine.
+
+.. code-block:: python
+
+    Hydrostatic_pressure = 2.0  # GPa
 
 Elastic Calculation Keywords
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -590,7 +655,7 @@ Electronic Calculations Keywords
 .. describe:: Occupation
 
     :Type: ``python dictionary``
-    :Default: ``{}``
+    :Default: ``{'name': 'fermi-dirac', 'width': 0.05}``
         
     Smearing of the occupation numbers. Options:
 
@@ -759,15 +824,55 @@ Electronic Calculations Keywords
 
 .. describe:: Magmom_per_atom
 
-    :Type: ``float``
+    :Type: ``float``, element-to-moment ``dict``, or per-atom ``list``
     :Default: ``1.0``
     :Unit: µB
 
-    Magnetic moment per atom. Only relevant when ``Spin_calc = True``.
+    Initial magnetic moments used when ``Spin_calc = True``. A scalar
+    assigns the same moment to every atom. A dictionary assigns moments by
+    chemical element; elements omitted from the dictionary receive ``0.0``.
+    A sequence assigns moments directly in the structure's atom order and
+    must contain exactly one value per atom.
+
+    GPAW PW and LCAO calculations use the resolved atom-by-atom moments.
+    The same common representation is intended for QE magnetic workflows.
 
 .. code-block:: python
 
-    Magmom_per_atom = 1.0
+    # Uniform ferromagnetic initialization
+    Magmom_per_atom = 2.0
+
+.. code-block:: python
+
+    # Element-specific initialization
+    Magmom_per_atom = {
+        'Fe': 4.0,
+        'O': 0.0,
+    }
+
+.. code-block:: python
+
+    # Atom-specific ferro/antiferromagnetic initialization
+    Magmom_per_atom = [4.0, -4.0, 0.0, 0.0, 0.0]
+
+.. describe:: Magmom_single_atom
+
+    :Type: two-item ``list`` or ``None``
+    :Default: ``None``
+    :Unit: µB
+
+    Overrides the initial moment of one zero-based atom index. With the
+    historical scalar form of ``Magmom_per_atom``, all other atoms are
+    initialized to zero, preserving the legacy Nanoworks behavior. With a
+    dictionary or per-atom sequence, only the selected atom is overridden.
+
+.. code-block:: python
+
+    Magmom_per_atom = {
+        'Fe': 4.0,
+        'O': 0.0,
+    }
+    Magmom_single_atom = [1, -4.0]
 
 .. describe:: Total_charge
 
@@ -833,6 +938,19 @@ Electronic Calculations Keywords
     Multiple projections can be defined simultaneously. Contributions
     from atoms listed in the same ``atoms`` entry are summed before
     plotting.
+
+.. describe:: Refine_grid
+
+    :Type: ``int``
+    :Default: ``4``
+
+    Grid-refinement factor used when writing GPAW electron-density output.
+    This keyword is relevant when ``Density_calc = True`` in the GPAW
+    backend.
+
+.. code-block:: python
+
+    Refine_grid = 4
 
 .. code-block:: python
 
@@ -964,15 +1082,15 @@ Phonon Calculations Keywords
 .. describe:: Phonon_qpts_x | Phonon_qpts_y | Phonon_qpts_z
 
     :Type: ``int``
-    :Default: ``21``
+    :Default: ``20``
     
-    Number of q-points in x / y / z directions for phonon mesh. Suggested to use odd and necessarily big numbers. 
+    Number of q-points in the x, y, and z directions for the phonon mesh.
 
 .. code-block:: python
 
-    Phonon_qpts_x = 21
-    Phonon_qpts_y = 21
-    Phonon_qpts_z = 21
+    Phonon_qpts_x = 20
+    Phonon_qpts_y = 20
+    Phonon_qpts_z = 20
 
 .. describe:: Phonon_thermal_calc
 
@@ -1111,7 +1229,7 @@ Optical Calculations Keywords
 .. describe:: Opt_num_of_bands
 
     :Type: ``int``
-    :Default: ``16``
+    :Default: ``8``
 
     Number of bands used in optical calculations.
 
@@ -1180,7 +1298,7 @@ Optical Calculations Keywords
 .. describe:: Opt_eta
 
     :Type: ``float``
-    :Default: ``0.2``
+    :Default: ``0.05``
 
     Broadening parameter ``eta`` used in dielectric function calculations (eV).
 
@@ -1191,7 +1309,7 @@ Optical Calculations Keywords
 .. describe:: Opt_domega0
 
     :Type: ``float``
-    :Default: ``0.1``
+    :Default: ``0.05``
     :Options: ``Δω0``
 
     ``Δω0`` parameter for the non-linear frequency grid in dielectric function calculations (eV). See GPAW docs.
@@ -1203,7 +1321,7 @@ Optical Calculations Keywords
 .. describe:: Opt_omega2
 
     :Type: ``float``
-    :Default: ``10.0``
+    :Default: ``5.0``
     :Options: ``ω2``
 
     ``ω2`` parameter for non-linear frequency grid in dielectric function calculations (eV). See GPAW docs.
@@ -1215,7 +1333,7 @@ Optical Calculations Keywords
 .. describe:: Opt_cut_of_energy
 
     :Type: ``float``
-    :Default: ``10.0``
+    :Default: ``100``
 
     Plane-wave energy cutoff in dielectric function calculations (eV). Determines dielectric matrix size.
 
@@ -1225,8 +1343,8 @@ Optical Calculations Keywords
 
 .. describe:: Opt_nblocks
 
-    :Type: ``int``
-    :Default: ``4``
+    :Type: ``int`` or ``None``
+    :Default: ``None`` (resolved to the MPI world size)
 
     Controls splitting matrices into blocks and distribution of G-vectors/frequencies over processes.
 
