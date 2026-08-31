@@ -1,11 +1,13 @@
 import unittest
 from unittest.mock import patch
+from ase import Atoms
 
 from nanoworks.engine import (
     normalize_engine_name,
     resolve_stage_kpoint_settings,
     resolve_stage_occupation,
     load_engine_module,
+    resolve_initial_magnetic_moments,
 )
 
 
@@ -98,6 +100,116 @@ class TestEngine(unittest.TestCase):
         with self.assertRaises(ValueError):
             load_engine_module('unknown')
 
+    def test_initial_magnetic_moments_support_scalar(self):
+        atoms = Atoms(
+            'FeO',
+        )
+
+        moments = resolve_initial_magnetic_moments(
+            atoms,
+            magmom_per_atom=2.0,
+        )
+
+        self.assertEqual(
+            moments,
+            [2.0, 2.0],
+        )
+
+    def test_initial_magnetic_moments_support_species_mapping(self):
+        atoms = Atoms(
+            'Fe2O3',
+        )
+
+        moments = resolve_initial_magnetic_moments(
+            atoms,
+            magmom_per_atom={
+                'Fe': 4.0,
+                'O': 0.0,
+            },
+        )
+
+        self.assertEqual(
+            moments,
+            [
+                4.0,
+                4.0,
+                0.0,
+                0.0,
+                0.0,
+            ],
+        )
+
+    def test_initial_magnetic_moments_default_missing_species_to_zero(self):
+        atoms = Atoms(
+            'FeO',
+        )
+
+        moments = resolve_initial_magnetic_moments(
+            atoms,
+            magmom_per_atom={
+                'Fe': 2.2,
+            },
+        )
+
+        self.assertEqual(
+            moments,
+            [2.2, 0.0],
+        )
+
+    def test_initial_magnetic_moments_support_per_atom_sequence(self):
+        atoms = Atoms(
+            'Fe2O3',
+        )
+
+        moments = resolve_initial_magnetic_moments(
+            atoms,
+            magmom_per_atom=[
+                4.0,
+                -4.0,
+                0.0,
+                0.0,
+                0.0,
+            ],
+        )
+
+        self.assertEqual(
+            moments,
+            [
+                4.0,
+                -4.0,
+                0.0,
+                0.0,
+                0.0,
+            ],
+        )
+
+    def test_single_atom_moment_overrides_resolved_moment(self):
+        atoms = Atoms(
+            'Fe2O3',
+        )
+
+        moments = resolve_initial_magnetic_moments(
+            atoms,
+            magmom_per_atom={
+                'Fe': 4.0,
+                'O': 0.0,
+            },
+            magmom_single_atom=[
+                1,
+                -4.0,
+            ],
+        )
+
+        self.assertEqual(
+            moments,
+            [
+                4.0,
+                -4.0,
+                0.0,
+                0.0,
+                0.0,
+            ],
+        )
 
 if __name__ == '__main__':
     unittest.main()
