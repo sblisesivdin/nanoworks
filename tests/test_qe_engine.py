@@ -3639,5 +3639,65 @@ def test_aggregate_projwfc_pdos_rejects_mismatched_energy_grid(self):
                 ],
             )
 
+    def test_parse_spin_polarized_pw_bands_output(self):
+        output_text = """
+        SPIN UP
+
+        k = 0.0000 0.0000 0.0000 (100 PWs) bands (ev):
+        -5.0 -1.0 1.0
+
+        k = 0.5000 0.0000 0.5000 (90 PWs) bands (ev):
+        -4.5 -0.5 1.5
+
+        SPIN DOWN
+
+        k = 0.0000 0.0000 0.0000 (100 PWs) bands (ev):
+        -4.8 -0.8 1.2
+
+        k = 0.5000 0.0000 0.5000 (90 PWs) bands (ev):
+        -4.3 -0.3 1.7
+
+        JOB DONE.
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = (
+                Path(tmpdir)
+                / 'spin-bands.out'
+            )
+
+            output_file.write_text(
+                output_text,
+                encoding='utf-8',
+            )
+
+            result = parse_pw_bands_output(
+                output_file
+            )
+
+        self.assertTrue(
+            result['spin_polarized']
+        )
+        self.assertEqual(
+            result['nspins'],
+            2,
+        )
+        self.assertEqual(
+            result['nkpoints'],
+            2,
+        )
+        self.assertEqual(
+            result['nbands'],
+            3,
+        )
+        self.assertEqual(
+            result['eigenvalues_ev'][0][1],
+            [-4.5, -0.5, 1.5],
+        )
+        self.assertEqual(
+            result['eigenvalues_ev'][1][1],
+            [-4.3, -0.3, 1.7],
+        )
+
 if __name__ == '__main__':
     unittest.main()

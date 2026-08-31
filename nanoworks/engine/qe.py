@@ -2465,7 +2465,7 @@ def resolve_qe_band_reference(result):
     )
 
 def parse_pw_bands_output(output):
-    """Parse non-spin band eigenvalues from a QE pw.x output."""
+    """Parse non-spin or collinear-spin eigenvalues from QE pw.x output."""
     output = Path(
         output
     )
@@ -2479,16 +2479,6 @@ def parse_pw_bands_output(output):
         encoding='utf-8',
         errors='replace',
     )
-
-    if re.search(
-        r'\bSPIN\s+(?:UP|DOWN)\b',
-        text,
-        flags=re.IGNORECASE,
-    ):
-        raise NotImplementedError(
-            "Spin-polarized QE band output parsing "
-            "is not supported yet."
-        )
 
     number_pattern = (
         r'[-+]?(?:\d+(?:\.\d*)?|\.\d+)'
@@ -2512,73 +2502,100 @@ def parse_pw_bands_output(output):
         rf'^(?:\s*{number_pattern})+\s*$'
     )
 
-    kpoints = []
-    eigenvalues = []
+    def parse_channel(channel_text):
+        kpoints = []
+        eigenvalues = []
 
-    current_kpoint = None
-    current_eigenvalues = None
+        current_kpoint = None
+        current_eigenvalues = None
 
-    for line in text.splitlines():
-        kpoint_match = kpoint_pattern.match(
-            line
-        )
-
-        if kpoint_match:
-            if (
-                current_kpoint is not None
-                and current_eigenvalues
-            ):
-                kpoints.append(
-                    current_kpoint
-                )
-                eigenvalues.append(
-                    current_eigenvalues
-                )
-
-            current_kpoint = tuple(
-                float(
-                    value
-                    .replace('D', 'E')
-                    .replace('d', 'e')
-                )
-                for value in kpoint_match.groups()
+        for line in channel_text.splitlines():
+            kpoint_match = kpoint_pattern.match(
+                line
             )
 
-            current_eigenvalues = None
+            if kpoint_match:
+                if (
+                    current_kpoint is not None
+                    and current_eigenvalues
+                ):
+                    kpoints.append(
+                        current_kpoint
+                    )
+                    eigenvalues.append(
+                        current_eigenvalues
+                    )
 
+                current_kpoint = tuple(
+                    float(
+                        value
+                        .replace('D', 'E')
+                        .replace('d', 'e')
+                    )
+                    for value in kpoint_match.groups()
+                )
 
-        bands_match = bands_pattern.search(
-            line
-        )
+                current_eigenvalues = None
 
-        if (
-            bands_match
-            and current_kpoint is not None
-        ):
-            current_eigenvalues = []
+            bands_match = bands_pattern.search(
+                line
+            )
 
-            remainder = line[
-                bands_match.end():
-            ].strip()
+            if (
+                bands_match
+                and current_kpoint is not None
+            ):
+                current_eigenvalues = []
 
-            if remainder:
+                remainder = line[
+                    bands_match.end():
+                ].strip()
+
+                if remainder:
+                    current_eigenvalues.extend(
+                        float(
+                            value
+                            .replace('D', 'E')
+                            .replace('d', 'e')
+                        )
+                        for value in remainder.split()
+                    )
+
+                continue
+
+            if current_eigenvalues is None:
+                continue
+
+            stripped = line.strip()
+
+            if not stripped:
+                if current_eigenvalues:
+                    kpoints.append(
+                        current_kpoint
+                    )
+                    eigenvalues.append(
+                        current_eigenvalues
+                    )
+
+                    current_kpoint = None
+                    current_eigenvalues = None
+
+                continue
+
+            if number_line_pattern.fullmatch(
+                line
+            ):
                 current_eigenvalues.extend(
                     float(
                         value
                         .replace('D', 'E')
                         .replace('d', 'e')
                     )
-                    for value in remainder.split()
+                    for value in stripped.split()
                 )
 
-            continue
+                continue
 
-        if current_eigenvalues is None:
-            continue
-
-        stripped = line.strip()
-
-        if not stripped:
             if current_eigenvalues:
                 kpoints.append(
                     current_kpoint
@@ -2587,25 +2604,13 @@ def parse_pw_bands_output(output):
                     current_eigenvalues
                 )
 
-                current_kpoint = None
-                current_eigenvalues = None
+            current_kpoint = None
+            current_eigenvalues = None
 
-            continue
-
-        if number_line_pattern.fullmatch(
-            line
+        if (
+            current_kpoint is not None
+            and current_eigenvalues
         ):
-            current_eigenvalues.extend(
-                float(
-                    value
-                    .replace('D', 'E')
-                    .replace('d', 'e')
-                )
-                for value in stripped.split()
-            )
-            continue
-
-        if current_eigenvalues:
             kpoints.append(
                 current_kpoint
             )
@@ -2613,45 +2618,139 @@ def parse_pw_bands_output(output):
                 current_eigenvalues
             )
 
-        current_kpoint = None
-        current_eigenvalues = None
+        if not eigenvalues:
+            raise ValueError(
+                "No QE band eigenvalues were found in "
+                f"the output file: {output}"
+            )
 
-    if (
-        current_kpoint is not None
-        and current_eigenvalues
+        band_counts = {
+            len(values)
+            for values in eigenvalues
+        }
+
+        if len(band_counts) != 1:
+            raise ValueError(
+                "QE band output contains inconsistent "
+                "numbers of bands between k-points."
+            )
+
+        return {
+            'kpoints': kpoints,
+            'eigenvalues_ev': eigenvalues,
+            'nkpoints': len(kpoints),
+            'nbands': len(eigenvalues[0]),
+        }
+
+    spin_pattern = re.compile(
+        r'^\s*SPIN\s+(UP|DOWN)\s*$',
+        flags=(
+            re.IGNORECASE
+            | re.MULTILINE
+        ),
+    )
+
+    spin_markers = list(
+        spin_pattern.finditer(
+            text
+        )
+    )
+
+    if not spin_markers:
+        channel = parse_channel(
+            text
+        )
+
+        return {
+            'spin_polarized': False,
+            'nspins': 1,
+            'nkpoints': channel['nkpoints'],
+            'nbands': channel['nbands'],
+            'kpoints': channel['kpoints'],
+            'eigenvalues_ev': [
+                channel['eigenvalues_ev']
+            ],
+        }
+
+    channels = {}
+
+    for index, marker in enumerate(
+        spin_markers
     ):
-        kpoints.append(
-            current_kpoint
-        )
-        eigenvalues.append(
-            current_eigenvalues
+        spin_name = (
+            marker.group(1)
+            .strip()
+            .lower()
         )
 
-    if not eigenvalues:
+        if spin_name in channels:
+            raise ValueError(
+                "QE band output contains duplicate "
+                f"SPIN {spin_name.upper()} sections."
+            )
+
+        section_end = (
+            spin_markers[index + 1].start()
+            if index + 1 < len(spin_markers)
+            else len(text)
+        )
+
+        channels[spin_name] = parse_channel(
+            text[
+                marker.end():
+                section_end
+            ]
+        )
+
+    if set(channels) != {
+        'up',
+        'down',
+    }:
         raise ValueError(
-            "No QE band eigenvalues were found in "
-            f"the output file: {output}"
+            "Spin-polarized QE band output must contain "
+            "both SPIN UP and SPIN DOWN sections."
         )
 
-    band_counts = {
-        len(values)
-        for values in eigenvalues
-    }
+    up = channels['up']
+    down = channels['down']
 
-    if len(band_counts) != 1:
+    if up['nkpoints'] != down['nkpoints']:
         raise ValueError(
-            "QE band output contains inconsistent "
-            "numbers of bands between k-points."
+            "QE spin channels contain different "
+            "numbers of k-points."
         )
+
+    if up['nbands'] != down['nbands']:
+        raise ValueError(
+            "QE spin channels contain different "
+            "numbers of bands."
+        )
+
+    for up_kpoint, down_kpoint in zip(
+        up['kpoints'],
+        down['kpoints'],
+    ):
+        if any(
+            abs(up_value - down_value) > 1.0e-10
+            for up_value, down_value in zip(
+                up_kpoint,
+                down_kpoint,
+            )
+        ):
+            raise ValueError(
+                "QE spin channels use different "
+                "k-point grids."
+            )
 
     return {
-        'spin_polarized': False,
-        'nspins': 1,
-        'nkpoints': len(kpoints),
-        'nbands': len(eigenvalues[0]),
-        'kpoints': kpoints,
+        'spin_polarized': True,
+        'nspins': 2,
+        'nkpoints': up['nkpoints'],
+        'nbands': up['nbands'],
+        'kpoints': up['kpoints'],
         'eigenvalues_ev': [
-            eigenvalues
+            up['eigenvalues_ev'],
+            down['eigenvalues_ev'],
         ],
     }
 
