@@ -4315,3 +4315,159 @@ def run_projwfc(
         'pdos_tot_file': pdos_tot_file,
         'execution': execution,
     }
+    
+def run_band_projections(
+    input_file,
+    output_file,
+    state_dir,
+    projection_prefix,
+    pdos_prefix=None,
+    spinpol=False,
+    parallel_cores=1,
+    executable='projwfc.x',
+    prefix='nanoworks',
+):
+    """Run projwfc.x for QE band-projection data."""
+    input_file = Path(
+        input_file
+    )
+
+    output_file = Path(
+        output_file
+    )
+
+    state_dir = Path(
+        state_dir
+    )
+
+    projection_prefix = Path(
+        projection_prefix
+    )
+
+    if pdos_prefix is None:
+        pdos_prefix = Path(
+            str(projection_prefix)
+            + '-pdos'
+        )
+    else:
+        pdos_prefix = Path(
+            pdos_prefix
+        )
+
+    if not has_qe_state(
+        state_dir,
+        prefix=prefix,
+    ):
+        raise FileNotFoundError(
+            "A valid QE bands state is required "
+            f"for band projections: {state_dir}"
+        )
+
+    input_text = render_projwfc_input(
+        prefix=prefix,
+        outdir=state_dir,
+        filpdos=pdos_prefix,
+        filproj=projection_prefix,
+        lsym=False,
+        diag_basis=False,
+    )
+
+    input_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    output_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    projection_prefix.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    pdos_prefix.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    input_file.write_text(
+        input_text,
+        encoding='utf-8',
+    )
+
+    launcher = build_qe_launcher(
+        parallel_cores=parallel_cores
+    )
+
+    execution = run_qe_program(
+        input_file=input_file,
+        output_file=output_file,
+        executable=executable,
+        launcher=launcher,
+    )
+
+    text = output_file.read_text(
+        encoding='utf-8',
+        errors='replace',
+    )
+
+    if 'JOB DONE.' not in text:
+        raise RuntimeError(
+            "Quantum ESPRESSO band projection calculation "
+            "finished without a 'JOB DONE.' marker. "
+            f"See '{output_file}'."
+        )
+
+    projection_up_file = Path(
+        str(projection_prefix)
+        + '.projwfc_up'
+    )
+
+    projection_down_file = Path(
+        str(projection_prefix)
+        + '.projwfc_down'
+    )
+
+    if not projection_up_file.is_file():
+        raise RuntimeError(
+            "Quantum ESPRESSO projwfc.x finished but the "
+            "band projection file was not created: "
+            f"{projection_up_file}"
+        )
+
+    if spinpol and not projection_down_file.is_file():
+        raise RuntimeError(
+            "Quantum ESPRESSO spin-polarized projwfc.x "
+            "finished but the spin-down projection file "
+            f"was not created: {projection_down_file}"
+        )
+
+    projection_files = [
+        projection_up_file,
+    ]
+
+    if spinpol:
+        projection_files.append(
+            projection_down_file
+        )
+
+    return {
+        'input_file': input_file,
+        'output_file': output_file,
+        'state_dir': state_dir,
+        'projection_prefix': projection_prefix,
+        'projection_up_file': projection_up_file,
+        'projection_down_file': (
+            projection_down_file
+            if spinpol
+            else None
+        ),
+        'projection_files': projection_files,
+        'pdos_prefix': pdos_prefix,
+        'spin_polarized': bool(
+            spinpol
+        ),
+        'execution': execution,
+    }

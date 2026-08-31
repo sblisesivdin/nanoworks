@@ -56,6 +56,7 @@ from nanoworks.engine.qe import (
     parse_pw_relaxed_structure,
     run_relax,
     build_qe_magnetic_species,
+    run_band_projections,
 )
 
 
@@ -3780,6 +3781,139 @@ def test_aggregate_projwfc_pdos_rejects_mismatched_energy_grid(self):
                 [-0.3, 1.7],
             ],
         )
+
+def test_run_band_projections_requires_qe_state(self):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir = Path(
+            tmpdir
+        )
+
+        with self.assertRaisesRegex(
+            FileNotFoundError,
+            'valid QE bands state',
+        ):
+            run_band_projections(
+                input_file=tmpdir / 'proj.in',
+                output_file=tmpdir / 'proj.out',
+                state_dir=tmpdir / 'state',
+                projection_prefix=(
+                    tmpdir
+                    / 'bands-proj'
+                ),
+            )
+
+
+def test_run_spin_polarized_band_projections(self):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir = Path(
+            tmpdir
+        )
+
+        state_dir = (
+            tmpdir
+            / 'state'
+        )
+
+        save_dir = (
+            state_dir
+            / 'nanoworks.save'
+        )
+
+        save_dir.mkdir(
+            parents=True
+        )
+
+        (
+            save_dir
+            / 'data-file-schema.xml'
+        ).write_text(
+            '<espresso/>',
+            encoding='utf-8',
+        )
+
+        projection_prefix = (
+            tmpdir
+            / 'bands-proj'
+        )
+
+        def fake_run_qe_program(**kwargs):
+            Path(
+                kwargs['output_file']
+            ).write_text(
+                'JOB DONE.\n',
+                encoding='utf-8',
+            )
+
+            Path(
+                str(projection_prefix)
+                + '.projwfc_up'
+            ).write_text(
+                'up projections\n',
+                encoding='utf-8',
+            )
+
+            Path(
+                str(projection_prefix)
+                + '.projwfc_down'
+            ).write_text(
+                'down projections\n',
+                encoding='utf-8',
+            )
+
+            return {
+                'returncode': 0,
+            }
+
+        with patch(
+            'nanoworks.engine.qe.run_qe_program',
+            side_effect=fake_run_qe_program,
+        ):
+            workflow = run_band_projections(
+                input_file=tmpdir / 'proj.in',
+                output_file=tmpdir / 'proj.out',
+                state_dir=state_dir,
+                projection_prefix=projection_prefix,
+                spinpol=True,
+            )
+
+        input_text = (
+            workflow['input_file']
+            .read_text(
+                encoding='utf-8',
+            )
+        )
+
+    self.assertIn(
+        "filproj = "
+        f"'{projection_prefix}'",
+        input_text,
+    )
+
+    self.assertIn(
+        'lsym = .false.',
+        input_text,
+    )
+
+    self.assertTrue(
+        workflow[
+            'projection_up_file'
+        ].is_file()
+    )
+
+    self.assertTrue(
+        workflow[
+            'projection_down_file'
+        ].is_file()
+    )
+
+    self.assertEqual(
+        len(
+            workflow[
+                'projection_files'
+            ]
+        ),
+        2,
+    )
 
 if __name__ == '__main__':
     unittest.main()
