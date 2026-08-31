@@ -2842,7 +2842,7 @@ def parse_projwfc_pdos_file(pdos_file):
     }
 
 def aggregate_projwfc_pdos(pdos_prefix):
-    """Aggregate non-spin QE projwfc.x atomic PDOS files."""
+    """Aggregate collinear-spin or non-spin QE atomic PDOS files."""
     pdos_prefix = Path(
         pdos_prefix
     )
@@ -2982,6 +2982,144 @@ def aggregate_projwfc_pdos(pdos_prefix):
             + totals['d'][index]
             + totals['f'][index]
         )
+    
+    spin_modes = {
+        parsed['spin_polarized']
+        for parsed in parsed_files
+    }
+
+    if len(spin_modes) != 1:
+        raise ValueError(
+            "QE PDOS files contain inconsistent "
+            "spin configurations."
+        )
+
+    spin_polarized = (
+        spin_modes.pop()
+    )
+
+    spin_up = None
+    spin_down = None
+
+    if spin_polarized:
+        spin_totals_up = {
+            orbital: [0.0] * len(energies)
+            for orbital in totals
+        }
+
+        spin_totals_down = {
+            orbital: [0.0] * len(energies)
+            for orbital in totals
+        }
+
+        spin_components_up = {
+            component: [0.0] * len(energies)
+            for component in components
+        }
+
+        spin_components_down = {
+            component: [0.0] * len(energies)
+            for component in components
+        }
+
+        for parsed in parsed_files:
+            orbital = parsed[
+                'orbital'
+            ]
+
+            for index, value in enumerate(
+                parsed['ldos_up']
+            ):
+                spin_totals_up[
+                    orbital
+                ][index] += value
+
+            for index, value in enumerate(
+                parsed['ldos_down']
+            ):
+                spin_totals_down[
+                    orbital
+                ][index] += value
+
+            channel_components = (
+                (
+                    parsed['components_up'],
+                    spin_components_up,
+                ),
+                (
+                    parsed['components_down'],
+                    spin_components_down,
+                ),
+            )
+
+            for source, target in channel_components:
+                for component_name, values in (
+                    source.items()
+                ):
+                    if (
+                        orbital == 's'
+                        and component_name == 's'
+                    ):
+                        continue
+
+                    if component_name not in target:
+                        raise ValueError(
+                            "Unexpected QE PDOS component: "
+                            f"{component_name}"
+                        )
+
+                    for index, value in enumerate(
+                        values
+                    ):
+                        target[
+                            component_name
+                        ][index] += value
+
+        def build_spin_projection(
+            spin_totals,
+            spin_components,
+        ):
+            projected = []
+
+            for index in range(
+                len(energies)
+            ):
+                projected.append(
+                    spin_totals['s'][index]
+                    + spin_totals['p'][index]
+                    + spin_totals['d'][index]
+                    + spin_totals['f'][index]
+                )
+
+            return {
+                's_total': spin_totals['s'],
+                'p_total': spin_totals['p'],
+                'pz': spin_components['pz'],
+                'px': spin_components['px'],
+                'py': spin_components['py'],
+                'd_total': spin_totals['d'],
+                'd3z2_r2': spin_components[
+                    'd3z2_r2'
+                ],
+                'dxz': spin_components['dxz'],
+                'dyz': spin_components['dyz'],
+                'dx2_y2': spin_components[
+                    'dx2_y2'
+                ],
+                'dxy': spin_components['dxy'],
+                'f_total': spin_totals['f'],
+                'total': projected,
+            }
+
+        spin_up = build_spin_projection(
+            spin_totals_up,
+            spin_components_up,
+        )
+
+        spin_down = build_spin_projection(
+            spin_totals_down,
+            spin_components_down,
+        )
 
     return {
         'energies_ev': energies,
@@ -3001,6 +3139,9 @@ def aggregate_projwfc_pdos(pdos_prefix):
         'files': pdos_files,
         'parsed_files': parsed_files,
         'npoints': len(energies),
+        'spin_polarized': spin_polarized,
+        'spin_up': spin_up,
+        'spin_down': spin_down,
     }
 
 def run_scf(

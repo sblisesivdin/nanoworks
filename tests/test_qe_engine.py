@@ -2816,6 +2816,109 @@ def test_aggregate_projwfc_pdos(self):
         [0.0, 0.0],
     )
 
+    self.assertFalse(
+        result['spin_polarized']
+    )
+
+    self.assertIsNone(
+        result['spin_up']
+    )
+
+    self.assertIsNone(
+        result['spin_down']
+    )
+
+def test_aggregate_spin_polarized_projwfc_pdos(self):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir = Path(
+            tmpdir
+        )
+
+        prefix = (
+            tmpdir
+            / 'nanoworks-pdos'
+        )
+
+        s_file = Path(
+            str(prefix)
+            + '.pdos_atm#1(Ga)_wfc#1(s)'
+        )
+
+        p_file = Path(
+            str(prefix)
+            + '.pdos_atm#1(Ga)_wfc#2(p)'
+        )
+
+        s_file.write_text(
+            "# E ldosup ldosdw sup sdw\n"
+            "1.0 0.10 0.04 0.10 0.04\n"
+            "2.0 0.20 0.08 0.20 0.08\n",
+            encoding='utf-8',
+        )
+
+        p_file.write_text(
+            "# E ldosup ldosdw "
+            "pzup pzdw pxup pxdw pyup pydw\n"
+            "1.0 0.60 0.30 "
+            "0.10 0.05 0.20 0.10 0.30 0.15\n"
+            "2.0 0.90 0.60 "
+            "0.20 0.10 0.30 0.20 0.40 0.30\n",
+            encoding='utf-8',
+        )
+
+        result = aggregate_projwfc_pdos(
+            prefix
+        )
+
+    self.assertTrue(
+        result['spin_polarized']
+    )
+
+    self.assertEqual(
+        result['spin_up']['s_total'],
+        [0.1, 0.2],
+    )
+
+    self.assertEqual(
+        result['spin_down']['s_total'],
+        [0.04, 0.08],
+    )
+
+    self.assertEqual(
+        result['spin_up']['p_total'],
+        [0.6, 0.9],
+    )
+
+    self.assertEqual(
+        result['spin_down']['p_total'],
+        [0.3, 0.6],
+    )
+
+    self.assertEqual(
+        result['spin_up']['pz'],
+        [0.1, 0.2],
+    )
+
+    self.assertEqual(
+        result['spin_down']['py'],
+        [0.15, 0.3],
+    )
+
+    self.assertAlmostEqual(
+        result['spin_up']['total'][0],
+        0.7,
+    )
+
+    self.assertAlmostEqual(
+        result['spin_down']['total'][0],
+        0.34,
+    )
+
+    self.assertAlmostEqual(
+        result['total'][0],
+        1.04,
+    )
+
 def test_aggregate_projwfc_pdos_rejects_mismatched_energy_grid(self):
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir = Path(
