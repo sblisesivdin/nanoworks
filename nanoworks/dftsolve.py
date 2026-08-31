@@ -2576,68 +2576,122 @@ class dftsolve:
             pdos_workflow['pdos_prefix']
         )
 
+        if (
+            pdos_result['spin_polarized']
+            != bool(self.Spin_calc)
+        ):
+            raise RuntimeError(
+                "QE PDOS spin channels do not match "
+                "the requested Spin_calc setting."
+            )
+
         pdos_shifted_energies = [
             energy - fermi_energy
             for energy in pdos_result['energies_ev']
         ]
 
-        pdos_csv_file = Path(
-            self.struct
-            + f'-DOS-{self.Engine}-Result-PDOS.csv'
-        )
-
-        with pdos_csv_file.open(
-            'w',
-            encoding='utf-8',
-        ) as fd:
-            print(
-                "Energy, "
-                "s-total, "
-                "p-total, "
-                "pz, "
-                "px, "
-                "py, "
-                "d-total, "
-                "d3z2_r2, "
-                "dxz, "
-                "dyz, "
-                "dx2_y2, "
-                "dxy, "
-                "f-total, "
-                "TOTAL",
-                file=fd,
-            )
-
-            for values in zip(
-                pdos_shifted_energies,
-                pdos_result['s_total'],
-                pdos_result['p_total'],
-                pdos_result['pz'],
-                pdos_result['px'],
-                pdos_result['py'],
-                pdos_result['d_total'],
-                pdos_result['d3z2_r2'],
-                pdos_result['dxz'],
-                pdos_result['dyz'],
-                pdos_result['dx2_y2'],
-                pdos_result['dxy'],
-                pdos_result['f_total'],
-                pdos_result['total'],
-            ):
+        def write_pdos_csv(
+            output_path,
+            projection,
+        ):
+            with output_path.open(
+                'w',
+                encoding='utf-8',
+            ) as fd:
                 print(
-                    *values,
-                    sep=', ',
+                    "Energy, "
+                    "s-total, "
+                    "p-total, "
+                    "pz, "
+                    "px, "
+                    "py, "
+                    "d-total, "
+                    "d3z2_r2, "
+                    "dxz, "
+                    "dyz, "
+                    "dx2_y2, "
+                    "dxy, "
+                    "f-total, "
+                    "TOTAL",
                     file=fd,
                 )
 
-        parprint(
-            "Saving PDOS..."
-        )
+                for values in zip(
+                    pdos_shifted_energies,
+                    projection['s_total'],
+                    projection['p_total'],
+                    projection['pz'],
+                    projection['px'],
+                    projection['py'],
+                    projection['d_total'],
+                    projection['d3z2_r2'],
+                    projection['dxz'],
+                    projection['dyz'],
+                    projection['dx2_y2'],
+                    projection['dxy'],
+                    projection['f_total'],
+                    projection['total'],
+                ):
+                    print(
+                        *values,
+                        sep=', ',
+                        file=fd,
+                    )
 
-        parprint(
-            "Nanoworks PDOS data saved to: "
-            f"{pdos_csv_file}"
-        )
+        if self.Spin_calc:
+            pdos_up_file = Path(
+                self.struct
+                + f'-DOS-{self.Engine}-Result-PDOS-Up.csv'
+            )
+
+            pdos_down_file = Path(
+                self.struct
+                + f'-DOS-{self.Engine}-Result-PDOS-Down.csv'
+            )
+
+            write_pdos_csv(
+                pdos_up_file,
+                pdos_result['spin_up'],
+            )
+
+            write_pdos_csv(
+                pdos_down_file,
+                pdos_result['spin_down'],
+            )
+
+            parprint(
+                "Saving spin-resolved PDOS..."
+            )
+
+            parprint(
+                "Nanoworks spin-up PDOS data saved to: "
+                f"{pdos_up_file}"
+            )
+
+            parprint(
+                "Nanoworks spin-down PDOS data saved to: "
+                f"{pdos_down_file}"
+            )
+
+        else:
+            pdos_csv_file = Path(
+                self.struct
+                + f'-DOS-{self.Engine}-Result-PDOS.csv'
+            )
+
+            write_pdos_csv(
+                pdos_csv_file,
+                pdos_result,
+            )
+
+            parprint(
+                "Saving PDOS..."
+            )
+
+            parprint(
+                "Nanoworks PDOS data saved to: "
+                f"{pdos_csv_file}"
+            )
         
         time22 = time.time()
 
