@@ -211,5 +211,30 @@ class TestEngine(unittest.TestCase):
             ],
         )
 
+    def test_scalar_single_atom_moment_preserves_legacy_behavior(self):
+        atoms = Atoms(
+            'Fe2O3',
+        )
+
+        moments = resolve_initial_magnetic_moments(
+            atoms,
+            magmom_per_atom=4.0,
+            magmom_single_atom=[
+                1,
+                -4.0,
+            ],
+        )
+
+        self.assertEqual(
+            moments,
+            [
+                0.0,
+                -4.0,
+                0.0,
+                0.0,
+                0.0,
+            ],
+        )
+
 if __name__ == '__main__':
     unittest.main()

@@ -36,6 +36,11 @@ def resolve_initial_magnetic_moments(
     symbols = atoms.get_chemical_symbols()
     natoms = len(symbols)
 
+    scalar_moment_input = isinstance(
+        magmom_per_atom,
+        Real,
+    )
+
     def validate_moment(value, label):
         try:
             moment = float(
@@ -53,10 +58,7 @@ def resolve_initial_magnetic_moments(
 
         return moment
 
-    if isinstance(
-        magmom_per_atom,
-        Real,
-    ):
+    if scalar_moment_input:
         moment = validate_moment(
             magmom_per_atom,
             'Magmom_per_atom',
@@ -178,6 +180,18 @@ def resolve_initial_magnetic_moments(
                 "Magmom_single_atom index is outside "
                 "the structure."
             )
+
+        # Preserve the historical Nanoworks behavior for:
+        #
+        # Magmom_per_atom = scalar
+        # Magmom_single_atom = [index, moment]
+        #
+        # In that legacy form, all atoms except the selected
+        # atom start with zero magnetic moment.
+        if scalar_moment_input:
+            moments = [
+                0.0
+            ] * natoms
 
         moments[
             atom_index
