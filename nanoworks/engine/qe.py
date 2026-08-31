@@ -3222,6 +3222,228 @@ def parse_projwfc_band_file(
         'states': states,
     }
 
+def prepare_qe_band_projection_data(
+    projection_result,
+    projections=None,
+):
+    """Aggregate QE atomic-state weights for requested projections."""
+    natoms = projection_result[
+        'natoms'
+    ]
+
+    nkpoints = projection_result[
+        'nkpoints'
+    ]
+
+    nbands = projection_result[
+        'nbands'
+    ]
+
+    states = projection_result[
+        'states'
+    ]
+
+    if not projections:
+        projections = [{
+            'atoms': list(
+                range(natoms)
+            ),
+            'orbital': None,
+            'color': 'blue',
+            'label': 'Total Contribution',
+        }]
+
+    allowed_orbitals = {
+        's',
+        'p',
+        'd',
+        'f',
+    }
+
+    prepared = []
+
+    for projection_index, projection in enumerate(
+        projections
+    ):
+        if not isinstance(
+            projection,
+            dict,
+        ):
+            raise TypeError(
+                "Each QE band projection must be "
+                "a dictionary."
+            )
+
+        atom_indices = projection.get(
+            'atoms',
+            [],
+        )
+
+        if not isinstance(
+            atom_indices,
+            (
+                list,
+                tuple,
+                set,
+                range,
+            ),
+        ):
+            raise TypeError(
+                "QE band projection 'atoms' must "
+                "be a sequence of zero-based indices."
+            )
+
+        atom_indices = list(
+            atom_indices
+        )
+
+        for atom_index in atom_indices:
+            if (
+                isinstance(
+                    atom_index,
+                    bool,
+                )
+                or not isinstance(
+                    atom_index,
+                    int,
+                )
+            ):
+                raise TypeError(
+                    "QE band projection atom indices "
+                    "must be integers."
+                )
+
+            if not (
+                0
+                <= atom_index
+                < natoms
+            ):
+                raise ValueError(
+                    "QE band projection atom index "
+                    f"{atom_index} is out of range for "
+                    f"a structure containing {natoms} atoms."
+                )
+
+        orbital = projection.get(
+            'orbital'
+        )
+
+        if orbital is not None:
+            if not isinstance(
+                orbital,
+                str,
+            ):
+                raise TypeError(
+                    "QE band projection 'orbital' must "
+                    "be s, p, d, f, or None."
+                )
+
+            orbital = orbital.lower()
+
+            if orbital not in allowed_orbitals:
+                raise ValueError(
+                    "Unsupported QE band projection "
+                    f"orbital: {orbital}"
+                )
+
+        color = projection.get(
+            'color',
+            'blue',
+        )
+
+        label = projection.get(
+            'label',
+            f"Atoms: {atom_indices}",
+        )
+
+        weights = [
+            [
+                0.0
+                for band_index in range(
+                    nbands
+                )
+            ]
+            for kpoint_index in range(
+                nkpoints
+            )
+        ]
+
+        selected_state_count = 0
+        atom_index_set = set(
+            atom_indices
+        )
+
+        for state in states:
+            state_weights = state[
+                'weights'
+            ]
+
+            if len(
+                state_weights
+            ) != nkpoints:
+                raise ValueError(
+                    "QE band projection state has "
+                    "an inconsistent number of k-points."
+                )
+
+            if state[
+                'atom_index'
+            ] not in atom_index_set:
+                continue
+
+            if (
+                orbital is not None
+                and state['orbital'] != orbital
+            ):
+                continue
+
+            selected_state_count += 1
+
+            for kpoint_index in range(
+                nkpoints
+            ):
+                if len(
+                    state_weights[
+                        kpoint_index
+                    ]
+                ) != nbands:
+                    raise ValueError(
+                        "QE band projection state has "
+                        "an inconsistent number of bands."
+                    )
+
+                for band_index in range(
+                    nbands
+                ):
+                    weights[
+                        kpoint_index
+                    ][
+                        band_index
+                    ] += state_weights[
+                        kpoint_index
+                    ][
+                        band_index
+                    ]
+
+        prepared.append({
+            'index': projection_index,
+            'atoms': atom_indices,
+            'orbital': orbital,
+            'color': color,
+            'label': label,
+            'selected_state_count': (
+                selected_state_count
+            ),
+            'weights': weights,
+        })
+
+    return {
+        'natoms': natoms,
+        'nkpoints': nkpoints,
+        'nbands': nbands,
+        'projections': prepared,
+    }
+
 def prepare_qe_band_data(
     bands,
     band_path,

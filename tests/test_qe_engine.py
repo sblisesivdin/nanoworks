@@ -58,6 +58,7 @@ from nanoworks.engine.qe import (
     build_qe_magnetic_species,
     run_band_projections,
     parse_projwfc_band_file,
+    prepare_qe_band_projection_data,
 )
 
 
@@ -4061,6 +4062,192 @@ def test_run_spin_polarized_band_projections(self):
                 parse_projwfc_band_file(
                     projection_file
                 )
+
+    def test_prepare_qe_band_projection_data(self):
+        projection_result = {
+            'natoms': 2,
+            'nkpoints': 2,
+            'nbands': 2,
+            'states': [
+                {
+                    'atom_index': 0,
+                    'orbital': 's',
+                    'weights': [
+                        [0.10, 0.20],
+                        [0.30, 0.40],
+                    ],
+                },
+                {
+                    'atom_index': 0,
+                    'orbital': 'd',
+                    'weights': [
+                        [0.50, 0.60],
+                        [0.70, 0.80],
+                    ],
+                },
+                {
+                    'atom_index': 1,
+                    'orbital': 'd',
+                    'weights': [
+                        [0.01, 0.02],
+                        [0.03, 0.04],
+                    ],
+                },
+            ],
+        }
+
+        result = prepare_qe_band_projection_data(
+            projection_result,
+            projections=[
+                {
+                    'atoms': [0],
+                    'orbital': 'd',
+                    'color': 'red',
+                    'label': 'Fe d',
+                },
+                {
+                    'atoms': [0, 1],
+                    'orbital': 'd',
+                    'color': 'green',
+                    'label': 'Total d',
+                },
+            ],
+        )
+
+        first = result[
+            'projections'
+        ][0]
+
+        second = result[
+            'projections'
+        ][1]
+
+        self.assertEqual(
+            first['selected_state_count'],
+            1,
+        )
+        self.assertEqual(
+            first['weights'],
+            [
+                [0.50, 0.60],
+                [0.70, 0.80],
+            ],
+        )
+        self.assertEqual(
+            second['selected_state_count'],
+            2,
+        )
+        self.assertEqual(
+            second['weights'],
+            [
+                [0.51, 0.62],
+                [0.73, 0.84],
+            ],
+        )
+
+    def test_prepare_qe_band_projection_data_builds_total(
+        self,
+    ):
+        projection_result = {
+            'natoms': 2,
+            'nkpoints': 1,
+            'nbands': 2,
+            'states': [
+                {
+                    'atom_index': 0,
+                    'orbital': 's',
+                    'weights': [
+                        [0.10, 0.20],
+                    ],
+                },
+                {
+                    'atom_index': 1,
+                    'orbital': 'p',
+                    'weights': [
+                        [0.30, 0.40],
+                    ],
+                },
+            ],
+        }
+
+        result = prepare_qe_band_projection_data(
+            projection_result,
+            projections=[],
+        )
+
+        total = result[
+            'projections'
+        ][0]
+
+        self.assertEqual(
+            total['atoms'],
+            [0, 1],
+        )
+        self.assertIsNone(
+            total['orbital']
+        )
+        self.assertEqual(
+            total['color'],
+            'blue',
+        )
+        self.assertEqual(
+            total['label'],
+            'Total Contribution',
+        )
+        self.assertEqual(
+            total['weights'],
+            [
+                [0.40, 0.60],
+            ],
+        )
+
+    def test_prepare_qe_band_projection_data_rejects_atom_index(
+        self,
+    ):
+        projection_result = {
+            'natoms': 2,
+            'nkpoints': 1,
+            'nbands': 1,
+            'states': [],
+        }
+
+        with self.assertRaisesRegex(
+            ValueError,
+            'atom index 2 is out of range',
+        ):
+            prepare_qe_band_projection_data(
+                projection_result,
+                projections=[
+                    {
+                        'atoms': [2],
+                        'orbital': 'd',
+                    },
+                ],
+            )
+
+    def test_prepare_qe_band_projection_data_rejects_orbital(
+        self,
+    ):
+        projection_result = {
+            'natoms': 1,
+            'nkpoints': 1,
+            'nbands': 1,
+            'states': [],
+        }
+
+        with self.assertRaisesRegex(
+            ValueError,
+            'Unsupported QE band projection orbital',
+        ):
+            prepare_qe_band_projection_data(
+                projection_result,
+                projections=[
+                    {
+                        'atoms': [0],
+                        'orbital': 'g',
+                    },
+                ],
+            )
 
 if __name__ == '__main__':
     unittest.main()
