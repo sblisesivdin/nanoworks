@@ -12,7 +12,7 @@ qeconverter --input si.scf.in --output-dir example_folder --system-name SiliconQ
 """
 
 from __future__ import annotations
-
+import os
 import argparse
 import re
 from dataclasses import dataclass, field
@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 import logging
 import nanoworks
+from nanoworks.pseudos import read_upf_z_valence
 from typing import Union
 from ase.io import read, write
 from ase.units import Bohr
@@ -53,6 +54,7 @@ class QEInputSettings:
     nosym: Optional[bool] = None
     nat: Optional[int] = None
     ntyp: Optional[int] = None
+    source_directory: Optional[Path] = None
     pseudo_dir: Optional[str] = None
     species_labels: List[str] = field(
         default_factory=list
@@ -206,6 +208,129 @@ def _parse_qe_bool(
         "Unable to parse QE logical value: "
         f"{value}"
     )
+
+def _resolve_qe_pseudo_path(
+    settings: QEInputSettings,
+    species_label: str,
+) -> Optional[Path]:
+    """Locate a QE species pseudopotential without requiring it."""
+    pseudopotential = (
+        settings.species_pseudopotentials.get(
+            species_label
+        )
+    )
+
+    if not pseudopotential:
+        return None
+
+    filename = Path(
+        os.path.expandvars(
+            pseudopotential
+        )
+    ).expanduser()
+
+    if filename.is_absolute():
+        return (
+            filename
+            if filename.is_file()
+            else None
+        )
+
+    source_directory = (
+        settings.source_directory
+        or Path.cwd()
+    )
+
+    candidates = []
+
+    if settings.pseudo_dir:
+        pseudo_directory = Path(
+            os.path.expandvars(
+                settings.pseudo_dir
+            )
+        ).expanduser()
+
+        if pseudo_directory.is_absolute():
+            candidates.append(
+                pseudo_directory
+                / filename
+            )
+
+        else:
+            candidates.extend([
+                source_directory
+                / pseudo_directory
+                / filename,
+                Path.cwd()
+                / pseudo_directory
+                / filename,
+            ])
+
+    candidates.extend([
+        source_directory
+        / filename,
+        Path.cwd()
+        / filename,
+    ])
+
+    checked = set()
+
+    for candidate in candidates:
+        candidate = candidate.resolve()
+
+        if candidate in checked:
+            continue
+
+        checked.add(
+            candidate
+        )
+
+        if candidate.is_file():
+            return candidate
+
+    return None
+
+
+def _read_qe_species_z_valence(
+    settings: QEInputSettings,
+) -> Dict[str, float]:
+    """Read z_valence values for the QE species whose UPFs are available."""
+    z_valence = {}
+
+    for species_label in settings.species_labels:
+        pseudo_path = (
+            _resolve_qe_pseudo_path(
+                settings,
+                species_label,
+            )
+        )
+
+        if pseudo_path is None:
+            logger.warning(
+                "Unable to locate the QE pseudopotential "
+                "for species %r; magnetic-moment "
+                "conversion will use a fallback.",
+                species_label,
+            )
+            continue
+
+        try:
+            z_valence[
+                species_label
+            ] = read_upf_z_valence(
+                pseudo_path
+            )
+
+        except (OSError, ValueError) as exc:
+            logger.warning(
+                "Unable to read z_valence for QE "
+                "species %r from %s: %s",
+                species_label,
+                pseudo_path,
+                exc,
+            )
+
+    return z_valence
 
 def _normalize_qe_smearing(
     smearing: Optional[str],
@@ -814,7 +939,9 @@ def _build_relaxation_lines(
 def parse_qe_input(
     path: Path,
 ) -> QEInputSettings:
-    settings = QEInputSettings()
+    settings = QEInputSettings(
+        source_directory=path.resolve().parent,
+    )
 
     lines = [
         clean_line(

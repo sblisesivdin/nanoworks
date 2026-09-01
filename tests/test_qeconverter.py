@@ -12,6 +12,8 @@ from nanoworks.qeconverter import (
     RY_TO_EV,
     _build_workflow_lines,
     _build_kpoint_lines,
+    _read_qe_species_z_valence,
+    _resolve_qe_pseudo_path,
 )
 
 
@@ -944,6 +946,210 @@ K_POINTS automatic
         self.assertIn(
             "nearest available shift [0, 0, 0]",
             text,
+        )
+
+    def test_parse_qe_input_reads_species_metadata(self):
+        input_text = """
+&CONTROL
+  calculation = 'scf',
+  pseudo_dir = './pseudos',
+/
+&SYSTEM
+  ibrav = 0,
+  nat = 3,
+  ntyp = 2,
+  ecutwfc = 40.0,
+/
+ATOMIC_SPECIES
+Fe1 55.845 Fe.upf
+O 15.999 O.upf
+
+ATOMIC_POSITIONS crystal
+Fe1 0.000000 0.000000 0.000000
+O   0.500000 0.500000 0.000000
+O   0.500000 0.000000 0.500000
+
+K_POINTS automatic
+6 6 6 0 0 0
+"""
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            input_file = (
+                Path(tmpdir)
+                / 'feo.in'
+            )
+
+            input_file.write_text(
+                input_text,
+                encoding='utf-8',
+            )
+
+            settings = parse_qe_input(
+                input_file
+            )
+
+        self.assertEqual(
+            settings.nat,
+            3,
+        )
+        self.assertEqual(
+            settings.ntyp,
+            2,
+        )
+        self.assertEqual(
+            settings.pseudo_dir,
+            './pseudos',
+        )
+        self.assertEqual(
+            settings.species_labels,
+            [
+                'Fe1',
+                'O',
+            ],
+        )
+        self.assertEqual(
+            settings.species_pseudopotentials,
+            {
+                'Fe1': 'Fe.upf',
+                'O': 'O.upf',
+            },
+        )
+        self.assertEqual(
+            settings.atomic_position_labels,
+            [
+                'Fe1',
+                'O',
+                'O',
+            ],
+        )
+        self.assertEqual(
+            settings.k_mesh,
+            [
+                6,
+                6,
+                6,
+            ],
+        )
+
+    def test_resolve_qe_species_z_valence_from_relative_pseudo_dir(
+        self,
+    ):
+        input_text = """
+&CONTROL
+  calculation = 'scf',
+  pseudo_dir = './pseudos',
+/
+&SYSTEM
+  ibrav = 0,
+  nat = 2,
+  ntyp = 2,
+  nspin = 2,
+  starting_magnetization(1) = 0.25,
+  starting_magnetization(2) = -0.50,
+/
+ATOMIC_SPECIES
+Fe1 55.845 Fe.upf
+O 15.999 O.upf
+
+ATOMIC_POSITIONS crystal
+Fe1 0.000000 0.000000 0.000000
+O   0.500000 0.500000 0.500000
+
+K_POINTS gamma
+"""
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(
+                tmpdir
+            )
+
+            pseudo_dir = (
+                tmpdir
+                / 'pseudos'
+            )
+
+            pseudo_dir.mkdir()
+
+            (
+                pseudo_dir
+                / 'Fe.upf'
+            ).write_text(
+                '<PP_HEADER z_valence="8.0" />\n',
+                encoding='utf-8',
+            )
+
+            (
+                pseudo_dir
+                / 'O.upf'
+            ).write_text(
+                '<PP_HEADER z_valence="6.0" />\n',
+                encoding='utf-8',
+            )
+
+            input_file = (
+                tmpdir
+                / 'feo.in'
+            )
+
+            input_file.write_text(
+                input_text,
+                encoding='utf-8',
+            )
+
+            settings = parse_qe_input(
+                input_file
+            )
+
+            fe_path = (
+                _resolve_qe_pseudo_path(
+                    settings,
+                    'Fe1',
+                )
+            )
+
+            z_valence = (
+                _read_qe_species_z_valence(
+                    settings
+                )
+            )
+
+        self.assertEqual(
+            fe_path.name,
+            'Fe.upf',
+        )
+        self.assertEqual(
+            z_valence,
+            {
+                'Fe1': 8.0,
+                'O': 6.0,
+            },
+        )
+
+    def test_missing_qe_pseudopotential_is_nonfatal(self):
+        settings = QEInputSettings(
+            source_directory=Path(
+                '/directory/that/does/not/exist'
+            ),
+            species_labels=[
+                'Fe',
+            ],
+            species_pseudopotentials={
+                'Fe': 'Fe.upf',
+            },
+        )
+
+        self.assertIsNone(
+            _resolve_qe_pseudo_path(
+                settings,
+                'Fe',
+            )
+        )
+
+        self.assertEqual(
+            _read_qe_species_z_valence(
+                settings
+            ),
+            {},
         )
 
 if __name__ == '__main__':
