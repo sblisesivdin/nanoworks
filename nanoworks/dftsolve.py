@@ -3921,6 +3921,117 @@ class dftsolve:
         with paropen(self.struct+f'-TIMINGS-{self.Engine}-Log-Timings.txt', 'a') as f1:
             print('Density calculation: ', round((time42-time41),2), end="\n", file=f1)
 
+    def _densitycalc_qe(self):
+        """Generate QE pseudo-valence electron-density Cube files."""
+        state_dir = Path(
+            self.struct
+            + '-GROUND-QE-Result-State'
+        )
+
+        jobs = [
+            {
+                'label': 'Pseudo-Total',
+                'description': 'total pseudo-valence density',
+                'plot_num': 0,
+                'spin_component': (
+                    0
+                    if self.Spin_calc
+                    else None
+                ),
+            },
+        ]
+
+        if self.Spin_calc:
+            jobs.extend([
+                {
+                    'label': 'Pseudo-Up',
+                    'description': 'spin-up pseudo-valence density',
+                    'plot_num': 0,
+                    'spin_component': 1,
+                },
+                {
+                    'label': 'Pseudo-Down',
+                    'description': 'spin-down pseudo-valence density',
+                    'plot_num': 0,
+                    'spin_component': 2,
+                },
+                {
+                    'label': 'Spin-Density',
+                    'description': 'spin density',
+                    'plot_num': 6,
+                    'spin_component': None,
+                },
+            ])
+
+        outputs = {}
+
+        for job in jobs:
+            label = job[
+                'label'
+            ]
+
+            parprint(
+                "Starting QE "
+                + job['description']
+                + " calculation..."
+            )
+
+            input_file = Path(
+                self.struct
+                + f'-EDENSITY-QE-Input-{label}.in'
+            )
+
+            output_file = Path(
+                self.struct
+                + f'-EDENSITY-QE-Log-{label}.txt'
+            )
+
+            filplot = Path(
+                self.struct
+                + f'-EDENSITY-QE-Result-{label}.dat'
+            )
+
+            cube_file = Path(
+                self.struct
+                + f'-EDENSITY-QE-Result-{label}.cube'
+            )
+
+            try:
+                workflow = self.engine.run_pp_density(
+                    input_file=input_file,
+                    output_file=output_file,
+                    state_dir=state_dir,
+                    filplot=filplot,
+                    cube_file=cube_file,
+                    plot_num=job['plot_num'],
+                    spin_component=(
+                        job['spin_component']
+                    ),
+                    parallel_cores=self.parallel_cores,
+                    executable='pp.x',
+                    prefix='nanoworks',
+                )
+            except Exception as exc:
+                parprint(
+                    "\033[91mERROR:\033[0m "
+                    "QE electron-density calculation "
+                    f"failed for {label}: {exc}"
+                )
+                raise
+
+            outputs[
+                label
+            ] = workflow
+
+            parprint(
+                "QE "
+                + job['description']
+                + " written to: "
+                + str(cube_file)
+            )
+
+        return outputs
+
     def phononcalc(self):
         """
         This method performs a phonon calculation for the given structure using the ground state results. 
