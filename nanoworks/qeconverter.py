@@ -284,6 +284,159 @@ def _build_occupation_line(
         "}"
     )
 
+def _build_kpoint_lines(
+    settings: QEInputSettings,
+) -> List[str]:
+    """Convert a QE automatic k-point mesh to Nanoworks settings."""
+    if settings.k_mesh is None:
+        return []
+
+    mesh = list(
+        settings.k_mesh
+    )
+
+    mesh.extend([
+        1,
+        1,
+        1,
+    ])
+
+    mesh = [
+        int(
+            value
+        )
+        for value in mesh[:3]
+    ]
+
+    input_shift = list(
+        settings.k_shift
+        or [
+            0,
+            0,
+            0,
+        ]
+    )
+
+    input_shift.extend([
+        0,
+        0,
+        0,
+    ])
+
+    input_shift = [
+        int(
+            value
+        )
+        for value in input_shift[:3]
+    ]
+
+    notices = []
+
+    if any(
+        value not in {
+            0,
+            1,
+        }
+        for value in input_shift
+    ):
+        original_shift = list(
+            input_shift
+        )
+
+        input_shift = [
+            0
+            if value == 0
+            else 1
+            for value in input_shift
+        ]
+
+        notices.append(
+            "QE k-point shift "
+            f"{original_shift} contains values other "
+            "than 0 or 1; it is normalized to "
+            f"{input_shift}."
+        )
+
+    gamma_shift = [
+        0,
+        0,
+        0,
+    ]
+
+    shifted_mesh_shift = [
+        1
+        if value % 2 == 0
+        else 0
+        for value in mesh
+    ]
+
+    if input_shift == gamma_shift:
+        ground_gamma = True
+        output_shift = gamma_shift
+
+    elif input_shift == shifted_mesh_shift:
+        ground_gamma = False
+        output_shift = shifted_mesh_shift
+
+    else:
+        gamma_distance = sum(
+            abs(
+                input_value
+                - output_value
+            )
+            for input_value, output_value in zip(
+                input_shift,
+                gamma_shift,
+            )
+        )
+
+        shifted_distance = sum(
+            abs(
+                input_value
+                - output_value
+            )
+            for input_value, output_value in zip(
+                input_shift,
+                shifted_mesh_shift,
+            )
+        )
+
+        if gamma_distance <= shifted_distance:
+            ground_gamma = True
+            output_shift = gamma_shift
+
+        else:
+            ground_gamma = False
+            output_shift = shifted_mesh_shift
+
+        notices.append(
+            "QE k-point shift "
+            f"{input_shift} cannot be represented "
+            "exactly by Ground_gamma; the nearest "
+            f"available shift {output_shift} is used."
+        )
+
+    lines = [
+        f"Ground_kpts_x = {mesh[0]}",
+        f"Ground_kpts_y = {mesh[1]}",
+        f"Ground_kpts_z = {mesh[2]}",
+    ]
+
+    lines.extend(
+        "# NOTICE: "
+        + notice
+        for notice in notices
+    )
+
+    lines.append(
+        "Ground_gamma = "
+        + repr(
+            ground_gamma
+        )
+    )
+
+    return lines
+
 def _build_workflow_lines(
     settings: QEInputSettings,
 ) -> List[str]:
@@ -1050,17 +1203,11 @@ def build_config_lines(
     else:
         lines.append("Cut_off_energy = 340.0")
 
-    if settings.k_mesh:
-        mesh = settings.k_mesh + [1, 1, 1]
-        mesh = mesh[:3]
-        lines.extend([
-            f"Ground_kpts_x = {mesh[0]}",
-            f"Ground_kpts_y = {mesh[1]}",
-            f"Ground_kpts_z = {mesh[2]}",
-        ])
-        if settings.k_shift:
-            gamma = all(shift == 0 for shift in settings.k_shift[:3])
-            lines.append(f"Gamma = {gamma}")
+    lines.extend(
+        _build_kpoint_lines(
+            settings
+        )
+    )
 
     lines.append(f"XC_calc = '{xc}'")
 

@@ -11,6 +11,7 @@ from nanoworks.qeconverter import (
     _parse_qe_bool,
     RY_TO_EV,
     _build_workflow_lines,
+    _build_kpoint_lines,
 )
 
 
@@ -177,7 +178,7 @@ K_POINTS automatic
             text,
         )
         self.assertIn(
-            "Gamma = True",
+            "Ground_gamma = True",
             text,
         )
         self.assertIn(
@@ -807,6 +808,143 @@ K_POINTS automatic
                     expected,
                     text,
                 )
+
+    def test_build_kpoint_lines_preserves_parity_shift(self):
+        settings = QEInputSettings(
+            k_mesh=[
+                4,
+                5,
+                6,
+            ],
+            k_shift=[
+                1,
+                0,
+                1,
+            ],
+        )
+
+        text = '\n'.join(
+            _build_kpoint_lines(
+                settings
+            )
+        )
+
+        self.assertIn(
+            "Ground_kpts_x = 4",
+            text,
+        )
+        self.assertIn(
+            "Ground_kpts_y = 5",
+            text,
+        )
+        self.assertIn(
+            "Ground_kpts_z = 6",
+            text,
+        )
+        self.assertIn(
+            "Ground_gamma = False",
+            text,
+        )
+        self.assertNotIn(
+            '# NOTICE:',
+            text,
+        )
+
+    def test_build_kpoint_lines_preserves_zero_shift(self):
+        settings = QEInputSettings(
+            k_mesh=[
+                4,
+                4,
+                4,
+            ],
+            k_shift=[
+                0,
+                0,
+                0,
+            ],
+        )
+
+        text = '\n'.join(
+            _build_kpoint_lines(
+                settings
+            )
+        )
+
+        self.assertIn(
+            "Ground_gamma = True",
+            text,
+        )
+        self.assertNotIn(
+            '# NOTICE:',
+            text,
+        )
+
+    def test_build_kpoint_lines_approximates_mixed_shift(self):
+        settings = QEInputSettings(
+            k_mesh=[
+                6,
+                6,
+                4,
+            ],
+            k_shift=[
+                1,
+                1,
+                0,
+            ],
+        )
+
+        text = '\n'.join(
+            _build_kpoint_lines(
+                settings
+            )
+        )
+
+        self.assertIn(
+            "Ground_gamma = False",
+            text,
+        )
+        self.assertIn(
+            (
+                "# NOTICE: QE k-point shift [1, 1, 0] "
+                "cannot be represented exactly"
+            ),
+            text,
+        )
+        self.assertIn(
+            "nearest available shift [1, 1, 1]",
+            text,
+        )
+
+    def test_build_kpoint_lines_marks_unrepresentable_odd_shift(
+        self,
+    ):
+        settings = QEInputSettings(
+            k_mesh=[
+                5,
+                5,
+                5,
+            ],
+            k_shift=[
+                1,
+                1,
+                1,
+            ],
+        )
+
+        text = '\n'.join(
+            _build_kpoint_lines(
+                settings
+            )
+        )
+
+        self.assertIn(
+            "Ground_gamma = True",
+            text,
+        )
+        self.assertIn(
+            "nearest available shift [0, 0, 0]",
+            text,
+        )
 
 if __name__ == '__main__':
     unittest.main()
