@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 import logging
 import nanoworks
-
+from typing import Union
 from ase.io import read, write
 
 RY_TO_EV = 13.605693009
@@ -43,6 +43,13 @@ class QEInputSettings:
     k_shift: Optional[List[int]] = None
     total_charge: Optional[float] = None
     nbands: Optional[int] = None
+    forc_conv_thr: Optional[float] = None
+    ion_dynamics: Optional[str] = None
+    trust_radius_max: Optional[float] = None
+    cell_dynamics: Optional[str] = None
+    cell_dofree: Optional[str] = None
+    pressure_kbar: Optional[float] = None
+    nosym: Optional[bool] = None
 
 
 def parse_args() -> argparse.Namespace:
@@ -150,6 +157,41 @@ def _parse_qe_float(
         .strip()
         .replace('D', 'E')
         .replace('d', 'e')
+    )
+
+def _parse_qe_bool(
+    value: str,
+) -> bool:
+    """Parse a Quantum ESPRESSO logical value."""
+    normalized = (
+        value
+        .strip()
+        .lower()
+    )
+
+    true_values = {
+        '.true.',
+        'true',
+        't',
+        '1',
+    }
+
+    false_values = {
+        '.false.',
+        'false',
+        'f',
+        '0',
+    }
+
+    if normalized in true_values:
+        return True
+
+    if normalized in false_values:
+        return False
+
+    raise ValueError(
+        "Unable to parse QE logical value: "
+        f"{value}"
     )
 
 def _normalize_qe_smearing(
@@ -510,6 +552,77 @@ def parse_qe_input(
                 except ValueError:
                     logger.warning(
                         "Unable to parse nbnd "
+                        "from value %r; leaving default",
+                        value_clean,
+                    )
+
+            elif key_lower == 'forc_conv_thr':
+                try:
+                    settings.forc_conv_thr = (
+                        _parse_qe_float(
+                            value_clean
+                        )
+                    )
+                except ValueError:
+                    logger.warning(
+                        "Unable to parse forc_conv_thr "
+                        "from value %r; leaving default",
+                        value_clean,
+                    )
+
+            elif key_lower == 'ion_dynamics':
+                settings.ion_dynamics = (
+                    value_clean.lower()
+                )
+
+            elif key_lower == 'trust_radius_max':
+                try:
+                    settings.trust_radius_max = (
+                        _parse_qe_float(
+                            value_clean
+                        )
+                    )
+                except ValueError:
+                    logger.warning(
+                        "Unable to parse trust_radius_max "
+                        "from value %r; leaving default",
+                        value_clean,
+                    )
+
+            elif key_lower == 'cell_dynamics':
+                settings.cell_dynamics = (
+                    value_clean.lower()
+                )
+
+            elif key_lower == 'cell_dofree':
+                settings.cell_dofree = (
+                    value_clean.lower()
+                )
+
+            elif key_lower == 'press':
+                try:
+                    settings.pressure_kbar = (
+                        _parse_qe_float(
+                            value_clean
+                        )
+                    )
+                except ValueError:
+                    logger.warning(
+                        "Unable to parse press "
+                        "from value %r; leaving default",
+                        value_clean,
+                    )
+
+            elif key_lower == 'nosym':
+                try:
+                    settings.nosym = (
+                        _parse_qe_bool(
+                            value_clean
+                        )
+                    )
+                except ValueError:
+                    logger.warning(
+                        "Unable to parse nosym "
                         "from value %r; leaving default",
                         value_clean,
                     )

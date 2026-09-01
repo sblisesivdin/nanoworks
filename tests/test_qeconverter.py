@@ -8,6 +8,7 @@ from nanoworks.qeconverter import (
     build_config_lines,
     determine_system_name,
     parse_qe_input,
+    _parse_qe_bool,
 )
 
 
@@ -402,6 +403,95 @@ CELL_PARAMETERS angstrom
             "Occupation = 'tetrahedra_opt'",
             text,
         )
+
+    def test_parse_qe_input_reads_relaxation_settings(self):
+        input_text = """
+&CONTROL
+  calculation = 'vc-relax',
+  forc_conv_thr = 1.0D-3,
+/
+&SYSTEM
+  nosym = .false.,
+/
+&IONS
+  ion_dynamics = 'bfgs',
+  trust_radius_max = 2.0D-1,
+/
+&CELL
+  cell_dynamics = 'bfgs',
+  cell_dofree = 'all',
+  press = 5.0,
+/
+K_POINTS automatic
+4 4 4 0 0 0
+"""
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            input_file = (
+                Path(tmpdir)
+                / 'vc-relax.in'
+            )
+
+            input_file.write_text(
+                input_text,
+                encoding='utf-8',
+            )
+
+            settings = parse_qe_input(
+                input_file
+            )
+
+        self.assertEqual(
+            settings.calculation,
+            'vc-relax',
+        )
+        self.assertAlmostEqual(
+            settings.forc_conv_thr,
+            1.0e-3,
+        )
+        self.assertEqual(
+            settings.ion_dynamics,
+            'bfgs',
+        )
+        self.assertAlmostEqual(
+            settings.trust_radius_max,
+            0.2,
+        )
+        self.assertEqual(
+            settings.cell_dynamics,
+            'bfgs',
+        )
+        self.assertEqual(
+            settings.cell_dofree,
+            'all',
+        )
+        self.assertAlmostEqual(
+            settings.pressure_kbar,
+            5.0,
+        )
+        self.assertFalse(
+            settings.nosym
+        )
+
+    def test_parse_qe_bool_supports_fortran_values(self):
+        self.assertTrue(
+            _parse_qe_bool(
+                '.true.'
+            )
+        )
+        self.assertFalse(
+            _parse_qe_bool(
+                '.false.'
+            )
+        )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            'Unable to parse QE logical value',
+        ):
+            _parse_qe_bool(
+                'maybe'
+            )
 
 if __name__ == '__main__':
     unittest.main()
