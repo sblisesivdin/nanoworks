@@ -5242,6 +5242,49 @@ def test_run_spin_polarized_band_projections(self):
             input_text,
         )
         
+    def test_parse_pw_bands_output_supports_adjacent_values(self):
+        output_text = """
+        Program PWSCF v.7.2 starts
+
+             k = 0.0000 0.0000 0.0000 (123 PWs) bands (ev):
+
+          -114.3470-114.3470  -20.5000   1.2500
+
+        JOB DONE.
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = (
+                Path(tmpdir)
+                / 'bands.out'
+            )
+
+            output_file.write_text(
+                output_text,
+                encoding='utf-8',
+            )
+
+            result = parse_pw_bands_output(
+                output_file
+            )
+
+        self.assertEqual(
+            result['nkpoints'],
+            1,
+        )
+        self.assertEqual(
+            result['nbands'],
+            4,
+        )
+        self.assertEqual(
+            result['eigenvalues_ev'][0][0],
+            [
+                -114.347,
+                -114.347,
+                -20.5,
+                1.25,
+            ],
+        )
 
 if __name__ == '__main__':
     unittest.main()

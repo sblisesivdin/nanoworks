@@ -2870,6 +2870,22 @@ def parse_pw_bands_output(output):
         rf'^(?:\s*{number_pattern})+\s*$'
     )
 
+    number_regex = re.compile(
+        number_pattern
+    )
+
+    def parse_eigenvalue_line(line):
+        return [
+            float(
+                value
+                .replace('D', 'E')
+                .replace('d', 'e')
+            )
+            for value in number_regex.findall(
+                line
+            )
+        ]
+
     def parse_channel(channel_text):
         kpoints = []
         eigenvalues = []
@@ -2921,12 +2937,9 @@ def parse_pw_bands_output(output):
 
                 if remainder:
                     current_eigenvalues.extend(
-                        float(
-                            value
-                            .replace('D', 'E')
-                            .replace('d', 'e')
+                        parse_eigenvalue_line(
+                            remainder
                         )
-                        for value in remainder.split()
                     )
 
                 continue
@@ -2954,12 +2967,9 @@ def parse_pw_bands_output(output):
                 line
             ):
                 current_eigenvalues.extend(
-                    float(
-                        value
-                        .replace('D', 'E')
-                        .replace('d', 'e')
+                    parse_eigenvalue_line(
+                        stripped
                     )
-                    for value in stripped.split()
                 )
 
                 continue
