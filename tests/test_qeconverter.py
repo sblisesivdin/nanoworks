@@ -10,6 +10,7 @@ from nanoworks.qeconverter import (
     parse_qe_input,
     _parse_qe_bool,
     RY_TO_EV,
+    _build_workflow_lines,
 )
 
 
@@ -660,6 +661,152 @@ K_POINTS automatic
             ),
             text,
         )
+
+    def test_build_workflow_lines_maps_nscf_to_dos(self):
+        settings = QEInputSettings(
+            calculation='nscf',
+        )
+
+        text = '\n'.join(
+            _build_workflow_lines(
+                settings
+            )
+        )
+
+        self.assertIn(
+            "Ground_calc = True",
+            text,
+        )
+        self.assertIn(
+            "DOS_calc = True",
+            text,
+        )
+        self.assertIn(
+            "Band_calc = False",
+            text,
+        )
+        self.assertIn(
+            (
+                "# NOTICE: QE calculation = 'nscf' "
+                "is interpreted as a DOS workflow."
+            ),
+            text,
+        )
+
+    def test_build_workflow_lines_maps_bands(self):
+        settings = QEInputSettings(
+            calculation='bands',
+        )
+
+        text = '\n'.join(
+            _build_workflow_lines(
+                settings
+            )
+        )
+
+        self.assertIn(
+            "Ground_calc = True",
+            text,
+        )
+        self.assertIn(
+            "DOS_calc = False",
+            text,
+        )
+        self.assertIn(
+            "Band_calc = True",
+            text,
+        )
+        self.assertIn(
+            "review Band_path",
+            text,
+        )
+
+    def test_build_workflow_lines_falls_back_for_unknown_calculation(
+        self,
+    ):
+        settings = QEInputSettings(
+            calculation='md',
+        )
+
+        text = '\n'.join(
+            _build_workflow_lines(
+                settings
+            )
+        )
+
+        self.assertIn(
+            "Ground_calc = True",
+            text,
+        )
+        self.assertIn(
+            "Geo_optim = False",
+            text,
+        )
+        self.assertIn(
+            "DOS_calc = False",
+            text,
+        )
+        self.assertIn(
+            "Band_calc = False",
+            text,
+        )
+        self.assertIn(
+            (
+                "# NOTICE: QE calculation = 'md' "
+                "has no direct Nanoworks workflow mapping"
+            ),
+            text,
+        )
+
+    def test_build_config_lines_assigns_nbands_to_workflow_stage(
+        self,
+    ):
+        args = SimpleNamespace(
+            outdirname=None,
+            xc=None,
+        )
+
+        cases = [
+            (
+                'scf',
+                'Ground_num_of_bands = 32',
+            ),
+            (
+                'relax',
+                'Ground_num_of_bands = 32',
+            ),
+            (
+                'nscf',
+                'DOS_num_of_bands = 32',
+            ),
+            (
+                'bands',
+                'Band_num_of_bands = 32',
+            ),
+        ]
+
+        for calculation, expected in cases:
+            with self.subTest(
+                calculation=calculation
+            ):
+                settings = QEInputSettings(
+                    calculation=calculation,
+                    nbands=32,
+                )
+
+                text = '\n'.join(
+                    build_config_lines(
+                        name='Silicon',
+                        geom_filename='Silicon.cif',
+                        settings=settings,
+                        args=args,
+                    )
+                )
+
+                self.assertIn(
+                    expected,
+                    text,
+                )
 
 if __name__ == '__main__':
     unittest.main()

@@ -284,6 +284,74 @@ def _build_occupation_line(
         "}"
     )
 
+def _build_workflow_lines(
+    settings: QEInputSettings,
+) -> List[str]:
+    """Translate a QE calculation type to Nanoworks workflow flags."""
+    calculation = (
+        settings.calculation
+        or 'scf'
+    ).strip().lower()
+
+    ground_calc = True
+    geo_optim = False
+    dos_calc = False
+    band_calc = False
+    notices = []
+
+    if calculation == 'scf':
+        pass
+
+    elif calculation in {
+        'relax',
+        'vc-relax',
+    }:
+        geo_optim = True
+
+    elif calculation == 'nscf':
+        dos_calc = True
+
+        notices.append(
+            "QE calculation = 'nscf' is interpreted as "
+            "a DOS workflow. Review DOS-specific settings "
+            "if the NSCF calculation had another purpose."
+        )
+
+    elif calculation == 'bands':
+        band_calc = True
+
+        notices.append(
+            "QE calculation = 'bands' enables the Nanoworks "
+            "band workflow. The QE explicit k-point path is "
+            "not converted yet, so review Band_path."
+        )
+
+    else:
+        notices.append(
+            "QE calculation = "
+            f"'{calculation}' has no direct Nanoworks "
+            "workflow mapping; a ground-state calculation "
+            "is enabled as the fallback."
+        )
+
+    lines = [
+        f"Ground_calc = {ground_calc}",
+        f"Geo_optim = {geo_optim}",
+        "Elastic_calc = False",
+        f"DOS_calc = {dos_calc}",
+        f"Band_calc = {band_calc}",
+        "Density_calc = False",
+        "Optical_calc = False",
+    ]
+
+    lines.extend(
+        "# NOTICE: "
+        + notice
+        for notice in notices
+    )
+
+    return lines
+
 def _build_relaxation_lines(
     settings: QEInputSettings,
 ) -> List[str]:
@@ -947,19 +1015,19 @@ def build_config_lines(
     xc = args.xc or "PBE"
     spin_calc = settings.nspin == 2
 
+    workflow_lines = (
+        _build_workflow_lines(
+            settings
+        )
+    )
+
     lines: List[str] = [
         f"# Auto-generated on {timestamp} by qeconverter.py",
         f"Outdirname = '{outdirname}'",
         "",
         "Engine = 'QE'",
         "Mode = 'PW'",
-        "Ground_calc = True",
-        f"Geo_optim = {settings.calculation in {'relax', 'vc-relax'}}",
-        "Elastic_calc = False",
-        "DOS_calc = False",
-        "Band_calc = False",
-        "Density_calc = False",
-        "Optical_calc = False",
+        *workflow_lines,
         "",
     ]
 
@@ -1009,8 +1077,28 @@ def build_config_lines(
         )
 
     if settings.nbands is not None:
+        calculation = (
+            settings.calculation
+            or 'scf'
+        ).strip().lower()
+
+        if calculation == 'bands':
+            band_keyword = (
+                'Band_num_of_bands'
+            )
+
+        elif calculation == 'nscf':
+            band_keyword = (
+                'DOS_num_of_bands'
+            )
+
+        else:
+            band_keyword = (
+                'Ground_num_of_bands'
+            )
+
         lines.append(
-            "Ground_num_of_bands = "
+            f"{band_keyword} = "
             f"{settings.nbands}"
         )
 
