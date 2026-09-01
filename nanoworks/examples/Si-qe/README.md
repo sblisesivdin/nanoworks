@@ -1,11 +1,14 @@
 # Silicon Quantum ESPRESSO Conversion Example
 
-This directory provides a minimal Quantum ESPRESSO `pw.x` input for silicon and demonstrates how to convert it into `dftsolve` input and geometry files by using `qeconverter`. This is an input-conversion example and does not demonstrate the native `Engine = 'QE'` backend workflow.
+This directory provides a minimal Quantum ESPRESSO `pw.x` input and
+demonstrates how `qeconverter` creates configuration and geometry files
+for the native Nanoworks `Engine = 'QE'` backend.
 
 Run:
 
     qeconverter --input si.scf.in --output-dir Si-qe --system-name Silicon
 
+`qeconverter` targets the native Nanoworks QE backend and supports common SCF, relaxation, NSCF, band, spin, occupation, and k-point settings. Approximate conversions are marked with `NOTICE` comments. Source pseudopotential files are optional during conversion.
 
 Then execute `dftsolve` using the produced files:
 

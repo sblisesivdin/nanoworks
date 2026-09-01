@@ -113,14 +113,26 @@ The QE pseudopotentials can be installed separately with:
 
     (.venv-nw) $ nanoworks --install-qe-pseudos
 
-qeconverter 
+qeconverter
 -----------
 
-Command for creating nanoworks input and geometry files from QE files
+``qeconverter`` converts a Quantum ESPRESSO ``pw.x`` input into a
+Nanoworks configuration and a CIF geometry file targeting the native
+``Engine = 'QE'`` backend.
 
 .. code-block:: console
 
    $ qeconverter --input si.scf.in --output-dir example_folder --system-name SiliconQE
+
+The converter supports SCF, relaxation, variable-cell relaxation, NSCF
+and band workflows. It converts common cutoff, occupation, charge,
+band-count, k-point, spin and relaxation settings.
+
+Source pseudopotential files are not required for conversion and are
+not copied into the generated project. Nanoworks uses its installed QE
+pseudopotential library when the converted calculation is executed.
+When an exact Nanoworks equivalent is unavailable, the closest
+supported setting is generated together with a ``NOTICE`` comment.
 
 vaspconverter
 -------------

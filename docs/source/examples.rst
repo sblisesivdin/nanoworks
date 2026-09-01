@@ -83,7 +83,9 @@ Interoperability with Other Codes
 ---------------------------------
 
 * **Quantum ESPRESSO Input Conversion:**
-  Demonstrates how ``qeconverter`` converts a Quantum ESPRESSO ``pw.x`` input into Nanoworks input and geometry files. This is an input-conversion example and does not demonstrate the native ``Engine = 'QE'`` backend workflow. (Folder: ``Si-qe/``)
+  Demonstrates how ``qeconverter`` converts a Quantum ESPRESSO
+  ``pw.x`` input into configuration and geometry files for the native
+  Nanoworks ``Engine = 'QE'`` backend. (Folder: ``Si-qe/``)
 
 * **VASP:**
   Shows compatibility and format conversion capabilities with VASP inputs (INCAR, POSCAR, KPOINTS). (Folder: ``Si-vasp/``)
