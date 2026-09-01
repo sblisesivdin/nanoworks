@@ -59,6 +59,7 @@ from nanoworks.engine.qe import (
     run_band_projections,
     parse_projwfc_band_file,
     prepare_qe_band_projection_data,
+    render_pp_input,
 )
 
 
@@ -4524,6 +4525,106 @@ def test_run_spin_polarized_band_projections(self):
                         nbands=1,
                         projected_band=True,
                     )
+
+    def test_render_pp_total_density_input(self):
+        text = render_pp_input(
+            prefix='nanoworks',
+            outdir='/tmp/qe-state',
+            filplot='/tmp/total.pp',
+            fileout='/tmp/total.cube',
+            plot_num=0,
+            spin_component=0,
+        )
+
+        self.assertIn(
+            '&INPUTPP',
+            text,
+        )
+        self.assertIn(
+            "prefix = 'nanoworks'",
+            text,
+        )
+        self.assertIn(
+            "outdir = '/tmp/qe-state'",
+            text,
+        )
+        self.assertIn(
+            "filplot = '/tmp/total.pp'",
+            text,
+        )
+        self.assertIn(
+            'plot_num = 0',
+            text,
+        )
+        self.assertIn(
+            'spin_component = 0',
+            text,
+        )
+        self.assertIn(
+            '&PLOT',
+            text,
+        )
+        self.assertIn(
+            'iflag = 3',
+            text,
+        )
+        self.assertIn(
+            'output_format = 6',
+            text,
+        )
+        self.assertIn(
+            "fileout = '/tmp/total.cube'",
+            text,
+        )
+
+    def test_render_pp_spin_density_input(self):
+        text = render_pp_input(
+            filplot='/tmp/spin.pp',
+            fileout='/tmp/spin.cube',
+            plot_num=6,
+        )
+
+        self.assertIn(
+            'plot_num = 6',
+            text,
+        )
+        self.assertNotIn(
+            'spin_component',
+            text,
+        )
+
+    def test_render_pp_input_rejects_unsupported_plot(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            'Unsupported QE density plot number',
+        ):
+            render_pp_input(
+                plot_num=9,
+            )
+
+    def test_render_pp_input_rejects_invalid_spin_component(
+        self,
+    ):
+        with self.assertRaisesRegex(
+            ValueError,
+            'must be 0, 1, or 2',
+        ):
+            render_pp_input(
+                plot_num=0,
+                spin_component=3,
+            )
+
+    def test_render_pp_input_rejects_spin_component_for_spin_density(
+        self,
+    ):
+        with self.assertRaisesRegex(
+            ValueError,
+            'supported only',
+        ):
+            render_pp_input(
+                plot_num=6,
+                spin_component=1,
+            )
 
 if __name__ == '__main__':
     unittest.main()

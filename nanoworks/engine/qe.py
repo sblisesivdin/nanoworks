@@ -1785,6 +1785,92 @@ def render_projwfc_input(
         + '\n'
     )
 
+def render_pp_input(
+    prefix='nanoworks',
+    outdir=None,
+    filplot='nanoworks.pp',
+    fileout='nanoworks.cube',
+    plot_num=0,
+    spin_component=None,
+):
+    """Render a QE pp.x input for three-dimensional density data."""
+    plot_num = int(
+        plot_num
+    )
+
+    if plot_num not in {
+        0,
+        6,
+    }:
+        raise ValueError(
+            "Unsupported QE density plot number: "
+            f"{plot_num}"
+        )
+
+    input_settings = {
+        'prefix': str(prefix),
+        'filplot': str(filplot),
+        'plot_num': plot_num,
+    }
+
+    if outdir is not None:
+        input_settings[
+            'outdir'
+        ] = str(
+            outdir
+        )
+
+    if spin_component is not None:
+        if plot_num != 0:
+            raise ValueError(
+                "QE spin_component is supported only "
+                "for total charge-density output."
+            )
+
+        spin_component = int(
+            spin_component
+        )
+
+        if spin_component not in {
+            0,
+            1,
+            2,
+        }:
+            raise ValueError(
+                "QE charge-density spin_component "
+                "must be 0, 1, or 2."
+            )
+
+        input_settings[
+            'spin_component'
+        ] = spin_component
+
+    plot_settings = {
+        'nfile': 1,
+        'filepp(1)': str(
+            filplot
+        ),
+        'weight(1)': 1.0,
+        'iflag': 3,
+        'output_format': 6,
+        'fileout': str(
+            fileout
+        ),
+    }
+
+    return (
+        render_namelist(
+            'INPUTPP',
+            input_settings,
+        )
+        + '\n'
+        + render_namelist(
+            'PLOT',
+            plot_settings,
+        )
+        + '\n'
+    )
+
 def build_qe_launcher(
     parallel_cores=1,
 ):
