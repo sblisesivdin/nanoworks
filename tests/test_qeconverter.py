@@ -14,6 +14,7 @@ from nanoworks.qeconverter import (
     _build_kpoint_lines,
     _read_qe_species_z_valence,
     _resolve_qe_pseudo_path,
+    _build_magnetic_lines,
 )
 
 
@@ -1150,6 +1151,179 @@ K_POINTS gamma
                 settings
             ),
             {},
+        )
+
+    def test_build_magnetic_lines_uses_upf_z_valence(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(
+                tmpdir
+            )
+
+            (
+                tmpdir
+                / 'Fe.upf'
+            ).write_text(
+                '<PP_HEADER z_valence="8.0" />\n',
+                encoding='utf-8',
+            )
+
+            (
+                tmpdir
+                / 'O.upf'
+            ).write_text(
+                '<PP_HEADER z_valence="6.0" />\n',
+                encoding='utf-8',
+            )
+
+            settings = QEInputSettings(
+                nspin=2,
+                source_directory=tmpdir,
+                species_labels=[
+                    'Fe1',
+                    'O',
+                ],
+                species_pseudopotentials={
+                    'Fe1': 'Fe.upf',
+                    'O': 'O.upf',
+                },
+                atomic_position_labels=[
+                    'Fe1',
+                    'O',
+                ],
+                starting_magnetization={
+                    '1': 0.25,
+                    '2': -0.50,
+                },
+            )
+
+            text = '\n'.join(
+                _build_magnetic_lines(
+                    settings
+                )
+            )
+
+        self.assertIn(
+            'Spin_calc = True',
+            text,
+        )
+        self.assertIn(
+            'Magmom_per_atom = [2, -3]',
+            text,
+        )
+        self.assertNotIn(
+            'approximate magnetic moment',
+            text,
+        )
+
+    def test_build_magnetic_lines_preserves_split_species(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(
+                tmpdir
+            )
+
+            (
+                tmpdir
+                / 'Fe.upf'
+            ).write_text(
+                '<PP_HEADER z_valence="8.0" />\n',
+                encoding='utf-8',
+            )
+
+            settings = QEInputSettings(
+                nspin=2,
+                source_directory=tmpdir,
+                species_labels=[
+                    'Fe1',
+                    'Fe2',
+                ],
+                species_pseudopotentials={
+                    'Fe1': 'Fe.upf',
+                    'Fe2': 'Fe.upf',
+                },
+                atomic_position_labels=[
+                    'Fe1',
+                    'Fe2',
+                ],
+                starting_magnetization={
+                    '1': 0.25,
+                    '2': -0.25,
+                },
+            )
+
+            text = '\n'.join(
+                _build_magnetic_lines(
+                    settings
+                )
+            )
+
+        self.assertIn(
+            'Magmom_per_atom = [2, -2]',
+            text,
+        )
+
+    def test_build_magnetic_lines_marks_missing_upf_fallback(
+        self,
+    ):
+        settings = QEInputSettings(
+            nspin=2,
+            source_directory=Path(
+                '/directory/that/does/not/exist'
+            ),
+            species_labels=[
+                'Fe',
+            ],
+            species_pseudopotentials={
+                'Fe': 'Fe.upf',
+            },
+            atomic_position_labels=[
+                'Fe',
+            ],
+            starting_magnetization={
+                '1': 0.25,
+            },
+        )
+
+        text = '\n'.join(
+            _build_magnetic_lines(
+                settings
+            )
+        )
+
+        self.assertIn(
+            'Magmom_per_atom = [0.25]',
+            text,
+        )
+        self.assertIn(
+            'approximate magnetic moment in mu_B',
+            text,
+        )
+
+    def test_build_magnetic_lines_seeds_missing_moments(self):
+        settings = QEInputSettings(
+            nspin=2,
+            atomic_position_labels=[
+                'Fe',
+                'Fe',
+            ],
+        )
+
+        text = '\n'.join(
+            _build_magnetic_lines(
+                settings
+            )
+        )
+
+        self.assertIn(
+            'Magmom_per_atom = [1.0, 0.0]',
+            text,
+        )
+        self.assertIn(
+            (
+                '# NOTICE: QE nspin = 2 was found '
+                'without an explicit '
+                'starting_magnetization'
+            ),
+            text,
         )
 
 if __name__ == '__main__':

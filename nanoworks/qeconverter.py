@@ -332,6 +332,222 @@ def _read_qe_species_z_valence(
 
     return z_valence
 
+def _build_magnetic_lines(
+    settings: QEInputSettings,
+) -> List[str]:
+    """Convert QE starting magnetizations to Nanoworks moments."""
+    if settings.nspin != 2:
+        return [
+            'Spin_calc = False',
+        ]
+
+    lines = [
+        'Spin_calc = True',
+    ]
+
+    notices = []
+
+    if not settings.starting_magnetization:
+        notices.append(
+            "QE nspin = 2 was found without an explicit "
+            "starting_magnetization; a 1.0 mu_B fallback "
+            "is assigned to the first atom."
+        )
+
+        if settings.atomic_position_labels:
+            moments = [
+                1.0,
+            ] + [
+                0.0
+                for _ in settings.atomic_position_labels[
+                    1:
+                ]
+            ]
+
+            lines.extend(
+                "# NOTICE: "
+                + notice
+                for notice in notices
+            )
+
+            lines.append(
+                "Magmom_per_atom = "
+                + repr(
+                    moments
+                )
+            )
+
+        else:
+            lines.extend(
+                "# NOTICE: "
+                + notice
+                for notice in notices
+            )
+
+            lines.append(
+                'Magmom_per_atom = 1.0'
+            )
+
+        return lines
+
+    species_fractions = {}
+
+    for species_index, fraction in (
+        settings.starting_magnetization.items()
+    ):
+        try:
+            index = (
+                int(
+                    species_index
+                )
+                - 1
+            )
+
+        except ValueError:
+            notices.append(
+                "QE starting_magnetization index "
+                f"'{species_index}' could not be resolved "
+                "and was ignored."
+            )
+            continue
+
+        if (
+            index < 0
+            or index >= len(
+                settings.species_labels
+            )
+        ):
+            notices.append(
+                "QE starting_magnetization index "
+                f"{species_index} is outside the parsed "
+                "ATOMIC_SPECIES list and was ignored."
+            )
+            continue
+
+        species_label = (
+            settings.species_labels[
+                index
+            ]
+        )
+
+        species_fractions[
+            species_label
+        ] = float(
+            fraction
+        )
+
+    z_valence = (
+        _read_qe_species_z_valence(
+            settings
+        )
+    )
+
+    if not settings.atomic_position_labels:
+        notices.append(
+            "ATOMIC_POSITIONS species labels were not "
+            "available, so atom-specific magnetic moments "
+            "could not be reconstructed."
+        )
+
+        fallback_fraction = next(
+            iter(
+                settings.starting_magnetization.values()
+            ),
+            1.0,
+        )
+
+        lines.extend(
+            "# NOTICE: "
+            + notice
+            for notice in notices
+        )
+
+        lines.append(
+            "Magmom_per_atom = "
+            f"{float(fallback_fraction):.12g}"
+        )
+
+        return lines
+
+    missing_z_valence = set()
+    moments = []
+
+    for species_label in (
+        settings.atomic_position_labels
+    ):
+        fraction = species_fractions.get(
+            species_label,
+            0.0,
+        )
+
+        if species_label in z_valence:
+            moment = (
+                fraction
+                * z_valence[
+                    species_label
+                ]
+            )
+
+        else:
+            moment = fraction
+
+            if fraction != 0.0:
+                missing_z_valence.add(
+                    species_label
+                )
+
+        moments.append(
+            moment
+        )
+
+    for species_label in sorted(
+        missing_z_valence
+    ):
+        notices.append(
+            "The source UPF z_valence for species "
+            f"'{species_label}' was unavailable; its QE "
+            "starting_magnetization fraction is used as "
+            "an approximate magnetic moment in mu_B."
+        )
+
+    if not any(
+        abs(
+            moment
+        ) > 0.0
+        for moment in moments
+    ):
+        moments[
+            0
+        ] = 1.0
+
+        notices.append(
+            "All converted initial magnetic moments were "
+            "zero; the first atom is assigned 1.0 mu_B "
+            "to provide a spin-polarized starting state."
+        )
+
+    formatted_moments = (
+        '['
+        + ', '.join(
+            f"{moment:.12g}"
+            for moment in moments
+        )
+        + ']'
+    )
+
+    lines.extend(
+        "# NOTICE: "
+        + notice
+        for notice in notices
+    )
+
+    lines.append(
+        "Magmom_per_atom = "
+        + formatted_moments
+    )
+
+    return lines
+
 def _normalize_qe_smearing(
     smearing: Optional[str],
 ) -> str:
@@ -1424,7 +1640,6 @@ def build_config_lines(
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     outdirname = args.outdirname or f"{name}-results"
     xc = args.xc or "PBE"
-    spin_calc = settings.nspin == 2
 
     workflow_lines = (
         _build_workflow_lines(
@@ -1507,7 +1722,11 @@ def build_config_lines(
             f"{settings.nbands}"
         )
 
-    lines.append(f"Spin_calc = {spin_calc}")
+    lines.extend(
+        _build_magnetic_lines(
+            settings
+        )
+    )
 
     if settings.conv_thr is not None:
         energy_conv = settings.conv_thr * RY_TO_EV
