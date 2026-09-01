@@ -2,13 +2,14 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-
+from ase.units import Bohr
 from nanoworks.qeconverter import (
     QEInputSettings,
     build_config_lines,
     determine_system_name,
     parse_qe_input,
     _parse_qe_bool,
+    RY_TO_EV,
 )
 
 
@@ -492,6 +493,173 @@ K_POINTS automatic
             _parse_qe_bool(
                 'maybe'
             )
+
+    def test_build_config_lines_converts_vc_relax_settings(self):
+        settings = QEInputSettings(
+            calculation='vc-relax',
+            forc_conv_thr=1.0e-3,
+            ion_dynamics='bfgs',
+            trust_radius_max=0.2,
+            cell_dynamics='bfgs',
+            cell_dofree='all',
+            pressure_kbar=5.0,
+            nosym=False,
+        )
+
+        args = SimpleNamespace(
+            outdirname=None,
+            xc=None,
+        )
+
+        text = '\n'.join(
+            build_config_lines(
+                name='GaAs',
+                geom_filename='GaAs.cif',
+                settings=settings,
+                args=args,
+            )
+        )
+
+        self.assertIn(
+            "Geo_optim = True",
+            text,
+        )
+        self.assertIn(
+            "Optimizer = 'LBFGS'",
+            text,
+        )
+        self.assertIn(
+            (
+                "Relax_cell = [True, True, True, "
+                "True, True, True]"
+            ),
+            text,
+        )
+        self.assertIn(
+            "Fix_symmetry = True",
+            text,
+        )
+        self.assertIn(
+            "Hydrostatic_pressure = 0.5",
+            text,
+        )
+
+        force_line = next(
+            line
+            for line in text.splitlines()
+            if line.startswith(
+                'Max_F_tolerance ='
+            )
+        )
+
+        max_force = float(
+            force_line.split(
+                '=',
+                1,
+            )[1]
+        )
+
+        self.assertAlmostEqual(
+            max_force,
+            1.0e-3 * RY_TO_EV / Bohr,
+        )
+
+        step_line = next(
+            line
+            for line in text.splitlines()
+            if line.startswith(
+                'Max_step ='
+            )
+        )
+
+        max_step = float(
+            step_line.split(
+                '=',
+                1,
+            )[1]
+        )
+
+        self.assertAlmostEqual(
+            max_step,
+            0.2 * Bohr,
+        )
+
+    def test_build_config_lines_marks_volume_approximation(self):
+        settings = QEInputSettings(
+            calculation='vc-relax',
+            cell_dofree='volume',
+            nosym=True,
+        )
+
+        args = SimpleNamespace(
+            outdirname=None,
+            xc=None,
+        )
+
+        text = '\n'.join(
+            build_config_lines(
+                name='GaAs',
+                geom_filename='GaAs.cif',
+                settings=settings,
+                args=args,
+            )
+        )
+
+        self.assertIn(
+            (
+                "# NOTICE: QE cell_dofree = 'volume' "
+                "cannot be represented exactly"
+            ),
+            text,
+        )
+        self.assertIn(
+            (
+                "Relax_cell = [True, True, True, "
+                "True, True, True]"
+            ),
+            text,
+        )
+        self.assertIn(
+            "Fix_symmetry = True",
+            text,
+        )
+
+    def test_build_config_lines_falls_back_for_unknown_cell_dofree(
+        self,
+    ):
+        settings = QEInputSettings(
+            calculation='vc-relax',
+            cell_dofree='custom-mode',
+        )
+
+        args = SimpleNamespace(
+            outdirname=None,
+            xc=None,
+        )
+
+        text = '\n'.join(
+            build_config_lines(
+                name='GaAs',
+                geom_filename='GaAs.cif',
+                settings=settings,
+                args=args,
+            )
+        )
+
+        self.assertIn(
+            (
+                "# NOTICE: Unknown QE cell_dofree = "
+                "'custom-mode'"
+            ),
+            text,
+        )
+        self.assertIn(
+            (
+                "Relax_cell = [True, True, True, "
+                "True, True, True]"
+            ),
+            text,
+        )
 
 if __name__ == '__main__':
     unittest.main()

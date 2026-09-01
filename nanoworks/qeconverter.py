@@ -23,6 +23,7 @@ import logging
 import nanoworks
 from typing import Union
 from ase.io import read, write
+from ase.units import Bohr
 
 RY_TO_EV = 13.605693009
 
@@ -282,6 +283,300 @@ def _build_occupation_line(
         f"'width': {width_ev:.12g}"
         "}"
     )
+
+def _build_relaxation_lines(
+    settings: QEInputSettings,
+) -> List[str]:
+    """Convert QE relaxation settings to Nanoworks settings."""
+    calculation = (
+        settings.calculation
+        or 'scf'
+    ).strip().lower()
+
+    if calculation not in {
+        'relax',
+        'vc-relax',
+    }:
+        return []
+
+    notices = []
+    lines = []
+
+    if settings.ion_dynamics not in {
+        None,
+        'bfgs',
+    }:
+        notices.append(
+            "QE ion_dynamics = "
+            f"'{settings.ion_dynamics}' is approximated "
+            "with Nanoworks LBFGS."
+        )
+
+    if (
+        calculation == 'vc-relax'
+        and settings.cell_dynamics not in {
+            None,
+            'bfgs',
+        }
+    ):
+        notices.append(
+            "QE cell_dynamics = "
+            f"'{settings.cell_dynamics}' is approximated "
+            "with QE BFGS through Nanoworks."
+        )
+
+    lines.append(
+        "Optimizer = 'LBFGS'"
+    )
+
+    if settings.forc_conv_thr is not None:
+        max_force_ev_angstrom = (
+            settings.forc_conv_thr
+            * RY_TO_EV
+            / Bohr
+        )
+
+        lines.append(
+            "Max_F_tolerance = "
+            f"{max_force_ev_angstrom:.12g}"
+        )
+
+    if settings.trust_radius_max is not None:
+        max_step_angstrom = (
+            settings.trust_radius_max
+            * Bohr
+        )
+
+        lines.append(
+            "Max_step = "
+            f"{max_step_angstrom:.12g}"
+        )
+
+    fix_symmetry = (
+        not settings.nosym
+        if settings.nosym is not None
+        else True
+    )
+
+    if calculation == 'relax':
+        relax_cell = [
+            False,
+            False,
+            False,
+            False,
+            False,
+            False,
+        ]
+
+        if settings.cell_dofree is not None:
+            notices.append(
+                "QE cell_dofree is ignored because "
+                "calculation = 'relax' keeps the cell fixed."
+            )
+
+        if (
+            settings.pressure_kbar is not None
+            and settings.pressure_kbar != 0.0
+        ):
+            notices.append(
+                "QE press is ignored because calculation = "
+                "'relax' does not relax the cell."
+            )
+
+    else:
+        cell_dofree = (
+            settings.cell_dofree
+            or 'all'
+        ).strip().lower()
+
+        exact_mappings = {
+            'x': [
+                True,
+                False,
+                False,
+                False,
+                False,
+                False,
+            ],
+            'y': [
+                False,
+                True,
+                False,
+                False,
+                False,
+                False,
+            ],
+            'z': [
+                False,
+                False,
+                True,
+                False,
+                False,
+                False,
+            ],
+            'xy': [
+                True,
+                True,
+                False,
+                False,
+                False,
+                False,
+            ],
+            'xz': [
+                True,
+                False,
+                True,
+                False,
+                False,
+                False,
+            ],
+            'yz': [
+                False,
+                True,
+                True,
+                False,
+                False,
+                False,
+            ],
+            'xyz': [
+                True,
+                True,
+                True,
+                False,
+                False,
+                False,
+            ],
+            '2dxy': [
+                True,
+                True,
+                False,
+                False,
+                False,
+                True,
+            ],
+            'all': [
+                True,
+                True,
+                True,
+                True,
+                True,
+                True,
+            ],
+        }
+
+        approximate_mappings = {
+            'volume': [
+                True,
+                True,
+                True,
+                True,
+                True,
+                True,
+            ],
+            'shape': [
+                True,
+                True,
+                True,
+                True,
+                True,
+                True,
+            ],
+            '2dshape': [
+                True,
+                True,
+                False,
+                False,
+                False,
+                True,
+            ],
+            'ibrav': [
+                True,
+                True,
+                True,
+                True,
+                True,
+                True,
+            ],
+        }
+
+        if cell_dofree in exact_mappings:
+            relax_cell = exact_mappings[
+                cell_dofree
+            ]
+
+        elif cell_dofree in approximate_mappings:
+            relax_cell = approximate_mappings[
+                cell_dofree
+            ]
+
+            notices.append(
+                "QE cell_dofree = "
+                f"'{settings.cell_dofree}' cannot be "
+                "represented exactly by Relax_cell; "
+                "the nearest available mask is used."
+            )
+
+            if cell_dofree in {
+                'volume',
+                'ibrav',
+            }:
+                fix_symmetry = True
+
+                notices.append(
+                    "Fix_symmetry = True is used to keep "
+                    "the approximate cell relaxation close "
+                    "to the original QE constraint."
+                )
+
+        else:
+            relax_cell = [
+                True,
+                True,
+                True,
+                True,
+                True,
+                True,
+            ]
+
+            notices.append(
+                "Unknown QE cell_dofree = "
+                f"'{settings.cell_dofree}'; all cell "
+                "components are enabled as a fallback."
+            )
+
+    for notice in notices:
+        lines.append(
+            "# NOTICE: "
+            + notice
+        )
+
+    lines.append(
+        "Relax_cell = "
+        + repr(
+            relax_cell
+        )
+    )
+
+    lines.append(
+        "Fix_symmetry = "
+        + repr(
+            fix_symmetry
+        )
+    )
+
+    if calculation == 'vc-relax':
+        hydrostatic_pressure = (
+            0.0
+            if settings.pressure_kbar is None
+            else settings.pressure_kbar / 10.0
+        )
+
+        lines.append(
+            "Hydrostatic_pressure = "
+            f"{hydrostatic_pressure:.12g}"
+        )
+
+    return lines
 
 def parse_qe_input(
     path: Path,
@@ -667,6 +962,20 @@ def build_config_lines(
         "Optical_calc = False",
         "",
     ]
+
+    relaxation_lines = (
+        _build_relaxation_lines(
+            settings
+        )
+    )
+
+    if relaxation_lines:
+        lines.extend(
+            relaxation_lines
+        )
+        lines.append(
+            ''
+        )
 
     if settings.ecutwfc is not None:
         lines.append(f"Cut_off_energy = {settings.ecutwfc * RY_TO_EV:.1f}")
