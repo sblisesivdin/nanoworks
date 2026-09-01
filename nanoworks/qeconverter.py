@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Convert a Quantum ESPRESSO pw.x input into gpawsolve-ready files.
+"""Convert a Quantum ESPRESSO pw.x input into Nanoworks QE files.
 
 The script reads a pw.x style input file, extracts common calculation
 parameters and lattice/atomic structure, then produces:
-  * a CIF geometry file for use with gpawsolve's ``-g`` option.
+  * a CIF geometry file for use with dftsolve's ``-g`` option.
   * a Python configuration module defining the dftsolve.py variables.
 
 Example
@@ -424,6 +424,7 @@ def build_config_lines(
         f"# Auto-generated on {timestamp} by qeconverter.py",
         f"Outdirname = '{outdirname}'",
         "",
+        "Engine = 'QE'",
         "Mode = 'PW'",
         "Ground_calc = True",
         f"Geo_optim = {settings.calculation in {'relax', 'vc-relax'}}",
@@ -468,7 +469,7 @@ def build_config_lines(
         "MPI_cores = 4",
         "Localisation = 'en_UK'",
         "",
-        f"# Geometry file to use with dftsolve.py: {geom_filename}",
+        f"# Geometry file to use with dftsolve: {geom_filename}",
     ])
 
     return [line.rstrip() for line in lines]
@@ -511,8 +512,14 @@ def main() -> None:
     input_path_out.write_text("\n".join(config_lines) + "\n")
 
     print(f"Wrote geometry to {geometry_path}")
-    print(f"Wrote dftsolve.py input to {input_path_out}")
-    print(f"Run: dftsolve.py -i {input_path_out} -g {geometry_path}")
+    print(
+        f"Wrote Nanoworks input to {input_path_out}"
+    )
+    print(
+        "Run: dftsolve "
+        f"-i {input_path_out} "
+        f"-g {geometry_path}"
+    )
 
 
 if __name__ == "__main__":  # pragma: no cover

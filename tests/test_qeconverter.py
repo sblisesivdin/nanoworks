@@ -183,8 +183,13 @@ K_POINTS automatic
         self.assertIn(
             (
                 "# Geometry file to use with "
-                "dftsolve.py: Silicon.cif"
+                "dftsolve: Silicon.cif"
             ),
+            text,
+        )
+        
+        self.assertIn(
+            "Engine = 'QE'",
             text,
         )
 
