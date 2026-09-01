@@ -18,7 +18,7 @@
 It acts as a wrapper and orchestrator for several powerful scientific libraries, making advanced materials simulation accessible through simple command-line tools.
 
 **Core Capabilities:**
-1.  **DFT (via GPAW, Quantum ESPRESSO & ASE):** The `dftsolve` tool provides the complete existing Nanoworks workflow through GPAW. Native Quantum ESPRESSO support currently covers PBE plane-wave ground-state and non-spin DOS/PDOS calculations.
+1.  **DFT (via GPAW, Quantum ESPRESSO & ASE):** The `dftsolve` tool provides the established Nanoworks workflow through GPAW and a growing native Quantum ESPRESSO backend. QE workflows include PBE plane-wave ground-state calculations, atomic and variable-cell geometry optimization, spin-resolved DOS/PDOS and band structures, projected (fat) bands, and pseudo-valence electron-density Cube outputs.
 2.  **MD (via ASAP3 & OpenKIM):** The `mdsolve` tool provides quick geometric optimization and molecular dynamics using interatomic potentials from OpenKIM.
 3.  **ML Potentials (New!):** The `mlsolve` tool enables geometry optimization and static calculations using state-of-the-art Machine Learning Force Fields (MLFF), including **MACE**, **CHGNet**, and **SevenNet**.
 

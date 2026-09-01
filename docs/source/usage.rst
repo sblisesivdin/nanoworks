@@ -23,8 +23,11 @@ Nanoworks remains serial and launches the supported QE executables with
 the number of processes requested by the ``-p`` argument.
 
 GPAW currently provides the complete Nanoworks DFT workflow. Native QE
-support covers PBE plane-wave ground-state and non-spin DOS/PDOS
-calculations.
+support includes PBE plane-wave ground-state calculations, atomic and
+variable-cell geometry optimization, spin-resolved DOS/PDOS and band
+structures, projected (fat) bands, and pseudo-valence electron-density Cube
+output. QE density post-processing uses ``pp.x`` and a completed ground-state
+calculation.
 
 .. code-block:: console
 

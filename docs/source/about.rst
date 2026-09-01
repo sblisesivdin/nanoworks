@@ -46,9 +46,10 @@ Density Functional Theory
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ``dftsolve`` coordinates ground-state, geometry-optimization,
-electronic-structure, phonon, elastic, and optical workflows. GPAW provides
-the established full workflow, while native Quantum ESPRESSO support is being
-expanded incrementally.
+electronic-structure, density, phonon, elastic, and optical workflows. GPAW
+provides the established full workflow. Native Quantum ESPRESSO workflows now
+include geometry optimization, spin-resolved DOS/PDOS and band structures,
+projected bands, and pseudo-valence electron-density Cube output.
 
 Molecular Dynamics
 ~~~~~~~~~~~~~~~~~~

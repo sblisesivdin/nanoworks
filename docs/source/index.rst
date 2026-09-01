@@ -25,7 +25,7 @@ settings explicit and reusable.
      <article class="nw-card">
        <span class="nw-command">dftsolve</span>
        <h3>DFT Workflows</h3>
-       <p>Run electronic-structure and materials-property calculations through GPAW or the expanding native Quantum ESPRESSO backend.</p>
+       <p>Run electronic-structure and materials-property calculations through GPAW or Quantum ESPRESSO, including QE geometry optimization, spin-resolved electronic structure, projected bands, and electron-density outputs.</p>
        <a href="usage.html#dftsolve-formerly-gpawsolve-py">Explore DFT workflows →</a>
      </article>
      <article class="nw-card">
@@ -80,7 +80,7 @@ Capabilities depend on the selected solver and computational backend.
      <span>DOS and PDOS</span>
      <span>Projected and fat bands</span>
      <span>Spin-polarized properties</span>
-     <span>Charge densities</span>
+     <span>Electron and spin densities</span>
      <span>Equations of state</span>
      <span>Elastic properties</span>
      <span>Phonons</span>

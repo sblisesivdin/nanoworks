@@ -131,7 +131,24 @@ or:
     :Type: ``boolean``
     :Default: ``False``
 
-    Whether electron density calculations are performed or not.
+    Enables electron-density output for the GPAW and Quantum ESPRESSO
+    backends. The calculation uses the previously completed ground-state
+    result.
+
+    GPAW writes its existing all-electron, pseudo-density, and spin-density
+    outputs. QE runs ``pp.x`` and writes Gaussian Cube files containing
+    pseudo-valence densities. A non-spin-polarized QE calculation produces
+    ``*-EDENSITY-QE-Result-Pseudo-Total.cube``.
+
+    A spin-polarized QE calculation additionally produces
+    ``*-EDENSITY-QE-Result-Pseudo-Up.cube``,
+    ``*-EDENSITY-QE-Result-Pseudo-Down.cube``, and
+    ``*-EDENSITY-QE-Result-Spin-Density.cube``. The last file contains
+    :math:`\rho_\uparrow - \rho_\downarrow`.
+
+    With the norm-conserving pseudopotentials distributed by Nanoworks, QE
+    density files are pseudo-valence densities and must not be interpreted
+    as reconstructed all-electron densities.
 
 .. code-block:: python
 
