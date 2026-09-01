@@ -5154,5 +5154,94 @@ def test_run_spin_polarized_band_projections(self):
                 setup_params,
             )
 
+    def test_run_scf_writes_hubbard_card(self):
+        atoms = bulk(
+            'Si',
+            'diamond',
+            a=5.43,
+        )
+
+        output_text = """
+        Program PWSCF v.7.2 starts
+
+        !    total energy = -15.00000000 Ry
+
+        JOB DONE.
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(
+                tmpdir
+            )
+
+            pseudo_file = (
+                tmpdir
+                / 'Si.upf'
+            )
+
+            pseudo_file.write_text(
+                """
+                <UPF version="2.0.1">
+                <PP_HEADER
+                    element="Si"
+                    z_valence="4.0"
+                />
+                <PP_PSWFC>
+                  <PP_CHI.1 label="3S"></PP_CHI.1>
+                  <PP_CHI.2 label="3P"></PP_CHI.2>
+                </PP_PSWFC>
+                </UPF>
+                """,
+                encoding='utf-8',
+            )
+
+            def fake_run_qe_program(**kwargs):
+                Path(
+                    kwargs['output_file']
+                ).write_text(
+                    output_text,
+                    encoding='utf-8',
+                )
+
+                return {
+                    'returncode': 0,
+                }
+
+            with patch(
+                'nanoworks.engine.qe.run_qe_program',
+                side_effect=fake_run_qe_program,
+            ):
+                workflow = run_scf(
+                    atoms=atoms,
+                    input_file=tmpdir / 'scf.in',
+                    output_file=tmpdir / 'scf.out',
+                    state_dir=tmpdir / 'state',
+                    pseudopotentials={
+                        'Si': 'Si.upf',
+                    },
+                    pseudo_dir=tmpdir,
+                    cutoff_ev=400.0,
+                    setup_params={
+                        'Si': ':p,4.0',
+                    },
+                )
+
+            input_text = (
+                workflow['input_file']
+                .read_text(
+                    encoding='utf-8',
+                )
+            )
+
+        self.assertIn(
+            'HUBBARD (ortho-atomic)',
+            input_text,
+        )
+        self.assertIn(
+            'U Si-3p 4',
+            input_text,
+        )
+        
+
 if __name__ == '__main__':
     unittest.main()
