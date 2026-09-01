@@ -60,106 +60,341 @@ def parse_args() -> argparse.Namespace:
 def clean_line(line: str) -> str:
     return line.split("!")[0].split("#")[0].strip()
 
+def _split_qe_assignments(
+    line: str,
+) -> List[str]:
+    """Split comma-separated QE namelist assignments safely."""
+    assignments = []
+    current = []
+    quote = None
+    parenthesis_depth = 0
 
-def parse_qe_input(path: Path) -> QEInputSettings:
+    for character in line:
+        if quote is not None:
+            current.append(
+                character
+            )
+
+            if character == quote:
+                quote = None
+
+            continue
+
+        if character in {
+            "'",
+            '"',
+        }:
+            quote = character
+            current.append(
+                character
+            )
+            continue
+
+        if character == '(':
+            parenthesis_depth += 1
+            current.append(
+                character
+            )
+            continue
+
+        if character == ')':
+            parenthesis_depth = max(
+                0,
+                parenthesis_depth - 1,
+            )
+            current.append(
+                character
+            )
+            continue
+
+        if (
+            character == ','
+            and parenthesis_depth == 0
+        ):
+            assignment = ''.join(
+                current
+            ).strip()
+
+            if assignment:
+                assignments.append(
+                    assignment
+                )
+
+            current = []
+            continue
+
+        current.append(
+            character
+        )
+
+    assignment = ''.join(
+        current
+    ).strip()
+
+    if assignment:
+        assignments.append(
+            assignment
+        )
+
+    return assignments
+
+
+def _parse_qe_float(
+    value: str,
+) -> float:
+    """Parse a QE floating-point value, including Fortran D exponents."""
+    return float(
+        value
+        .strip()
+        .replace('D', 'E')
+        .replace('d', 'e')
+    )
+
+def parse_qe_input(
+    path: Path,
+) -> QEInputSettings:
     settings = QEInputSettings()
-    lines = [clean_line(ln) for ln in path.read_text().splitlines()]
-    lines = [ln for ln in lines if ln]
 
-    expect_kpoints = False
-    k_mode: Optional[str] = None
+    lines = [
+        clean_line(
+            line
+        )
+        for line in path.read_text(
+            encoding='utf-8',
+        ).splitlines()
+    ]
+
+    lines = [
+        line
+        for line in lines
+        if line
+    ]
+
+    expect_automatic_kpoints = False
 
     for line in lines:
         upper = line.upper()
-        if upper.startswith("&"):
-            current_section = upper[1:]
-            continue
-        if upper == "/":
-            current_section = None
+
+        if upper.startswith('&'):
             continue
 
-        if upper.startswith("K_POINTS"):
+        if upper == '/':
+            continue
+
+        if upper.startswith('K_POINTS'):
             parts = line.split()
-            k_mode = parts[1].lower() if len(parts) > 1 else "automatic"
-            expect_kpoints = True
-            continue
 
-        if expect_kpoints:
-            expect_kpoints = False
-            tokens = line.split()
-            if k_mode.startswith("auto"):
-                mesh = [int(float(token)) for token in tokens[:3]]
-                shift = [int(float(token)) for token in tokens[3:6]] if len(tokens) >= 6 else [0, 0, 0]
-                settings.k_mesh = mesh
-                settings.k_shift = shift
-            elif k_mode.startswith("gamma"):
-                settings.k_mesh = [1, 1, 1]
-                settings.k_shift = [0, 0, 0]
+            k_mode = (
+                parts[1]
+                if len(parts) > 1
+                else 'automatic'
+            )
+
+            k_mode = (
+                k_mode
+                .strip()
+                .lower()
+                .strip('{}()')
+            )
+
+            if k_mode == 'gamma':
+                settings.k_mesh = [
+                    1,
+                    1,
+                    1,
+                ]
+                settings.k_shift = [
+                    0,
+                    0,
+                    0,
+                ]
+                expect_automatic_kpoints = False
+
+            elif k_mode == 'automatic':
+                expect_automatic_kpoints = True
+
             else:
-                nums = [int(float(token)) for token in tokens[:3]] if len(tokens) >= 3 else [1, 1, 1]
-                settings.k_mesh = nums
-                settings.k_shift = [0, 0, 0]
+                expect_automatic_kpoints = False
+
             continue
 
-        if "=" in line:
-            key, value = [part.strip() for part in line.split("=", 1)]
+        if expect_automatic_kpoints:
+            expect_automatic_kpoints = False
+
+            tokens = line.split()
+
+            if len(tokens) < 3:
+                raise ValueError(
+                    "QE automatic K_POINTS card requires "
+                    "at least three mesh values."
+                )
+
+            try:
+                settings.k_mesh = [
+                    int(
+                        float(
+                            token
+                        )
+                    )
+                    for token in tokens[:3]
+                ]
+
+                settings.k_shift = (
+                    [
+                        int(
+                            float(
+                                token
+                            )
+                        )
+                        for token in tokens[3:6]
+                    ]
+                    if len(tokens) >= 6
+                    else [
+                        0,
+                        0,
+                        0,
+                    ]
+                )
+
+            except ValueError as exc:
+                raise ValueError(
+                    "Unable to parse QE automatic "
+                    f"K_POINTS row: {line}"
+                ) from exc
+
+            continue
+
+        if '=' not in line:
+            continue
+
+        for assignment in _split_qe_assignments(
+            line
+        ):
+            if '=' not in assignment:
+                continue
+
+            key, value = [
+                part.strip()
+                for part in assignment.split(
+                    '=',
+                    1,
+                )
+            ]
+
             key_lower = key.lower()
 
-            if key_lower.startswith("starting_magnetization"):
-                species_match = re.search(r"starting_magnetization\(([^)]+)\)", key_lower)
-                species = species_match.group(1) if species_match else "default"
+            if key_lower.startswith(
+                'starting_magnetization'
+            ):
+                species_match = re.search(
+                    r'starting_magnetization'
+                    r'\(([^)]+)\)',
+                    key_lower,
+                )
+
+                species = (
+                    species_match.group(1)
+                    if species_match
+                    else 'default'
+                )
+
                 try:
-                    settings.starting_magnetization[species] = float(value.rstrip(',').replace('d', 'e'))
+                    settings.starting_magnetization[
+                        species
+                    ] = _parse_qe_float(
+                        value
+                    )
+
                 except ValueError:
                     logger.warning(
-                        "Unable to parse starting_magnetization for species %r from value %r; leaving default",
+                        "Unable to parse "
+                        "starting_magnetization for "
+                        "species %r from value %r; "
+                        "leaving default",
                         species,
                         value,
                     )
+
                 continue
 
-            value_clean = value.rstrip(",").replace("'", "").replace('"', '').strip()
-            value_clean = value_clean.replace(".true.", "True").replace(".false.", "False")
-            value_clean = value_clean.replace('d', 'e')
+            value_clean = (
+                value
+                .strip()
+                .strip("'\"")
+                .strip()
+            )
 
-            if key_lower == "calculation":
-                settings.calculation = value_clean.lower()
-            elif key_lower == "ecutwfc":
+            if key_lower == 'calculation':
+                settings.calculation = (
+                    value_clean.lower()
+                )
+
+            elif key_lower == 'ecutwfc':
                 try:
-                    settings.ecutwfc = float(value_clean)
+                    settings.ecutwfc = (
+                        _parse_qe_float(
+                            value_clean
+                        )
+                    )
                 except ValueError:
                     logger.warning(
-                        "Unable to parse ecutwfc from value %r; leaving default",
+                        "Unable to parse ecutwfc "
+                        "from value %r; leaving default",
                         value_clean,
                     )
-            elif key_lower == "occupations":
-                settings.occupations = value_clean.lower()
-            elif key_lower == "smearing":
-                settings.smearing = value_clean.lower()
-            elif key_lower == "degauss":
+
+            elif key_lower == 'occupations':
+                settings.occupations = (
+                    value_clean.lower()
+                )
+
+            elif key_lower == 'smearing':
+                settings.smearing = (
+                    value_clean.lower()
+                )
+
+            elif key_lower == 'degauss':
                 try:
-                    settings.degauss = float(value_clean)
+                    settings.degauss = (
+                        _parse_qe_float(
+                            value_clean
+                        )
+                    )
                 except ValueError:
                     logger.warning(
-                        "Unable to parse degauss from value %r; leaving default",
+                        "Unable to parse degauss "
+                        "from value %r; leaving default",
                         value_clean,
                     )
-            elif key_lower == "nspin":
+
+            elif key_lower == 'nspin':
                 try:
-                    settings.nspin = int(float(value_clean))
+                    settings.nspin = int(
+                        _parse_qe_float(
+                            value_clean
+                        )
+                    )
                 except ValueError:
                     logger.warning(
-                        "Unable to parse nspin from value %r; leaving default",
+                        "Unable to parse nspin "
+                        "from value %r; leaving default",
                         value_clean,
                     )
-            elif key_lower == "conv_thr":
+
+            elif key_lower == 'conv_thr':
                 try:
-                    settings.conv_thr = float(value_clean)
+                    settings.conv_thr = (
+                        _parse_qe_float(
+                            value_clean
+                        )
+                    )
                 except ValueError:
                     logger.warning(
-                        "Unable to parse conv_thr from value %r; leaving default",
+                        "Unable to parse conv_thr "
+                        "from value %r; leaving default",
                         value_clean,
                     )
+
     return settings
 
 

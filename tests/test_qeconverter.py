@@ -214,6 +214,117 @@ K_POINTS automatic
             'gaas_relax',
         )
 
+    def test_parse_qe_input_handles_multiple_assignments(self):
+        input_text = """
+&CONTROL
+  calculation = 'bands',
+/
+&SYSTEM
+  ibrav = 0, nat = 2, ntyp = 1,
+  ecutwfc = 4.0D1, occupations = 'fixed', nspin = 1,
+/
+K_POINTS {automatic}
+6 6 4 1 1 0
+"""
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            input_file = (
+                Path(tmpdir)
+                / 'bands.in'
+            )
+
+            input_file.write_text(
+                input_text,
+                encoding='utf-8',
+            )
+
+            settings = parse_qe_input(
+                input_file
+            )
+
+        self.assertEqual(
+            settings.calculation,
+            'bands',
+        )
+        self.assertAlmostEqual(
+            settings.ecutwfc,
+            40.0,
+        )
+        self.assertEqual(
+            settings.occupations,
+            'fixed',
+        )
+        self.assertEqual(
+            settings.nspin,
+            1,
+        )
+        self.assertEqual(
+            settings.k_mesh,
+            [
+                6,
+                6,
+                4,
+            ],
+        )
+        self.assertEqual(
+            settings.k_shift,
+            [
+                1,
+                1,
+                0,
+            ],
+        )
+
+    def test_parse_qe_input_reads_gamma_card_without_data_row(self):
+        input_text = """
+&CONTROL
+  calculation = 'scf',
+/
+&SYSTEM
+  ecutwfc = 30.0,
+/
+K_POINTS gamma
+CELL_PARAMETERS angstrom
+5.0 0.0 0.0
+0.0 5.0 0.0
+0.0 0.0 5.0
+"""
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            input_file = (
+                Path(tmpdir)
+                / 'gamma.in'
+            )
+
+            input_file.write_text(
+                input_text,
+                encoding='utf-8',
+            )
+
+            settings = parse_qe_input(
+                input_file
+            )
+
+        self.assertEqual(
+            settings.k_mesh,
+            [
+                1,
+                1,
+                1,
+            ],
+        )
+        self.assertEqual(
+            settings.k_shift,
+            [
+                0,
+                0,
+                0,
+            ],
+        )
+        self.assertAlmostEqual(
+            settings.ecutwfc,
+            30.0,
+        )
 
 if __name__ == '__main__':
     unittest.main()
