@@ -1092,6 +1092,21 @@ def build_electrons_settings(
 
     return settings
 
+def _qe_cell_axes_are_orthogonal(
+    atoms,
+    tolerance=1.0e-6,
+):
+    """Return whether all three cell angles are approximately 90 degrees."""
+    angles = atoms.cell.angles()
+
+    return all(
+        abs(
+            float(angle)
+            - 90.0
+        ) <= tolerance
+        for angle in angles
+    )
+
 def resolve_qe_cell_dofree(
     relax_cell,
 ):
@@ -1215,6 +1230,7 @@ def resolve_qe_relaxation_settings(
     relax_cell,
     hydrostatic_pressure=0.0,
     fix_symmetry=False,
+    atoms=None,
 ):
     """Resolve Nanoworks geometry settings to QE namelists."""
     optimizer_key = (
@@ -1265,6 +1281,32 @@ def resolve_qe_relaxation_settings(
         relax_cell
     )
 
+    notices = []
+
+    if (
+        atoms is not None
+        and cell_dofree == 'xyz'
+        and not _qe_cell_axes_are_orthogonal(
+            atoms
+        )
+    ):
+        cell_dofree = 'all'
+
+        if fix_symmetry:
+            notices.append(
+                "The normal-strain Relax_cell mask is mapped "
+                "to cell_dofree='all' because QE's 'xyz' mode "
+                "is unsafe for non-orthogonal cell axes; active "
+                "crystal symmetry constrains compatible cell changes."
+            )
+        else:
+            notices.append(
+                "The normal-strain Relax_cell mask is mapped "
+                "to cell_dofree='all' because QE's 'xyz' mode "
+                "is unsafe for non-orthogonal cell axes; this "
+                "also enables shear degrees of freedom."
+            )
+
     if (
         cell_dofree is None
         and hydrostatic_pressure != 0.0
@@ -1284,6 +1326,7 @@ def resolve_qe_relaxation_settings(
             if cell_dofree is not None
             else 'relax'
         ),
+        'notices': notices,
         'control': {
             'forc_conv_thr': ev_to_rydberg(
                 max_force
@@ -1622,6 +1665,15 @@ def render_pw_input(
             )
         )
 
+    if relaxation_settings is not None:
+        for notice in relaxation_settings.get(
+            'notices',
+            [],
+        ):
+            lines.append(
+                f"! NOTICE: {notice}"
+            )
+
     lines.extend([
         '',
         'ATOMIC_SPECIES',
@@ -1795,6 +1847,7 @@ def render_relax_input(
         relax_cell=relax_cell,
         hydrostatic_pressure=hydrostatic_pressure,
         fix_symmetry=fix_symmetry,
+        atoms=atoms,
     )
 
     return render_pw_input(
@@ -4814,6 +4867,7 @@ def run_relax(
         relax_cell=relax_cell,
         hydrostatic_pressure=hydrostatic_pressure,
         fix_symmetry=fix_symmetry,
+        atoms=atoms,
     )
 
     input_text = render_pw_input(

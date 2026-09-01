@@ -1243,9 +1243,15 @@ class TestQEEngine(unittest.TestCase):
             text,
         )
         self.assertIn(
-            "cell_dofree = 'xyz'",
+            "cell_dofree = 'all'",
             text,
         )
+        
+        self.assertIn(
+            "! NOTICE: The normal-strain Relax_cell mask",
+            text,
+        )
+        
         self.assertIn(
             'press = 25',
             text,
@@ -1257,6 +1263,66 @@ class TestQEEngine(unittest.TestCase):
         self.assertLess(
             text.index('&CELL'),
             text.index('ATOMIC_SPECIES'),
+        )
+
+    def test_render_orthogonal_cell_keeps_xyz_relaxation(self):
+        atoms = Atoms(
+            'Si',
+            positions=[
+                [
+                    0.0,
+                    0.0,
+                    0.0,
+                ],
+            ],
+            cell=[
+                [
+                    5.0,
+                    0.0,
+                    0.0,
+                ],
+                [
+                    0.0,
+                    5.0,
+                    0.0,
+                ],
+                [
+                    0.0,
+                    0.0,
+                    5.0,
+                ],
+            ],
+            pbc=True,
+        )
+
+        text = render_relax_input(
+            atoms=atoms,
+            pseudopotentials={
+                'Si': 'Si.upf',
+            },
+            cutoff_ev=400.0,
+            kpoint_size=(4, 4, 4),
+            optimizer='LBFGS',
+            max_force=0.05,
+            max_step=0.20,
+            relax_cell=[
+                True,
+                True,
+                True,
+                False,
+                False,
+                False,
+            ],
+            fix_symmetry=True,
+        )
+
+        self.assertIn(
+            "cell_dofree = 'xyz'",
+            text,
+        )
+        self.assertNotIn(
+            '! NOTICE:',
+            text,
         )
 
     def test_render_pw_input_rejects_mismatched_relaxation_type(self):
