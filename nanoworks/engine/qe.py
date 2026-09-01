@@ -5101,6 +5101,129 @@ def run_dos(
         'execution': execution,
     }
 
+def run_pp_density(
+    input_file,
+    output_file,
+    state_dir,
+    filplot,
+    cube_file,
+    plot_num=0,
+    spin_component=None,
+    parallel_cores=1,
+    executable='pp.x',
+    prefix='nanoworks',
+):
+    """Render and execute one QE pp.x density calculation."""
+    input_file = Path(
+        input_file
+    )
+
+    output_file = Path(
+        output_file
+    )
+
+    state_dir = Path(
+        state_dir
+    )
+
+    filplot = Path(
+        filplot
+    )
+
+    cube_file = Path(
+        cube_file
+    )
+
+    if not has_qe_state(
+        state_dir,
+        prefix=prefix,
+    ):
+        raise FileNotFoundError(
+            "A valid QE ground-state result is required "
+            f"for the density calculation: {state_dir}"
+        )
+
+    input_text = render_pp_input(
+        prefix=prefix,
+        outdir=state_dir,
+        filplot=filplot,
+        fileout=cube_file,
+        plot_num=plot_num,
+        spin_component=spin_component,
+    )
+
+    input_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    output_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    filplot.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    cube_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    input_file.write_text(
+        input_text,
+        encoding='utf-8',
+    )
+
+    launcher = build_qe_launcher(
+        parallel_cores=parallel_cores
+    )
+
+    execution = run_qe_program(
+        input_file=input_file,
+        output_file=output_file,
+        executable=executable,
+        launcher=launcher,
+    )
+
+    output_text = output_file.read_text(
+        encoding='utf-8',
+        errors='replace',
+    )
+
+    if 'JOB DONE.' not in output_text:
+        raise RuntimeError(
+            "Quantum ESPRESSO density calculation "
+            "finished without a 'JOB DONE.' marker. "
+            f"See '{output_file}'."
+        )
+
+    if not cube_file.is_file():
+        raise RuntimeError(
+            "Quantum ESPRESSO pp.x finished but the "
+            "density Cube file was not created: "
+            f"{cube_file}"
+        )
+
+    return {
+        'input_file': input_file,
+        'output_file': output_file,
+        'state_dir': state_dir,
+        'filplot': filplot,
+        'cube_file': cube_file,
+        'plot_num': int(
+            plot_num
+        ),
+        'spin_component': (
+            int(spin_component)
+            if spin_component is not None
+            else None
+        ),
+        'execution': execution,
+    }
+
 def run_projwfc(
     input_file,
     output_file,

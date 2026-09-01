@@ -60,6 +60,7 @@ from nanoworks.engine.qe import (
     parse_projwfc_band_file,
     prepare_qe_band_projection_data,
     render_pp_input,
+    run_pp_density,
 )
 
 
@@ -4625,6 +4626,225 @@ def test_run_spin_polarized_band_projections(self):
                 plot_num=6,
                 spin_component=1,
             )
+
+    def test_run_pp_density_requires_ground_state(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(
+                tmpdir
+            )
+
+            with self.assertRaisesRegex(
+                FileNotFoundError,
+                'valid QE ground-state result',
+            ):
+                run_pp_density(
+                    input_file=(
+                        tmpdir
+                        / 'density.in'
+                    ),
+                    output_file=(
+                        tmpdir
+                        / 'density.out'
+                    ),
+                    state_dir=(
+                        tmpdir
+                        / 'state'
+                    ),
+                    filplot=(
+                        tmpdir
+                        / 'density.pp'
+                    ),
+                    cube_file=(
+                        tmpdir
+                        / 'density.cube'
+                    ),
+                )
+
+    def test_run_pp_density_creates_cube_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(
+                tmpdir
+            )
+
+            state_dir = (
+                tmpdir
+                / 'state'
+            )
+
+            save_dir = (
+                state_dir
+                / 'nanoworks.save'
+            )
+
+            save_dir.mkdir(
+                parents=True
+            )
+
+            (
+                save_dir
+                / 'data-file-schema.xml'
+            ).write_text(
+                '<qes/>',
+                encoding='utf-8',
+            )
+
+            cube_file = (
+                tmpdir
+                / 'density.cube'
+            )
+
+            def fake_run_qe_program(**kwargs):
+                Path(
+                    kwargs['output_file']
+                ).write_text(
+                    "Program PP\nJOB DONE.\n",
+                    encoding='utf-8',
+                )
+
+                cube_file.write_text(
+                    "Cube density data\n",
+                    encoding='utf-8',
+                )
+
+                return {
+                    'returncode': 0,
+                }
+
+            with patch(
+                'nanoworks.engine.qe.run_qe_program',
+                side_effect=fake_run_qe_program,
+            ) as run:
+                workflow = run_pp_density(
+                    input_file=(
+                        tmpdir
+                        / 'density.in'
+                    ),
+                    output_file=(
+                        tmpdir
+                        / 'density.out'
+                    ),
+                    state_dir=state_dir,
+                    filplot=(
+                        tmpdir
+                        / 'density.pp'
+                    ),
+                    cube_file=cube_file,
+                    plot_num=0,
+                    spin_component=1,
+                    parallel_cores=4,
+                )
+
+            self.assertEqual(
+                run.call_count,
+                1,
+            )
+
+            self.assertEqual(
+                run.call_args.kwargs[
+                    'executable'
+                ],
+                'pp.x',
+            )
+
+            input_text = (
+                workflow[
+                    'input_file'
+                ]
+                .read_text(
+                    encoding='utf-8'
+                )
+            )
+
+            self.assertIn(
+                'plot_num = 0',
+                input_text,
+            )
+
+            self.assertIn(
+                'spin_component = 1',
+                input_text,
+            )
+
+            self.assertTrue(
+                workflow[
+                    'cube_file'
+                ].is_file()
+            )
+
+            self.assertEqual(
+                workflow[
+                    'spin_component'
+                ],
+                1,
+            )
+
+    def test_run_pp_density_requires_cube_output(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(
+                tmpdir
+            )
+
+            state_dir = (
+                tmpdir
+                / 'state'
+            )
+
+            save_dir = (
+                state_dir
+                / 'nanoworks.save'
+            )
+
+            save_dir.mkdir(
+                parents=True
+            )
+
+            (
+                save_dir
+                / 'data-file-schema.xml'
+            ).write_text(
+                '<qes/>',
+                encoding='utf-8',
+            )
+
+            def fake_run_qe_program(**kwargs):
+                Path(
+                    kwargs['output_file']
+                ).write_text(
+                    "Program PP\nJOB DONE.\n",
+                    encoding='utf-8',
+                )
+
+                return {
+                    'returncode': 0,
+                }
+
+            with patch(
+                'nanoworks.engine.qe.run_qe_program',
+                side_effect=fake_run_qe_program,
+            ):
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    'Cube file was not created',
+                ):
+                    run_pp_density(
+                        input_file=(
+                            tmpdir
+                            / 'density.in'
+                        ),
+                        output_file=(
+                            tmpdir
+                            / 'density.out'
+                        ),
+                        state_dir=state_dir,
+                        filplot=(
+                            tmpdir
+                            / 'density.pp'
+                        ),
+                        cube_file=(
+                            tmpdir
+                            / 'density.cube'
+                        ),
+                    )
 
 if __name__ == '__main__':
     unittest.main()
