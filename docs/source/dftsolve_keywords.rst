@@ -33,12 +33,12 @@ or:
 
     Quantum ESPRESSO support is currently under active development.
     At this stage, ``Engine = 'QE'`` supports PBE PW ground-state,
-    fixed-cell and variable-cell geometry optimization, non-spin DOS/PDOS,
-    band-structure, and projected-band workflows using scalar-relativistic
-    PseudoDojo pseudopotentials. Spin-polarized QE initialization is being
-    completed and is not yet a supported end-to-end workflow. QE vdW, SOC,
-    hybrid-functional, elastic, phonon, and optical workflows are not
-    supported yet.
+    fixed-cell and variable-cell geometry optimization, total and
+    orbital-projected DOS, band-structure, and projected-band workflows
+    using scalar-relativistic PseudoDojo pseudopotentials. Collinear-spin
+    ground-state, DOS/PDOS, band, and projected-band calculations are
+    supported. QE vdW, SOC, hybrid-functional, elastic, phonon, and
+    optical workflows are not supported yet.
 
 .. describe:: Mode
 
@@ -101,11 +101,11 @@ or:
 
 .. note::
 
-    The QE backend currently supports total DOS and orbital-projected DOS
-    for non-spin PBE PW calculations. A valid QE ground-state result is
-    required before the DOS workflow is started. Spin-resolved QE DOS/PDOS
-    output support is present, but the QE magnetic ground-state initialization
-    is still being completed.
+    The QE backend supports total DOS and orbital-projected DOS for
+    non-spin and collinear-spin PBE PW calculations. A valid QE
+    ground-state result is required before the DOS workflow is started.
+    Spin-polarized calculations produce resolved spin-up and spin-down
+    DOS/PDOS data and figures.
 
 .. describe:: Band_calc
 
@@ -120,9 +120,11 @@ or:
 
 .. note::
 
-    The QE backend supports non-spin PBE PW band structures and
-    orbital-projected band plots. A valid QE ground-state result is required.
-    Spin-polarized QE band structures are not supported yet.
+    The QE backend supports non-spin and collinear-spin PBE PW band
+    structures and orbital-projected band plots. A valid QE ground-state
+    result is required. Spin-polarized calculations produce separate
+    spin-up and spin-down band data; projected-band plots are also written
+    separately for the two spin channels.
 
 .. describe:: Density_calc
 
@@ -835,7 +837,10 @@ Electronic Calculations Keywords
     must contain exactly one value per atom.
 
     GPAW PW and LCAO calculations use the resolved atom-by-atom moments.
-    The same common representation is intended for QE magnetic workflows.
+    QE converts the same moments to ``starting_magnetization`` fractions
+    using the valence-electron counts read from the UPF files. When atoms of
+    the same element require different initial moments, Nanoworks creates
+    distinct internal QE species while preserving the common user input.
 
 .. code-block:: python
 
@@ -891,10 +896,11 @@ Electronic Calculations Keywords
     :Type: ``boolean``
     :Default: ``False``
 
-    Enables orbital-projected band structure plotting. When enabled,
-    the contribution of selected atomic orbitals is visualized on the
-    band structure using colored markers. The projections are defined
-    with the ``Projections`` keyword.
+    Enables orbital-projected band structure plotting with GPAW or QE.
+    When enabled, the contribution of selected atomic orbitals is
+    visualized on the band structure using colored markers. The
+    projections are defined with the ``Projections`` keyword. The QE
+    backend obtains the atomic projections by running ``projwfc.x``.
 
 .. code-block:: python
 
@@ -905,7 +911,13 @@ Electronic Calculations Keywords
     The marker size at each k-point is proportional to the projected
     orbital weight. This makes it possible to identify the orbital
     character of individual bands and to analyze orbital hybridization
-    between different atomic species.
+    between different atomic species. For spin-polarized calculations,
+    separate ``Spin-Up`` and ``Spin-Down`` projected-band figures
+    are written.
+
+    GPAW and QE use different projector definitions, so their numerical
+    projection weights need not be identical even when the band energies
+    and qualitative orbital character agree.
 
 .. describe:: Projections
 
@@ -914,19 +926,20 @@ Electronic Calculations Keywords
 
     Defines the atomic orbital projections used for the projected band
     structure. Each list element is a Python dictionary describing one
-    projection.
+    projection. An empty list automatically selects all atoms and all
+    available orbitals and labels the result ``Total Contribution``.
 
     Dictionary fields:
 
     * ``atoms`` (list of integers)
-        Indices of the atoms whose orbital contributions will be combined.
-        Atom numbering follows the order of atoms in the input structure
-        (CIF, XYZ, POSCAR, etc.).
+        Zero-based indices of the atoms whose orbital contributions will
+        be combined. Atom numbering follows the order of atoms in the input
+        structure (CIF, XYZ, POSCAR, etc.); the first atom is index ``0``.
 
-    * ``orbital`` (string)
+    * ``orbital`` (string or ``None``)
         Orbital type to project. Supported values are ``"s"``, ``"p"``,
-        ``"d"``, and ``"f"`` (depending on the pseudopotential and the
-        atomic species).
+        ``"d"``, and ``"f"`` when available for the selected atom and
+        pseudopotential. Use ``None`` to sum all available orbitals.
 
     * ``color`` (string)
         Matplotlib-compatible color used when plotting the projected
