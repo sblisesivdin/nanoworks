@@ -3,6 +3,7 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 from ase.units import Bohr
+from unittest.mock import patch
 from nanoworks.qeconverter import (
     QEInputSettings,
     build_config_lines,
@@ -15,6 +16,7 @@ from nanoworks.qeconverter import (
     _read_qe_species_z_valence,
     _resolve_qe_pseudo_path,
     _build_magnetic_lines,
+    main as qeconverter_main,
 )
 
 
@@ -1324,6 +1326,134 @@ K_POINTS gamma
                 'starting_magnetization'
             ),
             text,
+        )
+
+    def test_main_converts_spin_input_without_pseudopotential_files(
+        self,
+    ):
+        input_text = """
+&CONTROL
+  calculation = 'scf',
+  pseudo_dir = './missing-pseudos',
+/
+&SYSTEM
+  ibrav = 0,
+  nat = 1,
+  ntyp = 1,
+  ecutwfc = 40.0,
+  occupations = 'smearing',
+  smearing = 'fd',
+  degauss = 0.01,
+  nspin = 2,
+  starting_magnetization(1) = 0.25,
+/
+&ELECTRONS
+  conv_thr = 1.0D-8,
+/
+
+ATOMIC_SPECIES
+Fe 55.845 Fe.upf
+
+ATOMIC_POSITIONS crystal
+Fe 0.000000 0.000000 0.000000
+
+K_POINTS gamma
+
+CELL_PARAMETERS angstrom
+2.870000 0.000000 0.000000
+0.000000 2.870000 0.000000
+0.000000 0.000000 2.870000
+"""
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(
+                tmpdir
+            )
+
+            input_file = (
+                tmpdir
+                / 'fe.scf.in'
+            )
+
+            output_dir = (
+                tmpdir
+                / 'converted'
+            )
+
+            input_file.write_text(
+                input_text,
+                encoding='utf-8',
+            )
+
+            args = SimpleNamespace(
+                input=input_file,
+                output_dir=output_dir,
+                system_name='FeMissingPseudo',
+                outdirname=None,
+                input_filename=None,
+                xc=None,
+                version=False,
+            )
+
+            with patch(
+                'nanoworks.qeconverter.parse_args',
+                return_value=args,
+            ):
+                qeconverter_main()
+
+            geometry_file = (
+                output_dir
+                / 'FeMissingPseudo.cif'
+            )
+
+            config_file = (
+                output_dir
+                / 'FeMissingPseudo.py'
+            )
+
+            self.assertTrue(
+                geometry_file.is_file()
+            )
+            self.assertTrue(
+                config_file.is_file()
+            )
+
+            config_text = (
+                config_file.read_text(
+                    encoding='utf-8',
+                )
+            )
+
+        self.assertIn(
+            "Engine = 'QE'",
+            config_text,
+        )
+        self.assertIn(
+            "Mode = 'PW'",
+            config_text,
+        )
+        self.assertIn(
+            'Ground_calc = True',
+            config_text,
+        )
+        self.assertIn(
+            'Spin_calc = True',
+            config_text,
+        )
+        self.assertIn(
+            'Magmom_per_atom = [0.25]',
+            config_text,
+        )
+        self.assertIn(
+            (
+                "# NOTICE: The source UPF z_valence "
+                "for species 'Fe' was unavailable"
+            ),
+            config_text,
+        )
+        self.assertIn(
+            "Occupation = {'name': 'fermi-dirac'",
+            config_text,
         )
 
 if __name__ == '__main__':
