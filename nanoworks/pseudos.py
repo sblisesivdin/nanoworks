@@ -278,6 +278,76 @@ def read_upf_z_valence(path):
 
     return z_valence
 
+def read_upf_atomic_manifolds(path):
+    """Read atomic-wavefunction manifolds from a UPF file."""
+    path = Path(
+        path
+    )
+
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"QE pseudopotential file was not found: {path}"
+        )
+
+    text = path.read_text(
+        encoding='utf-8',
+        errors='ignore',
+    )
+
+    pswfc_match = re.search(
+        r'<PP_PSWFC\b[^>]*>'
+        r'(.*?)'
+        r'</PP_PSWFC\s*>',
+        text,
+        flags=(
+            re.IGNORECASE
+            | re.DOTALL
+        ),
+    )
+
+    if pswfc_match is None:
+        raise ValueError(
+            "Could not find the PP_PSWFC section in "
+            f"UPF file '{path}'."
+        )
+
+    labels = re.findall(
+        r'<PP_CHI(?:\.\d+)?\b[^>]*'
+        r'\blabel\s*=\s*["\']([^"\']+)["\']',
+        pswfc_match.group(1),
+        flags=re.IGNORECASE,
+    )
+
+    manifolds = []
+
+    for label in labels:
+        match = re.match(
+            r'\s*(\d+)\s*([spdfg])',
+            label,
+            flags=re.IGNORECASE,
+        )
+
+        if match is None:
+            continue
+
+        manifold = (
+            match.group(1)
+            + match.group(2).lower()
+        )
+
+        if manifold not in manifolds:
+            manifolds.append(
+                manifold
+            )
+
+    if not manifolds:
+        raise ValueError(
+            "Could not determine atomic-wavefunction manifolds "
+            f"from UPF file '{path}'."
+        )
+
+    return manifolds
+
 def _install_pseudodojo_set(
     relativistic,
     overwrite=False,

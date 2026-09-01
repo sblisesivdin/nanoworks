@@ -21,6 +21,7 @@ from nanoworks.pseudos import (
     install_qe_pseudopotentials,
     resolve_qe_pseudopotentials,
     read_upf_z_valence,
+    read_upf_atomic_manifolds,
 )
 
 
@@ -346,6 +347,66 @@ class TestPseudopotentials(unittest.TestCase):
                 'Could not determine z_valence',
             ):
                 read_upf_z_valence(
+                    pseudo_file
+                )
+
+    def test_read_upf_atomic_manifolds(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            pseudo_file = (
+                Path(tmp)
+                / 'Zn.upf'
+            )
+
+            pseudo_file.write_text(
+                """
+                <UPF version="2.0.1">
+                <PP_PSWFC>
+                  <PP_CHI.1 label="4S" l="0">
+                  </PP_CHI.1>
+                  <PP_CHI.2 label="4P" l="1">
+                  </PP_CHI.2>
+                  <PP_CHI.3 label="3D" l="2">
+                  </PP_CHI.3>
+                  <PP_CHI.4 label="3D3/2" l="2">
+                  </PP_CHI.4>
+                </PP_PSWFC>
+                </UPF>
+                """,
+                encoding='utf-8',
+            )
+
+            manifolds = (
+                read_upf_atomic_manifolds(
+                    pseudo_file
+                )
+            )
+
+        self.assertEqual(
+            manifolds,
+            [
+                '4s',
+                '4p',
+                '3d',
+            ],
+        )
+
+    def test_read_upf_atomic_manifolds_rejects_missing_data(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            pseudo_file = (
+                Path(tmp)
+                / 'Si.upf'
+            )
+
+            pseudo_file.write_text(
+                '<UPF version="2.0.1"></UPF>\n',
+                encoding='utf-8',
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                'Could not find the PP_PSWFC section',
+            ):
+                read_upf_atomic_manifolds(
                     pseudo_file
                 )
 
