@@ -51,6 +51,18 @@ class QEInputSettings:
     cell_dofree: Optional[str] = None
     pressure_kbar: Optional[float] = None
     nosym: Optional[bool] = None
+    nat: Optional[int] = None
+    ntyp: Optional[int] = None
+    pseudo_dir: Optional[str] = None
+    species_labels: List[str] = field(
+        default_factory=list
+    )
+    species_pseudopotentials: Dict[str, str] = field(
+        default_factory=dict
+    )
+    atomic_position_labels: List[str] = field(
+        default_factory=list
+    )
 
 
 def parse_args() -> argparse.Namespace:
@@ -820,9 +832,65 @@ def parse_qe_input(
     ]
 
     expect_automatic_kpoints = False
+    remaining_species_rows = 0
+    remaining_position_rows = 0
 
     for line in lines:
         upper = line.upper()
+
+        if remaining_species_rows > 0:
+            fields = line.split()
+
+            if len(fields) >= 3:
+                species_label = fields[
+                    0
+                ]
+
+                pseudopotential = fields[
+                    2
+                ]
+
+                settings.species_labels.append(
+                    species_label
+                )
+
+                settings.species_pseudopotentials[
+                    species_label
+                ] = pseudopotential
+
+                remaining_species_rows -= 1
+
+                continue
+
+            logger.warning(
+                "Unable to parse ATOMIC_SPECIES "
+                "row %r; leaving it unresolved",
+                line,
+            )
+
+            remaining_species_rows = 0
+
+        if remaining_position_rows > 0:
+            fields = line.split()
+
+            if len(fields) >= 4:
+                settings.atomic_position_labels.append(
+                    fields[
+                        0
+                    ]
+                )
+
+                remaining_position_rows -= 1
+
+                continue
+
+            logger.warning(
+                "Unable to parse ATOMIC_POSITIONS "
+                "row %r; leaving it unresolved",
+                line,
+            )
+
+            remaining_position_rows = 0
 
         if upper.startswith('&'):
             continue
@@ -830,6 +898,36 @@ def parse_qe_input(
         if upper == '/':
             continue
 
+        if upper.startswith(
+            'ATOMIC_SPECIES'
+        ):
+            if settings.ntyp is None:
+                logger.warning(
+                    "ATOMIC_SPECIES cannot be parsed "
+                    "because ntyp was not found."
+                )
+            else:
+                remaining_species_rows = (
+                    settings.ntyp
+                )
+
+            continue
+
+        if upper.startswith(
+            'ATOMIC_POSITIONS'
+        ):
+            if settings.nat is None:
+                logger.warning(
+                    "ATOMIC_POSITIONS labels cannot be "
+                    "parsed because nat was not found."
+                )
+            else:
+                remaining_position_rows = (
+                    settings.nat
+                )
+
+            continue
+            
         if upper.startswith('K_POINTS'):
             parts = line.split()
 
@@ -1000,6 +1098,39 @@ def parse_qe_input(
             elif key_lower == 'smearing':
                 settings.smearing = (
                     value_clean.lower()
+                )
+
+            elif key_lower == 'nat':
+                try:
+                    settings.nat = int(
+                        _parse_qe_float(
+                            value_clean
+                        )
+                    )
+                except ValueError:
+                    logger.warning(
+                        "Unable to parse nat "
+                        "from value %r; leaving default",
+                        value_clean,
+                    )
+
+            elif key_lower == 'ntyp':
+                try:
+                    settings.ntyp = int(
+                        _parse_qe_float(
+                            value_clean
+                        )
+                    )
+                except ValueError:
+                    logger.warning(
+                        "Unable to parse ntyp "
+                        "from value %r; leaving default",
+                        value_clean,
+                    )
+
+            elif key_lower == 'pseudo_dir':
+                settings.pseudo_dir = (
+                    value_clean
                 )
 
             elif key_lower == 'degauss':
