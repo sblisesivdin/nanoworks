@@ -41,6 +41,8 @@ class QEInputSettings:
     conv_thr: Optional[float] = None
     k_mesh: Optional[List[int]] = None
     k_shift: Optional[List[int]] = None
+    total_charge: Optional[float] = None
+    nbands: Optional[int] = None
 
 
 def parse_args() -> argparse.Namespace:
@@ -148,6 +150,95 @@ def _parse_qe_float(
         .strip()
         .replace('D', 'E')
         .replace('d', 'e')
+    )
+
+def _normalize_qe_smearing(
+    smearing: Optional[str],
+) -> str:
+    """Translate QE smearing aliases to Nanoworks names."""
+    name = (
+        'gaussian'
+        if smearing is None
+        else smearing.strip().lower()
+    )
+
+    aliases = {
+        'gauss': 'gaussian',
+        'gaussian': 'gaussian',
+        'mp': 'methfessel-paxton',
+        'methfessel-paxton': 'methfessel-paxton',
+        'methfessel_paxton': 'methfessel-paxton',
+        'mv': 'marzari-vanderbilt',
+        'm-v': 'marzari-vanderbilt',
+        'cold': 'marzari-vanderbilt',
+        'marzari-vanderbilt': 'marzari-vanderbilt',
+        'marzari_vanderbilt': 'marzari-vanderbilt',
+        'fd': 'fermi-dirac',
+        'fermi-dirac': 'fermi-dirac',
+        'fermi_dirac': 'fermi-dirac',
+    }
+
+    try:
+        return aliases[
+            name
+        ]
+    except KeyError as exc:
+        raise ValueError(
+            "Unsupported QE smearing scheme: "
+            f"{smearing}"
+        ) from exc
+
+
+def _build_occupation_line(
+    settings: QEInputSettings,
+) -> str:
+    """Build a Nanoworks occupation setting from QE input."""
+    occupation = (
+        'fixed'
+        if settings.occupations is None
+        else settings.occupations.strip().lower()
+    )
+
+    if occupation == 'fixed':
+        return "Occupation = 'fixed'"
+
+    tetrahedra = {
+        'tetrahedra',
+        'tetrahedra_lin',
+        'tetrahedra_opt',
+    }
+
+    if occupation in tetrahedra:
+        return (
+            f"Occupation = '{occupation}'"
+        )
+
+    if occupation != 'smearing':
+        raise ValueError(
+            "Unsupported QE occupation scheme: "
+            f"{settings.occupations}"
+        )
+
+    if settings.degauss is None:
+        raise ValueError(
+            "QE occupations='smearing' requires "
+            "an explicit degauss value for conversion."
+        )
+
+    smearing = _normalize_qe_smearing(
+        settings.smearing
+    )
+
+    width_ev = (
+        settings.degauss
+        * RY_TO_EV
+    )
+
+    return (
+        "Occupation = {"
+        f"'name': '{smearing}', "
+        f"'width': {width_ev:.12g}"
+        "}"
     )
 
 def parse_qe_input(
@@ -395,6 +486,34 @@ def parse_qe_input(
                         value_clean,
                     )
 
+            elif key_lower == 'tot_charge':
+                try:
+                    settings.total_charge = (
+                        _parse_qe_float(
+                            value_clean
+                        )
+                    )
+                except ValueError:
+                    logger.warning(
+                        "Unable to parse tot_charge "
+                        "from value %r; leaving default",
+                        value_clean,
+                    )
+
+            elif key_lower == 'nbnd':
+                try:
+                    settings.nbands = int(
+                        _parse_qe_float(
+                            value_clean
+                        )
+                    )
+                except ValueError:
+                    logger.warning(
+                        "Unable to parse nbnd "
+                        "from value %r; leaving default",
+                        value_clean,
+                    )
+
     return settings
 
 
@@ -455,9 +574,23 @@ def build_config_lines(
 
     lines.append(f"XC_calc = '{xc}'")
 
-    if settings.occupations in {"smearing", "tetrahedra", "tetrahedra_opt"} and settings.degauss:
-        width = max(settings.degauss * RY_TO_EV, 1e-3)
-        lines.append(f"Occupation = {{'name': 'fermi-dirac', 'width': {width:.4f}}}")
+    lines.append(
+        _build_occupation_line(
+            settings
+        )
+    )
+
+    if settings.total_charge is not None:
+        lines.append(
+            "Total_charge = "
+            f"{settings.total_charge:.12g}"
+        )
+
+    if settings.nbands is not None:
+        lines.append(
+            "Ground_num_of_bands = "
+            f"{settings.nbands}"
+        )
 
     lines.append(f"Spin_calc = {spin_calc}")
 

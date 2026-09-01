@@ -23,6 +23,8 @@ class TestQEConverter(unittest.TestCase):
   nat = 2,
   ntyp = 1,
   ecutwfc = 30.0,
+  tot_charge = -1.0,
+  nbnd = 24,
   occupations = 'smearing',
   smearing = 'mp',
   degauss = 0.01,
@@ -92,6 +94,14 @@ K_POINTS automatic
             settings.k_shift,
             [0, 0, 0],
         )
+        self.assertAlmostEqual(
+            settings.total_charge,
+            -1.0,
+        )
+        self.assertEqual(
+            settings.nbands,
+            24,
+        )
 
     def test_build_config_lines_emits_basic_settings(self):
         settings = QEInputSettings(
@@ -101,6 +111,8 @@ K_POINTS automatic
             smearing='mp',
             degauss=0.01,
             nspin=2,
+            total_charge=-1.0,
+            nbands=24,
             k_mesh=[
                 4,
                 5,
@@ -171,8 +183,9 @@ K_POINTS automatic
         )
         self.assertIn(
             (
-                "Occupation = {'name': 'fermi-dirac', "
-                "'width': 0.1361}"
+                "Occupation = {"
+                "'name': 'methfessel-paxton', "
+                "'width': 0.13605693009}"
             ),
             text,
         )
@@ -190,6 +203,15 @@ K_POINTS automatic
         
         self.assertIn(
             "Engine = 'QE'",
+            text,
+        )
+
+        self.assertIn(
+            "Total_charge = -1",
+            text,
+        )
+        self.assertIn(
+            "Ground_num_of_bands = 24",
             text,
         )
 
@@ -329,6 +351,56 @@ CELL_PARAMETERS angstrom
         self.assertAlmostEqual(
             settings.ecutwfc,
             30.0,
+        )
+
+    def test_build_config_lines_preserves_fixed_occupation(self):
+        settings = QEInputSettings(
+            calculation='scf',
+            occupations='fixed',
+        )
+
+        args = SimpleNamespace(
+            outdirname=None,
+            xc=None,
+        )
+
+        text = '\n'.join(
+            build_config_lines(
+                name='Silicon',
+                geom_filename='Silicon.cif',
+                settings=settings,
+                args=args,
+            )
+        )
+
+        self.assertIn(
+            "Occupation = 'fixed'",
+            text,
+        )
+
+    def test_build_config_lines_preserves_tetrahedra(self):
+        settings = QEInputSettings(
+            calculation='scf',
+            occupations='tetrahedra_opt',
+        )
+
+        args = SimpleNamespace(
+            outdirname=None,
+            xc=None,
+        )
+
+        text = '\n'.join(
+            build_config_lines(
+                name='Silicon',
+                geom_filename='Silicon.cif',
+                settings=settings,
+                args=args,
+            )
+        )
+
+        self.assertIn(
+            "Occupation = 'tetrahedra_opt'",
+            text,
         )
 
 if __name__ == '__main__':
