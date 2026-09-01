@@ -3855,8 +3855,21 @@ class dftsolve:
                 plt.savefig(filename, dpi=300)
                 plt.close()
 
-        
     def densitycalc(self):
+        """Run the electron-density workflow for the selected engine."""
+
+        if self.Engine == 'GPAW':
+            return self._densitycalc_gpaw()
+
+        if self.Engine == 'QE':
+            return self._densitycalc_qe()
+
+        raise ValueError(
+            "Unsupported electron-density engine: "
+            f"{self.Engine}"
+        )
+
+    def _densitycalc_gpaw(self):
         """
         This method performs density calculations for the given structure using the
         ground state results. It computes the electron density distribution and saves
