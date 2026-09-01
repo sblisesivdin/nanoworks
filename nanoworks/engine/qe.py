@@ -8,7 +8,10 @@ from pathlib import Path
 from ase.units import Bohr
 from ase.data import atomic_masses, atomic_numbers
 from ase.calculators.calculator import kptdensity2monkhorstpack
-from nanoworks.pseudos import read_upf_z_valence
+from nanoworks.pseudos import (
+    read_upf_atomic_manifolds,
+    read_upf_z_valence,
+)
 
 QE_REFERENCE_VERSION = (7, 2)
 
@@ -628,6 +631,235 @@ def validate_qe_xc(
         )
 
     return normalized
+
+def resolve_qe_hubbard(
+    setup_params,
+    pseudopotentials,
+    pseudo_dir,
+):
+    """Translate Nanoworks Setup_params to QE Hubbard settings."""
+    if not setup_params:
+        return None
+
+    if not isinstance(
+        setup_params,
+        dict,
+    ):
+        raise TypeError(
+            "QE Setup_params must be a dictionary."
+        )
+
+    parameters = []
+    notices = []
+
+    for symbol, specification in setup_params.items():
+        if symbol not in pseudopotentials:
+            raise ValueError(
+                "QE Hubbard parameters refer to an element "
+                f"without a pseudopotential: {symbol}"
+            )
+
+        if not isinstance(
+            specification,
+            str,
+        ):
+            raise TypeError(
+                "QE Hubbard setup specifications must be strings."
+            )
+
+        fields = [
+            field.strip()
+            for field in specification.lstrip(':').split(',')
+        ]
+
+        if len(fields) not in {
+            2,
+            3,
+        }:
+            raise ValueError(
+                "QE Hubbard setup must use "
+                "':orbital,U' or ':orbital,U,flag': "
+                f"{symbol}={specification!r}"
+            )
+
+        orbital = fields[0].lower()
+
+        orbital_match = re.fullmatch(
+            r'(\d+)?([spdfg])',
+            orbital,
+        )
+
+        if orbital_match is None:
+            raise ValueError(
+                "Unsupported QE Hubbard orbital specification: "
+                f"{symbol}={orbital!r}"
+            )
+
+        try:
+            value_ev = float(
+                fields[1]
+            )
+        except ValueError:
+            raise ValueError(
+                "QE Hubbard U must be a numeric value: "
+                f"{symbol}={fields[1]!r}"
+            )
+
+        if value_ev <= 0.0:
+            raise ValueError(
+                "QE Hubbard U must be greater than zero: "
+                f"{symbol}={value_ev}"
+            )
+
+        pseudo_file = Path(
+            pseudopotentials[
+                symbol
+            ]
+        )
+
+        if not pseudo_file.is_absolute():
+            if pseudo_dir is None:
+                raise ValueError(
+                    "QE Hubbard manifold resolution requires "
+                    "a pseudopotential directory."
+                )
+
+            pseudo_file = (
+                Path(pseudo_dir)
+                / pseudo_file
+            )
+
+        available_manifolds = (
+            read_upf_atomic_manifolds(
+                pseudo_file
+            )
+        )
+
+        principal_number = (
+            orbital_match.group(1)
+        )
+
+        angular_orbital = (
+            orbital_match.group(2)
+        )
+
+        if principal_number is not None:
+            manifold = (
+                principal_number
+                + angular_orbital
+            )
+
+            if manifold not in available_manifolds:
+                raise ValueError(
+                    f"QE Hubbard manifold {symbol}-{manifold} "
+                    "was not found in pseudopotential "
+                    f"'{pseudo_file}'. Available manifolds: "
+                    + ", ".join(
+                        available_manifolds
+                    )
+                )
+
+        else:
+            candidates = [
+                manifold
+                for manifold in available_manifolds
+                if manifold.endswith(
+                    angular_orbital
+                )
+            ]
+
+            if not candidates:
+                raise ValueError(
+                    f"QE Hubbard orbital {symbol}-{angular_orbital} "
+                    "was not found in pseudopotential "
+                    f"'{pseudo_file}'. Available manifolds: "
+                    + ", ".join(
+                        available_manifolds
+                    )
+                )
+
+            if len(candidates) > 1:
+                raise ValueError(
+                    f"QE Hubbard orbital {symbol}-{angular_orbital} "
+                    "matches multiple pseudopotential manifolds: "
+                    + ", ".join(
+                        candidates
+                    )
+                    + ". Specify the principal quantum number "
+                    "explicitly."
+                )
+
+            manifold = candidates[0]
+
+        if len(fields) == 3:
+            notices.append(
+                "The GPAW-specific Hubbard normalization flag "
+                f"for {symbol}-{manifold} cannot be represented "
+                "exactly in QE; ortho-atomic projectors are used."
+            )
+
+        parameters.append({
+            'symbol': symbol,
+            'manifold': manifold,
+            'value_ev': value_ev,
+        })
+
+    return {
+        'projector': 'ortho-atomic',
+        'parameters': parameters,
+        'notices': notices,
+    }
+
+
+def render_qe_hubbard_card(
+    settings,
+    species_by_element=None,
+):
+    """Render a QE 7.2 HUBBARD card."""
+    if settings is None:
+        return ''
+
+    species_by_element = (
+        species_by_element
+        or {}
+    )
+
+    lines = [
+        f"! NOTICE: {notice}"
+        for notice in settings[
+            'notices'
+        ]
+    ]
+
+    lines.append(
+        "HUBBARD "
+        f"({settings['projector']})"
+    )
+
+    for parameter in settings[
+        'parameters'
+    ]:
+        symbol = parameter[
+            'symbol'
+        ]
+
+        labels = species_by_element.get(
+            symbol,
+            [
+                symbol,
+            ],
+        )
+
+        for label in labels:
+            lines.append(
+                "U "
+                f"{label}-{parameter['manifold']} "
+                f"{parameter['value_ev']:.12g}"
+            )
+
+    return "\n".join(
+        lines
+    )
 
 def resolve_qe_occupation(occupation):
     """Translate Nanoworks/GPAW-style occupation settings to QE settings."""

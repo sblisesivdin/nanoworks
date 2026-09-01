@@ -61,6 +61,8 @@ from nanoworks.engine.qe import (
     prepare_qe_band_projection_data,
     render_pp_input,
     run_pp_density,
+    render_qe_hubbard_card,
+    resolve_qe_hubbard,
 )
 
 
@@ -4845,6 +4847,142 @@ def test_run_spin_polarized_band_projections(self):
                             / 'density.cube'
                         ),
                     )
+
+    def test_resolve_and_render_qe_hubbard(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pseudo_dir = Path(
+                tmpdir
+            )
+
+            (
+                pseudo_dir
+                / 'O.upf'
+            ).write_text(
+                """
+                <UPF version="2.0.1">
+                <PP_PSWFC>
+                  <PP_CHI.1 label="2S"></PP_CHI.1>
+                  <PP_CHI.2 label="2P"></PP_CHI.2>
+                </PP_PSWFC>
+                </UPF>
+                """,
+                encoding='utf-8',
+            )
+
+            (
+                pseudo_dir
+                / 'Zn.upf'
+            ).write_text(
+                """
+                <UPF version="2.0.1">
+                <PP_PSWFC>
+                  <PP_CHI.1 label="4S"></PP_CHI.1>
+                  <PP_CHI.2 label="3D"></PP_CHI.2>
+                </PP_PSWFC>
+                </UPF>
+                """,
+                encoding='utf-8',
+            )
+
+            settings = resolve_qe_hubbard(
+                setup_params={
+                    'O': ':p,7.0',
+                    'Zn': ':d,10.0',
+                },
+                pseudopotentials={
+                    'O': 'O.upf',
+                    'Zn': 'Zn.upf',
+                },
+                pseudo_dir=pseudo_dir,
+            )
+
+        text = render_qe_hubbard_card(
+            settings
+        )
+
+        self.assertEqual(
+            settings['projector'],
+            'ortho-atomic',
+        )
+        self.assertIn(
+            'HUBBARD (ortho-atomic)',
+            text,
+        )
+        self.assertIn(
+            'U O-2p 7',
+            text,
+        )
+        self.assertIn(
+            'U Zn-3d 10',
+            text,
+        )
+
+    def test_render_qe_hubbard_expands_magnetic_species(self):
+        settings = {
+            'projector': 'ortho-atomic',
+            'parameters': [
+                {
+                    'symbol': 'Fe',
+                    'manifold': '3d',
+                    'value_ev': 4.0,
+                },
+            ],
+            'notices': [],
+        }
+
+        text = render_qe_hubbard_card(
+            settings,
+            species_by_element={
+                'Fe': [
+                    'Fe1',
+                    'Fe2',
+                ],
+            },
+        )
+
+        self.assertIn(
+            'U Fe1-3d 4',
+            text,
+        )
+        self.assertIn(
+            'U Fe2-3d 4',
+            text,
+        )
+
+    def test_resolve_qe_hubbard_rejects_ambiguous_orbital(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pseudo_dir = Path(
+                tmpdir
+            )
+
+            (
+                pseudo_dir
+                / 'X.upf'
+            ).write_text(
+                """
+                <UPF version="2.0.1">
+                <PP_PSWFC>
+                  <PP_CHI.1 label="2P"></PP_CHI.1>
+                  <PP_CHI.2 label="3P"></PP_CHI.2>
+                </PP_PSWFC>
+                </UPF>
+                """,
+                encoding='utf-8',
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                'matches multiple pseudopotential manifolds',
+            ):
+                resolve_qe_hubbard(
+                    setup_params={
+                        'X': ':p,6.0',
+                    },
+                    pseudopotentials={
+                        'X': 'X.upf',
+                    },
+                    pseudo_dir=pseudo_dir,
+                )
 
 if __name__ == '__main__':
     unittest.main()
