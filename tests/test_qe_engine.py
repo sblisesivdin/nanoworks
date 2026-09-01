@@ -5063,5 +5063,96 @@ def test_run_spin_polarized_band_projections(self):
             text,
         )
 
+    def test_pw_input_wrappers_forward_setup_params(self):
+        atoms = bulk(
+            'Si',
+            'diamond',
+            a=5.43,
+        )
+
+        setup_params = {
+            'Si': ':p,4.0',
+        }
+
+        common = {
+            'atoms': atoms,
+            'pseudopotentials': {
+                'Si': 'Si.upf',
+            },
+            'cutoff_ev': 400.0,
+            'setup_params': setup_params,
+        }
+
+        with patch(
+            'nanoworks.engine.qe.render_pw_input',
+            return_value='rendered',
+        ) as render:
+            render_scf_input(
+                **common,
+                kpoint_size=(4, 4, 4),
+            )
+
+            self.assertEqual(
+                render.call_args.kwargs[
+                    'setup_params'
+                ],
+                setup_params,
+            )
+
+            render_nscf_input(
+                **common,
+                kpoint_size=(6, 6, 6),
+            )
+
+            self.assertEqual(
+                render.call_args.kwargs[
+                    'setup_params'
+                ],
+                setup_params,
+            )
+
+            render_relax_input(
+                **common,
+                kpoint_size=(4, 4, 4),
+                optimizer='LBFGS',
+                max_force=0.05,
+                max_step=0.1,
+                relax_cell=[
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                ],
+            )
+
+            self.assertEqual(
+                render.call_args.kwargs[
+                    'setup_params'
+                ],
+                setup_params,
+            )
+
+            render_bands_input(
+                **common,
+                band_path={
+                    'kpoints': [
+                        [
+                            0.0,
+                            0.0,
+                            0.0,
+                        ],
+                    ],
+                },
+            )
+
+            self.assertEqual(
+                render.call_args.kwargs[
+                    'setup_params'
+                ],
+                setup_params,
+            )
+
 if __name__ == '__main__':
     unittest.main()
