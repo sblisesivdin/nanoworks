@@ -1361,6 +1361,7 @@ def render_pw_input(
     nbands=None,
     spinpol=False,
     magnetic_moments=None,
+    setup_params=None,
     occupations='fixed',
     smearing=None,
     width_ev=None,
@@ -1471,6 +1472,35 @@ def render_pw_input(
         )
 
         starting_magnetizations = {}
+
+    species_by_element = {}
+
+    for element, position in zip(
+        atoms.get_chemical_symbols(),
+        positions['positions'],
+    ):
+        species_label = position[0]
+
+        labels = species_by_element.setdefault(
+            element,
+            [],
+        )
+
+        if species_label not in labels:
+            labels.append(
+                species_label
+            )
+
+    hubbard_settings = resolve_qe_hubbard(
+        setup_params=setup_params,
+        pseudopotentials=pseudopotentials,
+        pseudo_dir=pseudo_dir,
+    )
+
+    hubbard_card = render_qe_hubbard_card(
+        hubbard_settings,
+        species_by_element=species_by_element,
+    )
 
     control = build_control_settings(
         calculation=calculation,
@@ -1626,6 +1656,12 @@ def render_pw_input(
         lines.append(
             f"{x:.12f} {y:.12f} {z:.12f}"
         )
+
+    if hubbard_card:
+        lines.extend([
+            '',
+            hubbard_card,
+        ])
 
     return "\n".join(lines) + "\n"
 

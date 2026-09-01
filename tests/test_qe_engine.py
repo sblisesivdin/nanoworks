@@ -4984,5 +4984,84 @@ def test_run_spin_polarized_band_projections(self):
                     pseudo_dir=pseudo_dir,
                 )
 
+    def test_render_pw_input_with_spin_and_hubbard(self):
+        atoms = Atoms(
+            'Fe2',
+            positions=[
+                [0.0, 0.0, 0.0],
+                [1.5, 1.5, 1.5],
+            ],
+            cell=[
+                [3.0, 0.0, 0.0],
+                [0.0, 3.0, 0.0],
+                [0.0, 0.0, 3.0],
+            ],
+            pbc=True,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pseudo_dir = Path(
+                tmpdir
+            )
+
+            (
+                pseudo_dir
+                / 'Fe.upf'
+            ).write_text(
+                """
+                <UPF version="2.0.1">
+                <PP_HEADER
+                    element="Fe"
+                    z_valence="8.0"
+                />
+                <PP_PSWFC>
+                  <PP_CHI.1 label="4S"></PP_CHI.1>
+                  <PP_CHI.2 label="3D"></PP_CHI.2>
+                </PP_PSWFC>
+                </UPF>
+                """,
+                encoding='utf-8',
+            )
+
+            text = render_pw_input(
+                calculation='scf',
+                atoms=atoms,
+                pseudopotentials={
+                    'Fe': 'Fe.upf',
+                },
+                pseudo_dir=pseudo_dir,
+                cutoff_ev=500.0,
+                kpoint_size=(4, 4, 4),
+                spinpol=True,
+                magnetic_moments=[
+                    2.0,
+                    -2.0,
+                ],
+                setup_params={
+                    'Fe': ':d,4.0',
+                },
+            )
+
+        self.assertIn(
+            'Fe1 ',
+            text,
+        )
+        self.assertIn(
+            'Fe2 ',
+            text,
+        )
+        self.assertIn(
+            'HUBBARD (ortho-atomic)',
+            text,
+        )
+        self.assertIn(
+            'U Fe1-3d 4',
+            text,
+        )
+        self.assertIn(
+            'U Fe2-3d 4',
+            text,
+        )
+
 if __name__ == '__main__':
     unittest.main()
