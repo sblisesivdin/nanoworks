@@ -744,7 +744,40 @@ class dftsolve:
             
         # translator function
         self._t = Translator(lang_code=current_lang).get
-        
+
+    def _load_existing_final_structure(self):
+        """Load a saved final structure for subsequent calculations."""
+        final_structure_file = Path(
+            self.struct
+            + f'-GROUND-{self.Engine}-Result-Final.cif'
+        )
+
+        if not final_structure_file.is_file():
+            return False
+
+        try:
+            final_structure = read(
+                final_structure_file,
+                index='-1',
+            )
+        except Exception as exc:
+            raise RuntimeError(
+                "The existing final structure could not be loaded "
+                f"from '{final_structure_file}': {exc}"
+            ) from exc
+
+        self.bulk_configuration = final_structure
+        self.config.bulk_configuration = final_structure
+
+        parprint(
+            "\033[93mWARNING:\033[0m "
+            "Ground_calc = False and an existing final structure "
+            "was found. Subsequent calculations will use the "
+            "geometry from: "
+            + str(final_structure_file)
+        )
+
+        return True
 
     def structurecalc(self):
         """
@@ -857,40 +890,24 @@ class dftsolve:
                 )
                 sys.exit(1)
 
-            if self.Geo_optim:
-                if not final_structure_file.is_file():
-                    parprint(
-                        "\033[91mERROR:\033[0m "
-                        "The optimized QE structure could not be found: "
-                        + str(final_structure_file)
-                    )
-                    parprint(
-                        "Run the ground-state calculation once with "
-                        "Ground_calc = True and Geo_optim = True."
-                    )
-                    sys.exit(1)
+            final_structure_loaded = (
+                self._load_existing_final_structure()
+            )
 
-                try:
-                    self.bulk_configuration = read(
-                        final_structure_file,
-                        index='-1',
-                    )
-                except Exception as exc:
-                    parprint(
-                        "\033[91mERROR:\033[0m "
-                        "The optimized QE structure could not be loaded: "
-                        f"{exc}"
-                    )
-                    raise
-
-                self.config.bulk_configuration = (
-                    self.bulk_configuration
-                )
-
+            if (
+                self.Geo_optim
+                and not final_structure_loaded
+            ):
                 parprint(
-                    "Loaded the optimized QE structure from: "
+                    "\033[91mERROR:\033[0m "
+                    "The optimized QE structure could not be found: "
                     + str(final_structure_file)
                 )
+                parprint(
+                    "Run the ground-state calculation once with "
+                    "Ground_calc = True and Geo_optim = True."
+                )
+                sys.exit(1)
 
             return
 
@@ -1111,6 +1128,17 @@ class dftsolve:
             if self.Ground_gamma is None
             else self.Ground_gamma
         )
+
+        gpaw_state_file = Path(
+            self.struct
+            + '-GROUND-GPAW-Result-State.gpw'
+        )
+
+        if (
+            not self.Ground_calc
+            and gpaw_state_file.is_file()
+        ):
+            self._load_existing_final_structure()
         
         if self.Spin_calc:
             initial_moments = (
