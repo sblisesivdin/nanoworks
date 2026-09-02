@@ -13,6 +13,10 @@ General Keywords
 
     Selects the DFT engine used by Nanoworks. Engine names are
     case-insensitive and are normalized internally.
+    
+    When a keyword has backend-specific defaults, Nanoworks selects the
+    default associated with the active engine only if the user did not
+    provide a value. Explicit user settings always take precedence.
 
     ``GPAW`` remains the default and currently provides the complete
     Nanoworks DFT workflow. Quantum ESPRESSO support is available with
@@ -334,10 +338,16 @@ Geometric Optimization Keywords
 
 .. describe:: Fix_symmetry
 
-    :Type: ``boolean``
-    :Default: ``False``
+    :Type: ``boolean`` or ``None``
+    :Default: backend-specific
 
-    Preserve spacegroup symmetry during optimization.
+    Preserve crystal symmetry during geometry optimization.
+
+    When omitted, GPAW uses ``False`` and QE uses ``True``. The QE
+    default follows the usual symmetry-enabled ``pw.x`` behavior and
+    helps preserve symmetry-compatible cell shapes during variable-cell
+    optimization. An explicitly supplied ``True`` or ``False`` value
+    always overrides the backend default.
 
 .. code-block:: python
 
@@ -354,7 +364,11 @@ Geometric Optimization Keywords
 
     For QE, a mask containing at least one ``True`` value selects
     ``vc-relax`` and is translated to a compatible ``cell_dofree``
-    setting. Unsupported masks are rejected rather than approximated.
+    setting. For a non-orthogonal cell, the normal-strain mask
+    ``[True, True, True, False, False, False]`` cannot safely use QE's
+    Cartesian ``xyz`` mode. Nanoworks maps this case to ``all`` and
+    writes a ``NOTICE`` into the generated QE input. Other masks that
+    cannot be represented safely are rejected.
 
 .. code-block:: python
 
@@ -626,13 +640,27 @@ Electronic Calculations Keywords
 
 .. describe:: XC_calc
 
-    :Type: ``string``
-    :Default: ``LDA``
+    :Type: ``string`` or ``None``
+    :Default: backend-specific
     :Options: ``LDA``, ``PBE``, ``GLLBSC``, ``revPBE``, ``RPBE``, ``HSE03``, ``HSE06``, ``B3LYP``, ``PBE0``
 
-    Exchange-correlation functional. Relax_cell keyword must be [False, False, False, False, False, False] with GLLBSC, HSE03 and HSE06.
+    When omitted, GPAW uses ``LDA`` and QE uses ``PBE``. The current
+    native QE backend supports PBE because the managed PseudoDojo
+    pseudopotential library is generated for PBE. Explicit user values
+    take precedence and are subsequently validated by the selected
+    backend.
 
-    The hybrid functionals (``HSE06``, ``HSE03``, ``PBE0``, ``B3LYP``,``EXX``) use GPAW's plane-wave hybrid backend. They are automatically run with plane-wave parallelisation and a single-iteration Davidson eigensolver. Cell relaxation with hybrid functionals is not supported. Hybrid elastic calculations are retained but should be treated with caution because plane-wave hybrid stress is not considered reliable. Hybrid phonon calculations are not supported. For DOS and band structure, the eigenvalues are referenced to the converged ground-state Fermi level.
+    For GPAW, ``Relax_cell`` must contain only ``False`` values with
+    GLLBSC, HSE03, and HSE06.
+
+    The hybrid functionals (``HSE06``, ``HSE03``, ``PBE0``, ``B3LYP``,``EXX``) 
+    use GPAW's plane-wave hybrid backend. They are automatically run with 
+    plane-wave parallelisation and a single-iteration Davidson eigensolver. 
+    Cell relaxation with hybrid functionals is not supported. Hybrid 
+    elastic calculations are retained but should be treated with caution 
+    because plane-wave hybrid stress is not considered reliable. Hybrid 
+    phonon calculations are not supported. For DOS and band structure, 
+    the eigenvalues are referenced to the converged ground-state Fermi level.
 
 .. code-block:: python
 
@@ -832,14 +860,17 @@ Electronic Calculations Keywords
 .. describe:: DOS_occupation
 
     :Type: ``python dictionary``, ``string`` or ``None``
-    :Default: ``None``
+    :Default: backend-specific
 
-    Backend-specific occupation scheme used when preparing the DOS
-    calculation. When ``None``, the ground-state ``Occupation``
-    setting is inherited.
+    Selects the occupation scheme used when preparing the DOS
+    calculation.
 
-    GPAW calculations use the existing GPAW occupation dictionary or
-    occupation object:
+    When omitted, GPAW inherits the ground-state ``Occupation`` setting.
+    QE uses ``'tetrahedra'``, which is the general default for the
+    current native QE DOS workflow.
+
+    GPAW calculations may use an occupation dictionary or occupation
+    object:
 
 .. code-block:: python
 
@@ -848,8 +879,7 @@ Electronic Calculations Keywords
         'width': 0.02,
     }
 
-    QE DOS calculations currently require a tetrahedron occupation
-    string:
+    QE accepts the tetrahedron occupation strings:
 
 .. code-block:: python
 
@@ -857,7 +887,8 @@ Electronic Calculations Keywords
 
     Accepted QE aliases are ``tetrahedra``, ``tetrahedra_lin``,
     ``tetrahedra-lin``, ``tetrahedra_opt`` and
-    ``tetrahedra-opt``.
+    ``tetrahedra-opt``. An explicit value overrides the backend
+    default.
 
 .. warning::
 
