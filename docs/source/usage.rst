@@ -117,22 +117,45 @@ qeconverter
 -----------
 
 ``qeconverter`` converts a Quantum ESPRESSO ``pw.x`` input into a
-Nanoworks configuration and a CIF geometry file targeting the native
-``Engine = 'QE'`` backend.
+Nanoworks Python input and a CIF geometry file.
 
 .. code-block:: console
 
    $ qeconverter --input si.scf.in --output-dir example_folder --system-name SiliconQE
 
-The converter supports SCF, relaxation, variable-cell relaxation, NSCF
-and band workflows. It converts common cutoff, occupation, charge,
-band-count, k-point, spin and relaxation settings.
+The converter recognizes SCF, NSCF, bands, relax, and variable-cell
+relaxation inputs. It preserves commonly used plane-wave cutoff,
+k-point, occupation, charge, band-count, geometry-relaxation, symmetry,
+and collinear-spin settings.
 
-Source pseudopotential files are not required for conversion and are
-not copied into the generated project. Nanoworks uses its installed QE
-pseudopotential library when the converted calculation is executed.
-When an exact Nanoworks equivalent is unavailable, the closest
-supported setting is generated together with a ``NOTICE`` comment.
+QE 7.2 ``HUBBARD`` cards containing on-site ``U`` terms are converted
+to the common Nanoworks ``Setup_params`` syntax. For example:
+
+.. code-block:: text
+
+   HUBBARD (ortho-atomic)
+   U O-2p 7.0
+   U Zn-3d 10.0
+
+is converted to:
+
+.. code-block:: python
+
+   Setup_params = {
+       'O': ':2p,7',
+       'Zn': ':3d,10',
+   }
+
+Split magnetic species such as ``Fe1`` and ``Fe2`` are merged into the
+corresponding chemical element when their Hubbard corrections agree.
+Unsupported projector definitions, inter-site ``V`` terms, conflicting
+species corrections, and other non-exact conversions produce
+``NOTICE`` comments rather than silently discarding the difference.
+
+Pseudopotential files are not required for basic conversion. When the
+source UPF files are available, ``qeconverter`` can use their
+``z_valence`` values to reconstruct initial magnetic moments more
+accurately.
 
 vaspconverter
 -------------

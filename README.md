@@ -111,14 +111,28 @@ options:
 ```
 
 ### 5. qeconverter and vaspconverter
-Command for creating nanoworks input and geometry files from QE and/or VASP files.
+
+`qeconverter` creates Nanoworks input and geometry files from Quantum
+ESPRESSO `pw.x` inputs. It supports common SCF, NSCF, bands, relax,
+variable-cell, spin, and on-site Hubbard-U settings.
 
 ```bash
-$ qeconverter --input si.scf.in --output-dir example_folder --system-name SiliconQE
+qeconverter \
+  --input si.scf.in \
+  --output-dir example_folder \
+  --system-name SiliconQE
 ```
 
+`vaspconverter` creates Nanoworks input and geometry files from VASP
+inputs.
+
 ```bash
-$ vaspconverter --poscar POSCAR --incar INCAR --kpoints KPOINTS --output-dir example_folder --system-name Silicon
+vaspconverter \
+  --poscar POSCAR \
+  --incar INCAR \
+  --kpoints KPOINTS \
+  --output-dir example_folder \
+  --system-name Silicon
 ```
 
 ### Helper Scripts
