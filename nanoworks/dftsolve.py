@@ -233,6 +233,19 @@ from numpy import genfromtxt
 import warnings
 warnings.filterwarnings('ignore')
 
+DFT_ENGINE_DEFAULTS = {
+    'GPAW': {
+        'XC_calc': 'LDA',
+        'DOS_occupation': None,
+        'Fix_symmetry': False,
+    },
+    'QE': {
+        'XC_calc': 'PBE',
+        'DOS_occupation': 'tetrahedra',
+        'Fix_symmetry': True,
+    },
+}
+
 @dataclass
 class DFTConfig:
     """
@@ -258,7 +271,7 @@ class DFTConfig:
     Max_step: float = 0.1
     Alpha: float = 60.0
     Damping: float = 1.0
-    Fix_symmetry: bool = False
+    Fix_symmetry: bool = None
     Relax_cell: List[bool] = field(default_factory=lambda: [False, False, False, False, False, False])
     Hydrostatic_pressure: float = 0.0
     
@@ -282,7 +295,7 @@ class DFTConfig:
     Ground_gpts_y: int = 8
     Ground_gpts_z: int = 8
     Setup_params: Dict = field(default_factory=dict)
-    XC_calc: str = 'LDA'
+    XC_calc: Any = None
     # Optional hybrid (HSE06/HSE03/PBE0/B3LYP/EXX) tuning. When left as None,
     # GPAW's documented defaults for each functional are used (e.g. HSE06 uses
     # omega=0.11 1/Bohr and 25% exact exchange).
@@ -372,7 +385,30 @@ class DFTConfig:
     def __post_init__(self):
         """Initialize default values that depend on other objects."""
         self.Engine = normalize_engine_name(self.Engine)
-        
+
+        try:
+            engine_defaults = (
+                DFT_ENGINE_DEFAULTS[
+                    self.Engine
+                ]
+            )
+        except KeyError:
+            raise ValueError(
+                "Unsupported DFT engine: "
+                f"{self.Engine}"
+            )
+
+        for name, value in engine_defaults.items():
+            if getattr(
+                self,
+                name,
+            ) is None:
+                setattr(
+                    self,
+                    name,
+                    value,
+                )
+
         if self.Mixer_type is None and self.Engine == 'GPAW':
             engine = load_engine_module(self.Engine)
             self.Mixer_type = engine.create_default_mixer()

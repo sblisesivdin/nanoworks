@@ -14,6 +14,7 @@ with patch.object(
     [sys.argv[0]],
 ):
     from nanoworks.dftsolve import (
+        DFTConfig,
         dftsolve as DFTSolver,
     )
 
@@ -131,6 +132,75 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             )
             warning.assert_not_called()
 
+    def test_qe_engine_specific_defaults(self):
+        config = DFTConfig(
+            Engine='qe',
+        )
+
+        self.assertEqual(
+            config.Engine,
+            'QE',
+        )
+        self.assertEqual(
+            config.XC_calc,
+            'PBE',
+        )
+        self.assertEqual(
+            config.DOS_occupation,
+            'tetrahedra',
+        )
+        self.assertTrue(
+            config.Fix_symmetry
+        )
+        self.assertIsNone(
+            config.Mixer_type
+        )
+
+    def test_gpaw_engine_specific_defaults(self):
+        config = DFTConfig(
+            Engine='GPAW',
+            Mixer_type='custom-mixer',
+        )
+
+        self.assertEqual(
+            config.XC_calc,
+            'LDA',
+        )
+        self.assertIsNone(
+            config.DOS_occupation
+        )
+        self.assertFalse(
+            config.Fix_symmetry
+        )
+        self.assertEqual(
+            config.Mixer_type,
+            'custom-mixer',
+        )
+
+    def test_explicit_values_override_engine_defaults(self):
+        occupation = {
+            'name': 'fermi-dirac',
+            'width': 0.02,
+        }
+
+        config = DFTConfig(
+            Engine='QE',
+            XC_calc='LDA',
+            DOS_occupation=occupation,
+            Fix_symmetry=False,
+        )
+
+        self.assertEqual(
+            config.XC_calc,
+            'LDA',
+        )
+        self.assertIs(
+            config.DOS_occupation,
+            occupation,
+        )
+        self.assertFalse(
+            config.Fix_symmetry
+        )
 
 if __name__ == '__main__':
     unittest.main()
