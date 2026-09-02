@@ -25,6 +25,7 @@ from nanoworks.pseudos import read_upf_z_valence
 from typing import Union
 from ase.io import read, write
 from ase.units import Bohr
+from ase.data import atomic_numbers
 
 RY_TO_EV = 13.605693009
 
@@ -338,6 +339,184 @@ def _read_qe_species_z_valence(
             )
 
     return z_valence
+
+def _qe_species_label_to_element(
+    species_label: str,
+) -> Optional[str]:
+    """Resolve a QE species label such as Fe1 to an element."""
+    label = str(
+        species_label
+    ).strip()
+
+    candidates = []
+
+    if len(label) >= 2:
+        candidates.append(
+            label[:2].title()
+        )
+
+    if label:
+        candidates.append(
+            label[0].upper()
+        )
+
+    for candidate in candidates:
+        if candidate in atomic_numbers:
+            return candidate
+
+    return None
+
+
+def _build_hubbard_lines(
+    settings: QEInputSettings,
+) -> List[str]:
+    """Convert parsed QE Hubbard terms to Setup_params."""
+    if (
+        settings.hubbard_projector is None
+        and not settings.hubbard_terms
+        and not settings.hubbard_notices
+    ):
+        return []
+
+    notices = list(
+        settings.hubbard_notices
+    )
+
+    if (
+        settings.hubbard_projector is not None
+        and settings.hubbard_projector
+        != 'ortho-atomic'
+    ):
+        notices.append(
+            "The source QE Hubbard projector "
+            f"'{settings.hubbard_projector}' cannot be "
+            "preserved exactly; Nanoworks QE inputs use "
+            "'ortho-atomic' projectors."
+        )
+
+    species_by_element = {}
+
+    for species_label in settings.species_labels:
+        element = _qe_species_label_to_element(
+            species_label
+        )
+
+        if element is None:
+            continue
+
+        species_by_element.setdefault(
+            element,
+            set(),
+        ).add(
+            species_label
+        )
+
+    terms_by_element = {}
+
+    for term in settings.hubbard_terms:
+        species_label = term[
+            'species_label'
+        ]
+
+        element = _qe_species_label_to_element(
+            species_label
+        )
+
+        if element is None:
+            notices.append(
+                "QE Hubbard species "
+                f"'{species_label}' could not be mapped "
+                "to a chemical element and was ignored."
+            )
+            continue
+
+        specification = (
+            ':'
+            + term['manifold']
+            + ','
+            + f"{term['value_ev']:.12g}"
+        )
+
+        terms_by_element.setdefault(
+            element,
+            [],
+        ).append({
+            'species_label': species_label,
+            'specification': specification,
+        })
+
+    setup_params = {}
+
+    for element, terms in terms_by_element.items():
+        specifications = list(
+            dict.fromkeys(
+                term['specification']
+                for term in terms
+            )
+        )
+
+        selected = specifications[0]
+
+        if len(specifications) > 1:
+            notices.append(
+                "Multiple QE Hubbard corrections were found "
+                f"for element {element}: "
+                + ', '.join(
+                    specifications
+                )
+                + f". Nanoworks keeps {selected!r}; review "
+                "Setup_params manually."
+            )
+
+        corrected_species = {
+            term['species_label']
+            for term in terms
+            if term['specification'] == selected
+        }
+
+        known_species = species_by_element.get(
+            element,
+            set(),
+        )
+
+        if (
+            known_species
+            and corrected_species != known_species
+        ):
+            notices.append(
+                "The source QE Hubbard correction applies "
+                f"to only part of the {element} species "
+                "labels. Nanoworks Setup_params applies the "
+                "selected correction to every species of "
+                f"{element}; review the generated input."
+            )
+
+        setup_params[
+            element
+        ] = selected
+
+    lines = [
+        "# NOTICE: "
+        + notice
+        for notice in notices
+    ]
+
+    formatted = (
+        '{'
+        + ', '.join(
+            f"{element!r}: {specification!r}"
+            for element, specification
+            in setup_params.items()
+        )
+        + '}'
+    )
+
+    lines.append(
+        "Setup_params = "
+        + formatted
+    )
+
+    return lines
 
 def _build_magnetic_lines(
     settings: QEInputSettings,
@@ -1811,6 +1990,12 @@ def build_config_lines(
 
     lines.append(
         _build_occupation_line(
+            settings
+        )
+    )
+
+    lines.extend(
+        _build_hubbard_lines(
             settings
         )
     )

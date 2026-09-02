@@ -17,6 +17,7 @@ from nanoworks.qeconverter import (
     _resolve_qe_pseudo_path,
     _build_magnetic_lines,
     main as qeconverter_main,
+    _build_hubbard_lines,
 )
 
 
@@ -1563,6 +1564,151 @@ CELL_PARAMETERS angstrom
                 in notice
                 for notice in settings.hubbard_notices
             )
+        )
+
+    def test_build_hubbard_lines_converts_on_site_u(self):
+        settings = QEInputSettings(
+            hubbard_projector='ortho-atomic',
+            species_labels=[
+                'O',
+                'Zn',
+            ],
+            hubbard_terms=[
+                {
+                    'species_label': 'O',
+                    'manifold': '2p',
+                    'value_ev': 7.0,
+                },
+                {
+                    'species_label': 'Zn',
+                    'manifold': '3d',
+                    'value_ev': 10.0,
+                },
+            ],
+        )
+
+        text = '\n'.join(
+            _build_hubbard_lines(
+                settings
+            )
+        )
+
+        self.assertIn(
+            (
+                "Setup_params = "
+                "{'O': ':2p,7', 'Zn': ':3d,10'}"
+            ),
+            text,
+        )
+        self.assertNotIn(
+            '# NOTICE:',
+            text,
+        )
+
+    def test_build_hubbard_lines_merges_magnetic_species(self):
+        settings = QEInputSettings(
+            hubbard_projector='ortho-atomic',
+            species_labels=[
+                'Fe1',
+                'Fe2',
+            ],
+            hubbard_terms=[
+                {
+                    'species_label': 'Fe1',
+                    'manifold': '3d',
+                    'value_ev': 4.0,
+                },
+                {
+                    'species_label': 'Fe2',
+                    'manifold': '3d',
+                    'value_ev': 4.0,
+                },
+            ],
+        )
+
+        text = '\n'.join(
+            _build_hubbard_lines(
+                settings
+            )
+        )
+
+        self.assertIn(
+            "Setup_params = {'Fe': ':3d,4'}",
+            text,
+        )
+        self.assertNotIn(
+            '# NOTICE:',
+            text,
+        )
+
+    def test_build_hubbard_lines_notices_partial_species(self):
+        settings = QEInputSettings(
+            hubbard_projector='atomic',
+            species_labels=[
+                'Fe1',
+                'Fe2',
+            ],
+            hubbard_terms=[
+                {
+                    'species_label': 'Fe1',
+                    'manifold': '3d',
+                    'value_ev': 4.0,
+                },
+            ],
+        )
+
+        text = '\n'.join(
+            _build_hubbard_lines(
+                settings
+            )
+        )
+
+        self.assertIn(
+            "Setup_params = {'Fe': ':3d,4'}",
+            text,
+        )
+        self.assertIn(
+            "cannot be preserved exactly",
+            text,
+        )
+        self.assertIn(
+            "applies to only part",
+            text,
+        )
+
+    def test_build_config_lines_emits_setup_params(self):
+        settings = QEInputSettings(
+            calculation='scf',
+            hubbard_projector='ortho-atomic',
+            species_labels=[
+                'O',
+            ],
+            hubbard_terms=[
+                {
+                    'species_label': 'O',
+                    'manifold': '2p',
+                    'value_ev': 7.0,
+                },
+            ],
+        )
+
+        args = SimpleNamespace(
+            outdirname=None,
+            xc=None,
+        )
+
+        text = '\n'.join(
+            build_config_lines(
+                name='ZnO',
+                geom_filename='ZnO.cif',
+                settings=settings,
+                args=args,
+            )
+        )
+
+        self.assertIn(
+            "Setup_params = {'O': ':2p,7'}",
+            text,
         )
 
 if __name__ == '__main__':
