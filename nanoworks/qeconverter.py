@@ -65,6 +65,13 @@ class QEInputSettings:
     atomic_position_labels: List[str] = field(
         default_factory=list
     )
+    hubbard_projector: Optional[str] = None
+    hubbard_terms: List[dict] = field(
+        default_factory=list
+    )
+    hubbard_notices: List[str] = field(
+        default_factory=list
+    )
 
 
 def parse_args() -> argparse.Namespace:
@@ -1177,9 +1184,96 @@ def parse_qe_input(
     expect_automatic_kpoints = False
     remaining_species_rows = 0
     remaining_position_rows = 0
+    in_hubbard_card = False
 
     for line in lines:
         upper = line.upper()
+
+        if in_hubbard_card:
+            starts_new_section = (
+                upper.startswith('&')
+                or upper == '/'
+                or upper.startswith((
+                    'ATOMIC_SPECIES',
+                    'ATOMIC_POSITIONS',
+                    'K_POINTS',
+                    'CELL_PARAMETERS',
+                    'CONSTRAINTS',
+                    'OCCUPATIONS',
+                    'ATOMIC_FORCES',
+                    'SOLVENTS',
+                    'HUBBARD',
+                ))
+            )
+
+            if starts_new_section:
+                in_hubbard_card = False
+
+            else:
+                fields = line.split()
+
+                if (
+                    len(fields) >= 3
+                    and fields[0].upper() == 'U'
+                ):
+                    target = fields[1]
+
+                    if '-' not in target:
+                        settings.hubbard_notices.append(
+                            "QE Hubbard target "
+                            f"'{target}' could not be separated "
+                            "into species and orbital."
+                        )
+                        continue
+
+                    species_label, manifold = (
+                        target.rsplit(
+                            '-',
+                            1,
+                        )
+                    )
+
+                    manifold = (
+                        manifold
+                        .strip()
+                        .lower()
+                    )
+
+                    if not re.fullmatch(
+                        r'\d+[spdfg]',
+                        manifold,
+                    ):
+                        settings.hubbard_notices.append(
+                            "QE Hubbard manifold "
+                            f"'{target}' is not supported by "
+                            "the Nanoworks converter."
+                        )
+                        continue
+
+                    try:
+                        value_ev = _parse_qe_float(
+                            fields[2]
+                        )
+                    except ValueError:
+                        settings.hubbard_notices.append(
+                            "QE Hubbard U value in line "
+                            f"'{line}' could not be parsed."
+                        )
+                        continue
+
+                    settings.hubbard_terms.append({
+                        'species_label': species_label,
+                        'manifold': manifold,
+                        'value_ev': value_ev,
+                    })
+
+                else:
+                    settings.hubbard_notices.append(
+                        "QE Hubbard term "
+                        f"'{line}' is not currently converted."
+                    )
+
+                continue
 
         if remaining_species_rows > 0:
             fields = line.split()
@@ -1254,6 +1348,37 @@ def parse_qe_input(
                     settings.ntyp
                 )
 
+            continue
+
+        if upper.startswith(
+            'HUBBARD'
+        ):
+            projector_match = re.match(
+                r'HUBBARD\s*'
+                r'(?:'
+                r'\(\s*([^)]+?)\s*\)'
+                r'|'
+                r'\{\s*([^}]+?)\s*\}'
+                r')?',
+                line,
+                flags=re.IGNORECASE,
+            )
+
+            projector = None
+
+            if projector_match is not None:
+                projector = (
+                    projector_match.group(1)
+                    or projector_match.group(2)
+                )
+
+            settings.hubbard_projector = (
+                projector.strip().lower()
+                if projector
+                else 'atomic'
+            )
+
+            in_hubbard_card = True
             continue
 
         if upper.startswith(

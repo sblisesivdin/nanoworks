@@ -1456,5 +1456,114 @@ CELL_PARAMETERS angstrom
             config_text,
         )
 
+    def test_parse_qe_hubbard_card(self):
+        input_text = """
+        &CONTROL
+          calculation = 'scf',
+        /
+        &SYSTEM
+          ibrav = 0,
+          nat = 2,
+          ntyp = 2,
+          ecutwfc = 60,
+        /
+
+        ATOMIC_SPECIES
+        O 15.999 O.upf
+        Zn 65.38 Zn.upf
+
+        ATOMIC_POSITIONS angstrom
+        O 0.0 0.0 0.0
+        Zn 1.0 1.0 1.0
+
+        K_POINTS gamma
+
+        CELL_PARAMETERS angstrom
+        3.0 0.0 0.0
+        0.0 3.0 0.0
+        0.0 0.0 3.0
+
+        HUBBARD (ortho-atomic)
+        U O-2p 7.0
+        U Zn-3d 1.0D+01
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            input_file = (
+                Path(tmpdir)
+                / 'zno.in'
+            )
+
+            input_file.write_text(
+                input_text,
+                encoding='utf-8',
+            )
+
+            settings = parse_qe_input(
+                input_file
+            )
+
+        self.assertEqual(
+            settings.hubbard_projector,
+            'ortho-atomic',
+        )
+        self.assertEqual(
+            settings.hubbard_terms,
+            [
+                {
+                    'species_label': 'O',
+                    'manifold': '2p',
+                    'value_ev': 7.0,
+                },
+                {
+                    'species_label': 'Zn',
+                    'manifold': '3d',
+                    'value_ev': 10.0,
+                },
+            ],
+        )
+        self.assertEqual(
+            settings.hubbard_notices,
+            [],
+        )
+
+    def test_parse_qe_hubbard_card_preserves_unsupported_terms(self):
+        input_text = """
+        &SYSTEM
+          nat = 1,
+          ntyp = 1,
+        /
+
+        HUBBARD (ortho-atomic)
+        V Fe-3d O-2p 1.5
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            input_file = (
+                Path(tmpdir)
+                / 'hubbard-v.in'
+            )
+
+            input_file.write_text(
+                input_text,
+                encoding='utf-8',
+            )
+
+            settings = parse_qe_input(
+                input_file
+            )
+
+        self.assertEqual(
+            settings.hubbard_terms,
+            [],
+        )
+        self.assertTrue(
+            any(
+                'not currently converted'
+                in notice
+                for notice in settings.hubbard_notices
+            )
+        )
+
 if __name__ == '__main__':
     unittest.main()
