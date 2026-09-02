@@ -1,15 +1,65 @@
-# Example: Electronic Properties of Wurtzite ZnO with DFT+U
+# Wurtzite ZnO with DFT+U
 
-Ground, DOS and Band calculations of Wurtzite bulk ZnO. PW with 340 eV cutoff, 5x5x5 kpoints. Hubbard parameters were chosen as 7 eV and 10 eV for O-p and Zn-d orbitals, respectively. Hubbard parameter can be changed with changing Setup_params variable as {'Element': ':orbital,value,0'} if the user wants the Hubbard correction as normalized. In the example,  {'Element': ':orbital,value'} type not normalized input is used. The important thing is that the positions are given with Bulk object. Therefore the line `from ase.build import bulk` must be included at the beginning of the configuration file.
+This example applies on-site Hubbard corrections of 7 eV to O-p states and 10 eV to Zn-d states.
 
-To run the calculation with MPI on 4 cores please execute the following command in this folder.
+The folder contains:
 
-    dftsolve -p 4 -i ZnO_withHubbard.py
+- `ZnO_withHubbard.py`: GPAW calculation with DFT+U.
+- `ZnO_woHubbard.py`: GPAW reference calculation without DFT+U.
+- `ZnO_QE_withHubbard.py`: native Quantum ESPRESSO DFT+U calculation with ground-state, DOS, and band workflows.
 
-and, results will be saved to folder: 'ZnO-withHubbard-results'
+All inputs construct Wurtzite ZnO with ASE's `bulk()` function.
 
-There is also a without Hubbard configuration file to compare:
+The common Nanoworks Hubbard syntax is:
 
-    dftsolve -p 4 -i ZnO_woHubbard.py
+```python
+Setup_params = {
+    'O': ':p,7.0',
+    'Zn': ':d,10.0',
+}
+```
 
-and, results will be saved to folder: 'ZnO-woHubbard-results'
+For QE, Nanoworks resolves these orbitals from the installed UPF files and writes:
+
+```text
+HUBBARD (ortho-atomic)
+U O-2p 7
+U Zn-3d 10
+```
+
+Run the GPAW example with:
+
+```bash
+dftsolve -p 4 -i ZnO_withHubbard.py
+```
+
+Run the GPAW reference calculation without DFT+U with:
+
+```bash
+dftsolve -p 4 -i ZnO_woHubbard.py
+```
+
+Run the QE example with:
+
+```bash
+dftsolve -p 4 -i ZnO_QE_withHubbard.py
+```
+
+The QE example uses a higher plane-wave cutoff appropriate for the installed PseudoDojo pseudopotentials. Geometry optimization is disabled by default to keep the example reasonably short.
+
+If QE geometry optimization is enabled, the provided settings:
+
+```python
+Relax_cell = [
+    True,
+    True,
+    True,
+    True,
+    True,
+    True,
+]
+
+Fix_symmetry = True
+```
+
+allow the lattice parameters to relax while preserving the symmetry-compatible shape of the non-orthogonal hexagonal cell.

@@ -38,7 +38,7 @@ Advanced DFT Methods & Corrections
   Demonstrates the importance of dispersion corrections in layered materials. The example includes scripts to calculate bulk MoS2 properties with and without vdW corrections for direct comparison. (Folder: ``Bulk-MoS2-vdW/``)
 
 * **ZnO with Hubbard U (DFT+U):**
-  Calculates the electronic properties of Wurtzite ZnO. It includes comparative scripts with and without Hubbard U corrections to show how strongly correlated *d*-electrons are treated in Transition Metal Oxides. (Folder: ``ZnO-with-Hubbard/``)
+  Calculates the electronic properties of Wurtzite ZnO with on-site corrections on O-*p* and Zn-*d* states. The folder contains GPAW calculations with and without Hubbard U and a native QE DFT+U example covering ground-state, DOS, and band calculations. (Folder: ``ZnO-with-Hubbard/``)
 
 * **WSe2 with Spin-Orbit Coupling (SOC):**
   Highlights the splitting of bands due to Spin-Orbit Coupling (SOC) in heavy transition metal dichalcogenides (TMDs) like WSe2. Built entirely using ASE without an external CIF file. (Folder: ``SOC-WSe2-noCIF/``)

@@ -104,14 +104,15 @@ OPTIONAL: Quantum ESPRESSO Backend
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Nanoworks can also use Quantum ESPRESSO as an alternative DFT engine.
-Current native QE support covers PBE plane-wave ground-state calculations
-and non-spin DOS/PDOS workflows. QE DOS calculations currently use
-tetrahedron occupations.
+Current native QE support covers PBE plane-wave ground-state,
+geometry-optimization, DFT+U, spin-resolved DOS/PDOS, band-structure,
+projected-band, and pseudo-valence electron-density workflows. QE DOS
+calculations currently use tetrahedron occupations.
 
 Quantum ESPRESSO itself is not installed automatically by the Nanoworks
 Python package. A working Quantum ESPRESSO installation with ``pw.x``,
-``dos.x`` and ``projwfc.x`` available in ``PATH`` is required for
-the currently supported workflows.
+``dos.x``, ``projwfc.x``, and ``pp.x`` available in ``PATH`` is required
+for the currently supported workflows.
 
 Nanoworks can install the required PseudoDojo pseudopotential libraries
 for the QE backend:
@@ -127,9 +128,9 @@ UPF pseudopotential sets under:
 
    ~/.nanoworks/pseudos/qe/pseudodojo/pbe/
 
-The currently supported QE ground-state and DOS/PDOS workflows use
-the scalar-relativistic PBE pseudopotentials. Fully-relativistic
-pseudopotentials are installed for future spin-orbit-coupling support.
+The currently supported native QE workflows use the scalar-relativistic
+PBE pseudopotentials. Fully-relativistic pseudopotentials are installed
+for future spin-orbit-coupling support.
 
 Quantum ESPRESSO 7.2 is the initially validated version.
 

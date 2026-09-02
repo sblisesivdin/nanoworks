@@ -17,7 +17,8 @@ General Keywords
     ``GPAW`` remains the default and currently provides the complete
     Nanoworks DFT workflow. Quantum ESPRESSO support is available with
     ``QE`` for PBE plane-wave ground-state, geometry-optimization,
-    DOS/PDOS, band-structure, and projected-band workflows.
+    DFT+U, DOS/PDOS, band-structure, projected-band, and
+    electron-density workflows.
 
 .. code-block:: python
 
@@ -33,12 +34,13 @@ or:
 
     Quantum ESPRESSO support is currently under active development.
     At this stage, ``Engine = 'QE'`` supports PBE PW ground-state,
-    fixed-cell and variable-cell geometry optimization, total and
-    orbital-projected DOS, band-structure, and projected-band workflows
-    using scalar-relativistic PseudoDojo pseudopotentials. Collinear-spin
-    ground-state, DOS/PDOS, band, and projected-band calculations are
-    supported. QE vdW, SOC, hybrid-functional, elastic, phonon, and
-    optical workflows are not supported yet.
+    fixed-cell and variable-cell geometry optimization, DFT+U, total
+    and orbital-projected DOS, band-structure, projected-band, and
+    pseudo-valence electron-density workflows using scalar-relativistic
+    PseudoDojo pseudopotentials. Collinear-spin ground-state, DOS/PDOS,
+    band, projected-band, and density calculations are supported.
+    QE vdW, SOC, hybrid-functional, elastic, phonon, and optical
+    workflows are not supported yet.
 
 .. describe:: Mode
 
@@ -578,11 +580,49 @@ Electronic Calculations Keywords
     :Type: ``python dictionary``
     :Default: ``{}``
 
-    Setup parameters for related orbitals/elements. For none, use ``{}``. See GPAW manual on manual setups.
+    Defines element-resolved Hubbard-U corrections. The same Nanoworks
+    syntax is used by GPAW and Quantum ESPRESSO.
 
 .. code-block:: python
 
-    Setup_params = {'N': ':p,6.0'}  # eV
+    Setup_params = {
+        'O': ':p,7.0',
+        'Zn': ':d,10.0',
+    }
+
+    The value after the orbital is the on-site Hubbard-U energy in eV.
+
+    GPAW receives its established setup specification. For QE,
+    Nanoworks reads the atomic-wavefunction manifolds from the selected
+    UPF pseudopotential. An abbreviated orbital such as ``p`` or ``d``
+    is therefore converted to the corresponding QE manifold, such as
+    ``O-2p`` or ``Zn-3d``.
+
+    The principal quantum number may also be specified explicitly:
+
+.. code-block:: python
+
+    Setup_params = {
+        'O': ':2p,7.0',
+        'Zn': ':3d,10.0',
+    }
+
+    QE 7.2 inputs use an ``HUBBARD (ortho-atomic)`` card. The correction
+    is propagated consistently to ground-state, geometry-optimization,
+    DOS NSCF, and band calculations. If magnetic moments cause one
+    element to be represented by multiple internal QE species, the
+    correction is applied to each corresponding species.
+
+    A legacy GPAW specification containing a third normalization field
+    is accepted by the QE backend, but it cannot be represented exactly.
+    Nanoworks uses ``ortho-atomic`` projectors and writes a ``NOTICE``
+    comment into the generated QE input.
+
+.. note::
+
+    The current QE backend supports one on-site Hubbard-U correction per
+    element. Inter-site Hubbard-V and explicit Hubbard-J terms are not
+    implemented yet.
 
 .. describe:: XC_calc
 
