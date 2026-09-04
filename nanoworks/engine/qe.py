@@ -1,5 +1,7 @@
 """Quantum ESPRESSO computation engine helpers."""
 
+import math
+import operator
 import re
 import os
 import shutil
@@ -1392,6 +1394,126 @@ def render_namelist(name, settings):
     lines.append("/")
 
     return "\n".join(lines)
+
+def build_ph_settings(
+    prefix,
+    outdir,
+    fildyn,
+    qpoint_grid,
+    tr2_ph=1.0e-12,
+):
+    """Build the QE ph.x &INPUTPH namelist settings."""
+    for name, value in (
+        ('prefix', prefix),
+        ('outdir', outdir),
+        ('fildyn', fildyn),
+    ):
+        if value is None or not str(value).strip():
+            raise ValueError(
+                f"QE phonon {name} must not be empty."
+            )
+
+    prefix = str(prefix).strip()
+    outdir = str(outdir).strip()
+    fildyn = str(fildyn).strip()
+
+    try:
+        qpoint_grid = tuple(qpoint_grid)
+    except TypeError as exc:
+        raise TypeError(
+            "QE phonon q-point grid must be an iterable "
+            "of three positive integers."
+        ) from exc
+
+    if len(qpoint_grid) != 3:
+        raise ValueError(
+            "QE phonon q-point grid must contain exactly 3 values."
+        )
+
+    if any(isinstance(value, bool) for value in qpoint_grid):
+        raise TypeError(
+            "QE phonon q-point grid values must be integers."
+        )
+
+    try:
+        qpoint_grid = tuple(
+            operator.index(value)
+            for value in qpoint_grid
+        )
+    except TypeError as exc:
+        raise TypeError(
+            "QE phonon q-point grid values must be integers."
+        ) from exc
+
+    if any(value <= 0 for value in qpoint_grid):
+        raise ValueError(
+            "QE phonon q-point grid values must be positive integers."
+        )
+
+    try:
+        tr2_ph = float(tr2_ph)
+    except (TypeError, ValueError) as exc:
+        raise TypeError(
+            "QE phonon convergence threshold must be a real number."
+        ) from exc
+
+    if not math.isfinite(tr2_ph) or tr2_ph <= 0.0:
+        raise ValueError(
+            "QE phonon convergence threshold must be a positive "
+            "finite value."
+        )
+
+    nq1, nq2, nq3 = qpoint_grid
+
+    return {
+        'prefix': prefix,
+        'outdir': outdir,
+        'fildyn': fildyn,
+        'tr2_ph': tr2_ph,
+        'ldisp': True,
+        'nq1': nq1,
+        'nq2': nq2,
+        'nq3': nq3,
+    }
+
+
+def render_ph_input(
+    prefix,
+    outdir,
+    fildyn,
+    qpoint_grid,
+    tr2_ph=1.0e-12,
+    title='Nanoworks native QE phonon calculation',
+):
+    """Render a complete QE ph.x input for a regular q-point grid."""
+    if title is None:
+        raise ValueError(
+            "QE phonon title must be one non-empty line."
+        )
+
+    title = str(title).strip()
+
+    if not title or '\n' in title or '\r' in title:
+        raise ValueError(
+            "QE phonon title must be one non-empty line."
+        )
+
+    settings = build_ph_settings(
+        prefix=prefix,
+        outdir=outdir,
+        fildyn=fildyn,
+        qpoint_grid=qpoint_grid,
+        tr2_ph=tr2_ph,
+    )
+
+    return "\n".join([
+        title,
+        render_namelist(
+            'INPUTPH',
+            settings,
+        ),
+        '',
+    ])
 
 def render_pw_input(
     calculation,

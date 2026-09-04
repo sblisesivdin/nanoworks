@@ -63,6 +63,8 @@ from nanoworks.engine.qe import (
     run_pp_density,
     render_qe_hubbard_card,
     resolve_qe_hubbard,
+    build_ph_settings,
+    render_ph_input,
 )
 
 
@@ -5351,6 +5353,158 @@ def test_run_spin_polarized_band_projections(self):
                 1.25,
             ],
         )
+
+    def test_build_ph_settings_for_regular_grid(self):
+        settings = build_ph_settings(
+            prefix='nanoworks',
+            outdir='/tmp/qe-state',
+            fildyn='Si-PHONON-QE-Result-Dynamical-Matrix',
+            qpoint_grid=(2, 3, 4),
+            tr2_ph=1.0e-14,
+        )
+
+        self.assertEqual(settings['prefix'], 'nanoworks')
+        self.assertEqual(settings['outdir'], '/tmp/qe-state')
+        self.assertEqual(
+            settings['fildyn'],
+            'Si-PHONON-QE-Result-Dynamical-Matrix',
+        )
+        self.assertEqual(settings['tr2_ph'], 1.0e-14)
+        self.assertTrue(settings['ldisp'])
+        self.assertEqual(
+            (
+                settings['nq1'],
+                settings['nq2'],
+                settings['nq3'],
+            ),
+            (2, 3, 4),
+        )
+
+    def test_render_ph_input_for_regular_grid(self):
+        text = render_ph_input(
+            prefix='nanoworks',
+            outdir='/tmp/qe-state',
+            fildyn='Si-PHONON-QE-Result-Dynamical-Matrix',
+            qpoint_grid=(2, 2, 2),
+        )
+
+        self.assertTrue(
+            text.startswith(
+                'Nanoworks native QE phonon calculation\n'
+                '&INPUTPH\n'
+            )
+        )
+        self.assertIn(
+            "  prefix = 'nanoworks',",
+            text,
+        )
+        self.assertIn(
+            "  outdir = '/tmp/qe-state',",
+            text,
+        )
+        self.assertIn(
+            "  fildyn = "
+            "'Si-PHONON-QE-Result-Dynamical-Matrix',",
+            text,
+        )
+        self.assertIn(
+            '  tr2_ph = 1e-12,',
+            text,
+        )
+        self.assertIn(
+            '  ldisp = .true.,',
+            text,
+        )
+        self.assertIn('  nq1 = 2,', text)
+        self.assertIn('  nq2 = 2,', text)
+        self.assertIn('  nq3 = 2,', text)
+        self.assertTrue(
+            text.endswith('/\n')
+        )
+
+    def test_build_ph_settings_rejects_invalid_grid(self):
+        for qpoint_grid in (
+            (2, 2),
+            (2, 0, 2),
+            (2, 2.5, 2),
+            (True, 2, 2),
+        ):
+            with self.subTest(
+                qpoint_grid=qpoint_grid
+            ):
+                with self.assertRaises(
+                    (TypeError, ValueError)
+                ):
+                    build_ph_settings(
+                        prefix='nanoworks',
+                        outdir='/tmp/qe-state',
+                        fildyn='si.dyn',
+                        qpoint_grid=qpoint_grid,
+                    )
+
+    def test_build_ph_settings_rejects_invalid_threshold(self):
+        for tr2_ph in (
+            0.0,
+            -1.0e-12,
+            float('inf'),
+        ):
+            with self.subTest(
+                tr2_ph=tr2_ph
+            ):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    'positive finite value',
+                ):
+                    build_ph_settings(
+                        prefix='nanoworks',
+                        outdir='/tmp/qe-state',
+                        fildyn='si.dyn',
+                        qpoint_grid=(2, 2, 2),
+                        tr2_ph=tr2_ph,
+                    )
+
+    def test_build_ph_settings_rejects_empty_identifiers(self):
+        for keyword, value in (
+            ('prefix', None),
+            ('outdir', ''),
+            ('fildyn', '   '),
+        ):
+            arguments = {
+                'prefix': 'nanoworks',
+                'outdir': '/tmp/qe-state',
+                'fildyn': 'si.dyn',
+                'qpoint_grid': (2, 2, 2),
+            }
+
+            arguments[keyword] = value
+
+            with self.subTest(keyword=keyword):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    f'{keyword} must not be empty',
+                ):
+                    build_ph_settings(
+                        **arguments
+                    )
+
+    def test_render_ph_input_rejects_invalid_title(self):
+        for title in (
+            None,
+            '',
+            'line one\nline two',
+        ):
+            with self.subTest(title=title):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    'one non-empty line',
+                ):
+                    render_ph_input(
+                        prefix='nanoworks',
+                        outdir='/tmp/qe-state',
+                        fildyn='si.dyn',
+                        qpoint_grid=(2, 2, 2),
+                        title=title,
+                    )
 
 if __name__ == '__main__':
     unittest.main()
