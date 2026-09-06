@@ -290,6 +290,31 @@ def _run_asap_langevin(
 
     return energy_records
 
+def _run_md_engine(
+    engine,
+    atoms,
+    struct_prefix,
+    temperature_profile,
+    time_profile,
+    friction_profile,
+    md_cycles,
+    md_steps_per_cycle,
+):
+    """Dispatch the molecular dynamics run to the selected engine."""
+
+    if engine == 'ASAP':
+        return _run_asap_langevin(
+            atoms=atoms,
+            struct_prefix=struct_prefix,
+            temperature_profile=temperature_profile,
+            time_profile=time_profile,
+            friction_profile=friction_profile,
+            md_cycles=md_cycles,
+            md_steps_per_cycle=md_steps_per_cycle,
+        )
+
+    raise ValueError(f'Unsupported MD engine: {engine}')
+    
 Scaled = False # Scaled or Cartesian coordinates
 Manual_PBC = False # If you need manual constraint axis
 
@@ -490,7 +515,8 @@ def main():
                 f"friction={friction_value}"
             )
 
-        energy_records = _run_asap_langevin(
+        energy_records = _run_md_engine(
+            engine=Engine,
             atoms=asestruct,
             struct_prefix=struct_prefix,
             temperature_profile=temperature_profile,
