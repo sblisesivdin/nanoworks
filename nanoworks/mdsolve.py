@@ -387,6 +387,46 @@ def _execute_lammps(input_file, struct_prefix):
 
     return log_file
 
+def _update_atoms_from_lammps_dump(
+    atoms,
+    struct_prefix,
+    species,
+):
+    """Update ASE atoms from the final LAMMPS dump frame."""
+
+    dump_file = struct_prefix + '-LAMMPS.dump'
+
+    final_atoms = read(
+        dump_file,
+        index=-1,
+        format='lammps-dump-text',
+        specorder=species,
+    )
+
+    if len(final_atoms) != len(atoms):
+        raise ValueError(
+            'LAMMPS final structure contains a different '
+            'number of atoms.'
+        )
+
+    atoms.set_cell(
+        final_atoms.get_cell(),
+        scale_atoms=False,
+    )
+
+    atoms.set_positions(
+        final_atoms.get_positions()
+    )
+
+    atoms.set_pbc(
+        final_atoms.get_pbc()
+    )
+
+    velocities = final_atoms.get_velocities()
+
+    if velocities is not None:
+        atoms.set_velocities(velocities)
+
 def _parse_lammps_thermo(
     log_file,
     temperature_profile,
@@ -669,6 +709,12 @@ def _run_md_engine(
         )
 
         print(f'LAMMPS log file written: {log_file}')
+
+        _update_atoms_from_lammps_dump(
+            atoms=atoms,
+            struct_prefix=struct_prefix,
+            species=species,
+        )
 
         energy_records = _parse_lammps_thermo(
             log_file=log_file,
