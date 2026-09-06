@@ -57,7 +57,7 @@ echo "Installing required system packages..."
 sudo apt install -y python3-venv python3-pip unzip python-is-python3 \
                     python3-dev libopenblas-dev libxc-dev libscalapack-mpi-dev \
                     libfftw3-dev libkim-api-dev openkim-models libkim-api2 pkg-config \
-                    task-spooler build-essential
+                    task-spooler build-essential lammps
 
 # Create and activate the Python virtual environment
 echo "Creating Python virtual environment..."
