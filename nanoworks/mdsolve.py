@@ -207,12 +207,6 @@ def _format_suffix(prefix, value):
         formatted = str(value)
     return f"{prefix}{formatted}"
 
-def _print_attention_message():
-    print("    )")
-    print("ATTENTION: If you have double number of atoms, it may be caused by ")
-    print("           repeating ASE bug https://gitlab.com/ase/ase/-/issues/169 ")
-    print("           Please assign Solve_double_element_problem variable as True in this script if necessary.")
-
 def _export_cif(struct_prefix, atoms):
     write_cif(struct_prefix+'-FinalStructure.cif', atoms)
 
@@ -515,9 +509,6 @@ Manual_PBC = False # If you need manual constraint axis
 # If Manual_PBC is true then change following:
 PBC_constraints = [True, True, False]
 
-# If you have double number of elements in your final file
-Solve_double_element_problem = True
-
 # If you do not want to use a CIF file for geometry, please provide
 # ASE Atoms object information below. You can use ciftoase.py to
 # make your own ASE Atoms object from a CIF file.
@@ -816,30 +807,25 @@ def main():
                 positions = asestruct.get_scaled_positions()
             else:
                 positions = asestruct.get_positions()
-            nn=0
-            mm=0
-
-            if Solve_double_element_problem == True:
-                for n in asestruct.get_chemical_symbols():
-                    nn=nn+1
-                    for m in positions:
-                        mm=mm+1
-                        if mm == nn:
-                            f.write("    Atom('"+n+"', ( "+str(m[0])+", "+str(m[1])+", "+str(m[2])+" )),\n")
-                    mm=0
-            else:
-                for n in asestruct.get_chemical_symbols():
-                    for m in positions:
-                        f.write("    Atom('"+n+"', ( "+str(m[0])+", "+str(m[1])+", "+str(m[2])+" )),\n")
-            f.write("    ],\n")
-            f.write("    cell=[("+str(asestruct.cell[0,0])+", "+str(asestruct.cell[0,1])+", "+str(asestruct.cell[0,2])+"), ("+str(asestruct.cell[1,0])+", "+str(asestruct.cell[1,1])+", "+str(asestruct.cell[1,2])+"), ("+str(asestruct.cell[2,0])+", "+str(asestruct.cell[2,1])+", "+str(asestruct.cell[2,2])+")],\n")
+            
+            for symbol, position in zip(
+                asestruct.get_chemical_symbols(),
+                positions,
+            ):
+                f.write(
+                    "    Atom("
+                    f"'{symbol}', "
+                    f"({position[0]}, "
+                    f"{position[1]}, "
+                    f"{position[2]})),\n"
+                )
+            
             if Manual_PBC == False:
                 f.write("    pbc=True,\n")
             else:
                 f.write("    pbc=["+str(PBC_constraints[0])+","+str(PBC_constraints[1])+","+str(PBC_constraints[2])+"],\n")
             f.write("    )\n")
 
-        _print_attention_message()
         _export_cif(struct_prefix, asestruct)
 
     namespace['Temperature'] = original_temperature
