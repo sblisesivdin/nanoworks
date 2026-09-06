@@ -32,7 +32,7 @@ from pathlib import Path
 from numbers import Number
 from itertools import product
 from ase import *
-from ase.io import read
+from ase.io import read, write
 from ase.io.cif import write_cif
 from ase.spacegroup import get_spacegroup
 from asap3 import Atoms, units
@@ -206,6 +206,20 @@ def _print_attention_message():
 def _export_cif(struct_prefix, atoms):
     write_cif(struct_prefix+'-FinalStructure.cif', atoms)
 
+def _write_lammps_data(atoms, struct_prefix):
+    """Write the ASE structure as a LAMMPS data file."""
+
+    data_file = struct_prefix + '-LAMMPS.data'
+
+    write(
+        data_file,
+        atoms,
+        format='lammps-data',
+        atom_style='atomic',
+    )
+
+    return data_file
+
 def _run_asap_langevin(
     atoms,
     struct_prefix,
@@ -334,8 +348,15 @@ def _run_md_engine(
         )
 
     if engine == 'LAMMPS':
+        data_file = _write_lammps_data(
+            atoms=atoms,
+            struct_prefix=struct_prefix,
+        )
+
+        print(f'LAMMPS data file written: {data_file}')
+
         raise NotImplementedError(
-            'LAMMPS backend is recognized but not implemented yet.'
+            'LAMMPS execution backend is not implemented yet.'
         )
 
     raise ValueError(f'Unsupported MD engine: {engine}')
