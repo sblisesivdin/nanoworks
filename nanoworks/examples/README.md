@@ -26,7 +26,7 @@ There are some example calculations given with different usage scenarios. Please
 
 | Name              | Notes  | 
 | ----------------- | ------ |
-| ASAP3-Example     | Germanene nanosheet example with a general potential.          |
+|MD-Example         | Molecular dynamics example using ASAP3 or LAMMPS with an OpenKIM potential. |
 
 ## mlsolve.py Example List
 

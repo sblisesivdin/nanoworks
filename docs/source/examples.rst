@@ -76,8 +76,8 @@ Machine Learning & Molecular Dynamics
 * **Graphene with ML Potentials:**
   Demonstrates the ``mlsolve`` capabilities of Nanoworks by optimizing pristine and vacancy-defect graphene structures using Machine Learning interatomic potentials. (Folder: ``Graphene-ML/``)
 
-* **ASAP3 MD Example:**
-  Shows how to perform calculations and molecular dynamics using the ASAP3 classical potential calculator for a 1x1 Germanene cell. (Folder: ``ASAP3-Example/``)
+* **Molecular Dynamics Example:**
+  Demonstrates the ``mdsolve`` workflow using either ASAP3 or LAMMPS with an OpenKIM interatomic potential. (Folder: ``MD-Example/``)
 
 Interoperability with Other Codes
 ---------------------------------
