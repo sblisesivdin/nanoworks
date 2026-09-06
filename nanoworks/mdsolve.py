@@ -49,9 +49,10 @@ from ase.calculators.kim import KIM
 # Simulation parameters
 Engine = 'ASAP'
 OpenKIM_potential = 'LJ_ElliottAkerson_2015_Universal__MO_959249795837_003'
-Temperature = 1 # Kelvin
-Time = 5 # fs
-Friction = 0.05
+Temperature = 1.0 # K
+Time_step = 5.0 # fs
+Temperature_damp = 200.0 # fs
+Random_seed = 12345
 
 # Molecular dynamics loop configuration
 MD_cycles = 25
@@ -170,12 +171,19 @@ def _resolve_potential(namespace, alias):
 def _write_energy_csv(path, records):
     if not records:
         return
-    header = "Step,Cycle,PotentialEnergyPerAtom(eV),KineticEnergyPerAtom(eV),TotalEnergyPerAtom(eV),Temperature(K),TimeStep(fs),Friction"
+    header = (
+    "Step,Cycle,PotentialEnergyPerAtom(eV),"
+    "KineticEnergyPerAtom(eV),TotalEnergyPerAtom(eV),"
+    "Temperature(K),TimeStep(fs),TemperatureDamp(fs)"
+)
     with open(path, 'w') as fd:
         fd.write(header + "\n")
         for rec in records:
             fd.write(
-                f"{rec['step']},{rec['cycle']},{rec['epot']:.6f},{rec['ekin']:.6f},{rec['total']:.6f},{rec['temperature']:.6f},{rec['timestep']:.6f},{rec['friction']:.6f}\n"
+                f"{rec['step']},{rec['cycle']},"
+                f"{rec['epot']:.6f},{rec['ekin']:.6f},{rec['total']:.6f},"
+                f"{rec['temperature']:.6f},{rec['timestep']:.6f},"
+                f"{rec['temperature_damp']:.6f}\n"
             )
 
 
@@ -314,20 +322,29 @@ def _run_asap_langevin(
     struct_prefix,
     openkim_potential,
     temperature_profile,
-    time_profile,
-    friction_profile,
+    timestep_profile,
+    temperature_damp_profile,
     md_cycles,
     md_steps_per_cycle,
 ):
-    """Run the current ASAP3 Langevin MD workflow."""
+    """Run the ASAP3 Langevin MD workflow."""
 
     atoms.set_calculator(
         KIM(openkim_potential, options={"ase_neigh": False})
     )
 
     initial_temperature = float(temperature_profile[0])
-    initial_timestep = float(time_profile[0])
-    initial_friction = float(friction_profile[0])
+    initial_timestep = float(timestep_profile[0])
+    initial_temperature_damp = float(temperature_damp_profile[0])
+
+    if initial_temperature_damp <= 0.0:
+        raise ValueError(
+            'Temperature_damp must be greater than zero.'
+        )
+
+    initial_friction = 1.0 / (
+        initial_temperature_damp * units.fs
+    )
 
     dyn = Langevin(
         atoms,
@@ -341,7 +358,7 @@ def _run_asap_langevin(
     print("")
     print("Energy per atom (cycle averages):")
     print(
-        "  %6s %15s %15s %15s %12s %12s %12s"
+        "  %6s %15s %15s %15s %12s %12s %15s"
         % (
             "Cycle",
             "Pot. energy",
@@ -349,7 +366,7 @@ def _run_asap_langevin(
             "Total energy",
             "Temp (K)",
             "dt (fs)",
-            "Friction",
+            "T-damp (fs)",
         )
     )
 
@@ -357,19 +374,47 @@ def _run_asap_langevin(
     total_steps = 0
 
     for cycle in range(md_cycles):
-        current_temperature = float(temperature_profile[cycle])
-        current_timestep = float(time_profile[cycle])
-        current_friction = float(friction_profile[cycle])
+        current_temperature = float(
+            temperature_profile[cycle]
+        )
+        current_timestep = float(
+            timestep_profile[cycle]
+        )
+        current_temperature_damp = float(
+            temperature_damp_profile[cycle]
+        )
+
+        if current_temperature_damp <= 0.0:
+            raise ValueError(
+                'Temperature_damp must be greater than zero.'
+            )
+
+        current_friction = 1.0 / (
+            current_temperature_damp * units.fs
+        )
 
         if cycle > 0:
-            if abs(current_temperature - initial_temperature) > 1e-9:
-                dyn.set_temperature(current_temperature)
+            if abs(
+                current_temperature - initial_temperature
+            ) > 1e-9:
+                dyn.set_temperature(
+                    temperature_K=current_temperature
+                )
 
-            if abs(current_timestep - initial_timestep) > 1e-12:
-                dyn.set_timestep(current_timestep * units.fs)
+            if abs(
+                current_timestep - initial_timestep
+            ) > 1e-12:
+                dyn.set_timestep(
+                    current_timestep * units.fs
+                )
 
-            if abs(current_friction - initial_friction) > 1e-12:
-                dyn.set_friction(current_friction)
+            if abs(
+                current_temperature_damp
+                - initial_temperature_damp
+            ) > 1e-12:
+                dyn.set_friction(
+                    current_friction
+                )
 
         dyn.run(md_steps_per_cycle)
 
@@ -380,7 +425,7 @@ def _run_asap_langevin(
         total_energy = epot + ekin
 
         print(
-            "%7d %15.5f %15.5f %15.5f %12.2f %12.3f %12.5f"
+            "%7d %15.5f %15.5f %15.5f %12.2f %12.3f %15.3f"
             % (
                 cycle + 1,
                 epot,
@@ -388,7 +433,7 @@ def _run_asap_langevin(
                 total_energy,
                 current_temperature,
                 current_timestep,
-                current_friction,
+                current_temperature_damp,
             )
         )
 
@@ -401,13 +446,13 @@ def _run_asap_langevin(
                 'total': total_energy,
                 'temperature': current_temperature,
                 'timestep': current_timestep,
-                'friction': current_friction,
+                'temperature_damp': current_temperature_damp,
             }
         )
 
         initial_temperature = current_temperature
         initial_timestep = current_timestep
-        initial_friction = current_friction
+        initial_temperature_damp = current_temperature_damp
 
     return energy_records
 
@@ -417,8 +462,8 @@ def _run_md_engine(
     struct_prefix,
     openkim_potential,
     temperature_profile,
-    time_profile,
-    friction_profile,
+    timestep_profile,
+    temperature_damp_profile,
     md_cycles,
     md_steps_per_cycle,
 ):
@@ -430,8 +475,8 @@ def _run_md_engine(
             struct_prefix=struct_prefix,
             openkim_potential=openkim_potential,
             temperature_profile=temperature_profile,
-            time_profile=time_profile,
-            friction_profile=friction_profile,
+            timestep_profile=timestep_profile,
+            temperature_damp_profile=temperature_damp_profile,
             md_cycles=md_cycles,
             md_steps_per_cycle=md_steps_per_cycle,
         )
@@ -623,22 +668,67 @@ def main():
     struct_base = os.path.join(str(structpath), struct_name)
 
     initial_structure = bulk_configuration.copy()
-    temperature_options = [float(v) for v in _get_run_values('Temperature', Temperature, namespace)]
-    time_options = [float(v) for v in _get_run_values('Time', Time, namespace)]
-    friction_options = [float(v) for v in _get_run_values('Friction', Friction, namespace)]
+    temperature_options = [
+        float(v)
+        for v in _get_run_values(
+            'Temperature',
+            Temperature,
+            namespace,
+        )
+    ]
 
-    combinations = list(product(temperature_options, time_options, friction_options))
+    timestep_options = [
+        float(v)
+        for v in _get_run_values(
+            'Time_step',
+            Time_step,
+            namespace,
+        )
+    ]
+
+    temperature_damp_options = [
+        float(v)
+        for v in _get_run_values(
+            'Temperature_damp',
+            Temperature_damp,
+            namespace,
+        )
+    ]
+
+    combinations = list(
+        product(
+            temperature_options,
+            timestep_options,
+            temperature_damp_options,
+        )
+    )
+
     varying_lengths = {
         'T': len(set(temperature_options)),
-        'dt': len(set(time_options)),
-        'fr': len(set(friction_options))
+        'dt': len(set(timestep_options)),
+        'Tdamp': len(set(temperature_damp_options)),
     }
 
-    original_temperature = namespace.get('Temperature', Temperature)
-    original_time = namespace.get('Time', Time)
-    original_friction = namespace.get('Friction', Friction)
+    original_temperature = namespace.get(
+        'Temperature',
+        Temperature,
+    )
 
-    for combo_index, (temperature_value, timestep_value, friction_value) in enumerate(combinations, 1):
+    original_timestep = namespace.get(
+        'Time_step',
+        Time_step,
+    )
+
+    original_temperature_damp = namespace.get(
+        'Temperature_damp',
+        Temperature_damp,
+    )
+
+    for combo_index, (
+        temperature_value,
+        timestep_value,
+        temperature_damp_value,
+    ) in enumerate(combinations, 1):
         asestruct = initial_structure.copy()
 
         suffix_parts = []
@@ -647,18 +737,40 @@ def main():
                 suffix_parts.append(_format_suffix('T', temperature_value))
             if varying_lengths['dt'] > 1:
                 suffix_parts.append(_format_suffix('dt', timestep_value))
-            if varying_lengths['fr'] > 1:
-                suffix_parts.append(_format_suffix('fr', friction_value))
+            if varying_lengths['Tdamp'] > 1:
+                suffix_parts.append(
+                    _format_suffix(
+                        'Tdamp',
+                        temperature_damp_value,
+                    )
+                )
         run_struct = struct_base if not suffix_parts else struct_base + '_' + '_'.join(suffix_parts)
         struct_prefix = run_struct
 
         namespace['Temperature'] = temperature_value
-        namespace['Time'] = timestep_value
-        namespace['Friction'] = friction_value
+        namespace['Time_step'] = timestep_value
+        namespace['Temperature_damp'] = temperature_damp_value
 
-        temperature_profile = _build_profile('Temperature', temperature_value, MD_cycles, namespace)
-        time_profile = _build_profile('Time', timestep_value, MD_cycles, namespace)
-        friction_profile = _build_profile('Friction', friction_value, MD_cycles, namespace)
+        temperature_profile = _build_profile(
+            'Temperature',
+            temperature_value,
+            MD_cycles,
+            namespace,
+        )
+
+        timestep_profile = _build_profile(
+            'Time_step',
+            timestep_value,
+            MD_cycles,
+            namespace,
+        )
+
+        temperature_damp_profile = _build_profile(
+            'Temperature_damp',
+            temperature_damp_value,
+            MD_cycles,
+            namespace,
+        )
 
         if len(combinations) > 1:
             print("")
@@ -666,7 +778,7 @@ def main():
                 f"Run {combo_index}/{len(combinations)}: "
                 f"T={temperature_value} K, "
                 f"dt={timestep_value} fs, "
-                f"friction={friction_value}"
+                f"T-damp={temperature_damp_value} fs"
             )
 
         energy_records = _run_md_engine(
@@ -675,8 +787,8 @@ def main():
             struct_prefix=struct_prefix,
             openkim_potential=OpenKIM_potential,
             temperature_profile=temperature_profile,
-            time_profile=time_profile,
-            friction_profile=friction_profile,
+            timestep_profile=timestep_profile,
+            temperature_damp_profile=temperature_damp_profile,
             md_cycles=MD_cycles,
             md_steps_per_cycle=MD_steps_per_cycle,
         )
@@ -718,8 +830,8 @@ def main():
         _export_cif(struct_prefix, asestruct)
 
     namespace['Temperature'] = original_temperature
-    namespace['Time'] = original_time
-    namespace['Friction'] = original_friction
+    namespace['Time_step'] = original_timestep
+    namespace['Temperature_damp'] = original_temperature_damp
 
 if __name__ == "__main__":
     main()
