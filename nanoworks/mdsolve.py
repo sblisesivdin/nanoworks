@@ -24,6 +24,7 @@ import sys
 import os
 import time
 import textwrap
+import shutil
 import requests
 import nanoworks
 from argparse import ArgumentParser, HelpFormatter
@@ -126,7 +127,7 @@ def _resolve_engine(namespace):
 
     engine = str(namespace.get('Engine', Engine)).strip().upper()
 
-    supported_engines = ('ASAP',)
+    supported_engines = ('ASAP', 'LAMMPS')
 
     if engine not in supported_engines:
         raise ValueError(
@@ -135,6 +136,18 @@ def _resolve_engine(namespace):
         )
 
     return engine
+
+def _check_lammps_available():
+    """Check whether the system-wide LAMMPS executable is available."""
+
+    executable = shutil.which('lmp')
+
+    if executable is None:
+        raise FileNotFoundError(
+            "LAMMPS executable 'lmp' was not found in PATH."
+        )
+
+    return executable
 
 def _resolve_potential(namespace, alias):
     """Resolve OpenKIM potential either from alias or explicit id."""
@@ -320,6 +333,11 @@ def _run_md_engine(
             md_steps_per_cycle=md_steps_per_cycle,
         )
 
+    if engine == 'LAMMPS':
+        raise NotImplementedError(
+            'LAMMPS backend is recognized but not implemented yet.'
+        )
+
     raise ValueError(f'Unsupported MD engine: {engine}')
     
 Scaled = False # Scaled or Cartesian coordinates
@@ -416,6 +434,13 @@ def main():
 
     Engine = resolved_engine
     namespace['Engine'] = Engine
+
+    if Engine == 'LAMMPS':
+        try:
+            _check_lammps_available()
+        except FileNotFoundError as exc:
+            print(str(exc))
+            sys.exit(1)
 
     try:
         resolved_potential = _resolve_potential(namespace, None)
