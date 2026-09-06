@@ -2,6 +2,12 @@
 
 ### Development Version
 
+- LAMMPS is added as a new molecular dynamics engine for `mdsolve`.
+- ASAP3 and LAMMPS now use the same `mdsolve` input workflow for temperature, time step and temperature damping.
+- Temperature, time step and temperature damping profiles and parameter sweeps are supported by both MD engines.
+- LAMMPS calculations now generate Nanoworks energy, trajectory and final-structure outputs together with native LAMMPS input, log and dump files.
+- Periodic boundary conditions are transferred to LAMMPS calculations.
+- The `mdsolve` example and documentation are renewed for the new MD workflow.
 - Initial Quantum ESPRESSO backend support is added to the new DFT engine infrastructure.
 - Quantum ESPRESSO 7.2 is used as the initial validated QE version.
 - Basic Quantum ESPRESSO PW ground-state calculations are now supported with `Engine = 'QE'` and `Ground_calc = True`.
