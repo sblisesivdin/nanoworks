@@ -44,6 +44,7 @@ from ase.calculators.kim import KIM
 # -------------------------------------------------------------
 
 # Simulation parameters
+Engine = 'ASAP'
 OpenKIM_potential = 'LJ_ElliottAkerson_2015_Universal__MO_959249795837_003'
 Temperature = 1 # Kelvin
 Time = 5 # fs
@@ -120,6 +121,20 @@ def _build_profile(name, base_value, cycle_count, namespace):
         return sequence[:cycle_count]
     return sequence + [sequence[-1]] * (cycle_count - len(sequence))
 
+def _resolve_engine(namespace):
+    """Resolve and validate the molecular dynamics engine."""
+
+    engine = str(namespace.get('Engine', Engine)).strip().upper()
+
+    supported_engines = ('ASAP',)
+
+    if engine not in supported_engines:
+        raise ValueError(
+            f"Unsupported MD engine: {engine}. "
+            f"Supported engines: {', '.join(supported_engines)}"
+        )
+
+    return engine
 
 def _resolve_potential(namespace, alias):
     """Resolve OpenKIM potential either from alias or explicit id."""
@@ -169,13 +184,11 @@ def _format_suffix(prefix, value):
         formatted = str(value)
     return f"{prefix}{formatted}"
 
-
 def _print_attention_message():
     print("    )")
     print("ATTENTION: If you have double number of atoms, it may be caused by ")
     print("           repeating ASE bug https://gitlab.com/ase/ase/-/issues/169 ")
     print("           Please assign Solve_double_element_problem variable as True in this script if necessary.")
-
 
 def _export_cif(struct_prefix, atoms):
     write_cif(struct_prefix+'-FinalStructure.cif', atoms)
@@ -362,6 +375,15 @@ def main():
         print(str(err))
 
     namespace = globals()
+
+    try:
+        resolved_engine = _resolve_engine(namespace)
+    except ValueError as exc:
+        print(str(exc))
+        sys.exit(1)
+
+    Engine = resolved_engine
+    namespace['Engine'] = Engine
 
     try:
         resolved_potential = _resolve_potential(namespace, None)
