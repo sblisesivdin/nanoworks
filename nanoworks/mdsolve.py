@@ -36,7 +36,7 @@ from ase import *
 from ase.data import atomic_numbers, atomic_masses
 from ase.io import read, write
 from ase.io.cif import write_cif
-from ase.spacegroup import get_spacegroup
+from ase.spacegroup.symmetrize import check_symmetry
 from asap3 import Atoms, units
 from asap3.md.langevin import Langevin
 from ase.calculators.kim import KIM
@@ -329,8 +329,9 @@ def _run_asap_langevin(
 ):
     """Run the ASAP3 Langevin MD workflow."""
 
-    atoms.set_calculator(
-        KIM(openkim_potential, options={"ase_neigh": False})
+    atoms.calc = KIM(
+        openkim_potential,
+        options={"ase_neigh": False},
     )
 
     initial_temperature = float(temperature_profile[0])
@@ -639,10 +640,22 @@ def main():
     bulk_configuration = read(inFile, index='-1')
     print("Number of atoms imported from CIF file:"+str(bulk_configuration.get_global_number_of_atoms()))
     try:
-        spacegroup = get_spacegroup(bulk_configuration, symprec=1e-2)
-        print("Spacegroup of CIF file (ASE):", f"{spacegroup.symbol} (No. {spacegroup.no})")
+        symmetry = check_symmetry(
+            bulk_configuration,
+            symprec=1e-2,
+            verbose=False,
+        )
+
+        print(
+            "Spacegroup of CIF file (ASE):",
+            f"{symmetry.international} "
+            f"(No. {symmetry.number})",
+        )
+
     except Exception as exc:
-        print(f"Could not determine spacegroup: {exc}")
+        print(
+            f"Could not determine spacegroup: {exc}"
+        )
 
     base_directory = config_dir if configpath else Path.cwd()
 
