@@ -231,6 +231,7 @@ def _write_lammps_input(
     struct_prefix,
     data_file,
     species,
+    pbc,
     openkim_potential,
     temperature_profile,
     timestep_profile,
@@ -245,6 +246,11 @@ def _write_lammps_input(
     dump_file = struct_prefix + '-LAMMPS.dump'
 
     species_string = ' '.join(species)
+    
+    boundary_string = ' '.join(
+        'p' if periodic else 'm'
+        for periodic in pbc
+    )
 
     mass_lines = []
 
@@ -266,6 +272,7 @@ def _write_lammps_input(
         f'kim init {openkim_potential} metal',
         '',
         'atom_style atomic',
+        f'boundary {boundary_string}',
         f'read_data "{data_file}"',
         '',
         *mass_lines,
@@ -715,6 +722,7 @@ def _run_md_engine(
             struct_prefix=struct_prefix,
             data_file=data_file,
             species=species,
+            pbc=atoms.get_pbc(),
             openkim_potential=openkim_potential,
             temperature_profile=temperature_profile,
             timestep_profile=timestep_profile,
@@ -993,6 +1001,8 @@ def main():
         temperature_damp_value,
     ) in enumerate(combinations, 1):
         asestruct = initial_structure.copy()
+        if Manual_PBC:
+            asestruct.set_pbc(PBC_constraints)
 
         suffix_parts = []
         if len(combinations) > 1:
