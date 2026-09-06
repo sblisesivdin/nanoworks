@@ -30,8 +30,8 @@ settings explicit and reusable.
      </article>
      <article class="nw-card">
        <span class="nw-command">mdsolve</span>
-       <h3>Molecular Dynamics</h3>
-       <p>Perform geometry optimization and molecular dynamics with classical interatomic potentials from OpenKIM.</p>
+       <h3>Molecular Dynamics with ASAP3 and LAMMPS</h3>
+       <p>Run molecular dynamics calculations through a common Nanoworks workflow using ASAP3 or LAMMPS with OpenKIM interatomic potentials.</p>
        <a href="usage.html#mdsolve-formerly-asapsolve-py">Explore MD workflows →</a>
      </article>
      <article class="nw-card">

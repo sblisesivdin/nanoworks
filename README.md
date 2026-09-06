@@ -19,7 +19,7 @@ It acts as a wrapper and orchestrator for several powerful scientific libraries,
 
 **Core Capabilities:**
 1.  **DFT (via GPAW, Quantum ESPRESSO & ASE):** The `dftsolve` tool provides the established Nanoworks workflow through GPAW and a growing native Quantum ESPRESSO backend. QE workflows include PBE plane-wave ground-state calculations, atomic and variable-cell geometry optimization, spin-resolved DOS/PDOS and band structures, projected (fat) bands, and pseudo-valence electron-density Cube outputs.
-2.  **MD (via ASAP3 & OpenKIM):** The `mdsolve` tool provides quick geometric optimization and molecular dynamics using interatomic potentials from OpenKIM.
+2. **MD (via ASAP3, LAMMPS & OpenKIM):** The `mdsolve` tool provides molecular dynamics calculations using either ASAP3 or LAMMPS with OpenKIM interatomic potentials.
 3.  **ML Potentials (New!):** The `mlsolve` tool enables geometry optimization and static calculations using state-of-the-art Machine Learning Force Fields (MLFF), including **MACE**, **CHGNet**, and **SevenNet**.
 
 ## Installation
@@ -62,7 +62,7 @@ dftsolve -p <cores> -g <geometry.cif> -a
 *   `-a, --auto`: Auto mode. Automatically generate input parameters based on geometry.
 
 ### 2. mdsolve (formerly asapsolve.py)
-Perform quick geometric optimizations or MD runs using classical potentials via ASAP3 and OpenKIM.
+Perform molecular dynamics calculations using ASAP3 or LAMMPS with OpenKIM interatomic potentials.
 
 **Usage:**
 ```bash
