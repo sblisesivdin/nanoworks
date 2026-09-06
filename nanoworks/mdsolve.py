@@ -364,6 +364,88 @@ def _execute_lammps(input_file, struct_prefix):
 
     return log_file
 
+def _parse_lammps_thermo(
+    log_file,
+    temperature_profile,
+    timestep_profile,
+    temperature_damp_profile,
+    md_steps_per_cycle,
+):
+    """Parse LAMMPS thermo output into Nanoworks energy records."""
+
+    records = []
+    in_thermo = False
+
+    with open(log_file, 'r') as fd:
+        for line in fd:
+            stripped = line.strip()
+
+            if stripped.startswith(
+                'Step'
+            ) and 'PotEng' in stripped and 'KinEng' in stripped:
+                in_thermo = True
+                continue
+
+            if not in_thermo:
+                continue
+
+            if (
+                stripped.startswith('Loop time')
+                or stripped.startswith('ERROR')
+                or not stripped
+            ):
+                in_thermo = False
+                continue
+
+            fields = stripped.split()
+
+            if len(fields) < 6:
+                continue
+
+            try:
+                step = int(fields[0])
+                atoms = int(fields[1])
+                potential_energy = float(fields[3])
+                kinetic_energy = float(fields[4])
+                total_energy = float(fields[5])
+            except ValueError:
+                continue
+
+            if step == 0:
+                continue
+
+            if step % md_steps_per_cycle != 0:
+                continue
+
+            cycle = step // md_steps_per_cycle
+            profile_index = cycle - 1
+
+            if profile_index >= len(temperature_profile):
+                continue
+
+            records.append(
+                {
+                    'cycle': cycle,
+                    'step': step,
+                    'epot': potential_energy / atoms,
+                    'ekin': kinetic_energy / atoms,
+                    'total': total_energy / atoms,
+                    'temperature': float(
+                        temperature_profile[profile_index]
+                    ),
+                    'timestep': float(
+                        timestep_profile[profile_index]
+                    ),
+                    'temperature_damp': float(
+                        temperature_damp_profile[
+                            profile_index
+                        ]
+                    ),
+                }
+            )
+
+    return records
+
 def _run_asap_langevin(
     atoms,
     struct_prefix,
@@ -559,7 +641,15 @@ def _run_md_engine(
 
         print(f'LAMMPS log file written: {log_file}')
 
-        return []
+        energy_records = _parse_lammps_thermo(
+            log_file=log_file,
+            temperature_profile=temperature_profile,
+            timestep_profile=timestep_profile,
+            temperature_damp_profile=temperature_damp_profile,
+            md_steps_per_cycle=md_steps_per_cycle,
+        )
+
+        return energy_records
 
     raise ValueError(f'Unsupported MD engine: {engine}')
     
