@@ -180,6 +180,102 @@ def _print_attention_message():
 def _export_cif(struct_prefix, atoms):
     write_cif(struct_prefix+'-FinalStructure.cif', atoms)
 
+def _run_asap_langevin(
+    atoms,
+    struct_prefix,
+    temperature_profile,
+    time_profile,
+    friction_profile,
+    md_cycles,
+    md_steps_per_cycle,
+):
+    """Run the current ASAP3 Langevin MD workflow."""
+
+    initial_temperature = float(temperature_profile[0])
+    initial_timestep = float(time_profile[0])
+    initial_friction = float(friction_profile[0])
+
+    dyn = Langevin(
+        atoms,
+        timestep=initial_timestep * units.fs,
+        trajectory=struct_prefix + '-Results.traj',
+        logfile=struct_prefix + '-Log.txt',
+        temperature_K=initial_temperature,
+        friction=initial_friction,
+    )
+
+    print("")
+    print("Energy per atom (cycle averages):")
+    print(
+        "  %6s %15s %15s %15s %12s %12s %12s"
+        % (
+            "Cycle",
+            "Pot. energy",
+            "Kin. energy",
+            "Total energy",
+            "Temp (K)",
+            "dt (fs)",
+            "Friction",
+        )
+    )
+
+    energy_records = []
+    total_steps = 0
+
+    for cycle in range(md_cycles):
+        current_temperature = float(temperature_profile[cycle])
+        current_timestep = float(time_profile[cycle])
+        current_friction = float(friction_profile[cycle])
+
+        if cycle > 0:
+            if abs(current_temperature - initial_temperature) > 1e-9:
+                dyn.set_temperature(current_temperature)
+
+            if abs(current_timestep - initial_timestep) > 1e-12:
+                dyn.set_timestep(current_timestep * units.fs)
+
+            if abs(current_friction - initial_friction) > 1e-12:
+                dyn.set_friction(current_friction)
+
+        dyn.run(md_steps_per_cycle)
+
+        total_steps += md_steps_per_cycle
+
+        epot = atoms.get_potential_energy() / len(atoms)
+        ekin = atoms.get_kinetic_energy() / len(atoms)
+        total_energy = epot + ekin
+
+        print(
+            "%7d %15.5f %15.5f %15.5f %12.2f %12.3f %12.5f"
+            % (
+                cycle + 1,
+                epot,
+                ekin,
+                total_energy,
+                current_temperature,
+                current_timestep,
+                current_friction,
+            )
+        )
+
+        energy_records.append(
+            {
+                'cycle': cycle + 1,
+                'step': total_steps,
+                'epot': epot,
+                'ekin': ekin,
+                'total': total_energy,
+                'temperature': current_temperature,
+                'timestep': current_timestep,
+                'friction': current_friction,
+            }
+        )
+
+        initial_temperature = current_temperature
+        initial_timestep = current_timestep
+        initial_friction = current_friction
+
+    return energy_records
 
 Scaled = False # Scaled or Cartesian coordinates
 Manual_PBC = False # If you need manual constraint axis
@@ -363,63 +459,24 @@ def main():
         time_profile = _build_profile('Time', timestep_value, MD_cycles, namespace)
         friction_profile = _build_profile('Friction', friction_value, MD_cycles, namespace)
 
-        initial_temperature = float(temperature_profile[0])
-        initial_timestep = float(time_profile[0])
-        initial_friction = float(friction_profile[0])
-
-        dyn = Langevin(
-            asestruct,
-            timestep=initial_timestep*units.fs,
-            trajectory=struct_prefix+'-Results.traj',
-            logfile=struct_prefix+'-Log.txt',
-            temperature_K=initial_temperature,
-            friction=initial_friction
-        )
-
         if len(combinations) > 1:
             print("")
-            print(f"Run {combo_index}/{len(combinations)}: T={temperature_value} K, dt={timestep_value} fs, friction={friction_value}")
+            print(
+                f"Run {combo_index}/{len(combinations)}: "
+                f"T={temperature_value} K, "
+                f"dt={timestep_value} fs, "
+                f"friction={friction_value}"
+            )
 
-        print("")
-        print("Energy per atom (cycle averages):")
-        print("  %6s %15s %15s %15s %12s %12s %12s" % ("Cycle", "Pot. energy", "Kin. energy", "Total energy", "Temp (K)", "dt (fs)", "Friction"))
-
-        energy_records = []
-        total_steps = 0
-
-        for cycle in range(MD_cycles):
-            current_temperature = float(temperature_profile[cycle])
-            current_timestep = float(time_profile[cycle])
-            current_friction = float(friction_profile[cycle])
-
-            if cycle > 0:
-                if abs(current_temperature - initial_temperature) > 1e-9:
-                    dyn.set_temperature(current_temperature)
-                if abs(current_timestep - initial_timestep) > 1e-12:
-                    dyn.set_timestep(current_timestep*units.fs)
-                if abs(current_friction - initial_friction) > 1e-12:
-                    dyn.set_friction(current_friction)
-
-            dyn.run(MD_steps_per_cycle)
-            total_steps += MD_steps_per_cycle
-            epot = asestruct.get_potential_energy()/len(asestruct)
-            ekin = asestruct.get_kinetic_energy()/len(asestruct)
-            total_energy = epot + ekin
-            print("%7d %15.5f %15.5f %15.5f %12.2f %12.3f %12.5f" % (cycle+1, epot, ekin, total_energy, current_temperature, current_timestep, current_friction))
-            energy_records.append({
-                'cycle': cycle + 1,
-                'step': total_steps,
-                'epot': epot,
-                'ekin': ekin,
-                'total': total_energy,
-                'temperature': current_temperature,
-                'timestep': current_timestep,
-                'friction': current_friction
-            })
-
-            initial_temperature = current_temperature
-            initial_timestep = current_timestep
-            initial_friction = current_friction
+        energy_records = _run_asap_langevin(
+            atoms=asestruct,
+            struct_prefix=struct_prefix,
+            temperature_profile=temperature_profile,
+            time_profile=time_profile,
+            friction_profile=friction_profile,
+            md_cycles=MD_cycles,
+            md_steps_per_cycle=MD_steps_per_cycle,
+        )
 
         # PRINT TO FILE PART -----------------------------------
         _write_energy_csv(struct_prefix+'-Energy.csv', energy_records)
