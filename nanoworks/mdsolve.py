@@ -427,6 +427,30 @@ def _update_atoms_from_lammps_dump(
     if velocities is not None:
         atoms.set_velocities(velocities)
 
+def _write_lammps_trajectory(
+    struct_prefix,
+    species,
+):
+    """Convert the LAMMPS dump trajectory to ASE trajectory format."""
+
+    dump_file = struct_prefix + '-LAMMPS.dump'
+    trajectory_file = struct_prefix + '-Results.traj'
+
+    frames = read(
+        dump_file,
+        index=':',
+        format='lammps-dump-text',
+        specorder=species,
+    )
+
+    write(
+        trajectory_file,
+        frames,
+        format='traj',
+    )
+
+    return trajectory_file
+
 def _parse_lammps_thermo(
     log_file,
     temperature_profile,
@@ -714,6 +738,16 @@ def _run_md_engine(
             atoms=atoms,
             struct_prefix=struct_prefix,
             species=species,
+        )
+
+        trajectory_file = _write_lammps_trajectory(
+            struct_prefix=struct_prefix,
+            species=species,
+        )
+
+        print(
+            f'LAMMPS trajectory file written: '
+            f'{trajectory_file}'
         )
 
         energy_records = _parse_lammps_thermo(
