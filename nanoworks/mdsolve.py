@@ -196,6 +196,7 @@ def _export_cif(struct_prefix, atoms):
 def _run_asap_langevin(
     atoms,
     struct_prefix,
+    openkim_potential,
     temperature_profile,
     time_profile,
     friction_profile,
@@ -203,6 +204,10 @@ def _run_asap_langevin(
     md_steps_per_cycle,
 ):
     """Run the current ASAP3 Langevin MD workflow."""
+
+    atoms.set_calculator(
+        KIM(openkim_potential, options={"ase_neigh": False})
+    )
 
     initial_temperature = float(temperature_profile[0])
     initial_timestep = float(time_profile[0])
@@ -294,6 +299,7 @@ def _run_md_engine(
     engine,
     atoms,
     struct_prefix,
+    openkim_potential,
     temperature_profile,
     time_profile,
     friction_profile,
@@ -306,6 +312,7 @@ def _run_md_engine(
         return _run_asap_langevin(
             atoms=atoms,
             struct_prefix=struct_prefix,
+            openkim_potential=openkim_potential,
             temperature_profile=temperature_profile,
             time_profile=time_profile,
             friction_profile=friction_profile,
@@ -485,7 +492,6 @@ def main():
 
     for combo_index, (temperature_value, timestep_value, friction_value) in enumerate(combinations, 1):
         asestruct = initial_structure.copy()
-        asestruct.set_calculator(KIM(OpenKIM_potential, options={"ase_neigh": False}))
 
         suffix_parts = []
         if len(combinations) > 1:
@@ -519,6 +525,7 @@ def main():
             engine=Engine,
             atoms=asestruct,
             struct_prefix=struct_prefix,
+            openkim_potential=OpenKIM_potential,
             temperature_profile=temperature_profile,
             time_profile=time_profile,
             friction_profile=friction_profile,
