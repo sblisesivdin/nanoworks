@@ -75,6 +75,7 @@ from nanoworks.engine.qe import (
     render_matdyn_dos_input,
     run_ph,
     run_q2r,
+    run_matdyn_band,
 )
 
 
@@ -6321,6 +6322,153 @@ def test_run_spin_polarized_band_projections(self):
                         output_file=tmpdir / 'q2r.out',
                         fildyn=fildyn,
                         flfrc=tmpdir / 'si.fc',
+                    )
+
+    def test_run_matdyn_band_uses_force_constants(self):
+        output_text = """
+        Program MATDYN v.7.2 starts
+
+        JOB DONE.
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+            flfrc = tmpdir / 'si.fc'
+            flfrq = tmpdir / 'si.freq'
+            flfrc.write_text(
+                'real-space force constants',
+                encoding='utf-8',
+            )
+
+            band_path = {
+                'option': 'crystal',
+                'kpoints': [
+                    (0.0, 0.0, 0.0),
+                    (0.0, 0.5, 0.0),
+                ],
+                'npoints': 2,
+            }
+
+            def fake_run_qe_program(**kwargs):
+                Path(
+                    kwargs['output_file']
+                ).write_text(
+                    output_text,
+                    encoding='utf-8',
+                )
+                flfrq.write_text(
+                    'phonon frequencies',
+                    encoding='utf-8',
+                )
+
+                return {
+                    'returncode': 0,
+                }
+
+            with patch(
+                'nanoworks.engine.qe.run_qe_program',
+                side_effect=fake_run_qe_program,
+            ):
+                workflow = run_matdyn_band(
+                    input_file=tmpdir / 'matdyn-band.in',
+                    output_file=tmpdir / 'matdyn-band.out',
+                    flfrc=flfrc,
+                    flfrq=flfrq,
+                    band_path=band_path,
+                )
+
+            input_text = workflow[
+                'input_file'
+            ].read_text(
+                encoding='utf-8'
+            )
+
+        self.assertIn(
+            '  dos = .false.,',
+            input_text,
+        )
+        self.assertIn(
+            '  q_in_cryst_coord = .true.,',
+            input_text,
+        )
+        self.assertEqual(
+            workflow['result']['program'],
+            'MATDYN',
+        )
+        self.assertEqual(
+            workflow['flfrq'],
+            flfrq,
+        )
+
+    def test_run_matdyn_band_requires_force_constants(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+
+            with self.assertRaisesRegex(
+                FileNotFoundError,
+                'force-constant file',
+            ):
+                run_matdyn_band(
+                    input_file=tmpdir / 'matdyn-band.in',
+                    output_file=tmpdir / 'matdyn-band.out',
+                    flfrc=tmpdir / 'missing.fc',
+                    flfrq=tmpdir / 'si.freq',
+                    band_path={
+                        'option': 'crystal',
+                        'kpoints': [
+                            (0.0, 0.0, 0.0),
+                        ],
+                        'npoints': 1,
+                    },
+                )
+
+    def test_run_matdyn_band_requires_frequency_output(self):
+        output_text = """
+        Program MATDYN v.7.2 starts
+
+        JOB DONE.
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+            flfrc = tmpdir / 'si.fc'
+            flfrc.write_text(
+                'real-space force constants',
+                encoding='utf-8',
+            )
+
+            def fake_run_qe_program(**kwargs):
+                Path(
+                    kwargs['output_file']
+                ).write_text(
+                    output_text,
+                    encoding='utf-8',
+                )
+
+                return {
+                    'returncode': 0,
+                }
+
+            with patch(
+                'nanoworks.engine.qe.run_qe_program',
+                side_effect=fake_run_qe_program,
+            ):
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    'phonon frequency file',
+                ):
+                    run_matdyn_band(
+                        input_file=tmpdir / 'matdyn-band.in',
+                        output_file=tmpdir / 'matdyn-band.out',
+                        flfrc=flfrc,
+                        flfrq=tmpdir / 'si.freq',
+                        band_path={
+                            'option': 'crystal',
+                            'kpoints': [
+                                (0.0, 0.0, 0.0),
+                            ],
+                            'npoints': 1,
+                        },
                     )
 
 if __name__ == '__main__':

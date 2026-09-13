@@ -5387,6 +5387,102 @@ def run_q2r(
     }
 
 
+def run_matdyn_band(
+    input_file,
+    output_file,
+    flfrc,
+    flfrq,
+    band_path,
+    acoustic_sum_rule=True,
+    parallel_cores=1,
+    executable='matdyn.x',
+):
+    """Render, execute, and validate a QE phonon band calculation."""
+    input_file = Path(input_file)
+    output_file = Path(output_file)
+    flfrc = Path(flfrc)
+    flfrq = Path(flfrq)
+
+    if not flfrc.is_file():
+        raise FileNotFoundError(
+            "QE matdyn.x requires a real-space force-constant "
+            f"file: {flfrc}"
+        )
+
+    input_text = render_matdyn_band_input(
+        flfrc=flfrc,
+        flfrq=flfrq,
+        band_path=band_path,
+        acoustic_sum_rule=acoustic_sum_rule,
+    )
+
+    input_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+    output_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+    flfrq.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    input_file.write_text(
+        input_text,
+        encoding='utf-8',
+    )
+
+    launcher = build_qe_launcher(
+        parallel_cores=parallel_cores
+    )
+
+    execution = run_qe_program(
+        input_file=input_file,
+        output_file=output_file,
+        executable=executable,
+        launcher=launcher,
+    )
+
+    result = parse_qe_auxiliary_output(
+        output_file,
+        expected_program='MATDYN',
+    )
+
+    try:
+        validate_qe_version(
+            result['qe_version']
+        )
+    except ValueError as exc:
+        raise RuntimeError(
+            f"{exc} See '{output_file}'."
+        ) from exc
+
+    if not result['job_done']:
+        raise RuntimeError(
+            "Quantum ESPRESSO matdyn.x phonon band calculation "
+            "finished without a 'JOB DONE.' marker. "
+            f"See '{output_file}'."
+        )
+
+    if not flfrq.is_file():
+        raise RuntimeError(
+            "Quantum ESPRESSO matdyn.x did not produce the "
+            f"phonon frequency file: {flfrq}"
+        )
+
+    return {
+        'input_file': input_file,
+        'output_file': output_file,
+        'flfrc': flfrc,
+        'flfrq': flfrq,
+        'band_path': band_path,
+        'execution': execution,
+        'result': result,
+    }
+
+
 def run_scf(
     atoms,
     input_file,
