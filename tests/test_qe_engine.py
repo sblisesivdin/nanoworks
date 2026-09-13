@@ -9,6 +9,7 @@ from ase import Atoms
 from ase.build import bulk
 from nanoworks.engine.qe import (
     QE_REFERENCE_VERSION,
+    THZ_PER_CM_MINUS_ONE,
     ev_to_rydberg,
     build_control_settings,
     build_system_settings,
@@ -33,6 +34,7 @@ from nanoworks.engine.qe import (
     build_qe_command,
     run_qe_program,
     parse_qe_auxiliary_output,
+    parse_matdyn_frequency_file,
     parse_pw_output,
     resolve_qe_band_reference,
     parse_pw_bands_output,
@@ -6116,6 +6118,108 @@ def test_run_spin_polarized_band_projections(self):
                 parse_qe_auxiliary_output(
                     output_file,
                     expected_program='PHONON',
+                )
+
+    def test_parse_matdyn_frequency_file(self):
+        frequency_text = """
+ &plot nbnd=   6, nks=   2 /
+          0.000000  0.000000  0.000000
+  -12.5000-11.2500  -0.5000   5.0000  10.0000  15.0000
+          0.000000  0.500000  0.000000
+   1.0000D+01  20.0000  30.0000  40.0000  50.0000  60.0000
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            frequency_file = (
+                Path(tmpdir)
+                / 'si.freq'
+            )
+            frequency_file.write_text(
+                frequency_text,
+                encoding='utf-8',
+            )
+
+            result = parse_matdyn_frequency_file(
+                frequency_file
+            )
+
+        self.assertEqual(
+            result['nqpoints'],
+            2,
+        )
+        self.assertEqual(
+            result['nmodes'],
+            6,
+        )
+        self.assertEqual(
+            result['qpoints'][1],
+            (0.0, 0.5, 0.0),
+        )
+        self.assertEqual(
+            result['frequencies_cm1'][0][:3],
+            [-12.5, -11.25, -0.5],
+        )
+        self.assertEqual(
+            result['frequencies_cm1'][1][0],
+            10.0,
+        )
+        self.assertAlmostEqual(
+            result['frequencies_thz'][0][0],
+            -12.5 * THZ_PER_CM_MINUS_ONE,
+        )
+
+    def test_parse_matdyn_frequency_file_rejects_bad_count(self):
+        frequency_text = """
+ &plot nbnd=   3, nks=   1 /
+          0.000000  0.000000  0.000000
+   1.0000   2.0000
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            frequency_file = (
+                Path(tmpdir)
+                / 'bad.freq'
+            )
+            frequency_file.write_text(
+                frequency_text,
+                encoding='utf-8',
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                'data count does not match',
+            ):
+                parse_matdyn_frequency_file(
+                    frequency_file
+                )
+
+    def test_parse_matdyn_frequency_file_requires_header(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            frequency_file = (
+                Path(tmpdir)
+                / 'bad.freq'
+            )
+            frequency_file.write_text(
+                'not a matdyn frequency file',
+                encoding='utf-8',
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                'header could not be parsed',
+            ):
+                parse_matdyn_frequency_file(
+                    frequency_file
+                )
+
+    def test_parse_matdyn_frequency_file_requires_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with self.assertRaises(
+                FileNotFoundError
+            ):
+                parse_matdyn_frequency_file(
+                    Path(tmpdir)
+                    / 'missing.freq'
                 )
 
     def test_run_ph_uses_existing_ground_state(self):

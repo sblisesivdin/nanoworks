@@ -19,6 +19,7 @@ QE_REFERENCE_VERSION = (7, 2)
 
 # CODATA-compatible conversion used by ASE and QE-related workflows.
 EV_PER_RYDBERG = 13.605693122994
+THZ_PER_CM_MINUS_ONE = 0.0299792458
 
 
 def ev_to_rydberg(value):
@@ -2996,6 +2997,110 @@ def parse_qe_auxiliary_output(
         'qe_version': qe_version,
         'job_done': 'JOB DONE.' in text,
     }
+
+
+def parse_matdyn_frequency_file(frequency_file):
+    """Parse q-points and phonon frequencies written by matdyn.x."""
+    frequency_file = Path(
+        frequency_file
+    )
+
+    if not frequency_file.is_file():
+        raise FileNotFoundError(
+            "QE matdyn frequency file was not found: "
+            f"{frequency_file}"
+        )
+
+    text = frequency_file.read_text(
+        encoding='utf-8',
+        errors='replace',
+    )
+
+    header_match = re.search(
+        r'&plot\s+nbnd\s*=\s*(\d+)\s*,\s*'
+        r'nks\s*=\s*(\d+)\s*/',
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    if header_match is None:
+        raise ValueError(
+            "QE matdyn frequency header could not be parsed "
+            f"from '{frequency_file}'."
+        )
+
+    nmodes = int(
+        header_match.group(1)
+    )
+    nqpoints = int(
+        header_match.group(2)
+    )
+
+    if nmodes <= 0 or nqpoints <= 0:
+        raise ValueError(
+            "QE matdyn frequency header contains non-positive "
+            "mode or q-point counts."
+        )
+
+    number_pattern = re.compile(
+        r'[+-]?(?:\d+(?:\.\d*)?|\.\d+)'
+        r'(?:[EeDd][+-]?\d+)?'
+    )
+
+    data_text = text[
+        header_match.end():
+    ]
+
+    values = [
+        float(
+            value.replace('D', 'E').replace('d', 'e')
+        )
+        for value in number_pattern.findall(data_text)
+    ]
+
+    values_per_qpoint = 3 + nmodes
+    expected_values = (
+        nqpoints * values_per_qpoint
+    )
+
+    if len(values) != expected_values:
+        raise ValueError(
+            "QE matdyn frequency data count does not match "
+            f"the header: expected {expected_values} values, "
+            f"found {len(values)}."
+        )
+
+    qpoints = []
+    frequencies_cm1 = []
+
+    for index in range(nqpoints):
+        start = index * values_per_qpoint
+        qpoints.append(
+            tuple(values[start:start + 3])
+        )
+        frequencies_cm1.append(
+            values[
+                start + 3:
+                start + values_per_qpoint
+            ]
+        )
+
+    frequencies_thz = [
+        [
+            value * THZ_PER_CM_MINUS_ONE
+            for value in row
+        ]
+        for row in frequencies_cm1
+    ]
+
+    return {
+        'qpoints': qpoints,
+        'frequencies_cm1': frequencies_cm1,
+        'frequencies_thz': frequencies_thz,
+        'nqpoints': nqpoints,
+        'nmodes': nmodes,
+    }
+
 
 def parse_pw_output(output):
     """Parse basic results from pw.x output."""
