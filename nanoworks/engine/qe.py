@@ -1717,6 +1717,102 @@ def render_matdyn_band_input(
         '',
     ])
 
+
+def build_matdyn_dos_settings(
+    flfrc,
+    fldos,
+    qpoint_grid,
+    acoustic_sum_rule=True,
+):
+    """Build QE matdyn.x settings for phonon DOS."""
+    for name, value in (
+        ('flfrc', flfrc),
+        ('fldos', fldos),
+    ):
+        if value is None or not str(value).strip():
+            raise ValueError(
+                f"QE matdyn {name} must not be empty."
+            )
+
+    if not isinstance(acoustic_sum_rule, bool):
+        raise TypeError(
+            "QE matdyn acoustic sum rule setting must be boolean."
+        )
+
+    try:
+        qpoint_grid = tuple(qpoint_grid)
+    except TypeError as exc:
+        raise TypeError(
+            "QE matdyn DOS q-point grid must be an iterable "
+            "of three positive integers."
+        ) from exc
+
+    if len(qpoint_grid) != 3:
+        raise ValueError(
+            "QE matdyn DOS q-point grid must contain exactly "
+            "3 values."
+        )
+
+    if any(isinstance(value, bool) for value in qpoint_grid):
+        raise TypeError(
+            "QE matdyn DOS q-point grid values must be integers."
+        )
+
+    try:
+        qpoint_grid = tuple(
+            operator.index(value)
+            for value in qpoint_grid
+        )
+    except TypeError as exc:
+        raise TypeError(
+            "QE matdyn DOS q-point grid values must be integers."
+        ) from exc
+
+    if any(value <= 0 for value in qpoint_grid):
+        raise ValueError(
+            "QE matdyn DOS q-point grid values must be positive "
+            "integers."
+        )
+
+    nk1, nk2, nk3 = qpoint_grid
+
+    return {
+        'flfrc': str(flfrc).strip(),
+        'asr': (
+            'crystal'
+            if acoustic_sum_rule
+            else 'no'
+        ),
+        'dos': True,
+        'nk1': nk1,
+        'nk2': nk2,
+        'nk3': nk3,
+        'fldos': str(fldos).strip(),
+    }
+
+
+def render_matdyn_dos_input(
+    flfrc,
+    fldos,
+    qpoint_grid,
+    acoustic_sum_rule=True,
+):
+    """Render a QE matdyn.x input for phonon DOS."""
+    settings = build_matdyn_dos_settings(
+        flfrc=flfrc,
+        fldos=fldos,
+        qpoint_grid=qpoint_grid,
+        acoustic_sum_rule=acoustic_sum_rule,
+    )
+
+    return (
+        render_namelist(
+            'INPUT',
+            settings,
+        )
+        + '\n'
+    )
+
 def render_pw_input(
     calculation,
     atoms,

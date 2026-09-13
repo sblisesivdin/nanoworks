@@ -70,6 +70,8 @@ from nanoworks.engine.qe import (
     build_matdyn_band_settings,
     render_matdyn_qpoints,
     render_matdyn_band_input,
+    build_matdyn_dos_settings,
+    render_matdyn_dos_input,
 )
 
 
@@ -5796,6 +5798,123 @@ def test_run_spin_polarized_band_projections(self):
                     (TypeError, ValueError)
                 ):
                     build_matdyn_band_settings(
+                        **arguments
+                    )
+
+    def test_build_matdyn_dos_settings(self):
+        settings = build_matdyn_dos_settings(
+            flfrc='si.fc',
+            fldos='si.dos',
+            qpoint_grid=(20, 18, 16),
+            acoustic_sum_rule=True,
+        )
+
+        self.assertEqual(
+            settings['flfrc'],
+            'si.fc',
+        )
+        self.assertEqual(
+            settings['fldos'],
+            'si.dos',
+        )
+        self.assertEqual(
+            settings['asr'],
+            'crystal',
+        )
+        self.assertTrue(settings['dos'])
+        self.assertEqual(
+            (
+                settings['nk1'],
+                settings['nk2'],
+                settings['nk3'],
+            ),
+            (20, 18, 16),
+        )
+
+    def test_render_matdyn_dos_input(self):
+        text = render_matdyn_dos_input(
+            flfrc='si.fc',
+            fldos='si.dos',
+            qpoint_grid=(20, 20, 20),
+        )
+
+        self.assertIn(
+            "  flfrc = 'si.fc',",
+            text,
+        )
+        self.assertIn(
+            "  asr = 'crystal',",
+            text,
+        )
+        self.assertIn(
+            '  dos = .true.,',
+            text,
+        )
+        self.assertIn('  nk1 = 20,', text)
+        self.assertIn('  nk2 = 20,', text)
+        self.assertIn('  nk3 = 20,', text)
+        self.assertIn(
+            "  fldos = 'si.dos',",
+            text,
+        )
+        self.assertTrue(
+            text.endswith('/\n')
+        )
+
+    def test_build_matdyn_dos_settings_can_disable_asr(self):
+        settings = build_matdyn_dos_settings(
+            flfrc='si.fc',
+            fldos='si.dos',
+            qpoint_grid=(8, 8, 8),
+            acoustic_sum_rule=False,
+        )
+
+        self.assertEqual(
+            settings['asr'],
+            'no',
+        )
+
+    def test_build_matdyn_dos_settings_rejects_invalid_values(self):
+        invalid_arguments = (
+            {
+                'flfrc': '',
+                'fldos': 'si.dos',
+                'qpoint_grid': (20, 20, 20),
+            },
+            {
+                'flfrc': 'si.fc',
+                'fldos': None,
+                'qpoint_grid': (20, 20, 20),
+            },
+            {
+                'flfrc': 'si.fc',
+                'fldos': 'si.dos',
+                'qpoint_grid': (20, 20),
+            },
+            {
+                'flfrc': 'si.fc',
+                'fldos': 'si.dos',
+                'qpoint_grid': (20, 0, 20),
+            },
+            {
+                'flfrc': 'si.fc',
+                'fldos': 'si.dos',
+                'qpoint_grid': (20, 2.5, 20),
+            },
+            {
+                'flfrc': 'si.fc',
+                'fldos': 'si.dos',
+                'qpoint_grid': (20, 20, 20),
+                'acoustic_sum_rule': 'yes',
+            },
+        )
+
+        for arguments in invalid_arguments:
+            with self.subTest(arguments=arguments):
+                with self.assertRaises(
+                    (TypeError, ValueError)
+                ):
+                    build_matdyn_dos_settings(
                         **arguments
                     )
 
