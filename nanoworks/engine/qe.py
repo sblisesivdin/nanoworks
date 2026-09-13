@@ -1395,6 +1395,114 @@ def render_namelist(name, settings):
 
     return "\n".join(lines)
 
+
+def resolve_qe_phonon_qpoint_grid(supercell):
+    """Map a diagonal phonon supercell to a QE DFPT q-point grid."""
+    if isinstance(supercell, (str, bytes)):
+        raise TypeError(
+            "Phonon_supercell must be a three-value sequence or "
+            "a 3x3 diagonal matrix."
+        )
+
+    try:
+        outer = tuple(supercell)
+    except TypeError as exc:
+        raise TypeError(
+            "Phonon_supercell must be a three-value sequence or "
+            "a 3x3 diagonal matrix."
+        ) from exc
+
+    if len(outer) != 3:
+        raise ValueError(
+            "Phonon_supercell must contain exactly three values "
+            "or three matrix rows."
+        )
+
+    scalar_input = all(
+        not hasattr(value, '__iter__')
+        or isinstance(value, (str, bytes))
+        for value in outer
+    )
+
+    if scalar_input:
+        diagonal = outer
+    else:
+        rows = []
+
+        for row in outer:
+            if isinstance(row, (str, bytes)):
+                raise TypeError(
+                    "Phonon_supercell matrix rows must contain "
+                    "three integers."
+                )
+
+            try:
+                row = tuple(row)
+            except TypeError as exc:
+                raise TypeError(
+                    "Phonon_supercell must not mix scalar values "
+                    "and matrix rows."
+                ) from exc
+
+            if len(row) != 3:
+                raise ValueError(
+                    "Phonon_supercell matrix must have shape 3x3."
+                )
+
+            rows.append(row)
+
+        for row_index, row in enumerate(rows):
+            for column_index, value in enumerate(row):
+                if isinstance(value, bool):
+                    raise TypeError(
+                        "Phonon_supercell matrix values must be integers."
+                    )
+
+                try:
+                    integer_value = operator.index(value)
+                except TypeError as exc:
+                    raise TypeError(
+                        "Phonon_supercell matrix values must be integers."
+                    ) from exc
+
+                if (
+                    row_index != column_index
+                    and integer_value != 0
+                ):
+                    raise ValueError(
+                        "Native QE phonons currently require a diagonal "
+                        "Phonon_supercell matrix; non-diagonal matrices "
+                        "cannot be mapped safely to nq1, nq2, nq3."
+                    )
+
+        diagonal = tuple(
+            rows[index][index]
+            for index in range(3)
+        )
+
+    if any(isinstance(value, bool) for value in diagonal):
+        raise TypeError(
+            "Phonon_supercell diagonal values must be integers."
+        )
+
+    try:
+        grid = tuple(
+            operator.index(value)
+            for value in diagonal
+        )
+    except TypeError as exc:
+        raise TypeError(
+            "Phonon_supercell diagonal values must be integers."
+        ) from exc
+
+    if any(value <= 0 for value in grid):
+        raise ValueError(
+            "Phonon_supercell diagonal values must be positive integers."
+        )
+
+    return grid
+
+
 def build_ph_settings(
     prefix,
     outdir,

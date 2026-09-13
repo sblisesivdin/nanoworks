@@ -64,6 +64,7 @@ from nanoworks.engine.qe import (
     run_pp_density,
     render_qe_hubbard_card,
     resolve_qe_hubbard,
+    resolve_qe_phonon_qpoint_grid,
     build_ph_settings,
     render_ph_input,
     build_q2r_settings,
@@ -84,6 +85,70 @@ class TestQEEngine(unittest.TestCase):
 
     def test_reference_version_is_qe_72(self):
         self.assertEqual(QE_REFERENCE_VERSION, (7, 2))
+
+    def test_resolve_qe_phonon_grid_from_diagonal_matrix(self):
+        grid = resolve_qe_phonon_qpoint_grid(
+            [
+                [2, 0, 0],
+                [0, 3, 0],
+                [0, 0, 4],
+            ]
+        )
+
+        self.assertEqual(
+            grid,
+            (2, 3, 4),
+        )
+
+    def test_resolve_qe_phonon_grid_from_diagonal_values(self):
+        grid = resolve_qe_phonon_qpoint_grid(
+            (2, 2, 1)
+        )
+
+        self.assertEqual(
+            grid,
+            (2, 2, 1),
+        )
+
+    def test_resolve_qe_phonon_grid_rejects_nondiagonal_matrix(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            'non-diagonal matrices',
+        ):
+            resolve_qe_phonon_qpoint_grid(
+                [
+                    [2, 1, 0],
+                    [0, 2, 0],
+                    [0, 0, 2],
+                ]
+            )
+
+    def test_resolve_qe_phonon_grid_rejects_invalid_values(self):
+        invalid_supercells = (
+            (2, 2),
+            (2, 0, 2),
+            (2, 2.5, 2),
+            (True, 2, 2),
+            [
+                [2, 0],
+                [0, 2],
+                [0, 0],
+            ],
+            [
+                [2, 0, 0],
+                2,
+                [0, 0, 2],
+            ],
+        )
+
+        for supercell in invalid_supercells:
+            with self.subTest(supercell=supercell):
+                with self.assertRaises(
+                    (TypeError, ValueError)
+                ):
+                    resolve_qe_phonon_qpoint_grid(
+                        supercell
+                    )
 
     def test_ev_to_rydberg(self):
         self.assertAlmostEqual(
