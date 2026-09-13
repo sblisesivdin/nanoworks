@@ -242,5 +242,55 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             (4, 5, 6),
         )
 
+    def test_phononcalc_dispatches_to_gpaw(self):
+        solver = object.__new__(
+            DFTSolver
+        )
+        solver.Engine = 'GPAW'
+
+        with patch.object(
+            solver,
+            '_phononcalc_gpaw',
+            return_value='gpaw-phonons',
+        ) as workflow:
+            result = solver.phononcalc()
+
+        workflow.assert_called_once_with()
+        self.assertEqual(
+            result,
+            'gpaw-phonons',
+        )
+
+    def test_phononcalc_dispatches_to_qe(self):
+        solver = object.__new__(
+            DFTSolver
+        )
+        solver.Engine = 'QE'
+
+        with patch.object(
+            solver,
+            '_phononcalc_qe',
+            return_value='qe-phonons',
+        ) as workflow:
+            result = solver.phononcalc()
+
+        workflow.assert_called_once_with()
+        self.assertEqual(
+            result,
+            'qe-phonons',
+        )
+
+    def test_phononcalc_rejects_unknown_engine(self):
+        solver = object.__new__(
+            DFTSolver
+        )
+        solver.Engine = 'UNKNOWN'
+
+        with self.assertRaisesRegex(
+            ValueError,
+            'Unsupported phonon engine',
+        ):
+            solver.phononcalc()
+
 if __name__ == '__main__':
     unittest.main()

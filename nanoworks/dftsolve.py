@@ -4109,6 +4109,24 @@ class dftsolve:
         return outputs
 
     def phononcalc(self):
+        """Run the phonon workflow using the selected DFT engine."""
+        if self.Engine == 'GPAW':
+            return self._phononcalc_gpaw()
+
+        if self.Engine == 'QE':
+            return self._phononcalc_qe()
+
+        raise ValueError(
+            f"Unsupported phonon engine: {self.Engine}"
+        )
+
+    def _phononcalc_qe(self):
+        """Run the native Quantum ESPRESSO DFPT phonon workflow."""
+        raise NotImplementedError(
+            "The QE phonon workflow is not connected yet."
+        )
+
+    def _phononcalc_gpaw(self):
         """
         This method performs a phonon calculation for the given structure using the ground state results. 
         It generates atomic displacements, computes force constants, and calculates phonon dispersion and phonon DOS.
