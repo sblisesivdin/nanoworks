@@ -6663,7 +6663,11 @@ def test_run_spin_polarized_band_projections(self):
                     encoding='utf-8',
                 )
                 flfrq.write_text(
-                    'phonon frequencies',
+                    " &plot nbnd=   3, nks=   2 /\n"
+                    " 0.000000 0.000000 0.000000\n"
+                    " 1.0000 2.0000 3.0000\n"
+                    " 0.000000 0.500000 0.000000\n"
+                    " 4.0000 5.0000 6.0000\n",
                     encoding='utf-8',
                 )
 
@@ -6704,6 +6708,14 @@ def test_run_spin_polarized_band_projections(self):
         self.assertEqual(
             workflow['flfrq'],
             flfrq,
+        )
+        self.assertEqual(
+            workflow['frequencies']['nqpoints'],
+            2,
+        )
+        self.assertEqual(
+            workflow['frequencies']['frequencies_cm1'][1],
+            [4.0, 5.0, 6.0],
         )
 
     def test_run_matdyn_band_requires_force_constants(self):
@@ -6801,7 +6813,9 @@ def test_run_spin_polarized_band_projections(self):
                     encoding='utf-8',
                 )
                 fldos.write_text(
-                    'frequency dos',
+                    "# Frequency[cm^-1] DOS PDOS\n"
+                    "0.0 1.0 0.4 0.6\n"
+                    "1.0 2.0 0.8 1.2\n",
                     encoding='utf-8',
                 )
 
@@ -6842,6 +6856,14 @@ def test_run_spin_polarized_band_projections(self):
         self.assertEqual(
             workflow['qpoint_grid'],
             (20, 20, 20),
+        )
+        self.assertEqual(
+            workflow['dos']['frequencies_cm1'],
+            [0.0, 1.0],
+        )
+        self.assertEqual(
+            workflow['dos']['atom_projected_dos'],
+            [[0.4, 0.8], [0.6, 1.2]],
         )
 
     def test_run_matdyn_dos_requires_force_constants(self):

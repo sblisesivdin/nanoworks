@@ -5786,12 +5786,17 @@ def run_matdyn_band(
             f"phonon frequency file: {flfrq}"
         )
 
+    frequencies = parse_matdyn_frequency_file(
+        flfrq
+    )
+
     return {
         'input_file': input_file,
         'output_file': output_file,
         'flfrc': flfrc,
         'flfrq': flfrq,
         'band_path': band_path,
+        'frequencies': frequencies,
         'execution': execution,
         'result': result,
     }
@@ -5883,12 +5888,17 @@ def run_matdyn_dos(
             f"phonon DOS file: {fldos}"
         )
 
+    dos = parse_matdyn_dos_file(
+        fldos
+    )
+
     return {
         'input_file': input_file,
         'output_file': output_file,
         'flfrc': flfrc,
         'fldos': fldos,
         'qpoint_grid': qpoint_grid,
+        'dos': dos,
         'execution': execution,
         'result': result,
     }
