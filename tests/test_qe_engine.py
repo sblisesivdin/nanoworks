@@ -65,6 +65,8 @@ from nanoworks.engine.qe import (
     resolve_qe_hubbard,
     build_ph_settings,
     render_ph_input,
+    build_q2r_settings,
+    render_q2r_input,
 )
 
 
@@ -5504,6 +5506,129 @@ def test_run_spin_polarized_band_projections(self):
                         fildyn='si.dyn',
                         qpoint_grid=(2, 2, 2),
                         title=title,
+                    )
+
+    def test_build_q2r_settings(self):
+        settings = build_q2r_settings(
+            fildyn=(
+                'Si-PHONON-QE-Result-'
+                'Dynamical-Matrix'
+            ),
+            flfrc=(
+                'Si-PHONON-QE-Result-'
+                'Force-Constants.fc'
+            ),
+            zasr='crystal',
+        )
+
+        self.assertEqual(
+            settings['fildyn'],
+            (
+                'Si-PHONON-QE-Result-'
+                'Dynamical-Matrix'
+            ),
+        )
+        self.assertEqual(
+            settings['flfrc'],
+            (
+                'Si-PHONON-QE-Result-'
+                'Force-Constants.fc'
+            ),
+        )
+        self.assertEqual(
+            settings['zasr'],
+            'crystal',
+        )
+
+    def test_render_q2r_input(self):
+        text = render_q2r_input(
+            fildyn=(
+                'Si-PHONON-QE-Result-'
+                'Dynamical-Matrix'
+            ),
+            flfrc=(
+                'Si-PHONON-QE-Result-'
+                'Force-Constants.fc'
+            ),
+        )
+
+        self.assertTrue(
+            text.startswith('&INPUT\n')
+        )
+        self.assertIn(
+            "  fildyn = "
+            "'Si-PHONON-QE-Result-"
+            "Dynamical-Matrix',",
+            text,
+        )
+        self.assertIn(
+            "  flfrc = "
+            "'Si-PHONON-QE-Result-"
+            "Force-Constants.fc',",
+            text,
+        )
+        self.assertIn(
+            "  zasr = 'no',",
+            text,
+        )
+        self.assertTrue(
+            text.endswith('/\n')
+        )
+
+    def test_build_q2r_settings_normalizes_zasr(self):
+        settings = build_q2r_settings(
+            fildyn='si.dyn',
+            flfrc='si.fc',
+            zasr=' CRYSTAL ',
+        )
+
+        self.assertEqual(
+            settings['zasr'],
+            'crystal',
+        )
+
+    def test_build_q2r_settings_rejects_empty_filenames(self):
+        for keyword, value in (
+            ('fildyn', None),
+            ('fildyn', ''),
+            ('flfrc', None),
+            ('flfrc', '   '),
+        ):
+            arguments = {
+                'fildyn': 'si.dyn',
+                'flfrc': 'si.fc',
+            }
+
+            arguments[keyword] = value
+
+            with self.subTest(
+                keyword=keyword,
+                value=value,
+            ):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    f'{keyword} must not be empty',
+                ):
+                    build_q2r_settings(
+                        **arguments
+                    )
+
+    def test_build_q2r_settings_rejects_invalid_zasr(self):
+        for zasr in (
+            None,
+            '',
+            'all',
+            'invalid',
+        ):
+            with self.subTest(zasr=zasr):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    'zasr|Unsupported',
+                ):
+                    build_q2r_settings(
+                        fildyn='si.dyn',
+                        flfrc='si.fc',
+                        zasr=zasr,
                     )
 
 if __name__ == '__main__':

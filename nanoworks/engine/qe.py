@@ -1515,6 +1515,75 @@ def render_ph_input(
         '',
     ])
 
+
+def build_q2r_settings(
+    fildyn,
+    flfrc,
+    zasr='no',
+):
+    """Build the QE q2r.x &INPUT namelist settings."""
+    for name, value in (
+        ('fildyn', fildyn),
+        ('flfrc', flfrc),
+    ):
+        if value is None or not str(value).strip():
+            raise ValueError(
+                f"QE q2r {name} must not be empty."
+            )
+
+    fildyn = str(fildyn).strip()
+    flfrc = str(flfrc).strip()
+
+    if zasr is None:
+        raise ValueError(
+            "QE q2r zasr must not be empty."
+        )
+
+    zasr = str(zasr).strip().lower()
+
+    allowed_zasr = {
+        'no',
+        'simple',
+        'crystal',
+        'one-dim',
+        'zero-dim',
+    }
+
+    if zasr not in allowed_zasr:
+        raise ValueError(
+            "Unsupported QE q2r zasr setting: "
+            f"{zasr!r}. Supported values are: "
+            + ", ".join(sorted(allowed_zasr))
+            + "."
+        )
+
+    return {
+        'fildyn': fildyn,
+        'flfrc': flfrc,
+        'zasr': zasr,
+    }
+
+
+def render_q2r_input(
+    fildyn,
+    flfrc,
+    zasr='no',
+):
+    """Render a complete QE q2r.x input."""
+    settings = build_q2r_settings(
+        fildyn=fildyn,
+        flfrc=flfrc,
+        zasr=zasr,
+    )
+
+    return (
+        render_namelist(
+            'INPUT',
+            settings,
+        )
+        + '\n'
+    )
+
 def render_pw_input(
     calculation,
     atoms,
