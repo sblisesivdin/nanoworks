@@ -73,6 +73,7 @@ from nanoworks.engine.qe import (
     render_matdyn_band_input,
     build_matdyn_dos_settings,
     render_matdyn_dos_input,
+    run_ph,
 )
 
 
@@ -6048,6 +6049,151 @@ def test_run_spin_polarized_band_projections(self):
                     output_file,
                     expected_program='PHONON',
                 )
+
+    def test_run_ph_uses_existing_ground_state(self):
+        output_text = """
+        Program PHONON v.7.2 starts
+
+        JOB DONE.
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+            state_dir = tmpdir / 'ground-state'
+            save_dir = state_dir / 'nanoworks.save'
+            save_dir.mkdir(parents=True)
+            (
+                save_dir
+                / 'data-file-schema.xml'
+            ).write_text(
+                '<espresso/>',
+                encoding='utf-8',
+            )
+
+            fildyn = tmpdir / 'phonon' / 'si.dyn'
+
+            def fake_run_qe_program(**kwargs):
+                Path(
+                    kwargs['output_file']
+                ).write_text(
+                    output_text,
+                    encoding='utf-8',
+                )
+                Path(
+                    str(fildyn) + '0'
+                ).write_text(
+                    'q-grid metadata',
+                    encoding='utf-8',
+                )
+                Path(
+                    str(fildyn) + '1'
+                ).write_text(
+                    'dynamical matrix',
+                    encoding='utf-8',
+                )
+
+                return {
+                    'returncode': 0,
+                }
+
+            with patch(
+                'nanoworks.engine.qe.run_qe_program',
+                side_effect=fake_run_qe_program,
+            ):
+                workflow = run_ph(
+                    input_file=tmpdir / 'ph.in',
+                    output_file=tmpdir / 'ph.out',
+                    state_dir=state_dir,
+                    fildyn=fildyn,
+                    qpoint_grid=(2, 2, 2),
+                )
+
+            input_text = workflow[
+                'input_file'
+            ].read_text(
+                encoding='utf-8'
+            )
+
+        self.assertIn(
+            "  prefix = 'nanoworks',",
+            input_text,
+        )
+        self.assertIn(
+            "  ldisp = .true.,",
+            input_text,
+        )
+        self.assertEqual(
+            workflow['result']['program'],
+            'PHONON',
+        )
+        self.assertEqual(
+            len(workflow['dynamical_matrix_files']),
+            1,
+        )
+
+    def test_run_ph_requires_ground_state(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+
+            with self.assertRaisesRegex(
+                FileNotFoundError,
+                'ground-state directory',
+            ):
+                run_ph(
+                    input_file=tmpdir / 'ph.in',
+                    output_file=tmpdir / 'ph.out',
+                    state_dir=tmpdir / 'missing-state',
+                    fildyn=tmpdir / 'si.dyn',
+                    qpoint_grid=(2, 2, 2),
+                )
+
+    def test_run_ph_requires_dynamical_matrix_outputs(self):
+        output_text = """
+        Program PHONON v.7.2 starts
+
+        JOB DONE.
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+            state_dir = tmpdir / 'ground-state'
+            save_dir = state_dir / 'nanoworks.save'
+            save_dir.mkdir(parents=True)
+            (
+                save_dir
+                / 'data-file-schema.xml'
+            ).write_text(
+                '<espresso/>',
+                encoding='utf-8',
+            )
+
+            def fake_run_qe_program(**kwargs):
+                Path(
+                    kwargs['output_file']
+                ).write_text(
+                    output_text,
+                    encoding='utf-8',
+                )
+
+                return {
+                    'returncode': 0,
+                }
+
+            with patch(
+                'nanoworks.engine.qe.run_qe_program',
+                side_effect=fake_run_qe_program,
+            ):
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    'q-grid metadata file',
+                ):
+                    run_ph(
+                        input_file=tmpdir / 'ph.in',
+                        output_file=tmpdir / 'ph.out',
+                        state_dir=state_dir,
+                        fildyn=tmpdir / 'si.dyn',
+                        qpoint_grid=(2, 2, 2),
+                    )
 
 if __name__ == '__main__':
     unittest.main()

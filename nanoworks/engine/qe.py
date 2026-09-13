@@ -5171,6 +5171,125 @@ def aggregate_projwfc_pdos(pdos_prefix):
         'spin_down': spin_down,
     }
 
+def run_ph(
+    input_file,
+    output_file,
+    state_dir,
+    fildyn,
+    qpoint_grid,
+    tr2_ph=1.0e-12,
+    parallel_cores=1,
+    executable='ph.x',
+    prefix='nanoworks',
+):
+    """Render, execute, and validate one QE ph.x grid calculation."""
+    input_file = Path(input_file)
+    output_file = Path(output_file)
+    state_dir = Path(state_dir)
+    fildyn = Path(fildyn)
+
+    if not has_qe_state(
+        state_dir,
+        prefix=prefix,
+    ):
+        raise FileNotFoundError(
+            "A valid QE ground-state directory is required "
+            f"for ph.x: {state_dir}"
+        )
+
+    input_text = render_ph_input(
+        prefix=prefix,
+        outdir=state_dir,
+        fildyn=fildyn,
+        qpoint_grid=qpoint_grid,
+        tr2_ph=tr2_ph,
+    )
+
+    input_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+    output_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+    fildyn.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    input_file.write_text(
+        input_text,
+        encoding='utf-8',
+    )
+
+    launcher = build_qe_launcher(
+        parallel_cores=parallel_cores
+    )
+
+    execution = run_qe_program(
+        input_file=input_file,
+        output_file=output_file,
+        executable=executable,
+        launcher=launcher,
+    )
+
+    result = parse_qe_auxiliary_output(
+        output_file,
+        expected_program='PHONON',
+    )
+
+    try:
+        validate_qe_version(
+            result['qe_version']
+        )
+    except ValueError as exc:
+        raise RuntimeError(
+            f"{exc} See '{output_file}'."
+        ) from exc
+
+    if not result['job_done']:
+        raise RuntimeError(
+            "Quantum ESPRESSO ph.x finished without a "
+            f"'JOB DONE.' marker. See '{output_file}'."
+        )
+
+    grid_file = Path(
+        str(fildyn) + '0'
+    )
+
+    if not grid_file.is_file():
+        raise RuntimeError(
+            "Quantum ESPRESSO ph.x did not produce the q-grid "
+            f"metadata file: {grid_file}"
+        )
+
+    dynamical_matrix_files = sorted(
+        path
+        for path in fildyn.parent.glob(
+            fildyn.name + '*'
+        )
+        if path.is_file() and path != grid_file
+    )
+
+    if not dynamical_matrix_files:
+        raise RuntimeError(
+            "Quantum ESPRESSO ph.x did not produce any "
+            "dynamical-matrix files for the requested q-grid."
+        )
+
+    return {
+        'input_file': input_file,
+        'output_file': output_file,
+        'state_dir': state_dir,
+        'fildyn': fildyn,
+        'grid_file': grid_file,
+        'dynamical_matrix_files': dynamical_matrix_files,
+        'execution': execution,
+        'result': result,
+    }
+
+
 def run_scf(
     atoms,
     input_file,
