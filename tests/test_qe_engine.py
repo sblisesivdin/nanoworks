@@ -74,6 +74,7 @@ from nanoworks.engine.qe import (
     build_matdyn_dos_settings,
     render_matdyn_dos_input,
     run_ph,
+    run_q2r,
 )
 
 
@@ -6193,6 +6194,133 @@ def test_run_spin_polarized_band_projections(self):
                         state_dir=state_dir,
                         fildyn=tmpdir / 'si.dyn',
                         qpoint_grid=(2, 2, 2),
+                    )
+
+    def test_run_q2r_uses_phonon_grid_outputs(self):
+        output_text = """
+        Program Q2R v.7.2 starts
+
+        JOB DONE.
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+            fildyn = tmpdir / 'si.dyn'
+            flfrc = tmpdir / 'si.fc'
+            Path(
+                str(fildyn) + '0'
+            ).write_text(
+                'q-grid metadata',
+                encoding='utf-8',
+            )
+
+            def fake_run_qe_program(**kwargs):
+                Path(
+                    kwargs['output_file']
+                ).write_text(
+                    output_text,
+                    encoding='utf-8',
+                )
+                flfrc.write_text(
+                    'real-space force constants',
+                    encoding='utf-8',
+                )
+
+                return {
+                    'returncode': 0,
+                }
+
+            with patch(
+                'nanoworks.engine.qe.run_qe_program',
+                side_effect=fake_run_qe_program,
+            ):
+                workflow = run_q2r(
+                    input_file=tmpdir / 'q2r.in',
+                    output_file=tmpdir / 'q2r.out',
+                    fildyn=fildyn,
+                    flfrc=flfrc,
+                )
+
+            input_text = workflow[
+                'input_file'
+            ].read_text(
+                encoding='utf-8'
+            )
+
+        self.assertIn(
+            "  fildyn = '",
+            input_text,
+        )
+        self.assertIn(
+            "  zasr = 'no',",
+            input_text,
+        )
+        self.assertEqual(
+            workflow['result']['program'],
+            'Q2R',
+        )
+        self.assertEqual(
+            workflow['flfrc'],
+            flfrc,
+        )
+
+    def test_run_q2r_requires_grid_metadata(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+
+            with self.assertRaisesRegex(
+                FileNotFoundError,
+                'q-grid metadata file',
+            ):
+                run_q2r(
+                    input_file=tmpdir / 'q2r.in',
+                    output_file=tmpdir / 'q2r.out',
+                    fildyn=tmpdir / 'si.dyn',
+                    flfrc=tmpdir / 'si.fc',
+                )
+
+    def test_run_q2r_requires_force_constants_output(self):
+        output_text = """
+        Program Q2R v.7.2 starts
+
+        JOB DONE.
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+            fildyn = tmpdir / 'si.dyn'
+            Path(
+                str(fildyn) + '0'
+            ).write_text(
+                'q-grid metadata',
+                encoding='utf-8',
+            )
+
+            def fake_run_qe_program(**kwargs):
+                Path(
+                    kwargs['output_file']
+                ).write_text(
+                    output_text,
+                    encoding='utf-8',
+                )
+
+                return {
+                    'returncode': 0,
+                }
+
+            with patch(
+                'nanoworks.engine.qe.run_qe_program',
+                side_effect=fake_run_qe_program,
+            ):
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    'force-constant file',
+                ):
+                    run_q2r(
+                        input_file=tmpdir / 'q2r.in',
+                        output_file=tmpdir / 'q2r.out',
+                        fildyn=fildyn,
+                        flfrc=tmpdir / 'si.fc',
                     )
 
 if __name__ == '__main__':
