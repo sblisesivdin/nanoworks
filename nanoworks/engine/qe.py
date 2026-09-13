@@ -5483,6 +5483,103 @@ def run_matdyn_band(
     }
 
 
+def run_matdyn_dos(
+    input_file,
+    output_file,
+    flfrc,
+    fldos,
+    qpoint_grid,
+    acoustic_sum_rule=True,
+    parallel_cores=1,
+    executable='matdyn.x',
+):
+    """Render, execute, and validate a QE phonon DOS calculation."""
+    input_file = Path(input_file)
+    output_file = Path(output_file)
+    flfrc = Path(flfrc)
+    fldos = Path(fldos)
+    qpoint_grid = tuple(qpoint_grid)
+
+    if not flfrc.is_file():
+        raise FileNotFoundError(
+            "QE matdyn.x requires a real-space force-constant "
+            f"file: {flfrc}"
+        )
+
+    input_text = render_matdyn_dos_input(
+        flfrc=flfrc,
+        fldos=fldos,
+        qpoint_grid=qpoint_grid,
+        acoustic_sum_rule=acoustic_sum_rule,
+    )
+
+    input_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+    output_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+    fldos.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    input_file.write_text(
+        input_text,
+        encoding='utf-8',
+    )
+
+    launcher = build_qe_launcher(
+        parallel_cores=parallel_cores
+    )
+
+    execution = run_qe_program(
+        input_file=input_file,
+        output_file=output_file,
+        executable=executable,
+        launcher=launcher,
+    )
+
+    result = parse_qe_auxiliary_output(
+        output_file,
+        expected_program='MATDYN',
+    )
+
+    try:
+        validate_qe_version(
+            result['qe_version']
+        )
+    except ValueError as exc:
+        raise RuntimeError(
+            f"{exc} See '{output_file}'."
+        ) from exc
+
+    if not result['job_done']:
+        raise RuntimeError(
+            "Quantum ESPRESSO matdyn.x phonon DOS calculation "
+            "finished without a 'JOB DONE.' marker. "
+            f"See '{output_file}'."
+        )
+
+    if not fldos.is_file():
+        raise RuntimeError(
+            "Quantum ESPRESSO matdyn.x did not produce the "
+            f"phonon DOS file: {fldos}"
+        )
+
+    return {
+        'input_file': input_file,
+        'output_file': output_file,
+        'flfrc': flfrc,
+        'fldos': fldos,
+        'qpoint_grid': qpoint_grid,
+        'execution': execution,
+        'result': result,
+    }
+
+
 def run_scf(
     atoms,
     input_file,

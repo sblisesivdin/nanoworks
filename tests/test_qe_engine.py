@@ -76,6 +76,7 @@ from nanoworks.engine.qe import (
     run_ph,
     run_q2r,
     run_matdyn_band,
+    run_matdyn_dos,
 )
 
 
@@ -6469,6 +6470,132 @@ def test_run_spin_polarized_band_projections(self):
                             ],
                             'npoints': 1,
                         },
+                    )
+
+    def test_run_matdyn_dos_uses_force_constants(self):
+        output_text = """
+        Program MATDYN v.7.2 starts
+
+        JOB DONE.
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+            flfrc = tmpdir / 'si.fc'
+            fldos = tmpdir / 'si.dos'
+            flfrc.write_text(
+                'real-space force constants',
+                encoding='utf-8',
+            )
+
+            def fake_run_qe_program(**kwargs):
+                Path(
+                    kwargs['output_file']
+                ).write_text(
+                    output_text,
+                    encoding='utf-8',
+                )
+                fldos.write_text(
+                    'frequency dos',
+                    encoding='utf-8',
+                )
+
+                return {
+                    'returncode': 0,
+                }
+
+            with patch(
+                'nanoworks.engine.qe.run_qe_program',
+                side_effect=fake_run_qe_program,
+            ):
+                workflow = run_matdyn_dos(
+                    input_file=tmpdir / 'matdyn-dos.in',
+                    output_file=tmpdir / 'matdyn-dos.out',
+                    flfrc=flfrc,
+                    fldos=fldos,
+                    qpoint_grid=(20, 20, 20),
+                )
+
+            input_text = workflow[
+                'input_file'
+            ].read_text(
+                encoding='utf-8'
+            )
+
+        self.assertIn(
+            '  dos = .true.,',
+            input_text,
+        )
+        self.assertIn(
+            '  nk1 = 20,',
+            input_text,
+        )
+        self.assertEqual(
+            workflow['result']['program'],
+            'MATDYN',
+        )
+        self.assertEqual(
+            workflow['qpoint_grid'],
+            (20, 20, 20),
+        )
+
+    def test_run_matdyn_dos_requires_force_constants(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+
+            with self.assertRaisesRegex(
+                FileNotFoundError,
+                'force-constant file',
+            ):
+                run_matdyn_dos(
+                    input_file=tmpdir / 'matdyn-dos.in',
+                    output_file=tmpdir / 'matdyn-dos.out',
+                    flfrc=tmpdir / 'missing.fc',
+                    fldos=tmpdir / 'si.dos',
+                    qpoint_grid=(20, 20, 20),
+                )
+
+    def test_run_matdyn_dos_requires_dos_output(self):
+        output_text = """
+        Program MATDYN v.7.2 starts
+
+        JOB DONE.
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+            flfrc = tmpdir / 'si.fc'
+            flfrc.write_text(
+                'real-space force constants',
+                encoding='utf-8',
+            )
+
+            def fake_run_qe_program(**kwargs):
+                Path(
+                    kwargs['output_file']
+                ).write_text(
+                    output_text,
+                    encoding='utf-8',
+                )
+
+                return {
+                    'returncode': 0,
+                }
+
+            with patch(
+                'nanoworks.engine.qe.run_qe_program',
+                side_effect=fake_run_qe_program,
+            ):
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    'phonon DOS file',
+                ):
+                    run_matdyn_dos(
+                        input_file=tmpdir / 'matdyn-dos.in',
+                        output_file=tmpdir / 'matdyn-dos.out',
+                        flfrc=flfrc,
+                        fldos=tmpdir / 'si.dos',
+                        qpoint_grid=(20, 20, 20),
                     )
 
 if __name__ == '__main__':
