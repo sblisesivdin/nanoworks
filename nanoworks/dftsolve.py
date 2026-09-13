@@ -238,11 +238,19 @@ DFT_ENGINE_DEFAULTS = {
         'XC_calc': 'LDA',
         'DOS_occupation': None,
         'Fix_symmetry': False,
+        'Phonon_PW_cutoff': 400,
+        'Phonon_kpts_x': 3,
+        'Phonon_kpts_y': 3,
+        'Phonon_kpts_z': 3,
     },
     'QE': {
         'XC_calc': 'PBE',
         'DOS_occupation': 'tetrahedra',
         'Fix_symmetry': True,
+        'Phonon_PW_cutoff': None,
+        'Phonon_kpts_x': None,
+        'Phonon_kpts_y': None,
+        'Phonon_kpts_z': None,
     },
 }
 
@@ -337,10 +345,10 @@ class DFTConfig:
     Refine_grid: int = 4
     
     # Phonon parameters
-    Phonon_PW_cutoff: float = 400
-    Phonon_kpts_x: int = 3
-    Phonon_kpts_y: int = 3
-    Phonon_kpts_z: int = 3
+    Phonon_PW_cutoff: Optional[float] = None
+    Phonon_kpts_x: Optional[int] = None
+    Phonon_kpts_y: Optional[int] = None
+    Phonon_kpts_z: Optional[int] = None
     Phonon_supercell: Any = None
     Phonon_displacement: float = 1e-3
     Phonon_path: str = 'LGL'

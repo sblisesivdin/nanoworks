@@ -155,6 +155,18 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         self.assertIsNone(
             config.Mixer_type
         )
+        self.assertIsNone(
+            config.Phonon_PW_cutoff
+        )
+        self.assertIsNone(
+            config.Phonon_kpts_x
+        )
+        self.assertIsNone(
+            config.Phonon_kpts_y
+        )
+        self.assertIsNone(
+            config.Phonon_kpts_z
+        )
 
     def test_gpaw_engine_specific_defaults(self):
         config = DFTConfig(
@@ -176,6 +188,18 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             config.Mixer_type,
             'custom-mixer',
         )
+        self.assertEqual(
+            config.Phonon_PW_cutoff,
+            400,
+        )
+        self.assertEqual(
+            (
+                config.Phonon_kpts_x,
+                config.Phonon_kpts_y,
+                config.Phonon_kpts_z,
+            ),
+            (3, 3, 3),
+        )
 
     def test_explicit_values_override_engine_defaults(self):
         occupation = {
@@ -188,6 +212,10 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             XC_calc='LDA',
             DOS_occupation=occupation,
             Fix_symmetry=False,
+            Phonon_PW_cutoff=500,
+            Phonon_kpts_x=4,
+            Phonon_kpts_y=5,
+            Phonon_kpts_z=6,
         )
 
         self.assertEqual(
@@ -200,6 +228,18 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         )
         self.assertFalse(
             config.Fix_symmetry
+        )
+        self.assertEqual(
+            config.Phonon_PW_cutoff,
+            500,
+        )
+        self.assertEqual(
+            (
+                config.Phonon_kpts_x,
+                config.Phonon_kpts_y,
+                config.Phonon_kpts_z,
+            ),
+            (4, 5, 6),
         )
 
 if __name__ == '__main__':
