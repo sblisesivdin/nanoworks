@@ -2823,6 +2823,72 @@ def run_qe_program(
         'output_file': output_file,
     }
 
+
+def parse_qe_auxiliary_output(
+    output,
+    expected_program=None,
+):
+    """Parse common completion metadata from a QE program output."""
+    output = Path(
+        output
+    )
+
+    if not output.is_file():
+        raise FileNotFoundError(
+            f"Quantum ESPRESSO output was not found: {output}"
+        )
+
+    text = output.read_text(
+        encoding='utf-8',
+        errors='replace',
+    )
+
+    program_match = re.search(
+        r'Program\s+([A-Za-z0-9_.+-]+)\s+'
+        r'v\.(\d+)\.(\d+)(?:\.(\d+))?',
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    program = None
+    qe_version = None
+
+    if program_match:
+        program = program_match.group(1).upper()
+        qe_version = tuple(
+            int(value)
+            for value in program_match.groups()[1:]
+            if value is not None
+        )
+
+    if expected_program is not None:
+        expected_program = str(
+            expected_program
+        ).strip().upper()
+
+        if not expected_program:
+            raise ValueError(
+                "Expected QE program name must not be empty."
+            )
+
+        if program is None:
+            raise ValueError(
+                "Quantum ESPRESSO program and version could not "
+                f"be detected in '{output}'."
+            )
+
+        if program != expected_program:
+            raise ValueError(
+                "Unexpected Quantum ESPRESSO program in output: "
+                f"expected {expected_program}, found {program}."
+            )
+
+    return {
+        'program': program,
+        'qe_version': qe_version,
+        'job_done': 'JOB DONE.' in text,
+    }
+
 def parse_pw_output(output):
     """Parse basic results from pw.x output."""
     output = Path(

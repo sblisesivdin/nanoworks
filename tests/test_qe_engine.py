@@ -32,6 +32,7 @@ from nanoworks.engine.qe import (
     resolve_qe_executable,
     build_qe_command,
     run_qe_program,
+    parse_qe_auxiliary_output,
     parse_pw_output,
     resolve_qe_band_reference,
     parse_pw_bands_output,
@@ -5917,6 +5918,136 @@ def test_run_spin_polarized_band_projections(self):
                     build_matdyn_dos_settings(
                         **arguments
                     )
+
+    def test_parse_qe_auxiliary_output(self):
+        output_text = """
+        Program PHONON v.7.2 starts
+
+        JOB DONE.
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = (
+                Path(tmpdir)
+                / 'ph.out'
+            )
+
+            output_file.write_text(
+                output_text,
+                encoding='utf-8',
+            )
+
+            result = parse_qe_auxiliary_output(
+                output_file,
+                expected_program='PHONON',
+            )
+
+        self.assertEqual(
+            result['program'],
+            'PHONON',
+        )
+        self.assertEqual(
+            result['qe_version'],
+            (7, 2),
+        )
+        self.assertTrue(
+            result['job_done']
+        )
+
+    def test_parse_qe_auxiliary_output_supports_patch_version(self):
+        output_text = """
+        Program MATDYN v.7.2.1 starts
+
+        JOB DONE.
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = (
+                Path(tmpdir)
+                / 'matdyn.out'
+            )
+
+            output_file.write_text(
+                output_text,
+                encoding='utf-8',
+            )
+
+            result = parse_qe_auxiliary_output(
+                output_file,
+                expected_program='matdyn',
+            )
+
+        self.assertEqual(
+            result['qe_version'],
+            (7, 2, 1),
+        )
+
+    def test_parse_qe_auxiliary_output_preserves_incomplete_job(self):
+        output_text = """
+        Program Q2R v.7.2 starts
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = (
+                Path(tmpdir)
+                / 'q2r.out'
+            )
+
+            output_file.write_text(
+                output_text,
+                encoding='utf-8',
+            )
+
+            result = parse_qe_auxiliary_output(
+                output_file,
+                expected_program='Q2R',
+            )
+
+        self.assertFalse(
+            result['job_done']
+        )
+
+    def test_parse_qe_auxiliary_output_rejects_wrong_program(self):
+        output_text = """
+        Program Q2R v.7.2 starts
+
+        JOB DONE.
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = (
+                Path(tmpdir)
+                / 'q2r.out'
+            )
+
+            output_file.write_text(
+                output_text,
+                encoding='utf-8',
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                'expected MATDYN, found Q2R',
+            ):
+                parse_qe_auxiliary_output(
+                    output_file,
+                    expected_program='MATDYN',
+                )
+
+    def test_parse_qe_auxiliary_output_requires_output_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = (
+                Path(tmpdir)
+                / 'missing.out'
+            )
+
+            with self.assertRaises(
+                FileNotFoundError
+            ):
+                parse_qe_auxiliary_output(
+                    output_file,
+                    expected_program='PHONON',
+                )
 
 if __name__ == '__main__':
     unittest.main()
