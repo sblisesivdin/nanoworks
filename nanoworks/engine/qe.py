@@ -1584,6 +1584,139 @@ def render_q2r_input(
         + '\n'
     )
 
+
+def build_matdyn_band_settings(
+    flfrc,
+    flfrq,
+    acoustic_sum_rule=True,
+):
+    """Build QE matdyn.x settings for a phonon band path."""
+    for name, value in (
+        ('flfrc', flfrc),
+        ('flfrq', flfrq),
+    ):
+        if value is None or not str(value).strip():
+            raise ValueError(
+                f"QE matdyn {name} must not be empty."
+            )
+
+    if not isinstance(acoustic_sum_rule, bool):
+        raise TypeError(
+            "QE matdyn acoustic sum rule setting must be boolean."
+        )
+
+    return {
+        'flfrc': str(flfrc).strip(),
+        'asr': (
+            'crystal'
+            if acoustic_sum_rule
+            else 'no'
+        ),
+        'dos': False,
+        'flfrq': str(flfrq).strip(),
+        'q_in_band_form': False,
+        'q_in_cryst_coord': True,
+    }
+
+
+def render_matdyn_qpoints(band_path):
+    """Render explicit crystalline q-points for matdyn.x."""
+    if not isinstance(band_path, dict):
+        raise TypeError(
+            "QE matdyn band path must be a mapping."
+        )
+
+    option = str(
+        band_path.get('option', '')
+    ).strip().lower()
+
+    if option != 'crystal':
+        raise ValueError(
+            "QE matdyn band path must use crystal coordinates."
+        )
+
+    qpoints = list(
+        band_path.get('kpoints', [])
+    )
+
+    if not qpoints:
+        raise ValueError(
+            "QE matdyn band path does not contain any q-points."
+        )
+
+    declared_npoints = band_path.get('npoints')
+
+    if (
+        declared_npoints is not None
+        and int(declared_npoints) != len(qpoints)
+    ):
+        raise ValueError(
+            "QE matdyn band path point count does not match "
+            "its metadata."
+        )
+
+    lines = [
+        str(len(qpoints)),
+    ]
+
+    for qpoint in qpoints:
+        if len(qpoint) != 3:
+            raise ValueError(
+                "Each QE matdyn q-point must contain exactly "
+                "3 coordinates."
+            )
+
+        try:
+            x, y, z = (
+                float(value)
+                for value in qpoint
+            )
+        except (TypeError, ValueError) as exc:
+            raise TypeError(
+                "QE matdyn q-point coordinates must be real numbers."
+            ) from exc
+
+        if not all(
+            math.isfinite(value)
+            for value in (x, y, z)
+        ):
+            raise ValueError(
+                "QE matdyn q-point coordinates must be finite."
+            )
+
+        lines.append(
+            f"{x:.12f} {y:.12f} {z:.12f}"
+        )
+
+    return "\n".join(lines)
+
+
+def render_matdyn_band_input(
+    flfrc,
+    flfrq,
+    band_path,
+    acoustic_sum_rule=True,
+):
+    """Render a QE matdyn.x input for phonon dispersion."""
+    settings = build_matdyn_band_settings(
+        flfrc=flfrc,
+        flfrq=flfrq,
+        acoustic_sum_rule=acoustic_sum_rule,
+    )
+
+    qpoint_card = render_matdyn_qpoints(
+        band_path
+    )
+
+    return "\n".join([
+        render_namelist(
+            'INPUT',
+            settings,
+        ),
+        qpoint_card,
+        '',
+    ])
+
 def render_pw_input(
     calculation,
     atoms,

@@ -67,6 +67,9 @@ from nanoworks.engine.qe import (
     render_ph_input,
     build_q2r_settings,
     render_q2r_input,
+    build_matdyn_band_settings,
+    render_matdyn_qpoints,
+    render_matdyn_band_input,
 )
 
 
@@ -5629,6 +5632,171 @@ def test_run_spin_polarized_band_projections(self):
                         fildyn='si.dyn',
                         flfrc='si.fc',
                         zasr=zasr,
+                    )
+
+    def test_build_matdyn_band_settings(self):
+        settings = build_matdyn_band_settings(
+            flfrc='si.fc',
+            flfrq='si.freq',
+            acoustic_sum_rule=True,
+        )
+
+        self.assertEqual(
+            settings['flfrc'],
+            'si.fc',
+        )
+        self.assertEqual(
+            settings['flfrq'],
+            'si.freq',
+        )
+        self.assertEqual(
+            settings['asr'],
+            'crystal',
+        )
+        self.assertFalse(settings['dos'])
+        self.assertFalse(
+            settings['q_in_band_form']
+        )
+        self.assertTrue(
+            settings['q_in_cryst_coord']
+        )
+
+    def test_build_matdyn_band_settings_can_disable_asr(self):
+        settings = build_matdyn_band_settings(
+            flfrc='si.fc',
+            flfrq='si.freq',
+            acoustic_sum_rule=False,
+        )
+
+        self.assertEqual(
+            settings['asr'],
+            'no',
+        )
+
+    def test_render_matdyn_qpoints(self):
+        text = render_matdyn_qpoints(
+            {
+                'option': 'crystal',
+                'kpoints': [
+                    (0.0, 0.0, 0.0),
+                    (0.0, 0.25, 0.0),
+                    (0.0, 0.5, 0.0),
+                ],
+                'npoints': 3,
+            }
+        )
+
+        self.assertEqual(
+            text.splitlines(),
+            [
+                '3',
+                '0.000000000000 0.000000000000 0.000000000000',
+                '0.000000000000 0.250000000000 0.000000000000',
+                '0.000000000000 0.500000000000 0.000000000000',
+            ],
+        )
+
+    def test_render_matdyn_band_input(self):
+        band_path = build_band_path(
+            atoms=Atoms(
+                'Si',
+                cell=[4.0, 4.0, 4.0],
+                pbc=True,
+            ),
+            path='GX',
+            npoints=3,
+        )
+
+        text = render_matdyn_band_input(
+            flfrc='si.fc',
+            flfrq='si.freq',
+            band_path=band_path,
+        )
+
+        self.assertIn(
+            "  flfrc = 'si.fc',",
+            text,
+        )
+        self.assertIn(
+            "  asr = 'crystal',",
+            text,
+        )
+        self.assertIn(
+            '  dos = .false.,',
+            text,
+        )
+        self.assertIn(
+            "  flfrq = 'si.freq',",
+            text,
+        )
+        self.assertIn(
+            '  q_in_band_form = .false.,',
+            text,
+        )
+        self.assertIn(
+            '  q_in_cryst_coord = .true.,',
+            text,
+        )
+        self.assertIn(
+            '\n3\n',
+            text,
+        )
+        self.assertTrue(
+            text.endswith('\n')
+        )
+
+    def test_render_matdyn_qpoints_rejects_invalid_path(self):
+        invalid_paths = (
+            None,
+            {},
+            {
+                'option': 'cartesian',
+                'kpoints': [(0.0, 0.0, 0.0)],
+            },
+            {
+                'option': 'crystal',
+                'kpoints': [(0.0, 0.0)],
+            },
+            {
+                'option': 'crystal',
+                'kpoints': [(0.0, 0.0, 0.0)],
+                'npoints': 2,
+            },
+        )
+
+        for band_path in invalid_paths:
+            with self.subTest(
+                band_path=band_path
+            ):
+                with self.assertRaises(
+                    (TypeError, ValueError)
+                ):
+                    render_matdyn_qpoints(
+                        band_path
+                    )
+
+    def test_build_matdyn_band_settings_rejects_invalid_values(self):
+        for arguments in (
+            {
+                'flfrc': '',
+                'flfrq': 'si.freq',
+            },
+            {
+                'flfrc': 'si.fc',
+                'flfrq': None,
+            },
+            {
+                'flfrc': 'si.fc',
+                'flfrq': 'si.freq',
+                'acoustic_sum_rule': 'yes',
+            },
+        ):
+            with self.subTest(arguments=arguments):
+                with self.assertRaises(
+                    (TypeError, ValueError)
+                ):
+                    build_matdyn_band_settings(
+                        **arguments
                     )
 
 if __name__ == '__main__':
