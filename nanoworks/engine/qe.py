@@ -3102,6 +3102,107 @@ def parse_matdyn_frequency_file(frequency_file):
     }
 
 
+def parse_matdyn_dos_file(dos_file):
+    """Parse total and atom-projected phonon DOS from matdyn.x."""
+    dos_file = Path(
+        dos_file
+    )
+
+    if not dos_file.is_file():
+        raise FileNotFoundError(
+            "QE matdyn DOS file was not found: "
+            f"{dos_file}"
+        )
+
+    number_pattern = re.compile(
+        r'[+-]?(?:\d+(?:\.\d*)?|\.\d+)'
+        r'(?:[EeDd][+-]?\d+)?'
+    )
+
+    rows = []
+    column_count = None
+
+    with dos_file.open(
+        'r',
+        encoding='utf-8',
+        errors='replace',
+    ) as fd:
+        for line_number, line in enumerate(fd, start=1):
+            stripped = line.strip()
+
+            if not stripped or stripped.startswith('#'):
+                continue
+
+            matches = number_pattern.findall(stripped)
+            remainder = number_pattern.sub('', stripped)
+
+            if not matches or remainder.strip():
+                raise ValueError(
+                    "QE matdyn DOS row could not be parsed "
+                    f"at line {line_number} in '{dos_file}'."
+                )
+
+            values = [
+                float(
+                    value.replace('D', 'E').replace('d', 'e')
+                )
+                for value in matches
+            ]
+
+            if len(values) < 3:
+                raise ValueError(
+                    "QE matdyn DOS rows must contain frequency, "
+                    "total DOS, and at least one projected DOS "
+                    f"column in '{dos_file}'."
+                )
+
+            if column_count is None:
+                column_count = len(values)
+            elif len(values) != column_count:
+                raise ValueError(
+                    "QE matdyn DOS data contains inconsistent "
+                    f"column counts in '{dos_file}'."
+                )
+
+            rows.append(values)
+
+    if not rows:
+        raise ValueError(
+            "No QE matdyn DOS data could be parsed from "
+            f"'{dos_file}'."
+        )
+
+    frequencies_cm1 = [
+        row[0]
+        for row in rows
+    ]
+    frequencies_thz = [
+        value * THZ_PER_CM_MINUS_ONE
+        for value in frequencies_cm1
+    ]
+    dos = [
+        row[1]
+        for row in rows
+    ]
+    natoms = column_count - 2
+    atom_projected_dos = [
+        [
+            row[atom_index + 2]
+            for row in rows
+        ]
+        for atom_index in range(natoms)
+    ]
+
+    return {
+        'frequencies_cm1': frequencies_cm1,
+        'frequencies_thz': frequencies_thz,
+        'dos': dos,
+        'atom_projected_dos': atom_projected_dos,
+        'npoints': len(rows),
+        'natoms': natoms,
+    }
+
+
 def parse_pw_output(output):
     """Parse basic results from pw.x output."""
     output = Path(

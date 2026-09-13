@@ -35,6 +35,7 @@ from nanoworks.engine.qe import (
     run_qe_program,
     parse_qe_auxiliary_output,
     parse_matdyn_frequency_file,
+    parse_matdyn_dos_file,
     parse_pw_output,
     resolve_qe_band_reference,
     parse_pw_bands_output,
@@ -6220,6 +6221,141 @@ def test_run_spin_polarized_band_projections(self):
                 parse_matdyn_frequency_file(
                     Path(tmpdir)
                     / 'missing.freq'
+                )
+
+    def test_parse_matdyn_dos_file(self):
+        dos_text = """
+# Frequency[cm^-1] DOS PDOS
+-1.0000000000E+01 2.5000000000E-03 1.0000E-03 1.5000E-03
+ 0.0000000000D+00 4.0000000000D-03 1.7500D-03 2.2500D-03
+ 1.0000000000E+01 3.0000000000E-03 1.2500E-03 1.7500E-03
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dos_file = (
+                Path(tmpdir)
+                / 'si.phdos'
+            )
+            dos_file.write_text(
+                dos_text,
+                encoding='utf-8',
+            )
+
+            result = parse_matdyn_dos_file(
+                dos_file
+            )
+
+        self.assertEqual(
+            result['npoints'],
+            3,
+        )
+        self.assertEqual(
+            result['natoms'],
+            2,
+        )
+        self.assertEqual(
+            result['frequencies_cm1'],
+            [-10.0, 0.0, 10.0],
+        )
+        self.assertAlmostEqual(
+            result['frequencies_thz'][2],
+            10.0 * THZ_PER_CM_MINUS_ONE,
+        )
+        self.assertEqual(
+            result['dos'],
+            [0.0025, 0.004, 0.003],
+        )
+        self.assertEqual(
+            result['atom_projected_dos'][0],
+            [0.001, 0.00175, 0.00125],
+        )
+
+    def test_parse_matdyn_dos_file_supports_adjacent_values(self):
+        dos_text = (
+            "# Frequency[cm^-1] DOS PDOS\n"
+            "-1.0000000000E+01-2.5000000000E-03"
+            "-1.0000E-03-1.5000E-03\n"
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dos_file = (
+                Path(tmpdir)
+                / 'adjacent.phdos'
+            )
+            dos_file.write_text(
+                dos_text,
+                encoding='utf-8',
+            )
+
+            result = parse_matdyn_dos_file(
+                dos_file
+            )
+
+        self.assertEqual(
+            result['frequencies_cm1'],
+            [-10.0],
+        )
+        self.assertEqual(
+            result['dos'],
+            [-0.0025],
+        )
+        self.assertEqual(
+            result['atom_projected_dos'],
+            [[-0.001], [-0.0015]],
+        )
+
+    def test_parse_matdyn_dos_file_rejects_inconsistent_columns(self):
+        dos_text = (
+            "# Frequency[cm^-1] DOS PDOS\n"
+            "0.0 1.0 0.4 0.6\n"
+            "1.0 2.0 2.0\n"
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dos_file = (
+                Path(tmpdir)
+                / 'bad.phdos'
+            )
+            dos_file.write_text(
+                dos_text,
+                encoding='utf-8',
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                'inconsistent column counts',
+            ):
+                parse_matdyn_dos_file(
+                    dos_file
+                )
+
+    def test_parse_matdyn_dos_file_rejects_missing_data(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dos_file = (
+                Path(tmpdir)
+                / 'empty.phdos'
+            )
+            dos_file.write_text(
+                '# Frequency[cm^-1] DOS PDOS\n',
+                encoding='utf-8',
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                'No QE matdyn DOS data',
+            ):
+                parse_matdyn_dos_file(
+                    dos_file
+                )
+
+    def test_parse_matdyn_dos_file_requires_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with self.assertRaises(
+                FileNotFoundError
+            ):
+                parse_matdyn_dos_file(
+                    Path(tmpdir)
+                    / 'missing.phdos'
                 )
 
     def test_run_ph_uses_existing_ground_state(self):
