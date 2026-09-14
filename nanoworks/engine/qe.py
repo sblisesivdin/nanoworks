@@ -606,38 +606,178 @@ def validate_qe_version(
 
     return version
 
-def validate_qe_xc(
+def resolve_qe_xc_settings(
     xc_calc,
     pseudo_xc='pbe',
+    exx_fraction=None,
+    omega=None,
 ):
-    """Validate XC compatibility with the installed QE pseudo set."""
+    """Resolve Nanoworks XC names to QE input_dft hybrid settings."""
     xc = str(
         xc_calc
-    ).strip().lower()
-
+    ).strip().lower().replace(
+        '_',
+        '-',
+    )
     pseudo_xc = str(
         pseudo_xc
     ).strip().lower()
 
     aliases = {
-        'pbe': 'pbe',
+        'pbe': {
+            'name': 'PBE',
+            'input_dft': 'PBE',
+            'hybrid': False,
+            'exx_fraction': None,
+            'screening_parameter': None,
+        },
+        'hse': {
+            'name': 'HSE06',
+            'input_dft': 'HSE',
+            'hybrid': True,
+            'exx_fraction': 0.25,
+            'screening_parameter': 0.106,
+        },
+        'hse06': {
+            'name': 'HSE06',
+            'input_dft': 'HSE',
+            'hybrid': True,
+            'exx_fraction': 0.25,
+            'screening_parameter': 0.106,
+        },
+        'hse-06': {
+            'name': 'HSE06',
+            'input_dft': 'HSE',
+            'hybrid': True,
+            'exx_fraction': 0.25,
+            'screening_parameter': 0.106,
+        },
+        'hse03': {
+            'name': 'HSE03',
+            'input_dft': 'HSE',
+            'hybrid': True,
+            'exx_fraction': 0.25,
+            'screening_parameter': 0.15,
+        },
+        'hse-03': {
+            'name': 'HSE03',
+            'input_dft': 'HSE',
+            'hybrid': True,
+            'exx_fraction': 0.25,
+            'screening_parameter': 0.15,
+        },
+        'pbe0': {
+            'name': 'PBE0',
+            'input_dft': 'PBE0',
+            'hybrid': True,
+            'exx_fraction': 0.25,
+            'screening_parameter': None,
+        },
+        'pbe-0': {
+            'name': 'PBE0',
+            'input_dft': 'PBE0',
+            'hybrid': True,
+            'exx_fraction': 0.25,
+            'screening_parameter': None,
+        },
     }
 
     try:
-        normalized = aliases[xc]
+        settings = dict(
+            aliases[xc]
+        )
     except KeyError:
         raise ValueError(
-            "The current Nanoworks QE pseudopotential library "
-            f"supports PBE calculations only. Requested XC: {xc_calc}"
+            "The current Nanoworks QE backend supports PBE, "
+            "HSE06, HSE03, and PBE0. "
+            f"Requested XC: {xc_calc}"
         )
 
-    if normalized != pseudo_xc:
+    if pseudo_xc != 'pbe':
         raise ValueError(
-            f"QE XC '{xc_calc}' is incompatible with "
-            f"the installed '{pseudo_xc}' pseudopotentials."
+            f"QE XC '{xc_calc}' requires the installed "
+            f"PBE pseudopotentials, not '{pseudo_xc}'."
         )
 
-    return normalized
+    if not settings['hybrid']:
+        if exx_fraction is not None or omega is not None:
+            raise ValueError(
+                "XC_exx_fraction and XC_omega can only be used "
+                "with a QE hybrid functional."
+            )
+
+        settings['pseudo_xc'] = pseudo_xc
+        return settings
+
+    if exx_fraction is not None:
+        if isinstance(exx_fraction, bool):
+            raise TypeError(
+                "QE exact-exchange fraction must be a real number."
+            )
+
+        try:
+            exx_fraction = float(
+                exx_fraction
+            )
+        except (TypeError, ValueError) as exc:
+            raise TypeError(
+                "QE exact-exchange fraction must be a real number."
+            ) from exc
+
+        if (
+            not math.isfinite(exx_fraction)
+            or exx_fraction <= 0.0
+            or exx_fraction > 1.0
+        ):
+            raise ValueError(
+                "QE exact-exchange fraction must satisfy "
+                "0 < XC_exx_fraction <= 1."
+            )
+
+        settings['exx_fraction'] = exx_fraction
+
+    if omega is not None:
+        if settings['name'] == 'PBE0':
+            raise ValueError(
+                "XC_omega is only valid for screened HSE functionals."
+            )
+
+        if isinstance(omega, bool):
+            raise TypeError(
+                "QE HSE screening parameter must be a real number."
+            )
+
+        try:
+            omega = float(
+                omega
+            )
+        except (TypeError, ValueError) as exc:
+            raise TypeError(
+                "QE HSE screening parameter must be a real number."
+            ) from exc
+
+        if not math.isfinite(omega) or omega <= 0.0:
+            raise ValueError(
+                "QE HSE screening parameter must be positive."
+            )
+
+        settings['screening_parameter'] = omega
+
+    settings['pseudo_xc'] = pseudo_xc
+    return settings
+
+
+def validate_qe_xc(
+    xc_calc,
+    pseudo_xc='pbe',
+):
+    """Validate XC compatibility with the installed QE pseudo set."""
+    settings = resolve_qe_xc_settings(
+        xc_calc=xc_calc,
+        pseudo_xc=pseudo_xc,
+    )
+
+    return settings['name'].lower()
 
 def resolve_qe_hubbard(
     setup_params,

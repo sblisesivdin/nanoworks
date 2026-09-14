@@ -46,6 +46,7 @@ from nanoworks.engine.qe import (
     resolve_qe_kpoint_size,
     resolve_qe_occupation,
     validate_qe_version,
+    resolve_qe_xc_settings,
     validate_qe_xc,
     run_scf,
     run_nscf,
@@ -92,6 +93,122 @@ class TestQEEngine(unittest.TestCase):
 
     def test_reference_version_is_qe_72(self):
         self.assertEqual(QE_REFERENCE_VERSION, (7, 2))
+
+    def test_resolve_qe_xc_settings_for_pbe(self):
+        settings = resolve_qe_xc_settings(
+            'PBE'
+        )
+
+        self.assertEqual(
+            settings,
+            {
+                'name': 'PBE',
+                'input_dft': 'PBE',
+                'hybrid': False,
+                'exx_fraction': None,
+                'screening_parameter': None,
+                'pseudo_xc': 'pbe',
+            },
+        )
+
+    def test_resolve_qe_xc_settings_for_hse06(self):
+        settings = resolve_qe_xc_settings(
+            'HSE06'
+        )
+
+        self.assertEqual(
+            settings['input_dft'],
+            'HSE',
+        )
+        self.assertTrue(
+            settings['hybrid']
+        )
+        self.assertEqual(
+            settings['exx_fraction'],
+            0.25,
+        )
+        self.assertEqual(
+            settings['screening_parameter'],
+            0.106,
+        )
+
+    def test_resolve_qe_xc_settings_for_hse03_overrides(self):
+        settings = resolve_qe_xc_settings(
+            'HSE-03',
+            exx_fraction=0.30,
+            omega=0.16,
+        )
+
+        self.assertEqual(
+            settings['name'],
+            'HSE03',
+        )
+        self.assertEqual(
+            settings['exx_fraction'],
+            0.30,
+        )
+        self.assertEqual(
+            settings['screening_parameter'],
+            0.16,
+        )
+
+    def test_resolve_qe_xc_settings_for_pbe0(self):
+        settings = resolve_qe_xc_settings(
+            'PBE-0'
+        )
+
+        self.assertEqual(
+            settings['input_dft'],
+            'PBE0',
+        )
+        self.assertEqual(
+            settings['exx_fraction'],
+            0.25,
+        )
+        self.assertIsNone(
+            settings['screening_parameter']
+        )
+
+    def test_resolve_qe_xc_settings_rejects_invalid_controls(self):
+        invalid_requests = (
+            (
+                {
+                    'xc_calc': 'PBE',
+                    'exx_fraction': 0.25,
+                },
+                'only be used with',
+            ),
+            (
+                {
+                    'xc_calc': 'HSE06',
+                    'exx_fraction': 0.0,
+                },
+                '0 < XC_exx_fraction',
+            ),
+            (
+                {
+                    'xc_calc': 'PBE0',
+                    'omega': 0.11,
+                },
+                'only valid for screened HSE',
+            ),
+            (
+                {
+                    'xc_calc': 'B3LYP',
+                },
+                'supports PBE, HSE06, HSE03, and PBE0',
+            ),
+        )
+
+        for request, message in invalid_requests:
+            with self.subTest(request=request):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    message,
+                ):
+                    resolve_qe_xc_settings(
+                        **request
+                    )
 
     def test_resolve_qe_phonon_grid_from_diagonal_matrix(self):
         grid = resolve_qe_phonon_qpoint_grid(
