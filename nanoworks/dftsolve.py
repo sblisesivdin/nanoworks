@@ -4122,9 +4122,201 @@ class dftsolve:
 
     def _phononcalc_qe(self):
         """Run the native Quantum ESPRESSO DFPT phonon workflow."""
-        raise NotImplementedError(
-            "The QE phonon workflow is not connected yet."
+        time51 = time.time()
+
+        parprint(
+            "Starting native QE phonon calculations..."
         )
+
+        if self.Mode != 'PW':
+            raise ValueError(
+                "Quantum ESPRESSO phonon calculations support "
+                "PW mode only."
+            )
+
+        if self.Phonon_thermal_calc:
+            raise NotImplementedError(
+                "Thermal phonon properties are not connected to "
+                "the native QE workflow yet."
+            )
+
+        self.engine.validate_qe_xc(
+            self.XC_calc,
+            pseudo_xc='pbe',
+        )
+
+        state_dir = Path(
+            self.struct
+            + '-GROUND-QE-Result-State'
+        )
+
+        if not self.engine.has_qe_state(
+            state_dir,
+            prefix='nanoworks',
+        ):
+            raise FileNotFoundError(
+                f"{state_dir} does not contain a valid QE "
+                "ground-state result. Complete the ground-state "
+                "calculation before running phonons."
+            )
+
+        electronic_overrides = {
+            'Phonon_PW_cutoff': self.Phonon_PW_cutoff,
+            'Phonon_kpts_x': self.Phonon_kpts_x,
+            'Phonon_kpts_y': self.Phonon_kpts_y,
+            'Phonon_kpts_z': self.Phonon_kpts_z,
+        }
+        supplied_overrides = {
+            name: value
+            for name, value in electronic_overrides.items()
+            if value is not None
+        }
+
+        if supplied_overrides:
+            formatted_overrides = ', '.join(
+                f"{name}={value}"
+                for name, value in supplied_overrides.items()
+            )
+            parprint(
+                "NOTICE: Native QE DFPT reuses the converged "
+                "ground-state cutoff and electronic k-point mesh; "
+                "the following GPAW finite-displacement settings "
+                "are ignored: "
+                + formatted_overrides
+            )
+
+        if self.Phonon_displacement != 1.0e-3:
+            parprint(
+                "NOTICE: Phonon_displacement is ignored by native "
+                "QE DFPT because no displaced supercells are used."
+            )
+
+        qpoint_grid = (
+            self.engine.resolve_qe_phonon_qpoint_grid(
+                self.Phonon_supercell
+            )
+        )
+        dos_qpoint_grid = (
+            self.Phonon_qpts_x,
+            self.Phonon_qpts_y,
+            self.Phonon_qpts_z,
+        )
+        band_path = self.engine.build_band_path(
+            self.bulk_configuration,
+            path=self.Phonon_path,
+            npoints=self.Phonon_npoints,
+        )
+
+        fildyn = Path(
+            self.struct
+            + '-PHONON-QE-Result-Dynamical-Matrix'
+        )
+        flfrc = Path(
+            self.struct
+            + '-PHONON-QE-Result-Force-Constants.fc'
+        )
+        flfrq = Path(
+            self.struct
+            + '-PHONON-QE-Result-Band.freq'
+        )
+        fldos = Path(
+            self.struct
+            + '-PHONON-QE-Result-DOS.dat'
+        )
+
+        ph_workflow = self.engine.run_ph(
+            input_file=Path(
+                self.struct
+                + '-PHONON-QE-Input-PH.in'
+            ),
+            output_file=Path(
+                self.struct
+                + '-PHONON-QE-Log-PH.txt'
+            ),
+            state_dir=state_dir,
+            fildyn=fildyn,
+            qpoint_grid=qpoint_grid,
+            parallel_cores=self.parallel_cores,
+            executable='ph.x',
+            prefix='nanoworks',
+        )
+
+        q2r_workflow = self.engine.run_q2r(
+            input_file=Path(
+                self.struct
+                + '-PHONON-QE-Input-Q2R.in'
+            ),
+            output_file=Path(
+                self.struct
+                + '-PHONON-QE-Log-Q2R.txt'
+            ),
+            fildyn=fildyn,
+            flfrc=flfrc,
+            zasr='no',
+            parallel_cores=self.parallel_cores,
+            executable='q2r.x',
+        )
+
+        band_workflow = self.engine.run_matdyn_band(
+            input_file=Path(
+                self.struct
+                + '-PHONON-QE-Input-Matdyn-Band.in'
+            ),
+            output_file=Path(
+                self.struct
+                + '-PHONON-QE-Log-Matdyn-Band.txt'
+            ),
+            flfrc=flfrc,
+            flfrq=flfrq,
+            band_path=band_path,
+            acoustic_sum_rule=self.Phonon_acoustic_sum_rule,
+            parallel_cores=self.parallel_cores,
+            executable='matdyn.x',
+        )
+
+        dos_workflow = self.engine.run_matdyn_dos(
+            input_file=Path(
+                self.struct
+                + '-PHONON-QE-Input-Matdyn-DOS.in'
+            ),
+            output_file=Path(
+                self.struct
+                + '-PHONON-QE-Log-Matdyn-DOS.txt'
+            ),
+            flfrc=flfrc,
+            fldos=fldos,
+            qpoint_grid=dos_qpoint_grid,
+            acoustic_sum_rule=self.Phonon_acoustic_sum_rule,
+            parallel_cores=self.parallel_cores,
+            executable='matdyn.x',
+        )
+
+        time52 = time.time()
+
+        with paropen(
+            self.struct
+            + '-TIMINGS-QE-Log-Timings.txt',
+            'a',
+        ) as fd:
+            print(
+                'Phonon calculation: ',
+                round(time52 - time51, 2),
+                file=fd,
+            )
+
+        parprint(
+            "Native QE phonon calculations finished."
+        )
+
+        return {
+            'qpoint_grid': qpoint_grid,
+            'dos_qpoint_grid': dos_qpoint_grid,
+            'band_path': band_path,
+            'ph': ph_workflow,
+            'q2r': q2r_workflow,
+            'band': band_workflow,
+            'dos': dos_workflow,
+        }
 
     def _phononcalc_gpaw(self):
         """

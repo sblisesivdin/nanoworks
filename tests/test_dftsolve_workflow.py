@@ -3,7 +3,7 @@ import unittest
 import sys
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from ase import Atoms
 from ase.io import write
@@ -291,6 +291,161 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             'Unsupported phonon engine',
         ):
             solver.phononcalc()
+
+    def test_qe_phononcalc_runs_native_dfpt_chain(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            solver = object.__new__(
+                DFTSolver
+            )
+            solver.struct = str(
+                Path(tmpdir)
+                / 'silicon'
+            )
+            solver.Engine = 'QE'
+            solver.Mode = 'PW'
+            solver.XC_calc = 'PBE'
+            solver.Phonon_thermal_calc = False
+            solver.Phonon_PW_cutoff = None
+            solver.Phonon_kpts_x = None
+            solver.Phonon_kpts_y = None
+            solver.Phonon_kpts_z = None
+            solver.Phonon_displacement = 1.0e-3
+            solver.Phonon_supercell = (
+                (2, 0, 0),
+                (0, 3, 0),
+                (0, 0, 4),
+            )
+            solver.Phonon_qpts_x = 12
+            solver.Phonon_qpts_y = 13
+            solver.Phonon_qpts_z = 14
+            solver.Phonon_path = 'GX'
+            solver.Phonon_npoints = 21
+            solver.Phonon_acoustic_sum_rule = True
+            solver.parallel_cores = 8
+            solver.bulk_configuration = Atoms(
+                'Si',
+                cell=[5.4, 5.4, 5.4],
+                pbc=True,
+            )
+
+            band_path = {
+                'option': 'crystal',
+                'kpoints': [
+                    (0.0, 0.0, 0.0),
+                    (0.5, 0.0, 0.0),
+                ],
+                'npoints': 2,
+            }
+            solver.engine = SimpleNamespace(
+                validate_qe_xc=Mock(
+                    return_value='pbe'
+                ),
+                has_qe_state=Mock(
+                    return_value=True
+                ),
+                resolve_qe_phonon_qpoint_grid=Mock(
+                    return_value=(2, 3, 4)
+                ),
+                build_band_path=Mock(
+                    return_value=band_path
+                ),
+                run_ph=Mock(
+                    return_value={'stage': 'ph'}
+                ),
+                run_q2r=Mock(
+                    return_value={'stage': 'q2r'}
+                ),
+                run_matdyn_band=Mock(
+                    return_value={'stage': 'band'}
+                ),
+                run_matdyn_dos=Mock(
+                    return_value={'stage': 'dos'}
+                ),
+            )
+
+            workflow = solver._phononcalc_qe()
+
+        solver.engine.validate_qe_xc.assert_called_once_with(
+            'PBE',
+            pseudo_xc='pbe',
+        )
+        solver.engine.has_qe_state.assert_called_once_with(
+            Path(
+                solver.struct
+                + '-GROUND-QE-Result-State'
+            ),
+            prefix='nanoworks',
+        )
+        solver.engine.run_ph.assert_called_once()
+        solver.engine.run_q2r.assert_called_once()
+        solver.engine.run_matdyn_band.assert_called_once()
+        solver.engine.run_matdyn_dos.assert_called_once()
+        self.assertEqual(
+            solver.engine.run_ph.call_args.kwargs[
+                'qpoint_grid'
+            ],
+            (2, 3, 4),
+        )
+        self.assertEqual(
+            solver.engine.run_matdyn_dos.call_args.kwargs[
+                'qpoint_grid'
+            ],
+            (12, 13, 14),
+        )
+        self.assertIs(
+            solver.engine.run_matdyn_band.call_args.kwargs[
+                'band_path'
+            ],
+            band_path,
+        )
+        self.assertEqual(
+            workflow['ph'],
+            {'stage': 'ph'},
+        )
+        self.assertEqual(
+            workflow['dos'],
+            {'stage': 'dos'},
+        )
+
+    def test_qe_phononcalc_requires_ground_state(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            solver = object.__new__(
+                DFTSolver
+            )
+            solver.struct = str(
+                Path(tmpdir)
+                / 'silicon'
+            )
+            solver.Mode = 'PW'
+            solver.XC_calc = 'PBE'
+            solver.Phonon_thermal_calc = False
+            solver.engine = SimpleNamespace(
+                validate_qe_xc=Mock(
+                    return_value='pbe'
+                ),
+                has_qe_state=Mock(
+                    return_value=False
+                ),
+            )
+
+            with self.assertRaisesRegex(
+                FileNotFoundError,
+                'ground-state result',
+            ):
+                solver._phononcalc_qe()
+
+    def test_qe_phononcalc_rejects_thermal_request(self):
+        solver = object.__new__(
+            DFTSolver
+        )
+        solver.Mode = 'PW'
+        solver.Phonon_thermal_calc = True
+
+        with self.assertRaisesRegex(
+            NotImplementedError,
+            'Thermal phonon properties',
+        ):
+            solver._phononcalc_qe()
 
 if __name__ == '__main__':
     unittest.main()
