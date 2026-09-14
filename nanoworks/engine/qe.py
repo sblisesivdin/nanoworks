@@ -70,6 +70,10 @@ def build_system_settings(
     total_charge=0.0,
     nbands=None,
     spinpol=False,
+    xc_calc=None,
+    pseudo_xc='pbe',
+    exx_fraction=None,
+    omega=None,
 ):
     """Build the basic QE &SYSTEM namelist settings."""
     settings = {
@@ -78,6 +82,33 @@ def build_system_settings(
         'ntyp': int(ntyp),
         'ecutwfc': ev_to_rydberg(cutoff_ev),
     }
+
+    if xc_calc is not None:
+        xc_settings = resolve_qe_xc_settings(
+            xc_calc=xc_calc,
+            pseudo_xc=pseudo_xc,
+            exx_fraction=exx_fraction,
+            omega=omega,
+        )
+
+        settings['input_dft'] = xc_settings[
+            'input_dft'
+        ]
+
+        if xc_settings['hybrid']:
+            settings['exx_fraction'] = xc_settings[
+                'exx_fraction'
+            ]
+
+            if (
+                xc_settings['screening_parameter']
+                is not None
+            ):
+                settings['screening_parameter'] = (
+                    xc_settings[
+                        'screening_parameter'
+                    ]
+                )
 
     if total_charge != 0.0:
         settings['tot_charge'] = float(total_charge)
@@ -2085,6 +2116,10 @@ def render_pw_input(
     spinpol=False,
     magnetic_moments=None,
     setup_params=None,
+    xc_calc='PBE',
+    pseudo_xc='pbe',
+    exx_fraction=None,
+    omega=None,
     occupations='fixed',
     smearing=None,
     width_ev=None,
@@ -2239,6 +2274,10 @@ def render_pw_input(
         total_charge=total_charge,
         nbands=nbands,
         spinpol=spinpol,
+        xc_calc=xc_calc,
+        pseudo_xc=pseudo_xc,
+        exx_fraction=exx_fraction,
+        omega=omega,
     )
     
     system.update(
@@ -2408,6 +2447,10 @@ def render_scf_input(
     spinpol=False,
     magnetic_moments=None,
     setup_params=None,
+    xc_calc='PBE',
+    pseudo_xc='pbe',
+    exx_fraction=None,
+    omega=None,
     occupations='fixed',
     smearing=None,
     width_ev=None,
@@ -2432,6 +2475,10 @@ def render_scf_input(
         spinpol=spinpol,
         magnetic_moments=magnetic_moments,
         setup_params=setup_params,
+        xc_calc=xc_calc,
+        pseudo_xc=pseudo_xc,
+        exx_fraction=exx_fraction,
+        omega=omega,
         occupations=occupations,
         smearing=smearing,
         width_ev=width_ev,
@@ -2508,6 +2555,10 @@ def render_relax_input(
     spinpol=False,
     magnetic_moments=None,
     setup_params=None,
+    xc_calc='PBE',
+    pseudo_xc='pbe',
+    exx_fraction=None,
+    omega=None,
     occupations='fixed',
     smearing=None,
     width_ev=None,
@@ -2542,6 +2593,10 @@ def render_relax_input(
         spinpol=spinpol,
         magnetic_moments=magnetic_moments,
         setup_params=setup_params,
+        xc_calc=xc_calc,
+        pseudo_xc=pseudo_xc,
+        exx_fraction=exx_fraction,
+        omega=omega,
         occupations=occupations,
         smearing=smearing,
         width_ev=width_ev,
@@ -6558,6 +6613,10 @@ def run_scf(
     spinpol=False,
     magnetic_moments=None,
     setup_params=None,
+    xc_calc='PBE',
+    pseudo_xc='pbe',
+    exx_fraction=None,
+    omega=None,
     occupation=None,
     parallel_cores=1,
     executable='pw.x',
@@ -6604,6 +6663,10 @@ def run_scf(
         spinpol=spinpol,
         magnetic_moments=magnetic_moments,
         setup_params=setup_params,
+        xc_calc=xc_calc,
+        pseudo_xc=pseudo_xc,
+        exx_fraction=exx_fraction,
+        omega=omega,
         occupations=occupation_settings['occupations'],
         smearing=occupation_settings['smearing'],
         width_ev=occupation_settings['width_ev'],
@@ -6684,6 +6747,10 @@ def run_relax(
     spinpol=False,
     magnetic_moments=None,
     setup_params=None,
+    xc_calc='PBE',
+    pseudo_xc='pbe',
+    exx_fraction=None,
+    omega=None,
     occupation=None,
     parallel_cores=1,
     executable='pw.x',
@@ -6739,6 +6806,10 @@ def run_relax(
         spinpol=spinpol,
         magnetic_moments=magnetic_moments,
         setup_params=setup_params,
+        xc_calc=xc_calc,
+        pseudo_xc=pseudo_xc,
+        exx_fraction=exx_fraction,
+        omega=omega,
         occupations=occupation_settings['occupations'],
         smearing=occupation_settings['smearing'],
         width_ev=occupation_settings['width_ev'],

@@ -186,6 +186,59 @@ class TestQEEngine(unittest.TestCase):
             'hse06',
         )
 
+    def test_build_system_settings_adds_hybrid_controls(self):
+        settings = build_system_settings(
+            cutoff_ev=500.0,
+            nat=2,
+            ntyp=1,
+            xc_calc='HSE03',
+            exx_fraction=0.30,
+            omega=0.16,
+        )
+
+        self.assertEqual(
+            settings['input_dft'],
+            'HSE',
+        )
+        self.assertEqual(
+            settings['exx_fraction'],
+            0.30,
+        )
+        self.assertEqual(
+            settings['screening_parameter'],
+            0.16,
+        )
+
+    def test_render_scf_input_adds_pbe0_controls(self):
+        atoms = bulk(
+            'Si',
+            'diamond',
+            a=5.43,
+        )
+
+        text = render_scf_input(
+            atoms=atoms,
+            pseudopotentials={
+                'Si': 'Si.upf',
+            },
+            cutoff_ev=500.0,
+            kpoint_size=(2, 2, 2),
+            xc_calc='PBE0',
+        )
+
+        self.assertIn(
+            "  input_dft = 'PBE0',",
+            text,
+        )
+        self.assertIn(
+            '  exx_fraction = 0.25,',
+            text,
+        )
+        self.assertNotIn(
+            'screening_parameter',
+            text,
+        )
+
     def test_resolve_qe_xc_settings_rejects_invalid_controls(self):
         invalid_requests = (
             (
