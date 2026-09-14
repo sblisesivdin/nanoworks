@@ -898,6 +898,7 @@ class dftsolve:
             self.engine.validate_qe_xc(
                 self.XC_calc,
                 pseudo_xc='pbe',
+                allow_hybrid=True,
             )
         except ValueError as exc:
             parprint(
@@ -1053,6 +1054,9 @@ class dftsolve:
                     spinpol=self.Spin_calc,
                     magnetic_moments=magnetic_moments,
                     setup_params=self.Setup_params,
+                    xc_calc=self.XC_calc,
+                    exx_fraction=self.XC_exx_fraction,
+                    omega=self.XC_omega,
                     occupation=self.Occupation,
                     parallel_cores=self.parallel_cores,
                     executable='pw.x',
@@ -1123,6 +1127,9 @@ class dftsolve:
                     spinpol=self.Spin_calc,
                     magnetic_moments=magnetic_moments,
                     setup_params=self.Setup_params,
+                    xc_calc=self.XC_calc,
+                    exx_fraction=self.XC_exx_fraction,
+                    omega=self.XC_omega,
                     occupation=self.Occupation,
                     parallel_cores=self.parallel_cores,
                     executable='pw.x',

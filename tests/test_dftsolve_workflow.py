@@ -605,5 +605,91 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             ):
                 solver._phononcalc_qe()
 
+    def test_qe_groundcalc_passes_hybrid_settings_to_scf(self):
+        solver = object.__new__(
+            DFTSolver
+        )
+        solver.Mode = 'PW'
+        solver.Engine = 'QE'
+        solver.struct = 'silicon'
+        solver.XC_calc = 'HSE06'
+        solver.XC_exx_fraction = 0.30
+        solver.XC_omega = 0.12
+        solver.Ground_calc = True
+        solver.Geo_optim = False
+        solver.Gamma = False
+        solver.Ground_gamma = None
+        solver.Spin_calc = False
+        solver.bulk_configuration = Atoms(
+            'Si',
+            cell=[5.4, 5.4, 5.4],
+            pbc=True,
+        )
+        solver.Cut_off_energy = 500.0
+        solver.Ground_kpts_density = None
+        solver.Ground_kpts_x = 2
+        solver.Ground_kpts_y = 2
+        solver.Ground_kpts_z = 2
+        solver.Total_charge = 0.0
+        solver.Ground_num_of_bands = None
+        solver.Setup_params = None
+        solver.Occupation = None
+        solver.parallel_cores = 1
+        solver.config = SimpleNamespace(
+            vdW_calc='NONE',
+        )
+        solver.engine = SimpleNamespace(
+            validate_qe_xc=Mock(
+                return_value='hse06'
+            ),
+            run_scf=Mock(
+                return_value={
+                    'result': {
+                        'total_energy_ev': -10.0,
+                        'total_energy_ry': -0.75,
+                    },
+                }
+            ),
+        )
+
+        with (
+            patch(
+                'nanoworks.dftsolve.get_qe_pseudo_dir',
+                return_value=Path('pseudos'),
+            ),
+            patch(
+                'nanoworks.dftsolve.resolve_qe_pseudopotentials',
+                return_value={
+                    'Si': 'Si.upf',
+                },
+            ),
+            patch(
+                'nanoworks.dftsolve.write_cif',
+            ),
+            patch(
+                'nanoworks.dftsolve.parprint',
+            ),
+        ):
+            solver._groundcalc_qe()
+
+        solver.engine.validate_qe_xc.assert_called_once_with(
+            'HSE06',
+            pseudo_xc='pbe',
+            allow_hybrid=True,
+        )
+        call = solver.engine.run_scf.call_args.kwargs
+        self.assertEqual(
+            call['xc_calc'],
+            'HSE06',
+        )
+        self.assertEqual(
+            call['exx_fraction'],
+            0.30,
+        )
+        self.assertEqual(
+            call['omega'],
+            0.12,
+        )
+
 if __name__ == '__main__':
     unittest.main()
