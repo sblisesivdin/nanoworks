@@ -38,6 +38,8 @@ from nanoworks.engine.qe import (
     parse_matdyn_dos_file,
     write_matdyn_band_data,
     write_matdyn_dos_data,
+    calculate_phonon_thermal_properties,
+    write_phonon_thermal_properties,
     parse_pw_output,
     resolve_qe_band_reference,
     parse_pw_bands_output,
@@ -6489,6 +6491,127 @@ def test_run_spin_polarized_band_projections(self):
                         'natoms': 1,
                     },
                 )
+
+    def test_calculate_phonon_thermal_properties(self):
+        dos_data = {
+            'frequencies_thz': [1.0, 2.0, 3.0],
+            'dos': [
+                0.0,
+                2.0 * THZ_PER_CM_MINUS_ONE,
+                0.0,
+            ],
+        }
+
+        result = calculate_phonon_thermal_properties(
+            dos_data,
+            t_min=0.0,
+            t_max=300.0,
+            t_step=300.0,
+        )
+
+        expected_zpe = (
+            2.0
+            * 0.5
+            * 2.0
+            * 4.135667696e-3
+            * 96.48533212331002
+        )
+
+        self.assertEqual(
+            result['temperatures_k'],
+            [0.0, 300.0],
+        )
+        self.assertAlmostEqual(
+            result['integrated_mode_weight'],
+            2.0,
+        )
+        self.assertAlmostEqual(
+            result['zero_point_energy_kj_mol'],
+            expected_zpe,
+        )
+        self.assertAlmostEqual(
+            result['free_energy_kj_mol'][0],
+            expected_zpe,
+        )
+        self.assertEqual(
+            result['entropy_j_k_mol'][0],
+            0.0,
+        )
+        self.assertEqual(
+            result['heat_capacity_j_k_mol'][0],
+            0.0,
+        )
+        self.assertGreater(
+            result['entropy_j_k_mol'][1],
+            0.0,
+        )
+        self.assertGreater(
+            result['heat_capacity_j_k_mol'][1],
+            0.0,
+        )
+
+    def test_calculate_phonon_thermal_properties_rejects_negative_dos(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            'must not be negative',
+        ):
+            calculate_phonon_thermal_properties(
+                {
+                    'frequencies_thz': [1.0, 2.0],
+                    'dos': [0.0, -1.0],
+                }
+            )
+
+    def test_calculate_phonon_thermal_properties_rejects_bad_range(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            '0 <= t_min',
+        ):
+            calculate_phonon_thermal_properties(
+                {
+                    'frequencies_thz': [1.0, 2.0],
+                    'dos': [0.0, 1.0],
+                },
+                t_min=300.0,
+                t_max=100.0,
+            )
+
+    def test_write_phonon_thermal_properties(self):
+        thermal_data = {
+            'temperatures_k': [0.0, 300.0],
+            'free_energy_kj_mol': [1.0, -2.0],
+            'internal_energy_kj_mol': [1.0, 3.0],
+            'entropy_j_k_mol': [0.0, 10.0],
+            'heat_capacity_j_k_mol': [0.0, 8.0],
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = (
+                Path(tmpdir)
+                / 'thermal.csv'
+            )
+            result = write_phonon_thermal_properties(
+                output_file,
+                thermal_data,
+            )
+            lines = output_file.read_text(
+                encoding='utf-8'
+            ).splitlines()
+
+        self.assertEqual(
+            result,
+            output_file,
+        )
+        self.assertEqual(
+            lines[0],
+            'T(K),Free_Energy(kJ/mol),Internal_Energy(kJ/mol),'
+            'Entropy(J/K/mol),Cv(J/K/mol)',
+        )
+        self.assertEqual(
+            lines[2],
+            '300.0000000000,-2.0000000000,3.0000000000,'
+            '10.0000000000,8.0000000000',
+        )
 
     def test_run_ph_uses_existing_ground_state(self):
         output_text = """

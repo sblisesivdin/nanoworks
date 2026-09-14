@@ -7,6 +7,7 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
+import numpy as np
 from ase.units import Bohr
 from ase.data import atomic_masses, atomic_numbers
 from ase.calculators.calculator import kptdensity2monkhorstpack
@@ -20,6 +21,9 @@ QE_REFERENCE_VERSION = (7, 2)
 # CODATA-compatible conversion used by ASE and QE-related workflows.
 EV_PER_RYDBERG = 13.605693122994
 THZ_PER_CM_MINUS_ONE = 0.0299792458
+BOLTZMANN_EV_PER_K = 8.617333262145e-5
+EV_PER_THZ = 4.135667696e-3
+KJ_PER_MOL_PER_EV = 96.48533212331002
 
 
 def ev_to_rydberg(value):
@@ -3389,6 +3393,300 @@ def write_matdyn_dos_data(output_file, dos_data):
                 ' '.join(
                     f"{value:.10f}"
                     for value in values
+                ),
+                file=fd,
+            )
+
+    return output_file
+
+
+def calculate_phonon_thermal_properties(
+    dos_data,
+    t_min=0.0,
+    t_max=1000.0,
+    t_step=10.0,
+    cutoff_frequency_thz=0.0,
+):
+    """Integrate harmonic thermal properties over a QE phonon DOS."""
+    try:
+        t_min = float(t_min)
+        t_max = float(t_max)
+        t_step = float(t_step)
+        cutoff_frequency_thz = float(
+            cutoff_frequency_thz
+        )
+    except (TypeError, ValueError) as exc:
+        raise TypeError(
+            "QE phonon thermal settings must be real numbers."
+        ) from exc
+
+    if not all(
+        math.isfinite(value)
+        for value in (
+            t_min,
+            t_max,
+            t_step,
+            cutoff_frequency_thz,
+        )
+    ):
+        raise ValueError(
+            "QE phonon thermal settings must be finite."
+        )
+
+    if t_min < 0.0 or t_max < t_min or t_step <= 0.0:
+        raise ValueError(
+            "QE phonon temperatures require 0 <= t_min <= "
+            "t_max and t_step > 0."
+        )
+
+    if cutoff_frequency_thz < 0.0:
+        raise ValueError(
+            "QE phonon thermal cutoff frequency must not be negative."
+        )
+
+    frequencies = np.asarray(
+        dos_data.get('frequencies_thz', []),
+        dtype=float,
+    )
+    dos_cm1 = np.asarray(
+        dos_data.get('dos', []),
+        dtype=float,
+    )
+
+    if (
+        frequencies.ndim != 1
+        or dos_cm1.ndim != 1
+        or frequencies.size < 2
+        or frequencies.size != dos_cm1.size
+    ):
+        raise ValueError(
+            "QE phonon DOS data dimensions are inconsistent."
+        )
+
+    if not (
+        np.all(np.isfinite(frequencies))
+        and np.all(np.isfinite(dos_cm1))
+    ):
+        raise ValueError(
+            "QE phonon DOS data must contain only finite values."
+        )
+
+    if np.any(np.diff(frequencies) <= 0.0):
+        raise ValueError(
+            "QE phonon DOS frequencies must be strictly increasing."
+        )
+
+    negative_tolerance = max(
+        1.0,
+        float(np.max(np.abs(dos_cm1))),
+    ) * 1.0e-12
+
+    if np.any(dos_cm1 < -negative_tolerance):
+        raise ValueError(
+            "QE phonon DOS values must not be negative."
+        )
+
+    dos_thz = np.maximum(
+        dos_cm1,
+        0.0,
+    ) / THZ_PER_CM_MINUS_ONE
+    positive_mask = (
+        frequencies > cutoff_frequency_thz
+    )
+
+    if np.count_nonzero(positive_mask) < 2:
+        raise ValueError(
+            "QE phonon DOS does not contain enough positive "
+            "frequency points for thermal integration."
+        )
+
+    positive_frequencies = frequencies[
+        positive_mask
+    ]
+    positive_dos = dos_thz[
+        positive_mask
+    ]
+    mode_energies = (
+        positive_frequencies
+        * EV_PER_THZ
+    )
+
+    total_mode_weight = float(
+        np.trapz(
+            dos_thz,
+            frequencies,
+        )
+    )
+    integrated_mode_weight = float(
+        np.trapz(
+            positive_dos,
+            positive_frequencies,
+        )
+    )
+    excluded_mode_weight = max(
+        0.0,
+        total_mode_weight - integrated_mode_weight,
+    )
+    zero_point_energy_ev = float(
+        np.trapz(
+            0.5 * mode_energies * positive_dos,
+            positive_frequencies,
+        )
+    )
+
+    temperatures = np.arange(
+        t_min,
+        t_max + t_step / 2.0,
+        t_step,
+        dtype=float,
+    )
+    free_energy_ev = np.empty_like(
+        temperatures
+    )
+    internal_energy_ev = np.empty_like(
+        temperatures
+    )
+    entropy_ev_per_k = np.empty_like(
+        temperatures
+    )
+    heat_capacity_ev_per_k = np.empty_like(
+        temperatures
+    )
+
+    for index, temperature in enumerate(temperatures):
+        if temperature <= 0.0:
+            free_energy_ev[index] = zero_point_energy_ev
+            internal_energy_ev[index] = zero_point_energy_ev
+            entropy_ev_per_k[index] = 0.0
+            heat_capacity_ev_per_k[index] = 0.0
+            continue
+
+        x = mode_energies / (
+            BOLTZMANN_EV_PER_K * temperature
+        )
+        exp_negative_x = np.exp(-x)
+        one_minus_exp_negative_x = -np.expm1(-x)
+        occupation = (
+            exp_negative_x
+            / one_minus_exp_negative_x
+        )
+        log_bose_factor = np.log(
+            one_minus_exp_negative_x
+        )
+
+        free_energy_integrand = positive_dos * (
+            0.5 * mode_energies
+            + BOLTZMANN_EV_PER_K
+            * temperature
+            * log_bose_factor
+        )
+        internal_energy_integrand = positive_dos * (
+            0.5 * mode_energies
+            + mode_energies * occupation
+        )
+        entropy_integrand = (
+            positive_dos
+            * BOLTZMANN_EV_PER_K
+            * (
+                x * occupation
+                - log_bose_factor
+            )
+        )
+        heat_capacity_integrand = (
+            positive_dos
+            * BOLTZMANN_EV_PER_K
+            * x ** 2
+            * exp_negative_x
+            / one_minus_exp_negative_x ** 2
+        )
+
+        free_energy_ev[index] = np.trapz(
+            free_energy_integrand,
+            positive_frequencies,
+        )
+        internal_energy_ev[index] = np.trapz(
+            internal_energy_integrand,
+            positive_frequencies,
+        )
+        entropy_ev_per_k[index] = np.trapz(
+            entropy_integrand,
+            positive_frequencies,
+        )
+        heat_capacity_ev_per_k[index] = np.trapz(
+            heat_capacity_integrand,
+            positive_frequencies,
+        )
+
+    energy_conversion = KJ_PER_MOL_PER_EV
+    entropy_conversion = (
+        KJ_PER_MOL_PER_EV * 1000.0
+    )
+
+    return {
+        'temperatures_k': temperatures.tolist(),
+        'free_energy_kj_mol': (
+            free_energy_ev * energy_conversion
+        ).tolist(),
+        'internal_energy_kj_mol': (
+            internal_energy_ev * energy_conversion
+        ).tolist(),
+        'entropy_j_k_mol': (
+            entropy_ev_per_k * entropy_conversion
+        ).tolist(),
+        'heat_capacity_j_k_mol': (
+            heat_capacity_ev_per_k * entropy_conversion
+        ).tolist(),
+        'zero_point_energy_kj_mol': (
+            zero_point_energy_ev * energy_conversion
+        ),
+        'integrated_mode_weight': integrated_mode_weight,
+        'excluded_mode_weight': excluded_mode_weight,
+        'cutoff_frequency_thz': cutoff_frequency_thz,
+    }
+
+
+def write_phonon_thermal_properties(output_file, thermal_data):
+    """Write QE harmonic phonon thermal properties to CSV."""
+    output_file = Path(
+        output_file
+    )
+    columns = (
+        thermal_data.get('temperatures_k', []),
+        thermal_data.get('free_energy_kj_mol', []),
+        thermal_data.get('internal_energy_kj_mol', []),
+        thermal_data.get('entropy_j_k_mol', []),
+        thermal_data.get('heat_capacity_j_k_mol', []),
+    )
+    lengths = {
+        len(column)
+        for column in columns
+    }
+
+    if lengths == {0} or len(lengths) != 1:
+        raise ValueError(
+            "QE phonon thermal property columns do not match."
+        )
+
+    output_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    with output_file.open(
+        'w',
+        encoding='utf-8',
+    ) as fd:
+        print(
+            "T(K),Free_Energy(kJ/mol),Internal_Energy(kJ/mol),"
+            "Entropy(J/K/mol),Cv(J/K/mol)",
+            file=fd,
+        )
+
+        for row in zip(*columns):
+            print(
+                ','.join(
+                    f"{float(value):.10f}"
+                    for value in row
                 ),
                 file=fd,
             )
