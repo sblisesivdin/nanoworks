@@ -4108,6 +4108,168 @@ class dftsolve:
 
         return outputs
 
+    def _plot_qe_phonon_results(
+        self,
+        output_file,
+        band_path,
+        frequencies,
+        dos_data,
+    ):
+        """Plot native QE phonon bands and total DOS in THz."""
+        output_file = Path(
+            output_file
+        )
+        distances = np.asarray(
+            band_path.get('distances', []),
+            dtype=float,
+        )
+        band_frequencies = np.asarray(
+            frequencies.get('frequencies_thz', []),
+            dtype=float,
+        )
+        dos_frequencies = np.asarray(
+            dos_data.get('frequencies_thz', []),
+            dtype=float,
+        )
+        total_dos = np.asarray(
+            dos_data.get('dos', []),
+            dtype=float,
+        ) / self.engine.THZ_PER_CM_MINUS_ONE
+
+        if (
+            distances.ndim != 1
+            or distances.size == 0
+            or band_frequencies.ndim != 2
+            or band_frequencies.shape[0] != distances.size
+        ):
+            raise ValueError(
+                "QE phonon band data dimensions are inconsistent."
+            )
+
+        if (
+            dos_frequencies.ndim != 1
+            or total_dos.ndim != 1
+            or dos_frequencies.size == 0
+            or dos_frequencies.size != total_dos.size
+        ):
+            raise ValueError(
+                "QE phonon DOS data dimensions are inconsistent."
+            )
+
+        special_distances = list(
+            band_path.get('special_distances', [])
+        )
+        labels = list(
+            band_path.get('labels', [])
+        )
+
+        if len(special_distances) != len(labels):
+            raise ValueError(
+                "QE phonon high-symmetry labels and positions "
+                "do not match."
+            )
+
+        display_labels = [
+            r'$\Gamma$'
+            if label == 'G'
+            else label
+            for label in labels
+        ]
+
+        output_file.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        fig, (band_ax, dos_ax) = plt.subplots(
+            1,
+            2,
+            figsize=(9, 6),
+            sharey=True,
+            gridspec_kw={
+                'width_ratios': [3, 1],
+                'wspace': 0.08,
+            },
+        )
+
+        try:
+            for mode_values in band_frequencies.T:
+                band_ax.plot(
+                    distances,
+                    mode_values,
+                    color='tab:blue',
+                    linewidth=1.0,
+                )
+
+            for position in special_distances:
+                band_ax.axvline(
+                    position,
+                    color='0.65',
+                    linewidth=0.7,
+                    linestyle='--',
+                )
+
+            band_ax.axhline(
+                0.0,
+                color='black',
+                linewidth=0.8,
+            )
+            band_ax.set_xlim(
+                distances[0],
+                distances[-1],
+            )
+            band_ax.set_xticks(
+                special_distances
+            )
+            band_ax.set_xticklabels(
+                display_labels
+            )
+            band_ax.set_xlabel(
+                'Wave vector'
+            )
+            band_ax.set_ylabel(
+                'Frequency (THz)'
+            )
+
+            dos_ax.plot(
+                total_dos,
+                dos_frequencies,
+                color='tab:red',
+                linewidth=1.2,
+            )
+            dos_ax.fill_betweenx(
+                dos_frequencies,
+                0.0,
+                total_dos,
+                color='tab:red',
+                alpha=0.2,
+            )
+            dos_ax.axhline(
+                0.0,
+                color='black',
+                linewidth=0.8,
+            )
+            dos_ax.set_xlim(
+                left=0.0
+            )
+            dos_ax.set_xlabel(
+                'Phonon DOS (1/THz)'
+            )
+            dos_ax.tick_params(
+                axis='y',
+                labelleft=False,
+            )
+
+            fig.savefig(
+                output_file,
+                dpi=300,
+                bbox_inches='tight',
+            )
+        finally:
+            plt.close(fig)
+
+        return output_file
+
     def phononcalc(self):
         """Run the phonon workflow using the selected DFT engine."""
         if self.Engine == 'GPAW':
@@ -4310,6 +4472,19 @@ class dftsolve:
                 'dos'
             ],
         )
+        graph_file = self._plot_qe_phonon_results(
+            output_file=Path(
+                self.struct
+                + '-PHONON-QE-Graph-Phonon.png'
+            ),
+            band_path=band_path,
+            frequencies=band_workflow[
+                'frequencies'
+            ],
+            dos_data=dos_workflow[
+                'dos'
+            ],
+        )
 
         time52 = time.time()
 
@@ -4338,6 +4513,7 @@ class dftsolve:
             'dos': dos_workflow,
             'band_data_file': band_data_file,
             'dos_data_file': dos_data_file,
+            'graph_file': graph_file,
         }
 
     def _phononcalc_gpaw(self):

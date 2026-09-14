@@ -337,6 +337,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 'npoints': 2,
             }
             solver.engine = SimpleNamespace(
+                THZ_PER_CM_MINUS_ONE=0.0299792458,
                 validate_qe_xc=Mock(
                     return_value='pbe'
                 ),
@@ -382,6 +383,12 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                     )
                 ),
             )
+            solver._plot_qe_phonon_results = Mock(
+                return_value=Path(
+                    solver.struct
+                    + '-PHONON-QE-Graph-Phonon.png'
+                )
+            )
 
             workflow = solver._phononcalc_qe()
 
@@ -402,6 +409,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         solver.engine.run_matdyn_dos.assert_called_once()
         solver.engine.write_matdyn_band_data.assert_called_once()
         solver.engine.write_matdyn_dos_data.assert_called_once()
+        solver._plot_qe_phonon_results.assert_called_once()
         self.assertEqual(
             solver.engine.run_ph.call_args.kwargs[
                 'qpoint_grid'
@@ -447,6 +455,90 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 + '-PHONON-QE-Result-DOS-THz.dat'
             ),
         )
+        self.assertEqual(
+            workflow['graph_file'],
+            Path(
+                solver.struct
+                + '-PHONON-QE-Graph-Phonon.png'
+            ),
+        )
+
+    def test_plot_qe_phonon_results(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            solver = object.__new__(
+                DFTSolver
+            )
+            solver.engine = SimpleNamespace(
+                THZ_PER_CM_MINUS_ONE=0.0299792458,
+            )
+            output_file = (
+                Path(tmpdir)
+                / 'phonon.png'
+            )
+
+            result = solver._plot_qe_phonon_results(
+                output_file=output_file,
+                band_path={
+                    'distances': [0.0, 0.5, 1.0],
+                    'special_distances': [0.0, 1.0],
+                    'labels': ['G', 'X'],
+                },
+                frequencies={
+                    'frequencies_thz': [
+                        [-0.2, 1.0, 2.0],
+                        [0.0, 1.5, 2.5],
+                        [0.2, 2.0, 3.0],
+                    ],
+                },
+                dos_data={
+                    'frequencies_thz': [-0.2, 0.0, 3.0],
+                    'dos': [0.0, 0.02, 0.0],
+                },
+            )
+
+            self.assertEqual(
+                result,
+                output_file,
+            )
+            self.assertTrue(
+                output_file.is_file()
+            )
+            self.assertGreater(
+                output_file.stat().st_size,
+                0,
+            )
+
+    def test_plot_qe_phonon_results_rejects_bad_band_shape(self):
+        solver = object.__new__(
+            DFTSolver
+        )
+        solver.engine = SimpleNamespace(
+            THZ_PER_CM_MINUS_ONE=0.0299792458,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with self.assertRaisesRegex(
+                ValueError,
+                'band data dimensions',
+            ):
+                solver._plot_qe_phonon_results(
+                    output_file=(
+                        Path(tmpdir)
+                        / 'bad.png'
+                    ),
+                    band_path={
+                        'distances': [0.0, 1.0],
+                        'special_distances': [],
+                        'labels': [],
+                    },
+                    frequencies={
+                        'frequencies_thz': [[1.0, 2.0]],
+                    },
+                    dos_data={
+                        'frequencies_thz': [0.0, 1.0],
+                        'dos': [0.0, 1.0],
+                    },
+                )
 
     def test_qe_phononcalc_requires_ground_state(self):
         with tempfile.TemporaryDirectory() as tmpdir:
