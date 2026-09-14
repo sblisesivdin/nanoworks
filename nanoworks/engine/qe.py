@@ -770,12 +770,19 @@ def resolve_qe_xc_settings(
 def validate_qe_xc(
     xc_calc,
     pseudo_xc='pbe',
+    allow_hybrid=False,
 ):
     """Validate XC compatibility with the installed QE pseudo set."""
     settings = resolve_qe_xc_settings(
         xc_calc=xc_calc,
         pseudo_xc=pseudo_xc,
     )
+
+    if settings['hybrid'] and not allow_hybrid:
+        raise ValueError(
+            f"QE hybrid XC '{settings['name']}' is not enabled "
+            "for this calculation stage yet."
+        )
 
     return settings['name'].lower()
 

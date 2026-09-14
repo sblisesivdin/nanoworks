@@ -169,6 +169,23 @@ class TestQEEngine(unittest.TestCase):
             settings['screening_parameter']
         )
 
+    def test_validate_qe_xc_requires_explicit_hybrid_enablement(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            'is not enabled for this calculation stage yet',
+        ):
+            validate_qe_xc(
+                'HSE06'
+            )
+
+        self.assertEqual(
+            validate_qe_xc(
+                'HSE06',
+                allow_hybrid=True,
+            ),
+            'hse06',
+        )
+
     def test_resolve_qe_xc_settings_rejects_invalid_controls(self):
         invalid_requests = (
             (
