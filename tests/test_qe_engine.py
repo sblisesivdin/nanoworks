@@ -36,6 +36,8 @@ from nanoworks.engine.qe import (
     parse_qe_auxiliary_output,
     parse_matdyn_frequency_file,
     parse_matdyn_dos_file,
+    write_matdyn_band_data,
+    write_matdyn_dos_data,
     parse_pw_output,
     resolve_qe_band_reference,
     parse_pw_bands_output,
@@ -6356,6 +6358,136 @@ def test_run_spin_polarized_band_projections(self):
                 parse_matdyn_dos_file(
                     Path(tmpdir)
                     / 'missing.phdos'
+                )
+
+    def test_write_matdyn_band_data(self):
+        band_path = {
+            'distances': [0.0, 0.25],
+        }
+        frequencies = {
+            'qpoints': [
+                (0.0, 0.0, 0.0),
+                (0.5, 0.0, 0.0),
+            ],
+            'frequencies_thz': [
+                [-0.1, 1.0, 2.0],
+                [0.2, 1.5, 2.5],
+            ],
+            'nqpoints': 2,
+            'nmodes': 3,
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = (
+                Path(tmpdir)
+                / 'band-thz.dat'
+            )
+            result = write_matdyn_band_data(
+                output_file,
+                band_path,
+                frequencies,
+            )
+            lines = output_file.read_text(
+                encoding='utf-8'
+            ).splitlines()
+
+        self.assertEqual(
+            result,
+            output_file,
+        )
+        self.assertIn(
+            'Frequency_3(THz)',
+            lines[0],
+        )
+        self.assertEqual(
+            lines[1],
+            '0.0000000000 0.0000000000 0.0000000000 '
+            '0.0000000000 -0.1000000000 1.0000000000 '
+            '2.0000000000',
+        )
+
+    def test_write_matdyn_band_data_rejects_mismatched_counts(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with self.assertRaisesRegex(
+                ValueError,
+                'counts do not match',
+            ):
+                write_matdyn_band_data(
+                    Path(tmpdir)
+                    / 'bad-band.dat',
+                    {'distances': [0.0, 1.0]},
+                    {
+                        'qpoints': [(0.0, 0.0, 0.0)],
+                        'frequencies_thz': [[1.0, 2.0, 3.0]],
+                        'nqpoints': 1,
+                        'nmodes': 3,
+                    },
+                )
+
+    def test_write_matdyn_dos_data_converts_density_units(self):
+        dos_data = {
+            'frequencies_thz': [0.0, 1.0],
+            'dos': [
+                2.0 * THZ_PER_CM_MINUS_ONE,
+                3.0 * THZ_PER_CM_MINUS_ONE,
+            ],
+            'atom_projected_dos': [
+                [
+                    0.5 * THZ_PER_CM_MINUS_ONE,
+                    1.0 * THZ_PER_CM_MINUS_ONE,
+                ],
+                [
+                    1.5 * THZ_PER_CM_MINUS_ONE,
+                    2.0 * THZ_PER_CM_MINUS_ONE,
+                ],
+            ],
+            'npoints': 2,
+            'natoms': 2,
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = (
+                Path(tmpdir)
+                / 'dos-thz.dat'
+            )
+            result = write_matdyn_dos_data(
+                output_file,
+                dos_data,
+            )
+            lines = output_file.read_text(
+                encoding='utf-8'
+            ).splitlines()
+
+        self.assertEqual(
+            result,
+            output_file,
+        )
+        self.assertIn(
+            'Atom_2_PDOS(1/THz)',
+            lines[0],
+        )
+        self.assertEqual(
+            lines[2],
+            '1.0000000000 3.0000000000 1.0000000000 '
+            '2.0000000000',
+        )
+
+    def test_write_matdyn_dos_data_rejects_bad_projection_shape(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with self.assertRaisesRegex(
+                ValueError,
+                'dimensions do not match',
+            ):
+                write_matdyn_dos_data(
+                    Path(tmpdir)
+                    / 'bad-dos.dat',
+                    {
+                        'frequencies_thz': [0.0, 1.0],
+                        'dos': [1.0, 2.0],
+                        'atom_projected_dos': [[0.5]],
+                        'npoints': 2,
+                        'natoms': 1,
+                    },
                 )
 
     def test_run_ph_uses_existing_ground_state(self):

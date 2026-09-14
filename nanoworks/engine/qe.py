@@ -3203,6 +3203,199 @@ def parse_matdyn_dos_file(dos_file):
     }
 
 
+def write_matdyn_band_data(output_file, band_path, frequencies):
+    """Write parsed QE phonon bands as a plot-ready THz table."""
+    output_file = Path(
+        output_file
+    )
+
+    if not isinstance(band_path, dict):
+        raise TypeError(
+            "QE phonon band path must be a mapping."
+        )
+
+    distances = list(
+        band_path.get('distances', [])
+    )
+    qpoints = list(
+        frequencies.get('qpoints', [])
+    )
+    frequency_rows = list(
+        frequencies.get('frequencies_thz', [])
+    )
+    nqpoints = frequencies.get('nqpoints')
+    nmodes = frequencies.get('nmodes')
+
+    if not distances or not qpoints or not frequency_rows:
+        raise ValueError(
+            "QE phonon band data is incomplete."
+        )
+
+    row_count = len(distances)
+
+    if not (
+        len(qpoints) == row_count
+        and len(frequency_rows) == row_count
+        and nqpoints == row_count
+    ):
+        raise ValueError(
+            "QE phonon band distances, q-points, and frequency "
+            "counts do not match."
+        )
+
+    if not isinstance(nmodes, int) or nmodes <= 0:
+        raise ValueError(
+            "QE phonon band mode count must be a positive integer."
+        )
+
+    if any(len(qpoint) != 3 for qpoint in qpoints):
+        raise ValueError(
+            "Each QE phonon band q-point must contain 3 values."
+        )
+
+    if any(len(row) != nmodes for row in frequency_rows):
+        raise ValueError(
+            "QE phonon band rows do not match the mode count."
+        )
+
+    output_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    with output_file.open(
+        'w',
+        encoding='utf-8',
+    ) as fd:
+        mode_columns = ' '.join(
+            f"Frequency_{index + 1}(THz)"
+            for index in range(nmodes)
+        )
+        print(
+            "# Distance(1/Angstrom) qx qy qz "
+            + mode_columns,
+            file=fd,
+        )
+
+        for distance, qpoint, row in zip(
+            distances,
+            qpoints,
+            frequency_rows,
+        ):
+            values = (
+                float(distance),
+                *(float(value) for value in qpoint),
+                *(float(value) for value in row),
+            )
+            print(
+                ' '.join(
+                    f"{value:.10f}"
+                    for value in values
+                ),
+                file=fd,
+            )
+
+    return output_file
+
+
+def write_matdyn_dos_data(output_file, dos_data):
+    """Write parsed QE phonon DOS with THz frequencies and units."""
+    output_file = Path(
+        output_file
+    )
+
+    frequencies = list(
+        dos_data.get('frequencies_thz', [])
+    )
+    total_dos_cm1 = list(
+        dos_data.get('dos', [])
+    )
+    projected_dos_cm1 = list(
+        dos_data.get('atom_projected_dos', [])
+    )
+    npoints = dos_data.get('npoints')
+    natoms = dos_data.get('natoms')
+
+    if not frequencies or not total_dos_cm1:
+        raise ValueError(
+            "QE phonon DOS data is incomplete."
+        )
+
+    if not (
+        len(frequencies) == len(total_dos_cm1)
+        and npoints == len(frequencies)
+    ):
+        raise ValueError(
+            "QE phonon DOS frequency and value counts do not match."
+        )
+
+    if not isinstance(natoms, int) or natoms <= 0:
+        raise ValueError(
+            "QE phonon DOS atom count must be a positive integer."
+        )
+
+    if (
+        len(projected_dos_cm1) != natoms
+        or any(
+            len(values) != npoints
+            for values in projected_dos_cm1
+        )
+    ):
+        raise ValueError(
+            "QE atom-projected phonon DOS dimensions do not match."
+        )
+
+    total_dos_thz = [
+        value / THZ_PER_CM_MINUS_ONE
+        for value in total_dos_cm1
+    ]
+    projected_dos_thz = [
+        [
+            value / THZ_PER_CM_MINUS_ONE
+            for value in atom_values
+        ]
+        for atom_values in projected_dos_cm1
+    ]
+
+    output_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    with output_file.open(
+        'w',
+        encoding='utf-8',
+    ) as fd:
+        projected_columns = ' '.join(
+            f"Atom_{index + 1}_PDOS(1/THz)"
+            for index in range(natoms)
+        )
+        print(
+            "# Frequency(THz) DOS(1/THz) "
+            + projected_columns,
+            file=fd,
+        )
+
+        for point_index, frequency in enumerate(frequencies):
+            values = (
+                float(frequency),
+                float(total_dos_thz[point_index]),
+                *(
+                    float(atom_values[point_index])
+                    for atom_values in projected_dos_thz
+                ),
+            )
+            print(
+                ' '.join(
+                    f"{value:.10f}"
+                    for value in values
+                ),
+                file=fd,
+            )
+
+    return output_file
+
+
 def parse_pw_output(output):
     """Parse basic results from pw.x output."""
     output = Path(
