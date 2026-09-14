@@ -4296,12 +4296,6 @@ class dftsolve:
                 "PW mode only."
             )
 
-        if self.Phonon_thermal_calc:
-            raise NotImplementedError(
-                "Thermal phonon properties are not connected to "
-                "the native QE workflow yet."
-            )
-
         self.engine.validate_qe_xc(
             self.XC_calc,
             pseudo_xc='pbe',
@@ -4486,6 +4480,46 @@ class dftsolve:
             ],
         )
 
+        thermal_data = None
+        thermal_data_file = None
+
+        if self.Phonon_thermal_calc:
+            thermal_data = (
+                self.engine.calculate_phonon_thermal_properties(
+                    dos_workflow[
+                        'dos'
+                    ],
+                    t_min=self.Phonon_T_min,
+                    t_max=self.Phonon_T_max,
+                    t_step=self.Phonon_T_step,
+                )
+            )
+            thermal_data_file = (
+                self.engine.write_phonon_thermal_properties(
+                    output_file=Path(
+                        self.struct
+                        + '-PHONON-QE-Result-Thermal-Properties.csv'
+                    ),
+                    thermal_data=thermal_data,
+                )
+            )
+            parprint(
+                "QE phonon thermal properties written to: "
+                + str(thermal_data_file)
+            )
+            parprint(
+                "QE positive-frequency mode weight used for "
+                "thermal integration: "
+                f"{thermal_data['integrated_mode_weight']:.8f}"
+            )
+
+            if thermal_data['excluded_mode_weight'] > 1.0e-8:
+                parprint(
+                    "NOTICE: QE phonon thermal integration "
+                    "excluded non-positive mode weight: "
+                    f"{thermal_data['excluded_mode_weight']:.8f}"
+                )
+
         time52 = time.time()
 
         with paropen(
@@ -4514,6 +4548,8 @@ class dftsolve:
             'band_data_file': band_data_file,
             'dos_data_file': dos_data_file,
             'graph_file': graph_file,
+            'thermal_data': thermal_data,
+            'thermal_data_file': thermal_data_file,
         }
 
     def _phononcalc_gpaw(self):

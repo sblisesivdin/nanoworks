@@ -304,7 +304,10 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             solver.Engine = 'QE'
             solver.Mode = 'PW'
             solver.XC_calc = 'PBE'
-            solver.Phonon_thermal_calc = False
+            solver.Phonon_thermal_calc = True
+            solver.Phonon_T_min = 0.0
+            solver.Phonon_T_max = 600.0
+            solver.Phonon_T_step = 20.0
             solver.Phonon_PW_cutoff = None
             solver.Phonon_kpts_x = None
             solver.Phonon_kpts_y = None
@@ -335,6 +338,10 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                     (0.5, 0.0, 0.0),
                 ],
                 'npoints': 2,
+            }
+            thermal_data = {
+                'integrated_mode_weight': 5.9,
+                'excluded_mode_weight': 0.1,
             }
             solver.engine = SimpleNamespace(
                 THZ_PER_CM_MINUS_ONE=0.0299792458,
@@ -382,6 +389,14 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                         lambda output_file, **kwargs: output_file
                     )
                 ),
+                calculate_phonon_thermal_properties=Mock(
+                    return_value=thermal_data
+                ),
+                write_phonon_thermal_properties=Mock(
+                    side_effect=(
+                        lambda output_file, **kwargs: output_file
+                    )
+                ),
             )
             solver._plot_qe_phonon_results = Mock(
                 return_value=Path(
@@ -410,6 +425,18 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         solver.engine.write_matdyn_band_data.assert_called_once()
         solver.engine.write_matdyn_dos_data.assert_called_once()
         solver._plot_qe_phonon_results.assert_called_once()
+        (
+            solver.engine.calculate_phonon_thermal_properties
+            .assert_called_once_with(
+                {
+                    'npoints': 2,
+                },
+                t_min=0.0,
+                t_max=600.0,
+                t_step=20.0,
+            )
+        )
+        solver.engine.write_phonon_thermal_properties.assert_called_once()
         self.assertEqual(
             solver.engine.run_ph.call_args.kwargs[
                 'qpoint_grid'
@@ -460,6 +487,17 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             Path(
                 solver.struct
                 + '-PHONON-QE-Graph-Phonon.png'
+            ),
+        )
+        self.assertIs(
+            workflow['thermal_data'],
+            thermal_data,
+        )
+        self.assertEqual(
+            workflow['thermal_data_file'],
+            Path(
+                solver.struct
+                + '-PHONON-QE-Result-Thermal-Properties.csv'
             ),
         )
 
@@ -566,19 +604,6 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 'ground-state result',
             ):
                 solver._phononcalc_qe()
-
-    def test_qe_phononcalc_rejects_thermal_request(self):
-        solver = object.__new__(
-            DFTSolver
-        )
-        solver.Mode = 'PW'
-        solver.Phonon_thermal_calc = True
-
-        with self.assertRaisesRegex(
-            NotImplementedError,
-            'Thermal phonon properties',
-        ):
-            solver._phononcalc_qe()
 
 if __name__ == '__main__':
     unittest.main()
