@@ -356,10 +356,30 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                     return_value={'stage': 'q2r'}
                 ),
                 run_matdyn_band=Mock(
-                    return_value={'stage': 'band'}
+                    return_value={
+                        'stage': 'band',
+                        'frequencies': {
+                            'nqpoints': 2,
+                        },
+                    }
                 ),
                 run_matdyn_dos=Mock(
-                    return_value={'stage': 'dos'}
+                    return_value={
+                        'stage': 'dos',
+                        'dos': {
+                            'npoints': 2,
+                        },
+                    }
+                ),
+                write_matdyn_band_data=Mock(
+                    side_effect=(
+                        lambda output_file, **kwargs: output_file
+                    )
+                ),
+                write_matdyn_dos_data=Mock(
+                    side_effect=(
+                        lambda output_file, **kwargs: output_file
+                    )
                 ),
             )
 
@@ -380,6 +400,8 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         solver.engine.run_q2r.assert_called_once()
         solver.engine.run_matdyn_band.assert_called_once()
         solver.engine.run_matdyn_dos.assert_called_once()
+        solver.engine.write_matdyn_band_data.assert_called_once()
+        solver.engine.write_matdyn_dos_data.assert_called_once()
         self.assertEqual(
             solver.engine.run_ph.call_args.kwargs[
                 'qpoint_grid'
@@ -404,7 +426,26 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         )
         self.assertEqual(
             workflow['dos'],
-            {'stage': 'dos'},
+            {
+                'stage': 'dos',
+                'dos': {
+                    'npoints': 2,
+                },
+            },
+        )
+        self.assertEqual(
+            workflow['band_data_file'],
+            Path(
+                solver.struct
+                + '-PHONON-QE-Result-Band-THz.dat'
+            ),
+        )
+        self.assertEqual(
+            workflow['dos_data_file'],
+            Path(
+                solver.struct
+                + '-PHONON-QE-Result-DOS-THz.dat'
+            ),
         )
 
     def test_qe_phononcalc_requires_ground_state(self):

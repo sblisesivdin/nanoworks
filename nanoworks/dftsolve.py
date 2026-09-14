@@ -4291,6 +4291,26 @@ class dftsolve:
             executable='matdyn.x',
         )
 
+        band_data_file = self.engine.write_matdyn_band_data(
+            output_file=Path(
+                self.struct
+                + '-PHONON-QE-Result-Band-THz.dat'
+            ),
+            band_path=band_path,
+            frequencies=band_workflow[
+                'frequencies'
+            ],
+        )
+        dos_data_file = self.engine.write_matdyn_dos_data(
+            output_file=Path(
+                self.struct
+                + '-PHONON-QE-Result-DOS-THz.dat'
+            ),
+            dos_data=dos_workflow[
+                'dos'
+            ],
+        )
+
         time52 = time.time()
 
         with paropen(
@@ -4316,6 +4336,8 @@ class dftsolve:
             'q2r': q2r_workflow,
             'band': band_workflow,
             'dos': dos_workflow,
+            'band_data_file': band_data_file,
+            'dos_data_file': dos_data_file,
         }
 
     def _phononcalc_gpaw(self):
