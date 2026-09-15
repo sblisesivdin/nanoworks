@@ -779,5 +779,95 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             0.15,
         )
 
+    def test_qe_bandcalc_passes_hybrid_settings_to_bands(self):
+        solver = object.__new__(
+            DFTSolver
+        )
+        solver.Mode = 'PW'
+        solver.SOC_calc = False
+        solver.struct = 'silicon'
+        solver.XC_calc = 'PBE0'
+        solver.XC_exx_fraction = 0.32
+        solver.XC_omega = None
+        solver.Projected_band_plot = False
+        solver.Projections = []
+        solver.Spin_calc = False
+        solver.bulk_configuration = Atoms(
+            'Si',
+            cell=[5.4, 5.4, 5.4],
+            pbc=True,
+        )
+        solver.Band_path = 'GX'
+        solver.Band_npoints = 5
+        solver.Cut_off_energy = 500.0
+        solver.Total_charge = 0.0
+        solver.Band_num_of_bands = 16
+        solver.Setup_params = None
+        solver.Occupation = None
+        solver.parallel_cores = 1
+        band_path = {
+            'option': 'crystal',
+            'kpoints': [
+                (0.0, 0.0, 0.0),
+                (0.5, 0.0, 0.0),
+            ],
+            'npoints': 2,
+        }
+        solver.engine = SimpleNamespace(
+            validate_qe_xc=Mock(
+                return_value='pbe0'
+            ),
+            has_qe_state=Mock(
+                return_value=True
+            ),
+            build_band_path=Mock(
+                return_value=band_path
+            ),
+            run_bands=Mock(
+                side_effect=RuntimeError(
+                    'stop after bands'
+                )
+            ),
+        )
+
+        with (
+            patch(
+                'nanoworks.dftsolve.get_qe_pseudo_dir',
+                return_value=Path('pseudos'),
+            ),
+            patch(
+                'nanoworks.dftsolve.resolve_qe_pseudopotentials',
+                return_value={
+                    'Si': 'Si.upf',
+                },
+            ),
+            patch(
+                'nanoworks.dftsolve.parprint',
+            ),
+            self.assertRaisesRegex(
+                RuntimeError,
+                'stop after bands',
+            ),
+        ):
+            solver._bandcalc_qe()
+
+        solver.engine.validate_qe_xc.assert_called_once_with(
+            'PBE0',
+            pseudo_xc='pbe',
+            allow_hybrid=True,
+        )
+        call = solver.engine.run_bands.call_args.kwargs
+        self.assertEqual(
+            call['xc_calc'],
+            'PBE0',
+        )
+        self.assertEqual(
+            call['exx_fraction'],
+            0.32,
+        )
+        self.assertIsNone(
+            call['omega']
+        )
+
 if __name__ == '__main__':
     unittest.main()
