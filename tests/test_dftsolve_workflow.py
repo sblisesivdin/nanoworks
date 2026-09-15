@@ -691,6 +691,43 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             0.12,
         )
 
+    def test_qe_densitycalc_accepts_hybrid_ground_state(self):
+        solver = object.__new__(
+            DFTSolver
+        )
+        solver.struct = 'silicon'
+        solver.XC_calc = 'HSE06'
+        solver.Spin_calc = False
+        solver.parallel_cores = 1
+        solver.engine = SimpleNamespace(
+            validate_qe_xc=Mock(
+                return_value='hse06'
+            ),
+            run_pp_density=Mock(
+                side_effect=RuntimeError(
+                    'stop after density validation'
+                )
+            ),
+        )
+
+        with (
+            patch(
+                'nanoworks.dftsolve.parprint',
+            ),
+            self.assertRaisesRegex(
+                RuntimeError,
+                'stop after density validation',
+            ),
+        ):
+            solver._densitycalc_qe()
+
+        solver.engine.validate_qe_xc.assert_called_once_with(
+            'HSE06',
+            pseudo_xc='pbe',
+            allow_hybrid=True,
+        )
+        solver.engine.run_pp_density.assert_called_once()
+
     def test_qe_doscalc_keeps_hybrid_nscf_gated(self):
         solver = object.__new__(
             DFTSolver

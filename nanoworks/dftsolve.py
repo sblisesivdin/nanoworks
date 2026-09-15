@@ -4012,6 +4012,12 @@ class dftsolve:
 
     def _densitycalc_qe(self):
         """Generate QE pseudo-valence electron-density Cube files."""
+        self.engine.validate_qe_xc(
+            self.XC_calc,
+            pseudo_xc='pbe',
+            allow_hybrid=True,
+        )
+
         state_dir = Path(
             self.struct
             + '-GROUND-QE-Result-State'
