@@ -7971,9 +7971,32 @@ def run_hybrid_bands(
         lsym=lsym,
     )
 
+    band_data = parse_bands_x_output(
+        band_file,
+        kpoint_indices=(
+            additional_kpoints[
+                'band_indices'
+            ]
+        ),
+    )
+    requested_npoints = len(
+        band_path.get(
+            'kpoints',
+            [],
+        )
+    )
+
+    if band_data['nkpoints'] != requested_npoints:
+        raise RuntimeError(
+            "QE bands.x output contains "
+            f"{band_data['nkpoints']} selected k-points, but "
+            f"{requested_npoints} were requested."
+        )
+
     return {
         'scf': scf_workflow,
         'bands': bands_workflow,
+        'band_data': band_data,
         'band_path': band_path,
         'additional_kpoints': additional_kpoints,
     }

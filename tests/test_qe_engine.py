@@ -2867,6 +2867,14 @@ class TestQEEngine(unittest.TestCase):
                 'job_done': True,
             },
         }
+        band_data = {
+            'nkpoints': 2,
+            'nbands': 3,
+            'eigenvalues_ev': [[
+                [-5.0, -1.0, 1.0],
+                [-4.0, 0.0, 2.0],
+            ]],
+        }
 
         with patch(
             'nanoworks.engine.qe.run_scf',
@@ -2874,7 +2882,10 @@ class TestQEEngine(unittest.TestCase):
         ) as run_scf_mock, patch(
             'nanoworks.engine.qe.run_bands_postprocess',
             return_value=bands_workflow,
-        ) as run_bands_mock:
+        ) as run_bands_mock, patch(
+            'nanoworks.engine.qe.parse_bands_x_output',
+            return_value=band_data,
+        ) as parse_bands_mock:
             workflow = run_hybrid_bands(
                 atoms=Atoms('Si'),
                 scf_input_file='scf.in',
@@ -2894,6 +2905,10 @@ class TestQEEngine(unittest.TestCase):
             )
 
         run_scf_mock.assert_called_once()
+        parse_bands_mock.assert_called_once_with(
+            'bands.dat',
+            kpoint_indices=[0, 1],
+        )
         run_bands_mock.assert_called_once_with(
             input_file='bands.in',
             output_file='bands.out',
@@ -2917,6 +2932,10 @@ class TestQEEngine(unittest.TestCase):
         self.assertIs(
             workflow['bands'],
             bands_workflow,
+        )
+        self.assertIs(
+            workflow['band_data'],
+            band_data,
         )
         self.assertEqual(
             workflow['band_path'],
