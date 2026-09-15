@@ -595,6 +595,213 @@ def render_band_kpoints(settings):
 
     return "\n".join(lines)
 
+def build_qe_exx_additional_kpoints(
+    band_path,
+    qpoint_grid,
+):
+    """Build zero-weight band and k+q points for a hybrid SCF run."""
+    band_kpoints = list(
+        band_path.get('kpoints', [])
+    )
+
+    if not band_kpoints:
+        raise ValueError(
+            "QE hybrid band path does not contain any k-points."
+        )
+
+    declared_npoints = band_path.get(
+        'npoints'
+    )
+
+    if (
+        declared_npoints is not None
+        and int(declared_npoints) != len(band_kpoints)
+    ):
+        raise ValueError(
+            "QE hybrid band path point count does not match "
+            "its metadata."
+        )
+
+    raw_grid = tuple(qpoint_grid)
+
+    if len(raw_grid) != 3:
+        raise ValueError(
+            "QE EXX q-point grid must contain exactly 3 values."
+        )
+
+    try:
+        grid = tuple(
+            int(value)
+            for value in raw_grid
+        )
+    except (TypeError, ValueError) as error:
+        raise ValueError(
+            "QE EXX q-point grid values must be positive integers."
+        ) from error
+
+    if any(
+        float(value) != parsed
+        for value, parsed in zip(raw_grid, grid)
+    ):
+        raise ValueError(
+            "QE EXX q-point grid values must be positive integers."
+        )
+
+    if any(value <= 0 for value in grid):
+        raise ValueError(
+            "QE EXX q-point grid values must be positive integers."
+        )
+
+    normalized_band_kpoints = []
+
+    for kpoint in band_kpoints:
+        if len(kpoint) != 3:
+            raise ValueError(
+                "Each QE hybrid band k-point must contain exactly "
+                "3 coordinates."
+            )
+
+        coordinates = tuple(
+            float(value)
+            for value in kpoint
+        )
+
+        if not all(
+            math.isfinite(value)
+            for value in coordinates
+        ):
+            raise ValueError(
+                "QE hybrid band k-point coordinates must be finite."
+            )
+
+        normalized_band_kpoints.append(
+            coordinates
+        )
+
+    additional_kpoints = list(
+        normalized_band_kpoints
+    )
+    seen = {
+        tuple(round(value, 12) for value in kpoint)
+        for kpoint in normalized_band_kpoints
+    }
+
+    nq1, nq2, nq3 = grid
+
+    for kpoint in normalized_band_kpoints:
+        for iq1 in range(nq1):
+            for iq2 in range(nq2):
+                for iq3 in range(nq3):
+                    if iq1 == iq2 == iq3 == 0:
+                        continue
+
+                    shifted = tuple(
+                        value % 1.0
+                        for value in (
+                            kpoint[0] + iq1 / nq1,
+                            kpoint[1] + iq2 / nq2,
+                            kpoint[2] + iq3 / nq3,
+                        )
+                    )
+                    key = tuple(
+                        round(value, 12)
+                        for value in shifted
+                    )
+
+                    if key in seen:
+                        continue
+
+                    seen.add(
+                        key
+                    )
+                    additional_kpoints.append(
+                        shifted
+                    )
+
+    band_point_count = len(
+        normalized_band_kpoints
+    )
+
+    return {
+        'option': 'crystal',
+        'kpoints': additional_kpoints,
+        'npoints': len(additional_kpoints),
+        'band_indices': list(
+            range(band_point_count)
+        ),
+        'helper_indices': list(
+            range(
+                band_point_count,
+                len(additional_kpoints),
+            )
+        ),
+        'qpoint_grid': grid,
+    }
+
+def render_qe_exx_additional_kpoints(settings):
+    """Render a QE ADDITIONAL_K_POINTS card for a hybrid SCF run."""
+    option = str(
+        settings.get('option', '')
+    ).strip().lower()
+
+    if option != 'crystal':
+        raise ValueError(
+            "QE EXX additional k-points must use crystal coordinates."
+        )
+
+    kpoints = list(
+        settings.get('kpoints', [])
+    )
+
+    if not kpoints:
+        raise ValueError(
+            "QE EXX additional k-point list must not be empty."
+        )
+
+    declared_npoints = settings.get(
+        'npoints'
+    )
+
+    if (
+        declared_npoints is not None
+        and int(declared_npoints) != len(kpoints)
+    ):
+        raise ValueError(
+            "QE EXX additional k-point count does not match "
+            "its metadata."
+        )
+
+    lines = [
+        'ADDITIONAL_K_POINTS crystal',
+        str(len(kpoints)),
+    ]
+
+    for kpoint in kpoints:
+        if len(kpoint) != 3:
+            raise ValueError(
+                "Each QE EXX additional k-point must contain exactly "
+                "3 coordinates."
+            )
+
+        x, y, z = (
+            float(value)
+            for value in kpoint
+        )
+
+        if not all(
+            math.isfinite(value)
+            for value in (x, y, z)
+        ):
+            raise ValueError(
+                "QE EXX additional k-point coordinates must be finite."
+            )
+
+        lines.append(
+            f"{x:.12f} {y:.12f} {z:.12f} 0.0"
+        )
+
+    return "\n".join(lines)
+
 def validate_qe_version(
     version,
     minimum=QE_REFERENCE_VERSION,
