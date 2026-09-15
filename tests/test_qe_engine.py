@@ -1164,6 +1164,98 @@ class TestQEEngine(unittest.TestCase):
             text,
         )
 
+    def test_render_hybrid_scf_with_additional_kpoints(self):
+        atoms = bulk(
+            'Si',
+            'diamond',
+            a=5.43,
+        )
+
+        band_path = build_band_path(
+            atoms=atoms,
+            path='GX',
+            npoints=2,
+        )
+        additional_kpoints = (
+            build_qe_exx_additional_kpoints(
+                band_path=band_path,
+                qpoint_grid=(2, 2, 2),
+            )
+        )
+
+        text = render_scf_input(
+            atoms=atoms,
+            pseudopotentials={
+                'Si': 'Si.upf',
+            },
+            cutoff_ev=400.0,
+            kpoint_size=(2, 2, 2),
+            xc_calc='HSE06',
+            occupations='fixed',
+            exx_additional_kpoints=(
+                additional_kpoints
+            ),
+        )
+
+        self.assertIn(
+            "input_dft = 'HSE'",
+            text,
+        )
+        self.assertIn(
+            'nqx1 = 2',
+            text,
+        )
+        self.assertIn(
+            'nqx2 = 2',
+            text,
+        )
+        self.assertIn(
+            'nqx3 = 2',
+            text,
+        )
+        self.assertIn(
+            'K_POINTS automatic',
+            text,
+        )
+        self.assertIn(
+            'ADDITIONAL_K_POINTS crystal',
+            text,
+        )
+
+    def test_render_additional_kpoints_requires_hybrid(self):
+        atoms = bulk(
+            'Si',
+            'diamond',
+            a=5.43,
+        )
+        additional_kpoints = (
+            build_qe_exx_additional_kpoints(
+                band_path={
+                    'kpoints': [
+                        (0.0, 0.0, 0.0),
+                    ],
+                },
+                qpoint_grid=(1, 1, 1),
+            )
+        )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            'require a hybrid functional',
+        ):
+            render_scf_input(
+                atoms=atoms,
+                pseudopotentials={
+                    'Si': 'Si.upf',
+                },
+                cutoff_ev=400.0,
+                kpoint_size=(2, 2, 2),
+                xc_calc='PBE',
+                exx_additional_kpoints=(
+                    additional_kpoints
+                ),
+            )
+
     def test_render_dos_input_for_tetrahedra(self):
         text = render_dos_input(
             prefix='nanoworks',

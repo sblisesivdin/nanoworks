@@ -74,6 +74,7 @@ def build_system_settings(
     pseudo_xc='pbe',
     exx_fraction=None,
     omega=None,
+    exx_qpoint_grid=None,
 ):
     """Build the basic QE &SYSTEM namelist settings."""
     settings = {
@@ -82,6 +83,8 @@ def build_system_settings(
         'ntyp': int(ntyp),
         'ecutwfc': ev_to_rydberg(cutoff_ev),
     }
+
+    xc_settings = None
 
     if xc_calc is not None:
         xc_settings = resolve_qe_xc_settings(
@@ -109,6 +112,27 @@ def build_system_settings(
                         'screening_parameter'
                     ]
                 )
+
+    if exx_qpoint_grid is not None:
+        if (
+            xc_settings is None
+            or not xc_settings['hybrid']
+        ):
+            raise ValueError(
+                "QE EXX q-point grids require a hybrid functional."
+            )
+
+        nq1, nq2, nq3 = (
+            _normalize_qe_exx_qpoint_grid(
+                exx_qpoint_grid
+            )
+        )
+
+        settings.update({
+            'nqx1': nq1,
+            'nqx2': nq2,
+            'nqx3': nq3,
+        })
 
     if total_charge != 0.0:
         settings['tot_charge'] = float(total_charge)
@@ -595,34 +619,14 @@ def render_band_kpoints(settings):
 
     return "\n".join(lines)
 
-def build_qe_exx_additional_kpoints(
-    band_path,
-    qpoint_grid,
-):
-    """Build zero-weight band and k+q points for a hybrid SCF run."""
-    band_kpoints = list(
-        band_path.get('kpoints', [])
-    )
-
-    if not band_kpoints:
+def _normalize_qe_exx_qpoint_grid(qpoint_grid):
+    """Validate and normalize a QE EXX q-point grid."""
+    try:
+        raw_grid = tuple(qpoint_grid)
+    except TypeError as error:
         raise ValueError(
-            "QE hybrid band path does not contain any k-points."
-        )
-
-    declared_npoints = band_path.get(
-        'npoints'
-    )
-
-    if (
-        declared_npoints is not None
-        and int(declared_npoints) != len(band_kpoints)
-    ):
-        raise ValueError(
-            "QE hybrid band path point count does not match "
-            "its metadata."
-        )
-
-    raw_grid = tuple(qpoint_grid)
+            "QE EXX q-point grid must contain exactly 3 values."
+        ) from error
 
     if len(raw_grid) != 3:
         raise ValueError(
@@ -651,6 +655,40 @@ def build_qe_exx_additional_kpoints(
         raise ValueError(
             "QE EXX q-point grid values must be positive integers."
         )
+
+    return grid
+
+
+def build_qe_exx_additional_kpoints(
+    band_path,
+    qpoint_grid,
+):
+    """Build zero-weight band and k+q points for a hybrid SCF run."""
+    band_kpoints = list(
+        band_path.get('kpoints', [])
+    )
+
+    if not band_kpoints:
+        raise ValueError(
+            "QE hybrid band path does not contain any k-points."
+        )
+
+    declared_npoints = band_path.get(
+        'npoints'
+    )
+
+    if (
+        declared_npoints is not None
+        and int(declared_npoints) != len(band_kpoints)
+    ):
+        raise ValueError(
+            "QE hybrid band path point count does not match "
+            "its metadata."
+        )
+
+    grid = _normalize_qe_exx_qpoint_grid(
+        qpoint_grid
+    )
 
     normalized_band_kpoints = []
 
@@ -2338,6 +2376,7 @@ def render_pw_input(
     electron_maxstep=None,
     diagonalization=None,
     band_path=None,
+    exx_additional_kpoints=None,
     relaxation_settings=None,
 ):
     """Render a complete QE pw.x input."""
@@ -2376,6 +2415,33 @@ def render_pw_input(
         raise NotImplementedError(
             "QE does not support separate NSCF or bands "
             "calculations with hybrid functionals."
+        )
+
+    exx_additional_card = None
+    exx_qpoint_grid = None
+
+    if exx_additional_kpoints is not None:
+        if calculation != 'scf':
+            raise ValueError(
+                "QE EXX additional k-points can only be used "
+                "with calculation='scf'."
+            )
+
+        if not xc_settings['hybrid']:
+            raise ValueError(
+                "QE EXX additional k-points require a hybrid "
+                "functional."
+            )
+
+        exx_additional_card = (
+            render_qe_exx_additional_kpoints(
+                exx_additional_kpoints
+            )
+        )
+        exx_qpoint_grid = (
+            exx_additional_kpoints.get(
+                'qpoint_grid'
+            )
         )
 
     relaxation_calculations = {
@@ -2504,6 +2570,7 @@ def render_pw_input(
         pseudo_xc=pseudo_xc,
         exx_fraction=exx_fraction,
         omega=omega,
+        exx_qpoint_grid=exx_qpoint_grid,
     )
     
     system.update(
@@ -2644,6 +2711,12 @@ def render_pw_input(
         kpoint_card,
     ])
 
+    if exx_additional_card is not None:
+        lines.extend([
+            '',
+            exx_additional_card,
+        ])
+
     lines.extend([
         '',
         f"CELL_PARAMETERS {cell['option']}",
@@ -2687,6 +2760,7 @@ def render_scf_input(
     mixing_beta=None,
     electron_maxstep=None,
     diagonalization=None,
+    exx_additional_kpoints=None,
 ):
     """Render a complete QE pw.x SCF input."""
     return render_pw_input(
@@ -2705,6 +2779,7 @@ def render_scf_input(
         pseudo_xc=pseudo_xc,
         exx_fraction=exx_fraction,
         omega=omega,
+        exx_additional_kpoints=exx_additional_kpoints,
         occupations=occupations,
         smearing=smearing,
         width_ev=width_ev,
