@@ -691,5 +691,93 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             0.12,
         )
 
+    def test_qe_doscalc_passes_hybrid_settings_to_nscf(self):
+        solver = object.__new__(
+            DFTSolver
+        )
+        solver.Mode = 'PW'
+        solver.SOC_calc = False
+        solver.struct = 'silicon'
+        solver.XC_calc = 'HSE03'
+        solver.XC_exx_fraction = 0.28
+        solver.XC_omega = 0.15
+        solver.Gamma = False
+        solver.Ground_gamma = None
+        solver.Ground_kpts_density = None
+        solver.Ground_kpts_x = 2
+        solver.Ground_kpts_y = 2
+        solver.Ground_kpts_z = 2
+        solver.DOS_kpts_density = None
+        solver.DOS_kpts_x = 4
+        solver.DOS_kpts_y = 4
+        solver.DOS_kpts_z = 4
+        solver.DOS_gamma = None
+        solver.DOS_occupation = 'tetrahedra'
+        solver.Occupation = None
+        solver.Spin_calc = False
+        solver.bulk_configuration = Atoms(
+            'Si',
+            cell=[5.4, 5.4, 5.4],
+            pbc=True,
+        )
+        solver.Cut_off_energy = 500.0
+        solver.Total_charge = 0.0
+        solver.DOS_num_of_bands = 16
+        solver.Setup_params = None
+        solver.parallel_cores = 1
+        solver.engine = SimpleNamespace(
+            validate_qe_xc=Mock(
+                return_value='hse03'
+            ),
+            has_qe_state=Mock(
+                return_value=True
+            ),
+            run_nscf=Mock(
+                side_effect=RuntimeError(
+                    'stop after NSCF'
+                )
+            ),
+        )
+
+        with (
+            patch(
+                'nanoworks.dftsolve.get_qe_pseudo_dir',
+                return_value=Path('pseudos'),
+            ),
+            patch(
+                'nanoworks.dftsolve.resolve_qe_pseudopotentials',
+                return_value={
+                    'Si': 'Si.upf',
+                },
+            ),
+            patch(
+                'nanoworks.dftsolve.parprint',
+            ),
+            self.assertRaisesRegex(
+                RuntimeError,
+                'stop after NSCF',
+            ),
+        ):
+            solver._doscalc_qe()
+
+        solver.engine.validate_qe_xc.assert_called_once_with(
+            'HSE03',
+            pseudo_xc='pbe',
+            allow_hybrid=True,
+        )
+        call = solver.engine.run_nscf.call_args.kwargs
+        self.assertEqual(
+            call['xc_calc'],
+            'HSE03',
+        )
+        self.assertEqual(
+            call['exx_fraction'],
+            0.28,
+        )
+        self.assertEqual(
+            call['omega'],
+            0.15,
+        )
+
 if __name__ == '__main__':
     unittest.main()
