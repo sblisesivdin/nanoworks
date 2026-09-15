@@ -804,7 +804,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         )
         solver.engine.run_nscf.assert_not_called()
 
-    def test_qe_bandcalc_keeps_hybrid_bands_gated(self):
+    def test_qe_bandcalc_dispatches_hybrid_bands(self):
         solver = object.__new__(
             DFTSolver
         )
@@ -816,6 +816,12 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         solver.XC_omega = None
         solver.Projected_band_plot = False
         solver.Projections = []
+        solver.Gamma = False
+        solver.Ground_gamma = None
+        solver.Ground_kpts_density = None
+        solver.Ground_kpts_x = 2
+        solver.Ground_kpts_y = 2
+        solver.Ground_kpts_z = 2
         solver.Spin_calc = False
         solver.bulk_configuration = Atoms(
             'Si',
@@ -840,9 +846,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         }
         solver.engine = SimpleNamespace(
             validate_qe_xc=Mock(
-                side_effect=ValueError(
-                    'hybrid bands are not enabled'
-                )
+                return_value='pbe0'
             ),
             has_qe_state=Mock(
                 return_value=True
@@ -850,9 +854,12 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             build_band_path=Mock(
                 return_value=band_path
             ),
-            run_bands=Mock(
+            resolve_qe_kpoint_size=Mock(
+                return_value=(2, 2, 2)
+            ),
+            run_hybrid_bands=Mock(
                 side_effect=RuntimeError(
-                    'stop after bands'
+                    'stop after hybrid bands'
                 )
             ),
         )
@@ -871,8 +878,9 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             patch(
                 'nanoworks.dftsolve.parprint',
             ),
-            self.assertRaises(
-                SystemExit,
+            self.assertRaisesRegex(
+                RuntimeError,
+                'stop after hybrid bands',
             ),
         ):
             solver._bandcalc_qe()
@@ -880,8 +888,33 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         solver.engine.validate_qe_xc.assert_called_once_with(
             'PBE0',
             pseudo_xc='pbe',
+            allow_hybrid=True,
         )
-        solver.engine.run_bands.assert_not_called()
+        solver.engine.resolve_qe_kpoint_size.assert_called_once_with(
+            solver.bulk_configuration,
+            density=None,
+            size=(2, 2, 2),
+        )
+        solver.engine.run_hybrid_bands.assert_called_once()
+
+        hybrid_call = (
+            solver.engine.run_hybrid_bands.call_args.kwargs
+        )
+        self.assertEqual(
+            hybrid_call['state_dir'],
+            Path('silicon-BAND-QE-Result-State'),
+        )
+        self.assertEqual(
+            hybrid_call['band_path'],
+            band_path,
+        )
+        self.assertEqual(
+            hybrid_call['qpoint_grid'],
+            (2, 2, 2),
+        )
+        self.assertFalse(
+            hybrid_call['gamma']
+        )
 
 if __name__ == '__main__':
     unittest.main()

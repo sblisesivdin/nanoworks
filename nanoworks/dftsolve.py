@@ -2858,9 +2858,10 @@ class dftsolve:
             sys.exit(1)
 
         try:
-            self.engine.validate_qe_xc(
+            validated_xc = self.engine.validate_qe_xc(
                 self.XC_calc,
                 pseudo_xc='pbe',
+                allow_hybrid=True,
             )
         except ValueError as exc:
             parprint(
@@ -2868,22 +2869,47 @@ class dftsolve:
             )
             sys.exit(1)
 
-        state_dir = Path(
+        hybrid = str(
+            validated_xc
+        ).strip().lower() in {
+            'hse06',
+            'hse03',
+            'pbe0',
+        }
+
+        if hybrid and self.Projected_band_plot:
+            parprint(
+                "\033[91mERROR:\033[0m "
+                "QE projected bands with hybrid functionals "
+                "are not supported yet."
+            )
+            sys.exit(1)
+
+        ground_state_dir = Path(
             self.struct
             + '-GROUND-QE-Result-State'
         )
 
         if not self.engine.has_qe_state(
-            state_dir,
+            ground_state_dir,
             prefix='nanoworks',
         ):
             parprint(
                 "\033[91mERROR:\033[0m "
-                + str(state_dir)
+                + str(ground_state_dir)
                 + " does not contain a valid QE ground-state result. "
                 "Complete the ground-state calculation first."
             )
             sys.exit(1)
+
+        state_dir = (
+            Path(
+                self.struct
+                + '-BAND-QE-Result-State'
+            )
+            if hybrid
+            else ground_state_dir
+        )
 
         pseudo_dir = get_qe_pseudo_dir(
             relativistic='scalar',
@@ -2928,15 +2954,36 @@ class dftsolve:
             )
             raise
 
-        input_file = Path(
-            self.struct
-            + '-BAND-QE-Input-Bands.in'
-        )
-
-        output_file = Path(
-            self.struct
-            + f'-BAND-{self.Engine}-Log-Bands.txt'
-        )
+        if hybrid:
+            input_file = Path(
+                self.struct
+                + '-BAND-QE-Input-Hybrid-SCF.in'
+            )
+            output_file = Path(
+                self.struct
+                + '-BAND-QE-Log-Hybrid-SCF.txt'
+            )
+            bands_input_file = Path(
+                self.struct
+                + '-BAND-QE-Input-Bands.x.in'
+            )
+            bands_output_file = Path(
+                self.struct
+                + '-BAND-QE-Log-Bands.x.txt'
+            )
+            band_data_file = Path(
+                self.struct
+                + '-BAND-QE-Result-Bands.x.dat'
+            )
+        else:
+            input_file = Path(
+                self.struct
+                + '-BAND-QE-Input-Bands.in'
+            )
+            output_file = Path(
+                self.struct
+                + f'-BAND-{self.Engine}-Log-Bands.txt'
+            )
 
         projection_input_file = Path(
             self.struct
@@ -2954,42 +3001,105 @@ class dftsolve:
         )
 
         try:
-            workflow = self.engine.run_bands(
-                atoms=self.bulk_configuration,
-                input_file=input_file,
-                output_file=output_file,
-                state_dir=state_dir,
-                pseudopotentials=pseudopotentials,
-                pseudo_dir=pseudo_dir,
-                cutoff_ev=self.Cut_off_energy,
-                band_path=band_path,
-                total_charge=self.Total_charge,
-                nbands=self.Band_num_of_bands,
-                spinpol=self.Spin_calc,
-                magnetic_moments=magnetic_moments,
-                setup_params=self.Setup_params,
-                xc_calc=self.XC_calc,
-                exx_fraction=self.XC_exx_fraction,
-                omega=self.XC_omega,
-                occupation=self.Occupation,
-                parallel_cores=self.parallel_cores,
-                executable='pw.x',
-                prefix='nanoworks',
-                projected_band=(
-                    self.Projected_band_plot
-                ),
-                projections=self.Projections,
-                projection_input_file=(
-                    projection_input_file
-                ),
-                projection_output_file=(
-                    projection_output_file
-                ),
-                projection_prefix=(
-                    projection_prefix
-                ),
-                projection_executable='projwfc.x',
-            )
+            if hybrid:
+                hybrid_gamma = (
+                    self.Gamma
+                    if self.Ground_gamma is None
+                    else self.Ground_gamma
+                )
+
+                band_mesh = (
+                    self.engine.resolve_qe_kpoint_size(
+                        self.bulk_configuration,
+                        density=self.Ground_kpts_density,
+                        size=(
+                            self.Ground_kpts_x,
+                            self.Ground_kpts_y,
+                            self.Ground_kpts_z,
+                        ),
+                    )
+                )
+
+                hybrid_workflow = (
+                    self.engine.run_hybrid_bands(
+                        atoms=self.bulk_configuration,
+                        scf_input_file=input_file,
+                        scf_output_file=output_file,
+                        bands_input_file=bands_input_file,
+                        bands_output_file=bands_output_file,
+                        state_dir=state_dir,
+                        band_file=band_data_file,
+                        pseudopotentials=pseudopotentials,
+                        pseudo_dir=pseudo_dir,
+                        cutoff_ev=self.Cut_off_energy,
+                        band_path=band_path,
+                        qpoint_grid=band_mesh,
+                        kpoint_size=band_mesh,
+                        gamma=hybrid_gamma,
+                        total_charge=self.Total_charge,
+                        nbands=self.Band_num_of_bands,
+                        spinpol=self.Spin_calc,
+                        magnetic_moments=magnetic_moments,
+                        setup_params=self.Setup_params,
+                        xc_calc=self.XC_calc,
+                        exx_fraction=self.XC_exx_fraction,
+                        omega=self.XC_omega,
+                        occupation=self.Occupation,
+                        parallel_cores=self.parallel_cores,
+                        scf_executable='pw.x',
+                        bands_executable='bands.x',
+                        prefix='nanoworks',
+                    )
+                )
+                workflow = {
+                    'result': hybrid_workflow[
+                        'scf'
+                    ][
+                        'result'
+                    ],
+                    'bands': hybrid_workflow[
+                        'band_data'
+                    ],
+                    'band_projections': None,
+                    'hybrid_workflow': hybrid_workflow,
+                }
+            else:
+                workflow = self.engine.run_bands(
+                    atoms=self.bulk_configuration,
+                    input_file=input_file,
+                    output_file=output_file,
+                    state_dir=state_dir,
+                    pseudopotentials=pseudopotentials,
+                    pseudo_dir=pseudo_dir,
+                    cutoff_ev=self.Cut_off_energy,
+                    band_path=band_path,
+                    total_charge=self.Total_charge,
+                    nbands=self.Band_num_of_bands,
+                    spinpol=self.Spin_calc,
+                    magnetic_moments=magnetic_moments,
+                    setup_params=self.Setup_params,
+                    xc_calc=self.XC_calc,
+                    exx_fraction=self.XC_exx_fraction,
+                    omega=self.XC_omega,
+                    occupation=self.Occupation,
+                    parallel_cores=self.parallel_cores,
+                    executable='pw.x',
+                    prefix='nanoworks',
+                    projected_band=(
+                        self.Projected_band_plot
+                    ),
+                    projections=self.Projections,
+                    projection_input_file=(
+                        projection_input_file
+                    ),
+                    projection_output_file=(
+                        projection_output_file
+                    ),
+                    projection_prefix=(
+                        projection_prefix
+                    ),
+                    projection_executable='projwfc.x',
+                )
         except Exception as exc:
             parprint(
                 "\033[91mERROR:\033[0m "
@@ -3004,6 +3114,11 @@ class dftsolve:
             + f'-GROUND-{self.Engine}-Log-SCF.txt'
         )
 
+        if hybrid:
+            reference_candidates.append(
+                workflow['result']
+            )
+
         if ground_output_file.is_file():
             reference_candidates.append(
                 self.engine.parse_pw_output(
@@ -3011,9 +3126,10 @@ class dftsolve:
                 )
             )
 
-        reference_candidates.append(
-            workflow['result']
-        )
+        if not hybrid:
+            reference_candidates.append(
+                workflow['result']
+            )
 
         reference = None
 
