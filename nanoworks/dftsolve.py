@@ -2198,7 +2198,6 @@ class dftsolve:
             self.engine.validate_qe_xc(
                 self.XC_calc,
                 pseudo_xc='pbe',
-                allow_hybrid=True,
             )
         except ValueError as exc:
             parprint(
@@ -2862,9 +2861,6 @@ class dftsolve:
             self.engine.validate_qe_xc(
                 self.XC_calc,
                 pseudo_xc='pbe',
-                allow_hybrid=(
-                    not self.Projected_band_plot
-                ),
             )
         except ValueError as exc:
             parprint(

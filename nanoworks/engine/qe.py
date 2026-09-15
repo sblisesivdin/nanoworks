@@ -2152,6 +2152,25 @@ def render_pw_input(
             f"Unsupported QE pw.x calculation type: {calculation}"
         )
 
+    xc_settings = resolve_qe_xc_settings(
+        xc_calc=xc_calc,
+        pseudo_xc=pseudo_xc,
+        exx_fraction=exx_fraction,
+        omega=omega,
+    )
+
+    if (
+        xc_settings['hybrid']
+        and calculation in {
+            'nscf',
+            'bands',
+        }
+    ):
+        raise NotImplementedError(
+            "QE does not support separate NSCF or bands "
+            "calculations with hybrid functionals."
+        )
+
     relaxation_calculations = {
         'relax',
         'vc-relax',

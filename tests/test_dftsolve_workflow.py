@@ -691,7 +691,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             0.12,
         )
 
-    def test_qe_doscalc_passes_hybrid_settings_to_nscf(self):
+    def test_qe_doscalc_keeps_hybrid_nscf_gated(self):
         solver = object.__new__(
             DFTSolver
         )
@@ -727,7 +727,9 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         solver.parallel_cores = 1
         solver.engine = SimpleNamespace(
             validate_qe_xc=Mock(
-                return_value='hse03'
+                side_effect=ValueError(
+                    'hybrid NSCF is not enabled'
+                )
             ),
             has_qe_state=Mock(
                 return_value=True
@@ -753,9 +755,8 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             patch(
                 'nanoworks.dftsolve.parprint',
             ),
-            self.assertRaisesRegex(
-                RuntimeError,
-                'stop after NSCF',
+            self.assertRaises(
+                SystemExit,
             ),
         ):
             solver._doscalc_qe()
@@ -763,23 +764,10 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         solver.engine.validate_qe_xc.assert_called_once_with(
             'HSE03',
             pseudo_xc='pbe',
-            allow_hybrid=True,
         )
-        call = solver.engine.run_nscf.call_args.kwargs
-        self.assertEqual(
-            call['xc_calc'],
-            'HSE03',
-        )
-        self.assertEqual(
-            call['exx_fraction'],
-            0.28,
-        )
-        self.assertEqual(
-            call['omega'],
-            0.15,
-        )
+        solver.engine.run_nscf.assert_not_called()
 
-    def test_qe_bandcalc_passes_hybrid_settings_to_bands(self):
+    def test_qe_bandcalc_keeps_hybrid_bands_gated(self):
         solver = object.__new__(
             DFTSolver
         )
@@ -815,7 +803,9 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         }
         solver.engine = SimpleNamespace(
             validate_qe_xc=Mock(
-                return_value='pbe0'
+                side_effect=ValueError(
+                    'hybrid bands are not enabled'
+                )
             ),
             has_qe_state=Mock(
                 return_value=True
@@ -844,9 +834,8 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             patch(
                 'nanoworks.dftsolve.parprint',
             ),
-            self.assertRaisesRegex(
-                RuntimeError,
-                'stop after bands',
+            self.assertRaises(
+                SystemExit,
             ),
         ):
             solver._bandcalc_qe()
@@ -854,20 +843,8 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         solver.engine.validate_qe_xc.assert_called_once_with(
             'PBE0',
             pseudo_xc='pbe',
-            allow_hybrid=True,
         )
-        call = solver.engine.run_bands.call_args.kwargs
-        self.assertEqual(
-            call['xc_calc'],
-            'PBE0',
-        )
-        self.assertEqual(
-            call['exx_fraction'],
-            0.32,
-        )
-        self.assertIsNone(
-            call['omega']
-        )
+        solver.engine.run_bands.assert_not_called()
 
 if __name__ == '__main__':
     unittest.main()
