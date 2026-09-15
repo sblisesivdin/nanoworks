@@ -239,6 +239,36 @@ class TestQEEngine(unittest.TestCase):
             text,
         )
 
+    def test_render_nscf_input_adds_hse06_controls(self):
+        atoms = bulk(
+            'Si',
+            'diamond',
+            a=5.43,
+        )
+
+        text = render_nscf_input(
+            atoms=atoms,
+            pseudopotentials={
+                'Si': 'Si.upf',
+            },
+            cutoff_ev=500.0,
+            kpoint_size=(4, 4, 4),
+            xc_calc='HSE06',
+        )
+
+        self.assertIn(
+            "  input_dft = 'HSE',",
+            text,
+        )
+        self.assertIn(
+            '  exx_fraction = 0.25,',
+            text,
+        )
+        self.assertIn(
+            '  screening_parameter = 0.106,',
+            text,
+        )
+
     def test_resolve_qe_xc_settings_rejects_invalid_controls(self):
         invalid_requests = (
             (
