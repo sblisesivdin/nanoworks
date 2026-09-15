@@ -269,6 +269,41 @@ class TestQEEngine(unittest.TestCase):
             text,
         )
 
+    def test_render_bands_input_adds_hse03_controls(self):
+        atoms = bulk(
+            'Si',
+            'diamond',
+            a=5.43,
+        )
+        band_path = build_band_path(
+            atoms=atoms,
+            path='GX',
+            npoints=5,
+        )
+
+        text = render_bands_input(
+            atoms=atoms,
+            pseudopotentials={
+                'Si': 'Si.upf',
+            },
+            cutoff_ev=500.0,
+            band_path=band_path,
+            xc_calc='HSE03',
+        )
+
+        self.assertIn(
+            "  input_dft = 'HSE',",
+            text,
+        )
+        self.assertIn(
+            '  exx_fraction = 0.25,',
+            text,
+        )
+        self.assertIn(
+            '  screening_parameter = 0.15,',
+            text,
+        )
+
     def test_resolve_qe_xc_settings_rejects_invalid_controls(self):
         invalid_requests = (
             (
