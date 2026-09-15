@@ -55,6 +55,7 @@ from nanoworks.engine.qe import (
     run_nscf,
     run_bands,
     run_bands_postprocess,
+    run_hybrid_bands,
     has_qe_state,
     render_dos_input,
     run_dos,
@@ -2794,6 +2795,107 @@ class TestQEEngine(unittest.TestCase):
             'lsym = .false.',
             input_text,
         )
+
+    def test_run_hybrid_bands_composes_scf_and_bands(self):
+        band_path = {
+            'kpoints': [
+                (0.0, 0.0, 0.0),
+                (0.5, 0.0, 0.0),
+            ],
+            'npoints': 2,
+        }
+        scf_workflow = {
+            'result': {
+                'job_done': True,
+            },
+        }
+        bands_workflow = {
+            'result': {
+                'job_done': True,
+            },
+        }
+
+        with patch(
+            'nanoworks.engine.qe.run_scf',
+            return_value=scf_workflow,
+        ) as run_scf_mock, patch(
+            'nanoworks.engine.qe.run_bands_postprocess',
+            return_value=bands_workflow,
+        ) as run_bands_mock:
+            workflow = run_hybrid_bands(
+                atoms=Atoms('Si'),
+                scf_input_file='scf.in',
+                scf_output_file='scf.out',
+                bands_input_file='bands.in',
+                bands_output_file='bands.out',
+                state_dir='state',
+                band_file='bands.dat',
+                pseudopotentials={
+                    'Si': 'Si.upf',
+                },
+                pseudo_dir='/tmp/pseudos',
+                cutoff_ev=400.0,
+                band_path=band_path,
+                qpoint_grid=(2, 1, 1),
+                xc_calc='HSE06',
+            )
+
+        run_scf_mock.assert_called_once()
+        run_bands_mock.assert_called_once_with(
+            input_file='bands.in',
+            output_file='bands.out',
+            state_dir='state',
+            band_file='bands.dat',
+            parallel_cores=1,
+            executable='bands.x',
+            prefix='nanoworks',
+            lsym=False,
+        )
+        self.assertEqual(
+            run_scf_mock.call_args.kwargs[
+                'exx_additional_kpoints'
+            ]['qpoint_grid'],
+            (2, 1, 1),
+        )
+        self.assertIs(
+            workflow['scf'],
+            scf_workflow,
+        )
+        self.assertIs(
+            workflow['bands'],
+            bands_workflow,
+        )
+        self.assertEqual(
+            workflow['band_path'],
+            band_path,
+        )
+
+    def test_run_hybrid_bands_rejects_nonhybrid_xc(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            'require a hybrid functional',
+        ):
+            run_hybrid_bands(
+                atoms=Atoms('Si'),
+                scf_input_file='scf.in',
+                scf_output_file='scf.out',
+                bands_input_file='bands.in',
+                bands_output_file='bands.out',
+                state_dir='state',
+                band_file='bands.dat',
+                pseudopotentials={
+                    'Si': 'Si.upf',
+                },
+                pseudo_dir='/tmp/pseudos',
+                cutoff_ev=400.0,
+                band_path={
+                    'kpoints': [
+                        (0.0, 0.0, 0.0),
+                    ],
+                },
+                qpoint_grid=(1, 1, 1),
+                xc_calc='PBE',
+            )
 
     def test_run_bands_parses_eigenvalues(self):
         atoms = bulk(

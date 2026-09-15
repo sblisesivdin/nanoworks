@@ -6967,6 +6967,7 @@ def run_scf(
     parallel_cores=1,
     executable='pw.x',
     prefix='nanoworks',
+    exx_additional_kpoints=None,
 ):
     """Render, execute, and parse one QE pw.x SCF calculation."""
     input_file = Path(
@@ -7013,6 +7014,7 @@ def run_scf(
         pseudo_xc=pseudo_xc,
         exx_fraction=exx_fraction,
         omega=omega,
+        exx_additional_kpoints=exx_additional_kpoints,
         occupations=occupation_settings['occupations'],
         smearing=occupation_settings['smearing'],
         width_ev=occupation_settings['width_ev'],
@@ -7741,6 +7743,103 @@ def run_bands_postprocess(
         'band_file': band_file,
         'execution': execution,
         'result': result,
+    }
+
+def run_hybrid_bands(
+    atoms,
+    scf_input_file,
+    scf_output_file,
+    bands_input_file,
+    bands_output_file,
+    state_dir,
+    band_file,
+    pseudopotentials,
+    pseudo_dir,
+    cutoff_ev,
+    band_path,
+    qpoint_grid,
+    kpoint_density=None,
+    kpoint_size=(5, 5, 5),
+    gamma=False,
+    total_charge=0.0,
+    nbands=None,
+    spinpol=False,
+    magnetic_moments=None,
+    setup_params=None,
+    xc_calc='HSE06',
+    pseudo_xc='pbe',
+    exx_fraction=None,
+    omega=None,
+    occupation=None,
+    parallel_cores=1,
+    scf_executable='pw.x',
+    bands_executable='bands.x',
+    prefix='nanoworks',
+    lsym=False,
+):
+    """Run a QE hybrid SCF followed by bands.x post-processing."""
+    xc_settings = resolve_qe_xc_settings(
+        xc_calc=xc_calc,
+        pseudo_xc=pseudo_xc,
+        exx_fraction=exx_fraction,
+        omega=omega,
+    )
+
+    if not xc_settings['hybrid']:
+        raise ValueError(
+            "QE hybrid bands require a hybrid functional."
+        )
+
+    additional_kpoints = (
+        build_qe_exx_additional_kpoints(
+            band_path=band_path,
+            qpoint_grid=qpoint_grid,
+        )
+    )
+
+    scf_workflow = run_scf(
+        atoms=atoms,
+        input_file=scf_input_file,
+        output_file=scf_output_file,
+        state_dir=state_dir,
+        pseudopotentials=pseudopotentials,
+        pseudo_dir=pseudo_dir,
+        cutoff_ev=cutoff_ev,
+        kpoint_density=kpoint_density,
+        kpoint_size=kpoint_size,
+        gamma=gamma,
+        total_charge=total_charge,
+        nbands=nbands,
+        spinpol=spinpol,
+        magnetic_moments=magnetic_moments,
+        setup_params=setup_params,
+        xc_calc=xc_calc,
+        pseudo_xc=pseudo_xc,
+        exx_fraction=exx_fraction,
+        omega=omega,
+        occupation=occupation,
+        parallel_cores=parallel_cores,
+        executable=scf_executable,
+        prefix=prefix,
+        exx_additional_kpoints=additional_kpoints,
+    )
+
+    bands_workflow = run_bands_postprocess(
+        input_file=bands_input_file,
+        output_file=bands_output_file,
+        state_dir=state_dir,
+        band_file=band_file,
+        parallel_cores=parallel_cores,
+        executable=bands_executable,
+        prefix=prefix,
+        lsym=lsym,
+    )
+
+    return {
+        'scf': scf_workflow,
+        'bands': bands_workflow,
+        'band_path': band_path,
+        'additional_kpoints': additional_kpoints,
     }
 
 def run_dos(
