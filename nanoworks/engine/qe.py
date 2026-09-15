@@ -5024,6 +5024,142 @@ def parse_pw_bands_output(output):
         ],
     }
 
+def parse_bands_x_output(
+    band_file,
+    kpoint_indices=None,
+):
+    """Parse a non-spin bands.x filband file."""
+    band_file = Path(
+        band_file
+    )
+
+    if not band_file.is_file():
+        raise FileNotFoundError(
+            f"QE bands.x data file was not found: {band_file}"
+        )
+
+    text = band_file.read_text(
+        encoding='utf-8',
+        errors='replace',
+    )
+
+    number_pattern = (
+        r'[-+]?(?:\d+(?:\.\d*)?|\.\d+)'
+        r'(?:[EeDd][-+]?\d+)?'
+    )
+    header_pattern = re.compile(
+        rf'nbnd\s*=\s*({number_pattern})\s*,?\s*'
+        rf'nks\s*=\s*({number_pattern})',
+        flags=re.IGNORECASE,
+    )
+
+    header_match = header_pattern.search(
+        text
+    )
+
+    if header_match is None:
+        raise ValueError(
+            "QE bands.x data file does not contain an "
+            "nbnd/nks header."
+        )
+
+    try:
+        nbands = int(
+            float(
+                header_match.group(1)
+            )
+        )
+        nkpoints = int(
+            float(
+                header_match.group(2)
+            )
+        )
+    except (TypeError, ValueError) as error:
+        raise ValueError(
+            "QE bands.x data file has an invalid nbnd/nks header."
+        ) from error
+
+    if nbands <= 0 or nkpoints <= 0:
+        raise ValueError(
+            "QE bands.x data file must contain positive nbnd and nks."
+        )
+
+    number_regex = re.compile(
+        number_pattern
+    )
+    body = text[
+        header_match.end():
+    ]
+    values = [
+        float(
+            value.replace('D', 'E').replace('d', 'e')
+        )
+        for value in number_regex.findall(body)
+    ]
+    values_per_kpoint = 3 + nbands
+    expected_values = nkpoints * values_per_kpoint
+
+    if len(values) != expected_values:
+        raise ValueError(
+            "QE bands.x data file contains "
+            f"{len(values)} numeric values, expected "
+            f"{expected_values}."
+        )
+
+    all_kpoints = []
+    all_eigenvalues = []
+    cursor = 0
+
+    for _ in range(nkpoints):
+        all_kpoints.append(
+            tuple(
+                values[cursor:cursor + 3]
+            )
+        )
+        cursor += 3
+        all_eigenvalues.append(
+            values[cursor:cursor + nbands]
+        )
+        cursor += nbands
+
+    if kpoint_indices is None:
+        selected_indices = list(
+            range(nkpoints)
+        )
+    else:
+        selected_indices = [
+            int(index)
+            for index in kpoint_indices
+        ]
+
+        if not selected_indices:
+            raise ValueError(
+                "QE bands.x k-point selection must not be empty."
+            )
+
+        if any(
+            index < 0 or index >= nkpoints
+            for index in selected_indices
+        ):
+            raise ValueError(
+                "QE bands.x k-point selection is out of range."
+            )
+
+    return {
+        'spin_polarized': False,
+        'nspins': 1,
+        'nkpoints': len(selected_indices),
+        'nbands': nbands,
+        'kpoints': [
+            all_kpoints[index]
+            for index in selected_indices
+        ],
+        'eigenvalues_ev': [[
+            all_eigenvalues[index]
+            for index in selected_indices
+        ]],
+    }
+
 def parse_projwfc_band_file(
     projection_file,
 ):

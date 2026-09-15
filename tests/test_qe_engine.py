@@ -46,6 +46,7 @@ from nanoworks.engine.qe import (
     parse_pw_output,
     resolve_qe_band_reference,
     parse_pw_bands_output,
+    parse_bands_x_output,
     resolve_qe_kpoint_size,
     resolve_qe_occupation,
     validate_qe_version,
@@ -2248,6 +2249,58 @@ class TestQEEngine(unittest.TestCase):
             [[
                 [-5.0, -1.0, 1.0, 3.0, 5.0],
                 [-4.5, -0.5, 1.5, 3.5, 5.5],
+            ]],
+        )
+
+    def test_parse_bands_x_output_selects_band_path_points(self):
+        band_text = """
+ &plot nbnd= 3, nks= 3 /
+  0.000000  0.000000  0.000000
+ -5.000000 -1.000000  1.000000
+  0.250000  0.000000  0.000000
+ -4.000000 -0.500000  1.500000
+  0.500000  0.000000  0.000000
+ -3.000000  0.000000  2.000000
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            band_file = (
+                Path(tmpdir)
+                / 'si-hse.bands'
+            )
+            band_file.write_text(
+                band_text,
+                encoding='utf-8',
+            )
+
+            result = parse_bands_x_output(
+                band_file,
+                kpoint_indices=[0, 2],
+            )
+
+        self.assertFalse(
+            result['spin_polarized']
+        )
+        self.assertEqual(
+            result['nkpoints'],
+            2,
+        )
+        self.assertEqual(
+            result['nbands'],
+            3,
+        )
+        self.assertEqual(
+            result['kpoints'],
+            [
+                (0.0, 0.0, 0.0),
+                (0.5, 0.0, 0.0),
+            ],
+        )
+        self.assertEqual(
+            result['eigenvalues_ev'],
+            [[
+                [-5.0, -1.0, 1.0],
+                [-3.0, 0.0, 2.0],
             ]],
         )
 
