@@ -2974,6 +2974,35 @@ def render_bands_input(
         band_path=band_path,
     )
 
+def render_bands_postprocess_input(
+    prefix='nanoworks',
+    outdir=None,
+    filband='nanoworks.bands',
+    lsym=False,
+):
+    """Render a complete Quantum ESPRESSO bands.x input."""
+    if filband is None or not str(filband).strip():
+        raise ValueError(
+            "QE bands.x output file must not be empty."
+        )
+
+    settings = {
+        'prefix': str(prefix),
+        'filband': str(filband),
+        'lsym': bool(lsym),
+    }
+
+    if outdir is not None:
+        settings['outdir'] = str(outdir)
+
+    return (
+        render_namelist(
+            'BANDS',
+            settings,
+        )
+        + '\n'
+    )
+
 def render_dos_input(
     prefix='nanoworks',
     outdir=None,
@@ -7608,6 +7637,110 @@ def run_bands(
         'result': result,
         'bands': bands,
         'band_projections': band_projections,
+    }
+
+def run_bands_postprocess(
+    input_file,
+    output_file,
+    state_dir,
+    band_file,
+    parallel_cores=1,
+    executable='bands.x',
+    prefix='nanoworks',
+    lsym=False,
+):
+    """Render and execute one Quantum ESPRESSO bands.x calculation."""
+    input_file = Path(
+        input_file
+    )
+    output_file = Path(
+        output_file
+    )
+    state_dir = Path(
+        state_dir
+    )
+    band_file = Path(
+        band_file
+    )
+
+    if not has_qe_state(
+        state_dir,
+        prefix=prefix,
+    ):
+        raise FileNotFoundError(
+            "A valid QE electronic state is required "
+            f"for bands.x: {state_dir}"
+        )
+
+    input_text = render_bands_postprocess_input(
+        prefix=prefix,
+        outdir=state_dir,
+        filband=band_file,
+        lsym=lsym,
+    )
+
+    input_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+    output_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+    band_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    input_file.write_text(
+        input_text,
+        encoding='utf-8',
+    )
+
+    launcher = build_qe_launcher(
+        parallel_cores=parallel_cores
+    )
+
+    execution = run_qe_program(
+        input_file=input_file,
+        output_file=output_file,
+        executable=executable,
+        launcher=launcher,
+    )
+
+    result = parse_qe_auxiliary_output(
+        output_file,
+        expected_program='BANDS',
+    )
+
+    try:
+        validate_qe_version(
+            result['qe_version']
+        )
+    except ValueError as exc:
+        raise RuntimeError(
+            f"{exc} See '{output_file}'."
+        ) from exc
+
+    if not result['job_done']:
+        raise RuntimeError(
+            "Quantum ESPRESSO bands.x finished without a "
+            f"'JOB DONE.' marker. See '{output_file}'."
+        )
+
+    if not band_file.is_file():
+        raise RuntimeError(
+            "Quantum ESPRESSO bands.x finished but the band data "
+            f"file was not created: {band_file}"
+        )
+
+    return {
+        'input_file': input_file,
+        'output_file': output_file,
+        'state_dir': state_dir,
+        'band_file': band_file,
+        'execution': execution,
+        'result': result,
     }
 
 def run_dos(

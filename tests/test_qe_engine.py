@@ -29,6 +29,7 @@ from nanoworks.engine.qe import (
     render_scf_input,
     render_nscf_input,
     render_bands_input,
+    render_bands_postprocess_input,
     render_relax_input,
     rydberg_to_ev,
     build_qe_launcher,
@@ -53,6 +54,7 @@ from nanoworks.engine.qe import (
     run_scf,
     run_nscf,
     run_bands,
+    run_bands_postprocess,
     has_qe_state,
     render_dos_input,
     run_dos,
@@ -1518,6 +1520,34 @@ class TestQEEngine(unittest.TestCase):
             text,
         )
 
+    def test_render_bands_postprocess_input(self):
+        text = render_bands_postprocess_input(
+            prefix='nanoworks',
+            outdir='/tmp/qe-band-state',
+            filband='/tmp/si-hse.bands',
+        )
+
+        self.assertIn(
+            '&BANDS',
+            text,
+        )
+        self.assertIn(
+            "prefix = 'nanoworks'",
+            text,
+        )
+        self.assertIn(
+            "outdir = '/tmp/qe-band-state'",
+            text,
+        )
+        self.assertIn(
+            "filband = '/tmp/si-hse.bands'",
+            text,
+        )
+        self.assertIn(
+            'lsym = .false.',
+            text,
+        )
+
     def test_render_bands_input_requires_band_path(self):
         atoms = bulk(
             'Si',
@@ -2667,6 +2697,103 @@ class TestQEEngine(unittest.TestCase):
                     cutoff_ev=400.0,
                     band_path=band_path,
                 )
+
+    def test_run_bands_postprocess_creates_band_file(self):
+        output_text = """
+         Program BANDS v.7.6 starts
+         JOB DONE.
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(
+                tmpdir
+            )
+            state_dir = (
+                tmpdir
+                / 'state'
+            )
+            save_dir = (
+                state_dir
+                / 'nanoworks.save'
+            )
+            save_dir.mkdir(
+                parents=True
+            )
+            (
+                save_dir
+                / 'data-file-schema.xml'
+            ).write_text(
+                '<qes/>',
+                encoding='utf-8',
+            )
+            band_file = (
+                tmpdir
+                / 'si-hse.bands'
+            )
+
+            def fake_run_qe_program(**kwargs):
+                Path(
+                    kwargs['output_file']
+                ).write_text(
+                    output_text,
+                    encoding='utf-8',
+                )
+                band_file.write_text(
+                    '&plot nbnd=8, nks=2 /\n',
+                    encoding='utf-8',
+                )
+
+                return {
+                    'returncode': 0,
+                }
+
+            with patch(
+                'nanoworks.engine.qe.run_qe_program',
+                side_effect=fake_run_qe_program,
+            ) as run:
+                workflow = run_bands_postprocess(
+                    input_file=(
+                        tmpdir
+                        / 'bands.in'
+                    ),
+                    output_file=(
+                        tmpdir
+                        / 'bands.out'
+                    ),
+                    state_dir=state_dir,
+                    band_file=band_file,
+                    parallel_cores=4,
+                )
+
+            self.assertEqual(
+                run.call_count,
+                1,
+            )
+            self.assertEqual(
+                run.call_args.kwargs[
+                    'executable'
+                ],
+                'bands.x',
+            )
+            self.assertTrue(
+                workflow['band_file'].is_file()
+            )
+            self.assertEqual(
+                workflow['result']['program'],
+                'BANDS',
+            )
+
+            input_text = (
+                workflow['input_file']
+                .read_text(
+                    encoding='utf-8'
+                )
+            )
+
+        self.assertIn(
+            'lsym = .false.',
+            input_text,
+        )
 
     def test_run_bands_parses_eigenvalues(self):
         atoms = bulk(
