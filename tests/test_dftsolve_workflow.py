@@ -835,7 +835,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             hybrid_call['relative_to_fermi']
         )
 
-    def test_qe_bandcalc_dispatches_hybrid_bands(self):
+    def test_qe_bandcalc_dispatches_hybrid_projected_bands(self):
         solver = object.__new__(
             DFTSolver
         )
@@ -845,7 +845,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         solver.XC_calc = 'PBE0'
         solver.XC_exx_fraction = 0.32
         solver.XC_omega = None
-        solver.Projected_band_plot = False
+        solver.Projected_band_plot = True
         solver.Projections = []
         solver.Gamma = False
         solver.Ground_gamma = None
@@ -945,6 +945,17 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         )
         self.assertFalse(
             hybrid_call['gamma']
+        )
+        self.assertTrue(
+            hybrid_call['projected_band']
+        )
+        self.assertEqual(
+            hybrid_call['projections'],
+            [],
+        )
+        self.assertEqual(
+            hybrid_call['projection_prefix'],
+            Path('silicon-BAND-QE-Result-Projections'),
         )
 
 if __name__ == '__main__':

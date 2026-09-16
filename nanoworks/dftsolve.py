@@ -2986,14 +2986,6 @@ class dftsolve:
             'pbe0',
         }
 
-        if hybrid and self.Projected_band_plot:
-            parprint(
-                "\033[91mERROR:\033[0m "
-                "QE projected bands with hybrid functionals "
-                "are not supported yet."
-            )
-            sys.exit(1)
-
         ground_state_dir = Path(
             self.struct
             + '-GROUND-QE-Result-State'
@@ -3158,6 +3150,20 @@ class dftsolve:
                         scf_executable='pw.x',
                         bands_executable='bands.x',
                         prefix='nanoworks',
+                        projected_band=(
+                            self.Projected_band_plot
+                        ),
+                        projections=self.Projections,
+                        projection_input_file=(
+                            projection_input_file
+                        ),
+                        projection_output_file=(
+                            projection_output_file
+                        ),
+                        projection_prefix=(
+                            projection_prefix
+                        ),
+                        projection_executable='projwfc.x',
                     )
                 )
                 workflow = {
@@ -3169,7 +3175,9 @@ class dftsolve:
                     'bands': hybrid_workflow[
                         'band_data'
                     ],
-                    'band_projections': None,
+                    'band_projections': hybrid_workflow[
+                        'band_projections'
+                    ],
                     'hybrid_workflow': hybrid_workflow,
                 }
             else:
