@@ -23,6 +23,51 @@ with patch.object(
 
 class TestDFTSolveWorkflow(unittest.TestCase):
 
+    def test_opticalcalc_dispatches_to_gpaw(self):
+        solver = object.__new__(
+            DFTSolver
+        )
+        solver.Engine = 'GPAW'
+        expected = object()
+        solver._opticalcalc_gpaw = Mock(
+            return_value=expected
+        )
+
+        result = solver.opticalcalc()
+
+        self.assertIs(
+            result,
+            expected,
+        )
+        solver._opticalcalc_gpaw.assert_called_once_with()
+
+    def test_opticalcalc_reports_qe_as_not_implemented(self):
+        solver = object.__new__(
+            DFTSolver
+        )
+        solver.Engine = 'QE'
+        solver._opticalcalc_gpaw = Mock()
+
+        with self.assertRaisesRegex(
+            NotImplementedError,
+            'Quantum ESPRESSO optical calculations',
+        ):
+            solver.opticalcalc()
+
+        solver._opticalcalc_gpaw.assert_not_called()
+
+    def test_opticalcalc_rejects_unknown_engine(self):
+        solver = object.__new__(
+            DFTSolver
+        )
+        solver.Engine = 'UNKNOWN'
+
+        with self.assertRaisesRegex(
+            ValueError,
+            'Unsupported optical engine: UNKNOWN',
+        ):
+            solver.opticalcalc()
+
     def test_run_calculation_stages_runs_ground_only_by_default(self):
         solver = Mock()
         config = SimpleNamespace()

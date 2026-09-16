@@ -5011,6 +5011,21 @@ class dftsolve:
             print('Phonon calculation: ', round((time52-time51),2), end="\n", file=f1)
 
     def opticalcalc(self):
+        """Run the optical workflow using the selected DFT engine."""
+        if self.Engine == 'GPAW':
+            return self._opticalcalc_gpaw()
+
+        if self.Engine == 'QE':
+            raise NotImplementedError(
+                "Quantum ESPRESSO optical calculations are not "
+                "implemented yet."
+            )
+
+        raise ValueError(
+            f"Unsupported optical engine: {self.Engine}"
+        )
+
+    def _opticalcalc_gpaw(self):
         """
         This method performs optical property calculations for the given structure using the
         ground state results. It computes the dielectric function, absorption spectrum, and
