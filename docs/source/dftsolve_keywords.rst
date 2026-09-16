@@ -22,7 +22,9 @@ General Keywords
     Nanoworks DFT workflow. Quantum ESPRESSO support is available with
     ``QE`` for PBE plane-wave ground-state, geometry-optimization,
     DFT+U, DOS/PDOS, band-structure, projected-band, and
-    electron-density workflows.
+    electron-density workflows. Native QE hybrid electronic workflows
+    additionally support ``HSE06``, ``HSE03``, and ``PBE0`` for
+    ground-state, DOS/PDOS, band, projected-band, and density calculations.
 
 .. code-block:: python
 
@@ -42,9 +44,11 @@ or:
     and orbital-projected DOS, band-structure, projected-band, and
     pseudo-valence electron-density workflows using scalar-relativistic
     PseudoDojo pseudopotentials. Collinear-spin ground-state, DOS/PDOS,
-    band, projected-band, and density calculations are supported.
-    QE vdW, SOC, hybrid-functional, elastic, phonon, and optical
-    workflows are not supported yet.
+    band, projected-band, and density calculations are supported. Native
+    QE ``HSE06``, ``HSE03``, and ``PBE0`` workflows support ground-state,
+    DOS/PDOS, band, projected-band, and density calculations. QE vdW, SOC,
+    hybrid geometry optimization, elastic, phonon, and optical workflows
+    are not supported yet.
 
 .. describe:: Mode
 
@@ -108,10 +112,12 @@ or:
 .. note::
 
     The QE backend supports total DOS and orbital-projected DOS for
-    non-spin and collinear-spin PBE PW calculations. A valid QE
-    ground-state result is required before the DOS workflow is started.
-    Spin-polarized calculations produce resolved spin-up and spin-down
-    DOS/PDOS data and figures.
+    non-spin and collinear-spin PBE PW calculations, as well as for the
+    supported QE hybrid functionals (``HSE06``, ``HSE03``, and ``PBE0``).
+    A valid QE ground-state result is required before the DOS workflow is
+    started. Hybrid DOS/PDOS uses a dedicated hybrid SCF state and does not
+    attempt a separate hybrid NSCF calculation. Spin-polarized calculations
+    produce resolved spin-up and spin-down DOS/PDOS data and figures.
 
 .. describe:: Band_calc
 
@@ -127,10 +133,13 @@ or:
 .. note::
 
     The QE backend supports non-spin and collinear-spin PBE PW band
-    structures and orbital-projected band plots. A valid QE ground-state
-    result is required. Spin-polarized calculations produce separate
-    spin-up and spin-down band data; projected-band plots are also written
-    separately for the two spin channels.
+    structures and orbital-projected band plots. The supported QE hybrid
+    functionals (``HSE06``, ``HSE03``, and ``PBE0``) use a native SCF plus
+    ``bands.x`` workflow; projected hybrid bands additionally use
+    ``projwfc.x`` on the band-path states. A valid QE ground-state result is
+    required. Spin-polarized calculations produce separate spin-up and
+    spin-down band data; projected-band plots are also written separately
+    for the two spin channels.
 
 .. describe:: Density_calc
 
@@ -644,23 +653,34 @@ Electronic Calculations Keywords
     :Default: backend-specific
     :Options: ``LDA``, ``PBE``, ``GLLBSC``, ``revPBE``, ``RPBE``, ``HSE03``, ``HSE06``, ``B3LYP``, ``PBE0``
 
-    When omitted, GPAW uses ``LDA`` and QE uses ``PBE``. The current
-    native QE backend supports PBE because the managed PseudoDojo
-    pseudopotential library is generated for PBE. Explicit user values
-    take precedence and are subsequently validated by the selected
-    backend.
+    When omitted, GPAW uses ``LDA`` and QE uses ``PBE``. The native QE
+    backend supports PBE and the hybrid functionals ``HSE06``, ``HSE03``,
+    and ``PBE0``. The managed PseudoDojo pseudopotential library is
+    generated for PBE; the QE hybrid workflows therefore use these PBE
+    pseudopotentials together with the native exact-exchange settings.
+    Explicit user values take precedence and are subsequently validated by
+    the selected backend.
 
     For GPAW, ``Relax_cell`` must contain only ``False`` values with
     GLLBSC, HSE03, and HSE06.
 
-    The hybrid functionals (``HSE06``, ``HSE03``, ``PBE0``, ``B3LYP``,``EXX``) 
-    use GPAW's plane-wave hybrid backend. They are automatically run with 
-    plane-wave parallelisation and a single-iteration Davidson eigensolver. 
-    Cell relaxation with hybrid functionals is not supported. Hybrid 
-    elastic calculations are retained but should be treated with caution 
-    because plane-wave hybrid stress is not considered reliable. Hybrid 
-    phonon calculations are not supported. For DOS and band structure, 
-    the eigenvalues are referenced to the converged ground-state Fermi level.
+    For QE, ``HSE06``, ``HSE03``, and ``PBE0`` use native plane-wave exact
+    exchange. Their supported electronic stages are ground-state, DOS/PDOS,
+    band, projected-band, and density. QE hybrid DOS/PDOS uses a dedicated
+    SCF state, while hybrid band calculations add zero-weight band-path
+    points to the SCF and post-process them with ``bands.x`` and, when
+    requested, ``projwfc.x``. Separate QE hybrid NSCF and geometry/phonon
+    workflows are not supported.
+
+    For GPAW, the hybrid functionals (``HSE06``, ``HSE03``, ``PBE0``,
+    ``B3LYP``, ``EXX``) use GPAW's plane-wave hybrid backend. They are
+    automatically run with plane-wave parallelisation and a single-iteration
+    Davidson eigensolver. Cell relaxation with hybrid functionals is not
+    supported. Hybrid elastic calculations are retained but should be
+    treated with caution because plane-wave hybrid stress is not considered
+    reliable. Hybrid phonon calculations are not supported. For DOS and band
+    structure, the eigenvalues are referenced to the converged ground-state
+    Fermi level.
 
 .. code-block:: python
 
@@ -1006,6 +1026,9 @@ Electronic Calculations Keywords
     GPAW and QE use different projector definitions, so their numerical
     projection weights need not be identical even when the band energies
     and qualitative orbital character agree.
+
+    With a QE hybrid functional, the projection is evaluated on the
+    zero-weight band-path states included in the native hybrid SCF workflow.
 
 .. describe:: Projections
 
@@ -1453,4 +1476,3 @@ Optical Calculations Keywords
 .. code-block:: python
 
     Opt_nblocks = 4
-
