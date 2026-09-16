@@ -495,7 +495,9 @@ Electronic Calculations Keywords
     Number of electronic bands used in the ground-state calculation.
     When ``None``, the active computational engine uses the Nanoworks
     default behavior. For the current GPAW backend this preserves the
-    existing automatic band allocation.
+    existing automatic band allocation. For QE, the value is written as
+    ``nbnd``; it also controls the dedicated SCF band count used by the
+    native hybrid DOS and band workflows.
 
 .. code-block:: python
 
@@ -596,7 +598,9 @@ Electronic Calculations Keywords
 
     For the current GPAW hybrid-functional workflow,
     ``Band_num_of_bands`` does not alter the directly loaded hybrid
-    ground-state calculation.
+    ground-state calculation. For a native QE hybrid band workflow, it
+    sets the number of bands in the hybrid SCF calculation before
+    ``bands.x`` is run.
 
 .. describe:: Setup_params
 
@@ -651,7 +655,7 @@ Electronic Calculations Keywords
 
     :Type: ``string`` or ``None``
     :Default: backend-specific
-    :Options: ``LDA``, ``PBE``, ``GLLBSC``, ``revPBE``, ``RPBE``, ``HSE03``, ``HSE06``, ``B3LYP``, ``PBE0``
+    :Options: ``LDA``, ``PBE``, ``GLLBSC``, ``GLLBSCM``, ``revPBE``, ``RPBE``, ``HSE03``, ``HSE06``, ``B3LYP``, ``PBE0``, ``EXX``
 
     When omitted, GPAW uses ``LDA`` and QE uses ``PBE``. The native QE
     backend supports PBE and the hybrid functionals ``HSE06``, ``HSE03``,
@@ -690,8 +694,12 @@ Electronic Calculations Keywords
 
     :Type: ``float`` or ``None``
     :Default: ``None``
+    :Unit: fraction between 0 and 1
 
-    Exact-exchange (Hartree-Fock) fraction for hybrid functionals. When ``None`` the functional's documented default is used (e.g. 0.25 for HSE06/PBE0). Only used when ``XC_calc`` is a hybrid.
+    Exact-exchange (Hartree-Fock) fraction for hybrid functionals. When
+    ``None``, the selected backend uses the functional default (normally
+    0.25 for HSE06, HSE03, and PBE0). The keyword is available for both
+    GPAW and the native QE hybrid electronic workflows.
 
 .. code-block:: python
 
@@ -701,8 +709,12 @@ Electronic Calculations Keywords
 
     :Type: ``float`` or ``None``
     :Default: ``None``
+    :Unit: 1/Bohr
 
-    Screening parameter (range-separation, in 1/Bohr) for screened hybrids such as HSE06/HSE03. When ``None`` the functional default is used (e.g. 0.11 for HSE06). Only used when ``XC_calc`` is a hybrid.
+    Screening parameter (range separation) for screened hybrid
+    functionals such as HSE06 and HSE03. When ``None``, the selected
+    backend uses the functional default. QE accepts this keyword for HSE
+    workflows and rejects it for PBE0.
 
 .. code-block:: python
 
@@ -712,8 +724,12 @@ Electronic Calculations Keywords
 
     :Type: ``string``
     :Default: ``pw``
+    :Options: ``pw``
 
-    Backend used to evaluate hybrid functionals. Currently ``pw`` (plane-wave) is recommended and used by default. Only used when ``XC_calc`` is a hybrid.
+    Backend used by the GPAW hybrid calculator. ``pw`` (plane-wave) is
+    the supported and recommended value. Native QE hybrid workflows always
+    use QE's plane-wave exact-exchange implementation; this keyword does
+    not select a QE backend.
 
 .. code-block:: python
 
@@ -809,7 +825,10 @@ Electronic Calculations Keywords
     :Type: ``float``
     :Default: ``0.1``
 
-    Width of Gaussian smearing in DOS calculation. Use ``0.0`` for linear tetrahedron interpolation.
+    Width of Gaussian smearing in GPAW DOS calculations. Use ``0.0`` for
+    linear tetrahedron interpolation. QE DOS and PDOS calculations use
+    ``DOS_occupation`` and currently accept tetrahedron schemes instead of
+    this Gaussian-width setting.
 
 .. code-block:: python
 
@@ -822,7 +841,8 @@ Electronic Calculations Keywords
 
     Number of electronic bands used when preparing the DOS calculation.
     When ``None``, the band count inherited from the converged
-    ground-state calculation is preserved.
+    ground-state calculation is preserved. For a native QE hybrid DOS
+    workflow, the value is used for the dedicated hybrid SCF calculation.
 
 .. code-block:: python
 
