@@ -57,6 +57,7 @@ from nanoworks.engine.qe import (
     run_bands,
     run_bands_postprocess,
     run_hybrid_bands,
+    run_hybrid_dos,
     has_qe_state,
     render_dos_input,
     run_dos,
@@ -2966,6 +2967,151 @@ class TestQEEngine(unittest.TestCase):
                     ],
                 },
                 qpoint_grid=(1, 1, 1),
+                xc_calc='PBE',
+            )
+
+    def test_run_hybrid_dos_composes_scf_dos_and_pdos(self):
+        scf_workflow = {
+            'result': {
+                'job_done': True,
+            },
+        }
+        dos_workflow = {
+            'dos_file': 'si-hse.dos',
+        }
+        pdos_workflow = {
+            'pdos_tot_file': 'si-hse.pdos_tot',
+        }
+
+        with patch(
+            'nanoworks.engine.qe.run_scf',
+            return_value=scf_workflow,
+        ) as run_scf_mock, patch(
+            'nanoworks.engine.qe.run_dos',
+            return_value=dos_workflow,
+        ) as run_dos_mock, patch(
+            'nanoworks.engine.qe.run_projwfc',
+            return_value=pdos_workflow,
+        ) as run_projwfc_mock:
+            workflow = run_hybrid_dos(
+                atoms=Atoms('Si'),
+                scf_input_file='scf.in',
+                scf_output_file='scf.out',
+                dos_input_file='dos.in',
+                dos_output_file='dos.out',
+                dos_file='dos.dat',
+                pdos_input_file='pdos.in',
+                pdos_output_file='pdos.out',
+                pdos_prefix='pdos',
+                state_dir='state',
+                pseudopotentials={
+                    'Si': 'Si.upf',
+                },
+                pseudo_dir='/tmp/pseudos',
+                cutoff_ev=500.0,
+                kpoint_density=2.5,
+                kpoint_size=(4, 4, 4),
+                gamma=True,
+                total_charge=0.0,
+                nbands=24,
+                spinpol=False,
+                setup_params=None,
+                xc_calc='HSE03',
+                exx_fraction=0.28,
+                omega=0.15,
+                occupation='tetrahedra',
+                emin=-8.0,
+                emax=8.0,
+                delta_e=0.1,
+                bz_sum='tetrahedra',
+                parallel_cores=4,
+            )
+
+        run_scf_mock.assert_called_once()
+        scf_call = run_scf_mock.call_args.kwargs
+        self.assertEqual(
+            scf_call['kpoint_density'],
+            2.5,
+        )
+        self.assertEqual(
+            scf_call['kpoint_size'],
+            (4, 4, 4),
+        )
+        self.assertEqual(
+            scf_call['xc_calc'],
+            'HSE03',
+        )
+        self.assertEqual(
+            scf_call['exx_fraction'],
+            0.28,
+        )
+        self.assertEqual(
+            scf_call['omega'],
+            0.15,
+        )
+        run_dos_mock.assert_called_once_with(
+            input_file='dos.in',
+            output_file='dos.out',
+            state_dir='state',
+            dos_file='dos.dat',
+            emin=-8.0,
+            emax=8.0,
+            delta_e=0.1,
+            bz_sum='tetrahedra',
+            degauss=None,
+            ngauss=None,
+            parallel_cores=4,
+            executable='dos.x',
+            prefix='nanoworks',
+        )
+        run_projwfc_mock.assert_called_once_with(
+            input_file='pdos.in',
+            output_file='pdos.out',
+            state_dir='state',
+            pdos_prefix='pdos',
+            emin=-8.0,
+            emax=8.0,
+            delta_e=0.1,
+            degauss=None,
+            ngauss=None,
+            parallel_cores=4,
+            executable='projwfc.x',
+            prefix='nanoworks',
+        )
+        self.assertIs(
+            workflow['scf'],
+            scf_workflow,
+        )
+        self.assertIs(
+            workflow['dos'],
+            dos_workflow,
+        )
+        self.assertIs(
+            workflow['pdos'],
+            pdos_workflow,
+        )
+
+    def test_run_hybrid_dos_rejects_nonhybrid_xc(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            'requires a hybrid functional',
+        ):
+            run_hybrid_dos(
+                atoms=Atoms('Si'),
+                scf_input_file='scf.in',
+                scf_output_file='scf.out',
+                dos_input_file='dos.in',
+                dos_output_file='dos.out',
+                dos_file='dos.dat',
+                pdos_input_file='pdos.in',
+                pdos_output_file='pdos.out',
+                pdos_prefix='pdos',
+                state_dir='state',
+                pseudopotentials={
+                    'Si': 'Si.upf',
+                },
+                pseudo_dir='/tmp/pseudos',
+                cutoff_ev=500.0,
                 xc_calc='PBE',
             )
 

@@ -8001,6 +8001,121 @@ def run_hybrid_bands(
         'additional_kpoints': additional_kpoints,
     }
 
+def run_hybrid_dos(
+    atoms,
+    scf_input_file,
+    scf_output_file,
+    dos_input_file,
+    dos_output_file,
+    dos_file,
+    pdos_input_file,
+    pdos_output_file,
+    pdos_prefix,
+    state_dir,
+    pseudopotentials,
+    pseudo_dir,
+    cutoff_ev,
+    kpoint_density=None,
+    kpoint_size=(5, 5, 5),
+    gamma=False,
+    total_charge=0.0,
+    nbands=None,
+    spinpol=False,
+    magnetic_moments=None,
+    setup_params=None,
+    xc_calc='HSE06',
+    pseudo_xc='pbe',
+    exx_fraction=None,
+    omega=None,
+    occupation=None,
+    emin=None,
+    emax=None,
+    delta_e=None,
+    bz_sum=None,
+    degauss=None,
+    ngauss=None,
+    parallel_cores=1,
+    scf_executable='pw.x',
+    dos_executable='dos.x',
+    projwfc_executable='projwfc.x',
+    prefix='nanoworks',
+):
+    """Run a QE hybrid SCF followed by DOS and PDOS post-processing."""
+    xc_settings = resolve_qe_xc_settings(
+        xc_calc=xc_calc,
+        pseudo_xc=pseudo_xc,
+        exx_fraction=exx_fraction,
+        omega=omega,
+    )
+
+    if not xc_settings['hybrid']:
+        raise ValueError(
+            "QE hybrid DOS requires a hybrid functional."
+        )
+
+    scf_workflow = run_scf(
+        atoms=atoms,
+        input_file=scf_input_file,
+        output_file=scf_output_file,
+        state_dir=state_dir,
+        pseudopotentials=pseudopotentials,
+        pseudo_dir=pseudo_dir,
+        cutoff_ev=cutoff_ev,
+        kpoint_density=kpoint_density,
+        kpoint_size=kpoint_size,
+        gamma=gamma,
+        total_charge=total_charge,
+        nbands=nbands,
+        spinpol=spinpol,
+        magnetic_moments=magnetic_moments,
+        setup_params=setup_params,
+        xc_calc=xc_calc,
+        pseudo_xc=pseudo_xc,
+        exx_fraction=exx_fraction,
+        omega=omega,
+        occupation=occupation,
+        parallel_cores=parallel_cores,
+        executable=scf_executable,
+        prefix=prefix,
+    )
+
+    dos_workflow = run_dos(
+        input_file=dos_input_file,
+        output_file=dos_output_file,
+        state_dir=state_dir,
+        dos_file=dos_file,
+        emin=emin,
+        emax=emax,
+        delta_e=delta_e,
+        bz_sum=bz_sum,
+        degauss=degauss,
+        ngauss=ngauss,
+        parallel_cores=parallel_cores,
+        executable=dos_executable,
+        prefix=prefix,
+    )
+
+    pdos_workflow = run_projwfc(
+        input_file=pdos_input_file,
+        output_file=pdos_output_file,
+        state_dir=state_dir,
+        pdos_prefix=pdos_prefix,
+        emin=emin,
+        emax=emax,
+        delta_e=delta_e,
+        degauss=degauss,
+        ngauss=ngauss,
+        parallel_cores=parallel_cores,
+        executable=projwfc_executable,
+        prefix=prefix,
+    )
+
+    return {
+        'scf': scf_workflow,
+        'dos': dos_workflow,
+        'pdos': pdos_workflow,
+    }
+
 def run_dos(
     input_file,
     output_file,
