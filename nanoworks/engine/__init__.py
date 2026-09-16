@@ -235,3 +235,30 @@ def resolve_stage_occupation(stage_occupation, ground_occupation):
         return ground_occupation
 
     return stage_occupation
+
+
+_CALCULATION_STAGE_FLAGS = (
+    ('elastic', 'Elastic_calc'),
+    ('dos', 'DOS_calc'),
+    ('band', 'Band_calc'),
+    ('density', 'Density_calc'),
+    ('phonon', 'Phonon_calc'),
+    ('optical', 'Optical_calc'),
+)
+
+
+def resolve_calculation_stages(config):
+    """Return requested calculation stages in dependency-safe order.
+
+    The ground-state stage is always included because every downstream
+    calculation either creates or validates the state it consumes.  Optical
+    calculations are placed last so that their high-memory response step can
+    run after the other requested post-processing stages.
+    """
+    stages = ['ground']
+
+    for stage, flag in _CALCULATION_STAGE_FLAGS:
+        if getattr(config, flag, False):
+            stages.append(stage)
+
+    return tuple(stages)
