@@ -16,10 +16,96 @@ with patch.object(
     from nanoworks.dftsolve import (
         DFTConfig,
         dftsolve as DFTSolver,
+        run_calculation_stages,
     )
 
 
 class TestDFTSolveWorkflow(unittest.TestCase):
+
+    def test_run_calculation_stages_runs_ground_only_by_default(self):
+        solver = Mock()
+        config = SimpleNamespace()
+
+        run_calculation_stages(
+            solver,
+            config,
+        )
+
+        solver.groundcalc.assert_called_once_with()
+        solver.elasticcalc.assert_not_called()
+        solver.doscalc.assert_not_called()
+        solver.bandcalc.assert_not_called()
+        solver.densitycalc.assert_not_called()
+        solver.phononcalc.assert_not_called()
+        solver.opticalcalc.assert_not_called()
+
+    def test_run_calculation_stages_keeps_optical_last(self):
+        calls = []
+        solver = SimpleNamespace(
+            groundcalc=lambda: calls.append('ground'),
+            elasticcalc=lambda: calls.append('elastic'),
+            doscalc=lambda: calls.append('dos'),
+            bandcalc=lambda: calls.append('band'),
+            densitycalc=lambda: calls.append('density'),
+            phononcalc=lambda: calls.append('phonon'),
+            opticalcalc=lambda: calls.append('optical'),
+        )
+        config = SimpleNamespace(
+            Elastic_calc=True,
+            DOS_calc=True,
+            Band_calc=True,
+            Density_calc=True,
+            Phonon_calc=True,
+            Optical_calc=True,
+        )
+
+        run_calculation_stages(
+            solver,
+            config,
+        )
+
+        self.assertEqual(
+            calls,
+            [
+                'ground',
+                'elastic',
+                'dos',
+                'band',
+                'density',
+                'phonon',
+                'optical',
+            ],
+        )
+
+    def test_run_calculation_stages_releases_calculator_before_optical(self):
+        atoms = SimpleNamespace(
+            calc=object(),
+        )
+        calculator_seen_by_optical = []
+        solver = SimpleNamespace(
+            bulk_configuration=atoms,
+            groundcalc=lambda: None,
+            opticalcalc=lambda: calculator_seen_by_optical.append(
+                atoms.calc
+            ),
+        )
+        config = SimpleNamespace(
+            Optical_calc=True,
+        )
+
+        with patch(
+            'nanoworks.dftsolve.gc.collect'
+        ) as collect:
+            run_calculation_stages(
+                solver,
+                config,
+            )
+
+        self.assertEqual(
+            calculator_seen_by_optical,
+            [None],
+        )
+        collect.assert_called_once_with()
 
     def test_load_existing_final_structure(self):
         initial = Atoms(

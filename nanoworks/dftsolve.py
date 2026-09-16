@@ -12,6 +12,7 @@ Description = f'''
 
 import sys
 import os, glob
+import gc
 import shutil
 import subprocess
 
@@ -202,6 +203,7 @@ import pickle
 import nanoworks
 from nanoworks.engine import (
     normalize_engine_name,
+    resolve_calculation_stages,
     resolve_initial_magnetic_moments,
     resolve_stage_kpoint_settings,
     resolve_stage_occupation,
@@ -5700,6 +5702,28 @@ def projected_weights(calc):
 
 # End of Projected Band Structure related functions----------------
 
+
+def run_calculation_stages(solver, config):
+    """Run all requested DFT stages in dependency-safe order."""
+    for stage in resolve_calculation_stages(config):
+        if stage == 'optical':
+            atoms = getattr(
+                solver,
+                'bulk_configuration',
+                None,
+            )
+
+            if atoms is not None:
+                atoms.calc = None
+
+            gc.collect()
+
+        getattr(
+            solver,
+            f'{stage}calc',
+        )()
+
+
 def main():
     meter = None
     parser = ArgumentParser(prog ='dftsolve.py', description=Description, formatter_class=RawFormatter)
@@ -5817,32 +5841,13 @@ def main():
     # Run structure calculation
     dftsolver.structurecalc()
 
-    if config.Optical_calc == False:
-        # Run ground state calculation
-        dftsolver.groundcalc()
-
-        if config.Elastic_calc == True:
-            # Run elastic calculation
-            dftsolver.elasticcalc()
-
-        if config.DOS_calc == True:
-            # Run DOS calculation
-            dftsolver.doscalc()
-
-        if config.Band_calc == True:
-            # Run band calculation
-            dftsolver.bandcalc()
-
-        if config.Density_calc == True:
-            # Run all-electron density calculation
-            dftsolver.densitycalc()    
-
-        if config.Phonon_calc == True:
-            # Run phonon calculation
-            dftsolver.phononcalc()  
-    else:
-        # Run optical calculation
-        dftsolver.opticalcalc()
+    # Run ground state and every requested downstream calculation.
+    # Optical stays last because its response step can require much more
+    # memory than the other post-processing stages.
+    run_calculation_stages(
+        dftsolver,
+        config,
+    )
 
     # Ending of timings
     with paropen(
