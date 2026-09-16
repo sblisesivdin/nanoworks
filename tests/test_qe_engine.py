@@ -2943,6 +2943,129 @@ class TestQEEngine(unittest.TestCase):
             band_path,
         )
 
+    def test_run_hybrid_bands_prepares_projected_band_data(self):
+        band_path = {
+            'kpoints': [
+                (0.0, 0.0, 0.0),
+                (0.5, 0.0, 0.0),
+            ],
+            'npoints': 2,
+        }
+        scf_workflow = {
+            'result': {
+                'job_done': True,
+            },
+        }
+        bands_workflow = {
+            'result': {
+                'job_done': True,
+            },
+        }
+        band_data = {
+            'nkpoints': 2,
+            'nbands': 3,
+            'eigenvalues_ev': [[
+                [-5.0, -1.0, 1.0],
+                [-4.0, 0.0, 2.0],
+            ]],
+        }
+        projection_workflow = {
+            'projection_up_file': 'projection.projwfc_up',
+            'projection_down_file': None,
+        }
+        raw_projection = {
+            'nkpoints': 2,
+            'nbands': 3,
+            'states': [],
+        }
+        prepared_projection = {
+            'nkpoints': 2,
+            'nbands': 3,
+            'projections': [],
+        }
+
+        with patch(
+            'nanoworks.engine.qe.run_scf',
+            return_value=scf_workflow,
+        ), patch(
+            'nanoworks.engine.qe.run_bands_postprocess',
+            return_value=bands_workflow,
+        ), patch(
+            'nanoworks.engine.qe.parse_bands_x_output',
+            return_value=band_data,
+        ), patch(
+            'nanoworks.engine.qe.run_band_projections',
+            return_value=projection_workflow,
+        ) as run_projection, patch(
+            'nanoworks.engine.qe.parse_projwfc_band_file',
+            return_value=raw_projection,
+        ) as parse_projection, patch(
+            'nanoworks.engine.qe.prepare_qe_band_projection_data',
+            return_value=prepared_projection,
+        ) as prepare_projection:
+            workflow = run_hybrid_bands(
+                atoms=Atoms('Si'),
+                scf_input_file='scf.in',
+                scf_output_file='scf.out',
+                bands_input_file='bands.in',
+                bands_output_file='bands.out',
+                state_dir='state',
+                band_file='bands.dat',
+                pseudopotentials={
+                    'Si': 'Si.upf',
+                },
+                pseudo_dir='/tmp/pseudos',
+                cutoff_ev=400.0,
+                band_path=band_path,
+                qpoint_grid=(2, 1, 1),
+                xc_calc='HSE06',
+                projected_band=True,
+                projections=[
+                    {
+                        'atoms': [0],
+                        'orbital': 'p',
+                        'color': 'red',
+                        'label': 'Si p',
+                    },
+                ],
+                projection_input_file='projection.in',
+                projection_output_file='projection.out',
+                projection_prefix='projection',
+            )
+
+        run_projection.assert_called_once_with(
+            input_file='projection.in',
+            output_file='projection.out',
+            state_dir='state',
+            projection_prefix='projection',
+            spinpol=False,
+            parallel_cores=1,
+            executable='projwfc.x',
+            prefix='nanoworks',
+        )
+        parse_projection.assert_called_once_with(
+            'projection.projwfc_up',
+            kpoint_indices=[0, 1],
+        )
+        prepare_projection.assert_called_once_with(
+            raw_projection,
+            projections=[
+                {
+                    'atoms': [0],
+                    'orbital': 'p',
+                    'color': 'red',
+                    'label': 'Si p',
+                },
+            ],
+        )
+        self.assertIs(
+            workflow['band_projections']['up'],
+            prepared_projection,
+        )
+        self.assertIsNone(
+            workflow['band_projections']['down'],
+        )
+
     def test_run_hybrid_bands_rejects_nonhybrid_xc(self):
         with self.assertRaisesRegex(
             ValueError,
@@ -5076,6 +5199,53 @@ def test_run_spin_polarized_band_projections(self):
             [
                 [0.25],
                 [0.75],
+            ],
+        )
+
+    def test_parse_projwfc_band_file_selects_requested_kpoints(self):
+        projection_text = """
+        8 8 8 8 8 8 1 1
+        0 5.0 0.0 0.0 0.0 0.0 0.0
+        10.0 4.0 30.0 9
+        1 Fe 16.0
+        1 0.0 0.0 0.0 1
+        3 1 1
+        F F
+        1 1 Fe 4S 1 0 1
+        1 1 0.10
+        2 1 0.20
+        3 1 0.30
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            projection_file = (
+                Path(tmpdir)
+                / 'bands.projwfc_up'
+            )
+
+            projection_file.write_text(
+                projection_text,
+                encoding='utf-8',
+            )
+
+            result = parse_projwfc_band_file(
+                projection_file,
+                kpoint_indices=[2, 0],
+            )
+
+        self.assertEqual(
+            result['nkpoints'],
+            2,
+        )
+        self.assertEqual(
+            result['kpoint_indices'],
+            [2, 0],
+        )
+        self.assertEqual(
+            result['states'][0]['weights'],
+            [
+                [0.30],
+                [0.10],
             ],
         )
 

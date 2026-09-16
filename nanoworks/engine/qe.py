@@ -5162,6 +5162,7 @@ def parse_bands_x_output(
 
 def parse_projwfc_band_file(
     projection_file,
+    kpoint_indices=None,
 ):
     """Parse one QE projwfc.x band-projection file."""
     projection_file = Path(
@@ -5610,6 +5611,45 @@ def parse_projwfc_band_file(
             'weights': weights,
         })
 
+    if kpoint_indices is None:
+        selected_kpoint_indices = list(
+            range(nkpoints)
+        )
+    else:
+        try:
+            selected_kpoint_indices = [
+                int(index)
+                for index in kpoint_indices
+            ]
+        except (TypeError, ValueError) as exc:
+            raise TypeError(
+                "QE band projection k-point selection must be "
+                "an iterable of integer indices."
+            ) from exc
+
+        if not selected_kpoint_indices:
+            raise ValueError(
+                "QE band projection k-point selection must not be empty."
+            )
+
+        if any(
+            index < 0 or index >= nkpoints
+            for index in selected_kpoint_indices
+        ):
+            raise ValueError(
+                "QE band projection k-point selection is out of range."
+            )
+
+        for state in states:
+            state['weights'] = [
+                state['weights'][index]
+                for index in selected_kpoint_indices
+            ]
+
+        nkpoints = len(
+            selected_kpoint_indices
+        )
+
     return {
         'file': projection_file,
         'natoms': natoms,
@@ -5619,6 +5659,7 @@ def parse_projwfc_band_file(
         'nbands': nbands,
         'noncollinear': noncollinear,
         'spin_orbit': spin_orbit,
+        'kpoint_indices': selected_kpoint_indices,
         'states': states,
     }
 
@@ -7912,6 +7953,12 @@ def run_hybrid_bands(
     bands_executable='bands.x',
     prefix='nanoworks',
     lsym=False,
+    projected_band=False,
+    projections=None,
+    projection_input_file=None,
+    projection_output_file=None,
+    projection_prefix=None,
+    projection_executable='projwfc.x',
 ):
     """Run a QE hybrid SCF followed by bands.x post-processing."""
     xc_settings = resolve_qe_xc_settings(
@@ -7993,12 +8040,126 @@ def run_hybrid_bands(
             f"{requested_npoints} were requested."
         )
 
+    band_projections = None
+
+    if projected_band:
+        projection_paths = {
+            'projection_input_file': (
+                projection_input_file
+            ),
+            'projection_output_file': (
+                projection_output_file
+            ),
+            'projection_prefix': (
+                projection_prefix
+            ),
+        }
+
+        missing_paths = [
+            name
+            for name, value in (
+                projection_paths.items()
+            )
+            if value is None
+        ]
+
+        if missing_paths:
+            raise ValueError(
+                "QE projected hybrid bands require: "
+                + ', '.join(
+                    missing_paths
+                )
+            )
+
+        projection_workflow = (
+            run_band_projections(
+                input_file=projection_input_file,
+                output_file=projection_output_file,
+                state_dir=state_dir,
+                projection_prefix=projection_prefix,
+                spinpol=spinpol,
+                parallel_cores=parallel_cores,
+                executable=projection_executable,
+                prefix=prefix,
+            )
+        )
+
+        projection_indices = additional_kpoints[
+            'band_indices'
+        ]
+
+        raw_up = parse_projwfc_band_file(
+            projection_workflow[
+                'projection_up_file'
+            ],
+            kpoint_indices=projection_indices,
+        )
+
+        if (
+            raw_up['nkpoints']
+            != band_data['nkpoints']
+            or raw_up['nbands']
+            != band_data['nbands']
+        ):
+            raise RuntimeError(
+                "QE hybrid spin-up band projections do not "
+                "match the calculated band dimensions."
+            )
+
+        prepared_up = (
+            prepare_qe_band_projection_data(
+                raw_up,
+                projections=projections,
+            )
+        )
+
+        raw_down = None
+        prepared_down = None
+
+        if spinpol:
+            raw_down = parse_projwfc_band_file(
+                projection_workflow[
+                    'projection_down_file'
+                ],
+                kpoint_indices=projection_indices,
+            )
+
+            if (
+                raw_down['nkpoints']
+                != band_data['nkpoints']
+                or raw_down['nbands']
+                != band_data['nbands']
+            ):
+                raise RuntimeError(
+                    "QE hybrid spin-down band projections do not "
+                    "match the calculated band dimensions."
+                )
+
+            prepared_down = (
+                prepare_qe_band_projection_data(
+                    raw_down,
+                    projections=projections,
+                )
+            )
+
+        band_projections = {
+            'workflow': projection_workflow,
+            'spin_polarized': bool(
+                spinpol
+            ),
+            'raw_up': raw_up,
+            'raw_down': raw_down,
+            'up': prepared_up,
+            'down': prepared_down,
+        }
+
     return {
         'scf': scf_workflow,
         'bands': bands_workflow,
         'band_data': band_data,
         'band_path': band_path,
         'additional_kpoints': additional_kpoints,
+        'band_projections': band_projections,
     }
 
 def run_hybrid_dos(
