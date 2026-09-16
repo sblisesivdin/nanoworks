@@ -47,7 +47,10 @@ Advanced DFT Methods & Corrections
   Demonstrates how to configure and run spin-polarized calculations for magnetic systems, extracting local magnetic moments and spin-resolved band structures. (Folder: ``Cr2O-spin/``)
 
 * **Si with HSE06 Hybrid Functional:**
-  An advanced example showing how to apply the HSE06 hybrid functional for more accurate band gap predictions in Silicon, overcoming the standard GGA band gap underestimation. (Folder: ``Si-with-HSE/``)
+  An advanced GPAW example showing how to apply the HSE06 hybrid functional
+  for more accurate band gap predictions in Silicon. Native QE also supports
+  HSE06, HSE03, and PBE0 for ground-state, DOS/PDOS, band, projected-band,
+  and density calculations. (Folder: ``Si-with-HSE/``)
 
 * **Charged Graphene:**
   Shows how to calculate the properties of a supercell (e.g., defective graphene) with an explicitly added or removed background charge. (Folder: ``Graphene-charged/``)
@@ -124,5 +127,4 @@ Then you can run the command in this readme file. You can change -p argument if 
 .. code-block:: bash
 
     (.venv_nw) $ dftsolve -p 8 -i Si-phonon.py -g Si_mp-149_primitive.cif
-
 

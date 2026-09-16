@@ -25,7 +25,7 @@ settings explicit and reusable.
      <article class="nw-card">
        <span class="nw-command">dftsolve</span>
        <h3>DFT Workflows</h3>
-       <p>Run electronic-structure and materials-property calculations through GPAW or Quantum ESPRESSO, including QE geometry optimization, spin-resolved electronic structure, projected bands, and electron-density outputs.</p>
+       <p>Run electronic-structure and materials-property calculations through GPAW or Quantum ESPRESSO. GPAW provides the complete workflow; QE supports PBE workflows and native HSE06, HSE03, and PBE0 electronic workflows.</p>
        <a href="usage.html#dftsolve-formerly-gpawsolve-py">Explore DFT workflows →</a>
      </article>
      <article class="nw-card">
@@ -41,6 +41,13 @@ settings explicit and reusable.
        <a href="usage.html#mlsolve-new">Explore ML workflows →</a>
      </article>
    </div>
+
+GPAW currently provides the complete Nanoworks DFT workflow. Native QE support
+covers PBE ground-state, geometry-optimization, DFT+U, spin-resolved DOS/PDOS,
+band, projected-band, and electron-density calculations. Native QE
+``HSE06``, ``HSE03``, and ``PBE0`` support the electronic stages: ground,
+DOS/PDOS, band, projected-band, and density. QE hybrid geometry, elastic,
+phonon, and optical workflows are not supported yet.
 
 Why Nanoworks?
 --------------
@@ -79,6 +86,7 @@ Capabilities depend on the selected solver and computational backend.
      <span>Band structures</span>
      <span>DOS and PDOS</span>
      <span>Projected and fat bands</span>
+     <span>Hybrid electronic structure</span>
      <span>Spin-polarized properties</span>
      <span>Electron and spin densities</span>
      <span>Equations of state</span>
