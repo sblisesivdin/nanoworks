@@ -18,7 +18,7 @@
 It acts as a wrapper and orchestrator for several powerful scientific libraries, making advanced materials simulation accessible through simple command-line tools.
 
 **Core Capabilities:**
-1.  **DFT (via GPAW, Quantum ESPRESSO & ASE):** The `dftsolve` tool provides the established Nanoworks workflow through GPAW and a growing native Quantum ESPRESSO backend. QE workflows include PBE plane-wave ground-state calculations, atomic and variable-cell geometry optimization, spin-resolved DOS/PDOS and band structures, projected (fat) bands, and pseudo-valence electron-density Cube outputs.
+1.  **DFT (via GPAW, Quantum ESPRESSO & ASE):** The `dftsolve` tool provides the complete established workflow through GPAW and a native Quantum ESPRESSO backend. QE supports PBE ground-state, atomic and variable-cell geometry optimization, DFT+U, spin-resolved DOS/PDOS, band, projected (fat) band, and pseudo-valence electron-density Cube calculations. Native QE `HSE06`, `HSE03`, and `PBE0` support ground-state, DOS/PDOS, band, projected-band, and density calculations.
 2. **MD (via ASAP3, LAMMPS & OpenKIM):** The `mdsolve` tool provides molecular dynamics calculations using either ASAP3 or LAMMPS with OpenKIM interatomic potentials.
 3.  **ML Potentials (New!):** The `mlsolve` tool enables geometry optimization and static calculations using state-of-the-art Machine Learning Force Fields (MLFF), including **MACE**, **CHGNet**, and **SevenNet**.
 
@@ -41,7 +41,7 @@ Prefer a proper and controlled setup? Nanoworks is a Python package. You can ins
 After installation, the following commands will be available in your terminal:
 
 ### 1. dftsolve (formerly gpawsolve.py)
-The main driver for DFT calculations using GPAW or Quantum ESPRESSO. GPAW runs the complete Python workflow under MPI, while Nanoworks launches the supported QE executables with the number of processes requested by the `-p` argument.
+The main driver for DFT calculations using GPAW or Quantum ESPRESSO. GPAW runs the complete Python workflow under MPI, while Nanoworks launches the supported QE executables with the number of processes requested by the `-p` argument. QE hybrid `HSE06`, `HSE03`, and `PBE0` workflows use native plane-wave exact exchange for ground-state, DOS/PDOS, band, projected-band, and density calculations. QE hybrid geometry, elastic, phonon, and optical workflows are not supported yet.
 
 **Usage:**
 ```bash
@@ -94,7 +94,8 @@ mlsolve -g structure.cif -i ml_input.py
 **Supported Models:** `mace`, `chgnet`, `sevennet`.
 
 ### 4. nanoworks
-A helper CLI to locate package resources like examples and optimization scripts. For now, it is only showing helpful information. In the future, it will be equipped with more 
+A helper CLI to locate package resources, install examples, and install the
+default Quantum ESPRESSO pseudopotential library.
 
 ```bash
 $ nanoworks
@@ -114,7 +115,9 @@ options:
 
 `qeconverter` creates Nanoworks input and geometry files from Quantum
 ESPRESSO `pw.x` inputs. It supports common SCF, NSCF, bands, relax,
-variable-cell, spin, and on-site Hubbard-U settings.
+variable-cell, spin, occupation, k-point, and on-site Hubbard-U settings.
+Use `--xc HSE06`, `--xc HSE03`, or `--xc PBE0` to select a native QE hybrid
+functional in the generated input.
 
 ```bash
 qeconverter \

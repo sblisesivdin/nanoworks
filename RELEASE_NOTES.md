@@ -2,53 +2,21 @@
 
 ### Development Version
 
-- LAMMPS is added as a new molecular dynamics engine for `mdsolve`.
-- ASAP3 and LAMMPS now use the same `mdsolve` input workflow for temperature, time step and temperature damping.
-- Temperature, time step and temperature damping profiles and parameter sweeps are supported by both MD engines.
-- LAMMPS calculations now generate Nanoworks energy, trajectory and final-structure outputs together with native LAMMPS input, log and dump files.
-- Periodic boundary conditions are transferred to LAMMPS calculations.
-- The `mdsolve` example and documentation are renewed for the new MD workflow.
-- Initial Quantum ESPRESSO backend support is added to the new DFT engine infrastructure.
-- Quantum ESPRESSO 7.2 is used as the initial validated QE version.
-- Basic Quantum ESPRESSO PW ground-state calculations are now supported with `Engine = 'QE'` and `Ground_calc = True`.
-- Existing Quantum ESPRESSO ground-state results can now be reused with `Ground_calc = False` after validating the saved QE state.
-- Existing Nanoworks input concepts such as plane-wave cutoff energy, k-point density or explicit k-point meshes, Gamma centering, occupations, total charge and spin polarization are translated to Quantum ESPRESSO input syntax.
-- The existing `dftsolve -p N` parallel execution interface is retained for both backends. GPAW runs the complete Python workflow under MPI, while Quantum ESPRESSO keeps Nanoworks serial and launches the QE executable with the requested number of MPI processes.
-- A Quantum ESPRESSO execution and output parsing layer is added, including executable discovery, MPI launcher construction, input generation, output logging, QE version validation, successful-completion detection, total-energy parsing and Fermi-energy parsing.
-- Quantum ESPRESSO child processes are restricted to one OpenMP/BLAS thread per MPI rank to prevent CPU oversubscription during parallel calculations.
-- A PseudoDojo pseudopotential installation and resolution infrastructure is added for Quantum ESPRESSO. Standard PBE scalar-relativistic and fully-relativistic UPF sets can be installed with the `nanoworks` command.
-- The first validated Nanoworks Quantum ESPRESSO calculation is a parallel PW ground-state calculation for the `Bulk-GaAs-noCIF` example using PBE and PseudoDojo pseudopotentials.
-- Quantum ESPRESSO DOS and PDOS calculations are now supported for non-spin PBE plane-wave workflows.
-- The QE DOS workflow reuses the converged ground-state data, performs an NSCF calculation with `pw.x`, calculates the total DOS with `dos.x` and calculates the orbital-projected DOS with `projwfc.x`.
-- QE DOS calculations currently use tetrahedron occupations. Spin-polarized DOS, SOC, hybrid functionals and smearing-based QE DOS workflows are not supported yet.
-- The existing Nanoworks `Energy_min` and `Energy_max` semantics are preserved for QE DOS calculations. The user-defined energy window is interpreted relative to the Fermi level, while the corresponding absolute energy limits are passed internally to `dos.x`.
-- Quantum ESPRESSO total DOS and projected DOS results are written using the existing Nanoworks CSV naming scheme. Total DOS graphs are also created with energies referenced to the Fermi level.
-- A Quantum ESPRESSO `projwfc.x` output parser and orbital PDOS aggregation layer are added for s, p and d orbitals. Unsupported f-orbital data is rejected instead of being interpreted incorrectly.
-- GPAW and Quantum ESPRESSO PDOS CSV outputs now use the same canonical orbital column order.
-- A major internal refactorization of the DFT calculation workflow has started. GPAW-specific calculator construction, state loading and preparation functions are being moved from `dftsolve.py` into the new `nanoworks.engine` infrastructure.
-- A new `Engine` keyword and engine-name normalization infrastructure are added as the basis for supporting multiple DFT engines in Nanoworks. GPAW remains the default engine, while Quantum ESPRESSO is available for the currently supported PW ground-state and DOS/PDOS workflows.
-- Regular PW, hybrid PW and LCAO ground-state calculator construction are moved to the GPAW engine layer while preserving the previous calculation behavior.
-- Elastic, phonon, DOS, band and optical calculator preparation is moved to the GPAW engine layer.
-- GPAW state loading is centralized. Hybrid calculations continue to use the legacy GPAW path where required, while regular calculations continue to use the new GPAW implementation.
-- Common GPAW helpers are added for k-point specifications, real-space grids, ground-state calculator arguments, XC/setup resolution and default density mixing.
-- The geometry optimization conditions are corrected. `Geo_optim = False` now properly prevents geometry optimization and cell-relaxation related operations.
-- LCAO grid-spacing handling is corrected.
-- Elastic calculations now use the properly resolved XC and setup information.
-- New stage-specific DOS sampling keywords are added: `DOS_kpts_density`, `DOS_kpts_x`, `DOS_kpts_y`, `DOS_kpts_z`, `DOS_gamma` and `DOS_occupation`. DOS calculations can now use a different k-point sampling and occupation scheme from the ground-state calculation.
-- New stage-specific optical sampling keywords are added: `Opt_kpts_density`, `Opt_kpts_x`, `Opt_kpts_y`, `Opt_kpts_z` and `Opt_gamma`.
-- New stage-specific elastic sampling keywords are added: `Elastic_kpts_density`, `Elastic_kpts_x`, `Elastic_kpts_y`, `Elastic_kpts_z` and `Elastic_gamma`.
-- New `Ground_gamma` keyword is added. The old `Gamma` keyword is retained for backward compatibility and is used as a fallback when `Ground_gamma` is not specified.
-- New `Ground_num_of_bands`, `DOS_num_of_bands` and `Band_num_of_bands` keywords are added to allow explicit control of the number of electronic bands at different calculation stages.
-- Stage-specific k-point settings automatically fall back to the corresponding ground-state settings when they are not explicitly supplied.
-- Stage-specific k-point meshes can override a ground-state k-point density, while unspecified mesh components inherit the corresponding ground-state values.
-- Hybrid DOS, band and optical workflows preserve their existing direct ground-state loading behavior instead of incorrectly applying regular fixed-density preparation paths.
-- A new test infrastructure is added for the engine layer and GPAW-specific calculation builders. Ground-state, hybrid, elastic, phonon, DOS, band, optical, k-point, grid and fallback behaviors are now covered by unit tests.
-- The `dftsolve` keyword documentation is updated with the new engine, stage-specific sampling and band-count settings.
-- Several outdated keyword defaults in the documentation are corrected to match the actual `DFTConfig` defaults.
-- The documented `Occupations` keyword is corrected to the actual `Occupation` keyword.
-- Hybrid elastic and phonon limitations are clarified in the documentation.
-- Build artifacts, Python cache files and generated package metadata are excluded from the repository with an updated `.gitignore`.
-- Many other internal cleanups and small fixes were made while keeping the existing GPAW user workflow backward compatible.
+- Native Quantum ESPRESSO support covers PBE ground-state, fixed-cell and variable-cell geometry optimization, DFT+U, spin-resolved DOS/PDOS, band, projected-band and pseudo-valence density workflows.
+- Native QE `HSE06`, `HSE03` and `PBE0` support ground-state, DOS/PDOS, band, projected-band and density calculations.
+- QE hybrid DOS/PDOS uses a dedicated hybrid SCF followed by `dos.x` and `projwfc.x`; a separate hybrid NSCF calculation is not used.
+- QE hybrid band calculations add zero-weight band-path states to the SCF, then use `bands.x`; projected bands additionally use `projwfc.x`.
+- QE hybrid DOS and band energies are referenced to the converged SCF Fermi level.
+- `XC_exx_fraction` and `XC_omega` tune hybrid exact exchange and HSE screening. `XC_backend` selects the GPAW hybrid backend.
+- Stage-specific k-point and band-count keywords are supported for ground-state, DOS, optical, elastic and band workflows.
+- `DOS_occupation` selects the QE tetrahedron scheme. `DOS_width` remains the GPAW DOS width setting.
+- `Projected_band_plot` and `Projections` support orbital-projected (fat) bands with GPAW and QE.
+- `qeconverter` converts common QE inputs and accepts `--xc HSE06`, `--xc HSE03` and `--xc PBE0` overrides.
+- Quantum ESPRESSO 7.2 is the initially validated QE version. PseudoDojo PBE pseudopotentials can be installed with `nanoworks --install-qe-pseudos`.
+- The `dftsolve -p N` interface is retained. GPAW runs under MPI and QE executables are launched with the requested process count.
+- LAMMPS is available in `mdsolve` alongside ASAP3 with shared temperature, time-step, damping and parameter-sweep settings.
+- `mlsolve` supports geometry optimization and static calculations with MACE, CHGNet and SevenNet.
+- The DFT engine layer, keyword reference and QE examples are updated while preserving the established GPAW workflow.
 
 ### Version 26.8.0 - Aug 3, 2026
 
