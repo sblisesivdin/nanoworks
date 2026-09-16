@@ -16,6 +16,7 @@ with patch.object(
     from nanoworks.dftsolve import (
         DFTConfig,
         dftsolve as DFTSolver,
+        release_stage_resources,
         run_calculation_stages,
     )
 
@@ -77,25 +78,61 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             ],
         )
 
-    def test_run_calculation_stages_releases_calculator_before_optical(self):
+    def test_release_stage_resources_detaches_calculator_and_synchronizes(self):
+        atoms = SimpleNamespace(
+            calc=object(),
+        )
+        solver = SimpleNamespace(
+            bulk_configuration=atoms,
+        )
+
+        with (
+            patch(
+                'nanoworks.dftsolve.gc.collect'
+            ) as collect,
+            patch(
+                'nanoworks.dftsolve.world.barrier'
+            ) as barrier,
+        ):
+            release_stage_resources(
+                solver
+            )
+
+        self.assertIsNone(
+            atoms.calc
+        )
+        collect.assert_called_once_with()
+        barrier.assert_called_once_with()
+
+    def test_run_calculation_stages_releases_resources_around_optical(self):
         atoms = SimpleNamespace(
             calc=object(),
         )
         calculator_seen_by_optical = []
+
+        def run_optical():
+            calculator_seen_by_optical.append(
+                atoms.calc
+            )
+            atoms.calc = object()
+
         solver = SimpleNamespace(
             bulk_configuration=atoms,
             groundcalc=lambda: None,
-            opticalcalc=lambda: calculator_seen_by_optical.append(
-                atoms.calc
-            ),
+            opticalcalc=run_optical,
         )
         config = SimpleNamespace(
             Optical_calc=True,
         )
 
-        with patch(
-            'nanoworks.dftsolve.gc.collect'
-        ) as collect:
+        with (
+            patch(
+                'nanoworks.dftsolve.gc.collect'
+            ) as collect,
+            patch(
+                'nanoworks.dftsolve.world.barrier'
+            ) as barrier,
+        ):
             run_calculation_stages(
                 solver,
                 config,
@@ -105,7 +142,17 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             calculator_seen_by_optical,
             [None],
         )
-        collect.assert_called_once_with()
+        self.assertIsNone(
+            atoms.calc
+        )
+        self.assertEqual(
+            collect.call_count,
+            2,
+        )
+        self.assertEqual(
+            barrier.call_count,
+            2,
+        )
 
     def test_load_existing_final_structure(self):
         initial = Atoms(

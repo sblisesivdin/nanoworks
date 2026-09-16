@@ -5703,25 +5703,38 @@ def projected_weights(calc):
 # End of Projected Band Structure related functions----------------
 
 
+def release_stage_resources(solver):
+    """Release calculator references and synchronize calculation ranks."""
+    atoms = getattr(
+        solver,
+        'bulk_configuration',
+        None,
+    )
+
+    if atoms is not None:
+        atoms.calc = None
+
+    gc.collect()
+    world.barrier()
+
+
 def run_calculation_stages(solver, config):
     """Run all requested DFT stages in dependency-safe order."""
     for stage in resolve_calculation_stages(config):
         if stage == 'optical':
-            atoms = getattr(
-                solver,
-                'bulk_configuration',
-                None,
+            release_stage_resources(
+                solver
             )
-
-            if atoms is not None:
-                atoms.calc = None
-
-            gc.collect()
 
         getattr(
             solver,
             f'{stage}calc',
         )()
+
+        if stage == 'optical':
+            release_stage_resources(
+                solver
+            )
 
 
 def main():
