@@ -2175,7 +2175,7 @@ class dftsolve:
         time21 = time.time()
 
         parprint(
-            "Starting QE DOS NSCF calculation..."
+            "Starting QE DOS calculation..."
         )
 
         if self.Mode != 'PW':
@@ -2195,9 +2195,10 @@ class dftsolve:
             sys.exit(1)
 
         try:
-            self.engine.validate_qe_xc(
+            validated_xc = self.engine.validate_qe_xc(
                 self.XC_calc,
                 pseudo_xc='pbe',
+                allow_hybrid=True,
             )
         except ValueError as exc:
             parprint(
@@ -2205,22 +2206,39 @@ class dftsolve:
             )
             sys.exit(1)
 
-        state_dir = Path(
+        hybrid = str(
+            validated_xc
+        ).strip().lower() in {
+            'hse06',
+            'hse03',
+            'pbe0',
+        }
+
+        ground_state_dir = Path(
             self.struct
             + '-GROUND-QE-Result-State'
         )
 
         if not self.engine.has_qe_state(
-            state_dir,
+            ground_state_dir,
             prefix='nanoworks',
         ):
             parprint(
                 "\033[91mERROR:\033[0m "
-                + str(state_dir)
+                + str(ground_state_dir)
                 + " does not contain a valid QE ground-state result. "
                 "Complete the ground-state calculation first."
             )
             sys.exit(1)
+
+        state_dir = (
+            Path(
+                self.struct
+                + '-DOS-QE-Result-State'
+            )
+            if hybrid
+            else ground_state_dir
+        )
 
         pseudo_dir = get_qe_pseudo_dir(
             relativistic='scalar',
@@ -2284,83 +2302,104 @@ class dftsolve:
                 )
             )
 
-        input_file = Path(
-            self.struct
-            + '-DOS-QE-Input-NSCF.in'
-        )
-
-        output_file = Path(
-            self.struct
-            + '-DOS-QE-Log-NSCF.txt'
-        )
-
-        try:
-            workflow = self.engine.run_nscf(
-                atoms=self.bulk_configuration,
-                input_file=input_file,
-                output_file=output_file,
-                state_dir=state_dir,
-                pseudopotentials=pseudopotentials,
-                pseudo_dir=pseudo_dir,
-                cutoff_ev=self.Cut_off_energy,
-                kpoint_density=dos_kpoint_density,
-                kpoint_size=dos_kpoint_size,
-                gamma=dos_gamma,
-                total_charge=self.Total_charge,
-                nbands=self.DOS_num_of_bands,
-                spinpol=self.Spin_calc,
-                magnetic_moments=magnetic_moments,
-                setup_params=self.Setup_params,
-                xc_calc=self.XC_calc,
-                exx_fraction=self.XC_exx_fraction,
-                omega=self.XC_omega,
-                occupation=dos_occupation,
-                parallel_cores=self.parallel_cores,
-                executable='pw.x',
-                prefix='nanoworks',
+        if hybrid:
+            scf_input_file = Path(
+                self.struct
+                + '-DOS-QE-Input-Hybrid-SCF.in'
             )
-        except Exception as exc:
+
+            scf_output_file = Path(
+                self.struct
+                + '-DOS-QE-Log-Hybrid-SCF.txt'
+            )
+        else:
+            input_file = Path(
+                self.struct
+                + '-DOS-QE-Input-NSCF.in'
+            )
+
+            output_file = Path(
+                self.struct
+                + '-DOS-QE-Log-NSCF.txt'
+            )
+
+        workflow = None
+        result = None
+
+        if not hybrid:
+            try:
+                workflow = self.engine.run_nscf(
+                    atoms=self.bulk_configuration,
+                    input_file=input_file,
+                    output_file=output_file,
+                    state_dir=state_dir,
+                    pseudopotentials=pseudopotentials,
+                    pseudo_dir=pseudo_dir,
+                    cutoff_ev=self.Cut_off_energy,
+                    kpoint_density=dos_kpoint_density,
+                    kpoint_size=dos_kpoint_size,
+                    gamma=dos_gamma,
+                    total_charge=self.Total_charge,
+                    nbands=self.DOS_num_of_bands,
+                    spinpol=self.Spin_calc,
+                    magnetic_moments=magnetic_moments,
+                    setup_params=self.Setup_params,
+                    xc_calc=self.XC_calc,
+                    exx_fraction=self.XC_exx_fraction,
+                    omega=self.XC_omega,
+                    occupation=dos_occupation,
+                    parallel_cores=self.parallel_cores,
+                    executable='pw.x',
+                    prefix='nanoworks',
+                )
+            except Exception as exc:
+                parprint(
+                    "\033[91mERROR:\033[0m "
+                    f"QE DOS NSCF calculation failed: {exc}"
+                )
+                raise
+
+            result = workflow['result']
+
             parprint(
-                "\033[91mERROR:\033[0m "
-                f"QE DOS NSCF calculation failed: {exc}"
+                "QE DOS NSCF calculation finished."
             )
-            raise
 
-        result = workflow['result']
-
-        parprint(
-            "QE DOS NSCF calculation finished."
-        )
-
-        if result['fermi_energy_ev'] is not None:
-            parprint(
-                "NSCF Fermi energy: "
-                f"{result['fermi_energy_ev']:.8f} eV"
-            )
+            if result['fermi_energy_ev'] is not None:
+                parprint(
+                    "NSCF Fermi energy: "
+                    f"{result['fermi_energy_ev']:.8f} eV"
+                )
 
         if self.DOS_npoints is None or int(self.DOS_npoints) < 2:
             raise ValueError(
                 "DOS_npoints must be at least 2 for QE DOS calculations."
             )
 
-        fermi_energy = result[
-            'fermi_energy_ev'
-        ]
+        fermi_energy = None
 
-        if fermi_energy is None:
-            raise RuntimeError(
-                "QE DOS requires a Fermi energy from the NSCF calculation."
+        dos_emin_absolute = None
+        dos_emax_absolute = None
+
+        if not hybrid:
+            fermi_energy = result[
+                'fermi_energy_ev'
+            ]
+
+            if fermi_energy is None:
+                raise RuntimeError(
+                    "QE DOS requires a Fermi energy from the NSCF calculation."
+                )
+
+            dos_emin_absolute = (
+                float(fermi_energy)
+                + float(self.Energy_min)
             )
 
-        dos_emin_absolute = (
-            float(fermi_energy)
-            + float(self.Energy_min)
-        )
-
-        dos_emax_absolute = (
-            float(fermi_energy)
-            + float(self.Energy_max)
-        )
+            dos_emax_absolute = (
+                float(fermi_energy)
+                + float(self.Energy_max)
+            )
 
         delta_e = (
             float(self.Energy_max)
@@ -2384,6 +2423,21 @@ class dftsolve:
             + '-DOS-QE-Result-Raw-DOS.dat'
         )
 
+        pdos_input_file = Path(
+            self.struct
+            + '-DOS-QE-Input-PDOS.in'
+        )
+
+        pdos_output_file = Path(
+            self.struct
+            + '-DOS-QE-Log-PDOS.txt'
+        )
+
+        pdos_prefix = Path(
+            self.struct
+            + '-DOS-QE-Result-Raw-PDOS'
+        )
+
         qe_dos_occupation = (
             self.engine.resolve_qe_occupation(
                 dos_occupation
@@ -2404,34 +2458,103 @@ class dftsolve:
                 "tetrahedra occupations only in Nanoworks."
             )
 
-        parprint(
-            "Starting QE total DOS calculation..."
-        )
-
-        try:
-            dos_workflow = self.engine.run_dos(
-                input_file=dos_input_file,
-                output_file=dos_output_file,
-                state_dir=state_dir,
-                dos_file=dos_data_file,
-                emin=dos_emin_absolute,
-                emax=dos_emax_absolute,
-                delta_e=delta_e,
-                bz_sum=bz_sum,
-                parallel_cores=self.parallel_cores,
-                executable='dos.x',
-                prefix='nanoworks',
-            )
-        except Exception as exc:
+        if hybrid:
             parprint(
-                "\033[91mERROR:\033[0m "
-                f"QE total DOS calculation failed: {exc}"
+                "Starting QE hybrid SCF, DOS and PDOS workflow..."
             )
-            raise
 
-        parprint(
-            "QE total DOS calculation finished."
-        )
+            try:
+                hybrid_workflow = self.engine.run_hybrid_dos(
+                    atoms=self.bulk_configuration,
+                    scf_input_file=scf_input_file,
+                    scf_output_file=scf_output_file,
+                    dos_input_file=dos_input_file,
+                    dos_output_file=dos_output_file,
+                    dos_file=dos_data_file,
+                    pdos_input_file=pdos_input_file,
+                    pdos_output_file=pdos_output_file,
+                    pdos_prefix=pdos_prefix,
+                    state_dir=state_dir,
+                    pseudopotentials=pseudopotentials,
+                    pseudo_dir=pseudo_dir,
+                    cutoff_ev=self.Cut_off_energy,
+                    kpoint_density=dos_kpoint_density,
+                    kpoint_size=dos_kpoint_size,
+                    gamma=dos_gamma,
+                    total_charge=self.Total_charge,
+                    nbands=self.DOS_num_of_bands,
+                    spinpol=self.Spin_calc,
+                    magnetic_moments=magnetic_moments,
+                    setup_params=self.Setup_params,
+                    xc_calc=self.XC_calc,
+                    exx_fraction=self.XC_exx_fraction,
+                    omega=self.XC_omega,
+                    occupation=dos_occupation,
+                    emin=self.Energy_min,
+                    emax=self.Energy_max,
+                    delta_e=delta_e,
+                    bz_sum=bz_sum,
+                    parallel_cores=self.parallel_cores,
+                    relative_to_fermi=True,
+                    scf_executable='pw.x',
+                    dos_executable='dos.x',
+                    projwfc_executable='projwfc.x',
+                    prefix='nanoworks',
+                )
+            except Exception as exc:
+                parprint(
+                    "\033[91mERROR:\033[0m "
+                    f"QE hybrid DOS workflow failed: {exc}"
+                )
+                raise
+
+            workflow = hybrid_workflow['scf']
+            result = workflow['result']
+            fermi_energy = hybrid_workflow.get(
+                'fermi_energy_ev'
+            )
+
+            if fermi_energy is None:
+                raise RuntimeError(
+                    "QE hybrid DOS requires an energy reference from "
+                    "the hybrid SCF calculation."
+                )
+
+            dos_workflow = hybrid_workflow['dos']
+            pdos_workflow = hybrid_workflow['pdos']
+
+            parprint(
+                "QE hybrid SCF, DOS and PDOS workflow finished."
+            )
+        else:
+            parprint(
+                "Starting QE total DOS calculation..."
+            )
+
+            try:
+                dos_workflow = self.engine.run_dos(
+                    input_file=dos_input_file,
+                    output_file=dos_output_file,
+                    state_dir=state_dir,
+                    dos_file=dos_data_file,
+                    emin=dos_emin_absolute,
+                    emax=dos_emax_absolute,
+                    delta_e=delta_e,
+                    bz_sum=bz_sum,
+                    parallel_cores=self.parallel_cores,
+                    executable='dos.x',
+                    prefix='nanoworks',
+                )
+            except Exception as exc:
+                parprint(
+                    "\033[91mERROR:\033[0m "
+                    f"QE total DOS calculation failed: {exc}"
+                )
+                raise
+
+            parprint(
+                "QE total DOS calculation finished."
+            )
 
         parprint(
             "QE DOS data saved to: "
@@ -2640,44 +2763,30 @@ class dftsolve:
                 fig
             )
 
-        pdos_input_file = Path(
-            self.struct
-            + '-DOS-QE-Input-PDOS.in'
-        )
-
-        pdos_output_file = Path(
-            self.struct
-            + '-DOS-QE-Log-PDOS.txt'
-        )
-
-        pdos_prefix = Path(
-            self.struct
-            + '-DOS-QE-Result-Raw-PDOS'
-        )
-
-        parprint(
-            "Starting QE projected DOS calculation..."
-        )
-
-        try:
-            pdos_workflow = self.engine.run_projwfc(
-                input_file=pdos_input_file,
-                output_file=pdos_output_file,
-                state_dir=state_dir,
-                pdos_prefix=pdos_prefix,
-                emin=dos_emin_absolute,
-                emax=dos_emax_absolute,
-                delta_e=delta_e,
-                parallel_cores=self.parallel_cores,
-                executable='projwfc.x',
-                prefix='nanoworks',
-            )
-        except Exception as exc:
+        if not hybrid:
             parprint(
-                "\033[91mERROR:\033[0m "
-                f"QE projected DOS calculation failed: {exc}"
+                "Starting QE projected DOS calculation..."
             )
-            raise
+
+            try:
+                pdos_workflow = self.engine.run_projwfc(
+                    input_file=pdos_input_file,
+                    output_file=pdos_output_file,
+                    state_dir=state_dir,
+                    pdos_prefix=pdos_prefix,
+                    emin=dos_emin_absolute,
+                    emax=dos_emax_absolute,
+                    delta_e=delta_e,
+                    parallel_cores=self.parallel_cores,
+                    executable='projwfc.x',
+                    prefix='nanoworks',
+                )
+            except Exception as exc:
+                parprint(
+                    "\033[91mERROR:\033[0m "
+                    f"QE projected DOS calculation failed: {exc}"
+                )
+                raise
 
         parprint(
             "QE projected DOS calculation finished."

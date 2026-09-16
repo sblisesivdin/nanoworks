@@ -3091,6 +3091,74 @@ class TestQEEngine(unittest.TestCase):
             pdos_workflow,
         )
 
+    def test_run_hybrid_dos_can_shift_windows_from_fermi_reference(self):
+        scf_workflow = {
+            'result': {
+                'fermi_energy_ev': 5.0,
+            },
+        }
+        dos_workflow = {
+            'dos_file': 'si-hse.dos',
+        }
+        pdos_workflow = {
+            'pdos_tot_file': 'si-hse.pdos_tot',
+        }
+
+        with patch(
+            'nanoworks.engine.qe.run_scf',
+            return_value=scf_workflow,
+        ), patch(
+            'nanoworks.engine.qe.run_dos',
+            return_value=dos_workflow,
+        ) as run_dos_mock, patch(
+            'nanoworks.engine.qe.run_projwfc',
+            return_value=pdos_workflow,
+        ) as run_projwfc_mock:
+            workflow = run_hybrid_dos(
+                atoms=Atoms('Si'),
+                scf_input_file='scf.in',
+                scf_output_file='scf.out',
+                dos_input_file='dos.in',
+                dos_output_file='dos.out',
+                dos_file='dos.dat',
+                pdos_input_file='pdos.in',
+                pdos_output_file='pdos.out',
+                pdos_prefix='pdos',
+                state_dir='state',
+                pseudopotentials={
+                    'Si': 'Si.upf',
+                },
+                pseudo_dir='/tmp/pseudos',
+                cutoff_ev=500.0,
+                xc_calc='HSE06',
+                emin=-8.0,
+                emax=8.0,
+                delta_e=0.1,
+                bz_sum='tetrahedra',
+                relative_to_fermi=True,
+            )
+
+        self.assertEqual(
+            run_dos_mock.call_args.kwargs['emin'],
+            -3.0,
+        )
+        self.assertEqual(
+            run_dos_mock.call_args.kwargs['emax'],
+            13.0,
+        )
+        self.assertEqual(
+            run_projwfc_mock.call_args.kwargs['emin'],
+            -3.0,
+        )
+        self.assertEqual(
+            run_projwfc_mock.call_args.kwargs['emax'],
+            13.0,
+        )
+        self.assertEqual(
+            workflow['fermi_energy_ev'],
+            5.0,
+        )
+
     def test_run_hybrid_dos_rejects_nonhybrid_xc(self):
         with self.assertRaisesRegex(
             ValueError,

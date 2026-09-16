@@ -8034,6 +8034,7 @@ def run_hybrid_dos(
     bz_sum=None,
     degauss=None,
     ngauss=None,
+    relative_to_fermi=False,
     parallel_cores=1,
     scf_executable='pw.x',
     dos_executable='dos.x',
@@ -8079,6 +8080,30 @@ def run_hybrid_dos(
         prefix=prefix,
     )
 
+    energy_reference = None
+
+    if relative_to_fermi:
+        try:
+            energy_reference = resolve_qe_band_reference(
+                scf_workflow['result']
+            )['energy_ev']
+        except (
+            AttributeError,
+            KeyError,
+            TypeError,
+            ValueError,
+        ) as exc:
+            raise RuntimeError(
+                "QE hybrid DOS requires an energy reference from "
+                "the hybrid SCF calculation."
+            ) from exc
+
+        if emin is not None:
+            emin = float(energy_reference) + float(emin)
+
+        if emax is not None:
+            emax = float(energy_reference) + float(emax)
+
     dos_workflow = run_dos(
         input_file=dos_input_file,
         output_file=dos_output_file,
@@ -8114,6 +8139,7 @@ def run_hybrid_dos(
         'scf': scf_workflow,
         'dos': dos_workflow,
         'pdos': pdos_workflow,
+        'fermi_energy_ev': energy_reference,
     }
 
 def run_dos(

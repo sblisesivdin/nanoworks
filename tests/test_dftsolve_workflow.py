@@ -728,12 +728,13 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         )
         solver.engine.run_pp_density.assert_called_once()
 
-    def test_qe_doscalc_keeps_hybrid_nscf_gated(self):
+    def test_qe_doscalc_dispatches_hybrid_dos_workflow(self):
         solver = object.__new__(
             DFTSolver
         )
         solver.Mode = 'PW'
         solver.SOC_calc = False
+        solver.Engine = 'QE'
         solver.struct = 'silicon'
         solver.XC_calc = 'HSE03'
         solver.XC_exx_fraction = 0.28
@@ -760,20 +761,31 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         solver.Cut_off_energy = 500.0
         solver.Total_charge = 0.0
         solver.DOS_num_of_bands = 16
+        solver.DOS_npoints = 161
+        solver.Energy_min = -8.0
+        solver.Energy_max = 8.0
         solver.Setup_params = None
         solver.parallel_cores = 1
         solver.engine = SimpleNamespace(
             validate_qe_xc=Mock(
-                side_effect=ValueError(
-                    'hybrid NSCF is not enabled'
-                )
+                return_value='hse03'
             ),
             has_qe_state=Mock(
                 return_value=True
             ),
+            resolve_qe_occupation=Mock(
+                return_value={
+                    'occupations': 'tetrahedra',
+                }
+            ),
             run_nscf=Mock(
                 side_effect=RuntimeError(
                     'stop after NSCF'
+                )
+            ),
+            run_hybrid_dos=Mock(
+                side_effect=RuntimeError(
+                    'stop after hybrid DOS'
                 )
             ),
         )
@@ -792,8 +804,9 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             patch(
                 'nanoworks.dftsolve.parprint',
             ),
-            self.assertRaises(
-                SystemExit,
+            self.assertRaisesRegex(
+                RuntimeError,
+                'stop after hybrid DOS',
             ),
         ):
             solver._doscalc_qe()
@@ -801,8 +814,26 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         solver.engine.validate_qe_xc.assert_called_once_with(
             'HSE03',
             pseudo_xc='pbe',
+            allow_hybrid=True,
         )
         solver.engine.run_nscf.assert_not_called()
+        solver.engine.run_hybrid_dos.assert_called_once()
+        hybrid_call = solver.engine.run_hybrid_dos.call_args.kwargs
+        self.assertEqual(
+            hybrid_call['state_dir'],
+            Path('silicon-DOS-QE-Result-State'),
+        )
+        self.assertEqual(
+            hybrid_call['emin'],
+            -8.0,
+        )
+        self.assertEqual(
+            hybrid_call['emax'],
+            8.0,
+        )
+        self.assertTrue(
+            hybrid_call['relative_to_fermi']
+        )
 
     def test_qe_bandcalc_dispatches_hybrid_bands(self):
         solver = object.__new__(
