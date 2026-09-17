@@ -3923,6 +3923,82 @@ def prepare_epsilon_optical_data(
     }
 
 
+def write_epsilon_optical_data(
+    optical_data,
+    output_prefix,
+):
+    """Write GPAW-compatible seven-column optical tables for x, y, and z."""
+    output_prefix = Path(
+        output_prefix
+    ).expanduser()
+    output_prefix.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    energies_ev = optical_data[
+        'energies_ev'
+    ]
+    directions = optical_data[
+        'directions'
+    ]
+    field_names = (
+        'epsilon_real',
+        'epsilon_imaginary',
+        'refractive_index',
+        'extinction_coefficient',
+        'absorption_cm_inverse',
+        'reflectivity',
+    )
+    output_files = {}
+
+    for direction in 'xyz':
+        direction_data = directions[
+            direction
+        ]
+
+        if any(
+            len(direction_data[field_name]) != len(energies_ev)
+            for field_name in field_names
+        ):
+            raise ValueError(
+                "QE optical data columns must use a common length."
+            )
+
+        output_file = Path(
+            f"{output_prefix}-AllData_{direction}direction.dat"
+        )
+
+        with output_file.open(
+            'w',
+            encoding='utf-8',
+        ) as fd:
+            fd.write(
+                "Energy(eV) Eps_real Eps_img Refractive_Index "
+                "Extinction_Index Absorption(1/cm) Reflectivity\n"
+            )
+
+            for index, energy in enumerate(energies_ev):
+                values = [
+                    energy,
+                    *(
+                        direction_data[field_name][index]
+                        for field_name in field_names
+                    ),
+                ]
+                fd.write(
+                    " ".join(
+                        f"{value:.12g}"
+                        for value in values
+                    )
+                    + "\n"
+                )
+
+        output_files[direction] = output_file
+
+    return output_files
+
+
 def parse_matdyn_frequency_file(frequency_file):
     """Parse q-points and phonon frequencies written by matdyn.x."""
     frequency_file = Path(

@@ -39,6 +39,7 @@ from nanoworks.engine.qe import (
     parse_qe_auxiliary_output,
     parse_epsilon_data_file,
     prepare_epsilon_optical_data,
+    write_epsilon_optical_data,
     parse_matdyn_frequency_file,
     parse_matdyn_dos_file,
     write_matdyn_band_data,
@@ -1806,6 +1807,54 @@ class TestQEEngine(unittest.TestCase):
                     real_file,
                     imaginary_file,
                 )
+
+    def test_write_epsilon_optical_data(self):
+        optical_data = {
+            'energies_ev': [0.0, 1.0],
+            'directions': {
+                direction: {
+                    'epsilon_real': [3.0, 3.0],
+                    'epsilon_imaginary': [4.0, 4.0],
+                    'refractive_index': [2.0, 2.0],
+                    'extinction_coefficient': [1.0, 1.0],
+                    'absorption_cm_inverse': [0.0, 101354.6],
+                    'reflectivity': [0.2, 0.2],
+                }
+                for direction in 'xyz'
+            },
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_prefix = (
+                Path(tmpdir)
+                / 'Si-OPTICAL-QE-Result-Calculation-RPA'
+            )
+            output_files = write_epsilon_optical_data(
+                optical_data,
+                output_prefix,
+            )
+
+            self.assertEqual(
+                set(output_files),
+                {'x', 'y', 'z'},
+            )
+            x_lines = output_files['x'].read_text(
+                encoding='utf-8',
+            ).splitlines()
+
+        self.assertEqual(
+            x_lines[0],
+            'Energy(eV) Eps_real Eps_img Refractive_Index '
+            'Extinction_Index Absorption(1/cm) Reflectivity',
+        )
+        self.assertEqual(
+            len(x_lines),
+            3,
+        )
+        self.assertEqual(
+            [float(value) for value in x_lines[2].split()],
+            [1.0, 3.0, 4.0, 2.0, 1.0, 101354.6, 0.2],
+        )
 
     def test_render_dos_input_rejects_invalid_bz_sum(self):
         with self.assertRaisesRegex(
