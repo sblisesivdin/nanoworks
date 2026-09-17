@@ -44,11 +44,12 @@ or:
     and orbital-projected DOS, band-structure, projected-band, and
     pseudo-valence electron-density workflows using scalar-relativistic
     PseudoDojo pseudopotentials. Collinear-spin ground-state, DOS/PDOS,
-    band, projected-band, and density calculations are supported. Native
+    band, projected-band, and density calculations are supported. Native PBE
+    also supports DFPT phonons and ``epsilon.x`` RPA optics. Native
     QE ``HSE06``, ``HSE03``, and ``PBE0`` workflows support ground-state,
     DOS/PDOS, band, projected-band, and density calculations. QE vdW, SOC,
-    hybrid geometry optimization, elastic, phonon, and optical workflows
-    are not supported yet.
+    and elastic workflows are not supported yet. Hybrid geometry optimization,
+    phonon, and optical workflows are also not supported yet.
 
 .. describe:: Mode
 
@@ -191,9 +192,11 @@ or:
     releases earlier calculator references before loading the optical state to
     limit peak memory use.
 
-    The GPAW optical workflow has been validated with a combined
-    ground-state, DOS, band, density, and RPA calculation. Native QE optical
-    calculations are not implemented yet.
+    The GPAW and native QE optical workflows have both been validated with a
+    combined ground-state, DOS, band, density, and RPA calculation. Native QE
+    uses a symmetry-free uniform-grid NSCF calculation followed by
+    ``epsilon.x``. QE BSE, hybrid-XC, and SOC optical calculations are not
+    supported yet.
 
 .. code-block:: python
 
@@ -1299,12 +1302,18 @@ Optical Calculations Keywords
     optical k-point sampling therefore applies to the regular
     fixed-density preparation path.
 
+    For the native QE backend, the default is ``RPA`` and Nanoworks runs
+    ``pw.x`` in NSCF mode with ``nosym = .true.`` before ``epsilon.x``. QE BSE,
+    hybrid-XC, and SOC optical calculations are not supported yet.
+
 .. describe:: Opt_calc_type
 
     :Type: ``str``
-    :Default: ``BSE``
+    :Default: ``BSE`` for GPAW; ``RPA`` for QE
 
-    Optical calculation type: random phase approximation (RPA) or Bethe-Salpeter Equation (BSE).
+    Optical calculation type. GPAW supports random phase approximation (RPA)
+    and Bethe-Salpeter Equation (BSE). Native QE currently supports RPA through
+    ``epsilon.x``.
 
 .. code-block:: python
 
@@ -1316,7 +1325,8 @@ Optical Calculations Keywords
     :Default: ``0.0``
     :Unit: eV
 
-    Shift added to energy values. Works on BSE calculations only.
+    Shift added to energy values. Used by GPAW BSE and native QE
+    ``epsilon.x`` calculations.
 
 .. code-block:: python
 
@@ -1350,7 +1360,7 @@ Optical Calculations Keywords
     :Default: ``0.0``
     :Unit: eV
     
-    Start energy value for result data used in BSE calculation.
+    Legacy GPAW BSE start energy. ``Opt_min_en`` is preferred for new inputs.
 
 .. code-block:: python
 
@@ -1362,7 +1372,7 @@ Optical Calculations Keywords
     :Default: ``20.0``
     :Unit: eV
     
-    End energy value for result data used in BSE calculation.
+    Legacy GPAW BSE end energy. ``Opt_max_en`` is preferred for new inputs.
     
 .. code-block:: python
 
@@ -1373,11 +1383,39 @@ Optical Calculations Keywords
     :Type: ``int``
     :Default: ``1001``
 
-    Number of data points in BSE calculation.
+    Legacy GPAW BSE frequency-point count. ``Opt_num_of_data`` is preferred
+    for new inputs.
 
 .. code-block:: python
 
     Opt_BSE_num_of_data = 401
+
+.. describe:: Opt_min_en | Opt_max_en
+
+    :Type: ``float`` or ``None``
+    :Defaults: ``0.0`` and ``20.0`` eV
+
+    Engine-neutral minimum and maximum photon energies. Native QE maps these
+    values to the ``epsilon.x`` ``wmin`` and ``wmax`` energy grid. When omitted,
+    the corresponding legacy ``Opt_BSE_min_en`` and ``Opt_BSE_max_en`` values
+    are used.
+
+.. code-block:: python
+
+    Opt_min_en = 0.0
+    Opt_max_en = 10.0
+
+.. describe:: Opt_num_of_data
+
+    :Type: ``int`` or ``None``
+    :Default: ``1001``
+
+    Engine-neutral number of photon-energy points. Native QE maps this value
+    to ``epsilon.x`` ``nw``. When omitted, ``Opt_BSE_num_of_data`` is used.
+
+.. code-block:: python
+
+    Opt_num_of_data = 401
 
 .. describe:: Opt_num_of_bands
 
@@ -1401,7 +1439,8 @@ Optical Calculations Keywords
     ``Opt_kpts_x/y/z``.
 
     If no optical-specific k-point sampling is supplied, the
-    ground-state sampling is inherited.
+    ground-state sampling is inherited. Native QE disables symmetry for this
+    NSCF grid so that ``epsilon.x`` receives uniform k-point weights.
 
 .. code-block:: python
 
@@ -1442,7 +1481,8 @@ Optical Calculations Keywords
     :Type: ``float``
     :Default: ``0.05``
 
-    Fermi-Dirac smearing for optical calculations.
+    Fermi-Dirac smearing for optical calculations. Native QE uses this width
+    for the optical NSCF calculation.
 
 .. code-block:: python
 
@@ -1453,7 +1493,8 @@ Optical Calculations Keywords
     :Type: ``float``
     :Default: ``0.05``
 
-    Broadening parameter ``eta`` used in dielectric function calculations (eV).
+    Broadening parameter ``eta`` used in dielectric function calculations
+    (eV). Native QE maps it to ``epsilon.x`` ``intersmear``.
 
 .. code-block:: python
 
@@ -1465,7 +1506,8 @@ Optical Calculations Keywords
     :Default: ``0.05``
     :Options: ``Δω0``
 
-    ``Δω0`` parameter for the non-linear frequency grid in dielectric function calculations (eV). See GPAW docs.
+    GPAW ``Δω0`` parameter for the non-linear frequency grid in dielectric
+    function calculations (eV). It is not used by native QE.
 
 .. code-block:: python
 
@@ -1477,7 +1519,8 @@ Optical Calculations Keywords
     :Default: ``5.0``
     :Options: ``ω2``
 
-    ``ω2`` parameter for non-linear frequency grid in dielectric function calculations (eV). See GPAW docs.
+    GPAW ``ω2`` parameter for the non-linear frequency grid in dielectric
+    function calculations (eV). It is not used by native QE.
 
 .. code-block:: python
 
@@ -1488,7 +1531,8 @@ Optical Calculations Keywords
     :Type: ``float``
     :Default: ``100``
 
-    Plane-wave energy cutoff in dielectric function calculations (eV). Determines dielectric matrix size.
+    GPAW plane-wave energy cutoff for the dielectric matrix (eV). Native QE
+    ``epsilon.x`` does not use this keyword.
 
 .. code-block:: python
 

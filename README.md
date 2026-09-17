@@ -41,7 +41,7 @@ Prefer a proper and controlled setup? Nanoworks is a Python package. You can ins
 After installation, the following commands will be available in your terminal:
 
 ### 1. dftsolve (formerly gpawsolve.py)
-The main driver for DFT calculations using GPAW or Quantum ESPRESSO. GPAW runs the complete Python workflow under MPI, while Nanoworks launches the supported QE executables with the number of processes requested by the `-p` argument. QE hybrid `HSE06`, `HSE03`, and `PBE0` workflows use native plane-wave exact exchange for ground-state, DOS/PDOS, band, projected-band, and density calculations. QE hybrid geometry, elastic, phonon, and optical workflows are not supported yet.
+The main driver for DFT calculations using GPAW or Quantum ESPRESSO. GPAW runs the complete Python workflow under MPI, while Nanoworks launches the supported QE executables with the number of processes requested by the `-p` argument. Native QE includes ground-state, geometry, electronic, density, DFPT phonon, and `epsilon.x` RPA optical workflows. QE hybrid `HSE06`, `HSE03`, and `PBE0` workflows use native plane-wave exact exchange for ground-state, DOS/PDOS, band, projected-band, and density calculations; hybrid geometry, elastic, phonon, and optical workflows are not supported yet.
 
 **Usage:**
 ```bash

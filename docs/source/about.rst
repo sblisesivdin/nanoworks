@@ -49,7 +49,8 @@ Density Functional Theory
 electronic-structure, density, phonon, elastic, and optical workflows. GPAW
 provides the established full workflow. Native Quantum ESPRESSO workflows now
 include PBE geometry optimization, DFT+U, spin-resolved DOS/PDOS and band
-structures, projected bands, and pseudo-valence electron-density Cube output.
+structures, projected bands, pseudo-valence electron-density Cube output,
+DFPT phonons, and ``epsilon.x`` RPA optical properties.
 Native QE ``HSE06``, ``HSE03``, and ``PBE0`` support ground-state, DOS/PDOS,
 band, projected-band, and density calculations. QE hybrid geometry, elastic,
 phonon, and optical workflows are not supported yet.

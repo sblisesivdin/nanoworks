@@ -44,7 +44,8 @@ settings explicit and reusable.
 
 GPAW currently provides the complete Nanoworks DFT workflow. Native QE support
 covers PBE ground-state, geometry-optimization, DFT+U, spin-resolved DOS/PDOS,
-band, projected-band, and electron-density calculations. Native QE
+band, projected-band, electron-density, DFPT phonon, and ``epsilon.x`` RPA
+optical calculations. Native QE
 ``HSE06``, ``HSE03``, and ``PBE0`` support the electronic stages: ground,
 DOS/PDOS, band, projected-band, and density. QE hybrid geometry, elastic,
 phonon, and optical workflows are not supported yet.

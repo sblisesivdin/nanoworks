@@ -3,6 +3,8 @@
 ### Development Version
 
 - Native Quantum ESPRESSO support covers PBE ground-state, fixed-cell and variable-cell geometry optimization, DFT+U, spin-resolved DOS/PDOS, band, projected-band and pseudo-valence density workflows.
+- Native QE RPA optical calculations use a uniform-grid NSCF calculation followed by `epsilon.x`, and produce direction-resolved dielectric, refractive-index, absorption and reflectivity data and figures.
+- Native QE DFPT phonons use `ph.x`, `q2r.x` and `matdyn.x`.
 - Native QE `HSE06`, `HSE03` and `PBE0` support ground-state, DOS/PDOS, band, projected-band and density calculations.
 - QE hybrid DOS/PDOS uses a dedicated hybrid SCF followed by `dos.x` and `projwfc.x`; a separate hybrid NSCF calculation is not used.
 - QE hybrid band calculations add zero-weight band-path states to the SCF, then use `bands.x`; projected bands additionally use `projwfc.x`.

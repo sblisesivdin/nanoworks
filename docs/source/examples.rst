@@ -68,9 +68,9 @@ Optical Properties
 ------------------
 
 * **Silicon Optical Properties (RPA & BSE):**
-  Includes a single-input GPAW workflow for ground-state, DOS, band, density,
-  and RPA optical calculations, plus separate RPA and BSE inputs for focused
-  optical reruns. (Folder: ``Si-2atoms-optical/``)
+  Includes single-input GPAW and native QE workflows for ground-state, DOS,
+  band, density, and RPA optical calculations, plus separate GPAW RPA and BSE
+  inputs for focused optical reruns. (Folder: ``Si-2atoms-optical/``)
   1. Ground-state generation (Wavefunctions and DOS/Bands)
   2. Random Phase Approximation (RPA) calculations
   3. Bethe-Salpeter Equation (BSE) calculations
@@ -129,4 +129,3 @@ Then you can run the command in this readme file. You can change -p argument if 
 .. code-block:: bash
 
     (.venv_nw) $ dftsolve -p 8 -i Si-phonon.py -g Si_mp-149_primitive.cif
-
