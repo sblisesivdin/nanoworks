@@ -8964,13 +8964,13 @@ def run_epsilon(
 
     output_names = {
         'eps': (
-            'epsr.dat',
-            'epsi.dat',
-            'eels.dat',
-            'ieps.dat',
+            f'epsr_{prefix}.dat',
+            f'epsi_{prefix}.dat',
+            f'eels_{prefix}.dat',
+            f'ieps_{prefix}.dat',
         ),
         'jdos': (
-            'jdos.dat',
+            f'jdos_{prefix}.dat',
         ),
         'offdiag': tuple(
             f'eps{first}{second}.dat'
@@ -9004,8 +9004,8 @@ def run_epsilon(
 
     if calculation == 'eps':
         optical_data = prepare_epsilon_optical_data(
-            result_files['epsr.dat'],
-            result_files['epsi.dat'],
+            result_files[f'epsr_{prefix}.dat'],
+            result_files[f'epsi_{prefix}.dat'],
         )
 
     return {

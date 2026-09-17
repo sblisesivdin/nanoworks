@@ -1496,18 +1496,18 @@ class TestQEEngine(unittest.TestCase):
                 )
 
                 result_contents = {
-                    'epsr.dat': (
+                    'epsr_nanoworks.dat': (
                         '# energy epsr_x epsr_y epsr_z\n'
                         '0.0 3.0 1.0 1.0\n'
                         '1.0 3.0 1.0 1.0\n'
                     ),
-                    'epsi.dat': (
+                    'epsi_nanoworks.dat': (
                         '# energy epsi_x epsi_y epsi_z\n'
                         '0.0 4.0 0.0 0.0\n'
                         '1.0 4.0 0.0 0.0\n'
                     ),
-                    'eels.dat': '# epsilon data\n',
-                    'ieps.dat': '# epsilon data\n',
+                    'eels_nanoworks.dat': '# epsilon data\n',
+                    'ieps_nanoworks.dat': '# epsilon data\n',
                 }
 
                 for name, content in result_contents.items():
@@ -1557,10 +1557,10 @@ class TestQEEngine(unittest.TestCase):
             self.assertEqual(
                 set(workflow['result_files']),
                 {
-                    'epsr.dat',
-                    'epsi.dat',
-                    'eels.dat',
-                    'ieps.dat',
+                    'epsr_nanoworks.dat',
+                    'epsi_nanoworks.dat',
+                    'eels_nanoworks.dat',
+                    'ieps_nanoworks.dat',
                 },
             )
             self.assertIn(
