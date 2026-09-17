@@ -60,6 +60,7 @@ from nanoworks.engine.qe import (
     run_hybrid_dos,
     has_qe_state,
     render_dos_input,
+    render_epsilon_input,
     run_dos,
     parse_dos_output,
     render_projwfc_input,
@@ -1325,6 +1326,120 @@ class TestQEEngine(unittest.TestCase):
             render_dos_input(
                 emin=5.0,
                 emax=-5.0,
+            )
+
+    def test_render_epsilon_input(self):
+        text = render_epsilon_input(
+            prefix='nanoworks',
+            outdir='/tmp/qe-optical-state',
+            calculation='eps',
+            smeartype='gauss',
+            intersmear=0.1,
+            intrasmear=0.0,
+            wmin=0.0,
+            wmax=20.0,
+            nw=401,
+            nbndmin=1,
+            nbndmax=16,
+            shift=0.25,
+        )
+
+        self.assertIn(
+            '&INPUTPP',
+            text,
+        )
+        self.assertIn(
+            "prefix = 'nanoworks'",
+            text,
+        )
+        self.assertIn(
+            "outdir = '/tmp/qe-optical-state'",
+            text,
+        )
+        self.assertIn(
+            "calculation = 'eps'",
+            text,
+        )
+        self.assertIn(
+            '&ENERGY_GRID',
+            text,
+        )
+        self.assertIn(
+            '/\n&ENERGY_GRID',
+            text,
+        )
+        self.assertIn(
+            "smeartype = 'gauss'",
+            text,
+        )
+        self.assertIn(
+            'intersmear = 0.1',
+            text,
+        )
+        self.assertIn(
+            'intrasmear = 0',
+            text,
+        )
+        self.assertIn(
+            'wmin = 0',
+            text,
+        )
+        self.assertIn(
+            'wmax = 20',
+            text,
+        )
+        self.assertIn(
+            'nw = 401',
+            text,
+        )
+        self.assertIn(
+            'nbndmin = 1',
+            text,
+        )
+        self.assertIn(
+            'nbndmax = 16',
+            text,
+        )
+        self.assertIn(
+            'shift = 0.25',
+            text,
+        )
+
+    def test_render_epsilon_input_rejects_invalid_calculation(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            'Unsupported QE epsilon.x calculation',
+        ):
+            render_epsilon_input(
+                calculation='occ',
+            )
+
+    def test_render_epsilon_input_rejects_invalid_frequency_grid(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            'wmax must be greater than wmin',
+        ):
+            render_epsilon_input(
+                wmin=10.0,
+                wmax=5.0,
+            )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            'at least two points',
+        ):
+            render_epsilon_input(
+                nw=1,
+            )
+
+    def test_render_epsilon_input_rejects_invalid_band_range(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            'nbndmax must not be smaller than nbndmin',
+        ):
+            render_epsilon_input(
+                nbndmin=8,
+                nbndmax=4,
             )
 
     def test_render_dos_input_rejects_invalid_bz_sum(self):

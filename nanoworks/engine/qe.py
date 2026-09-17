@@ -3101,6 +3101,152 @@ def render_dos_input(
         + '\n'
     )
 
+def render_epsilon_input(
+    prefix='nanoworks',
+    outdir=None,
+    calculation='eps',
+    smeartype='gauss',
+    intersmear=0.136,
+    intrasmear=0.0,
+    wmin=0.0,
+    wmax=30.0,
+    nw=600,
+    nbndmin=None,
+    nbndmax=None,
+    shift=0.0,
+):
+    """Render a complete Quantum ESPRESSO epsilon.x input."""
+    calculation = str(
+        calculation
+    ).strip().lower()
+
+    allowed_calculations = {
+        'eps',
+        'jdos',
+        'offdiag',
+    }
+
+    if calculation not in allowed_calculations:
+        raise ValueError(
+            "Unsupported QE epsilon.x calculation: "
+            f"{calculation}"
+        )
+
+    smeartype = str(
+        smeartype
+    ).strip().lower()
+
+    if smeartype not in {
+        'gauss',
+        'lorentz',
+    }:
+        raise ValueError(
+            "QE epsilon.x smeartype must be gauss or lorentz."
+        )
+
+    intersmear = float(
+        intersmear
+    )
+    intrasmear = float(
+        intrasmear
+    )
+    wmin = float(
+        wmin
+    )
+    wmax = float(
+        wmax
+    )
+    nw = int(
+        nw
+    )
+    shift = float(
+        shift
+    )
+
+    if intersmear <= 0.0:
+        raise ValueError(
+            "QE epsilon.x intersmear must be greater than zero."
+        )
+
+    if intrasmear < 0.0:
+        raise ValueError(
+            "QE epsilon.x intrasmear must not be negative."
+        )
+
+    if wmax <= wmin:
+        raise ValueError(
+            "QE epsilon.x wmax must be greater than wmin."
+        )
+
+    if nw < 2:
+        raise ValueError(
+            "QE epsilon.x frequency grid requires at least two points."
+        )
+
+    energy_settings = {
+        'smeartype': smeartype,
+        'intersmear': intersmear,
+        'intrasmear': intrasmear,
+        'wmax': wmax,
+        'wmin': wmin,
+        'nw': nw,
+        'shift': shift,
+    }
+
+    if nbndmin is not None:
+        nbndmin = int(
+            nbndmin
+        )
+
+        if nbndmin < 1:
+            raise ValueError(
+                "QE epsilon.x nbndmin must be at least one."
+            )
+
+        energy_settings['nbndmin'] = nbndmin
+
+    if nbndmax is not None:
+        nbndmax = int(
+            nbndmax
+        )
+
+        if nbndmax < 1:
+            raise ValueError(
+                "QE epsilon.x nbndmax must be at least one."
+            )
+
+        energy_settings['nbndmax'] = nbndmax
+
+    if (
+        nbndmin is not None
+        and nbndmax is not None
+        and nbndmax < nbndmin
+    ):
+        raise ValueError(
+            "QE epsilon.x nbndmax must not be smaller than nbndmin."
+        )
+
+    input_settings = {
+        'prefix': str(prefix),
+        'calculation': calculation,
+    }
+
+    if outdir is not None:
+        input_settings['outdir'] = str(outdir)
+
+    return (
+        render_namelist(
+            'INPUTPP',
+            input_settings,
+        )
+        + '\n'
+        + render_namelist(
+            'ENERGY_GRID',
+            energy_settings,
+        )
+        + '\n'
+    )
+
 def render_projwfc_input(
     prefix='nanoworks',
     outdir=None,
