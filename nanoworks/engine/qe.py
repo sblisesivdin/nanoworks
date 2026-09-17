@@ -8549,6 +8549,158 @@ def run_dos(
         'execution': execution,
     }
 
+def run_epsilon(
+    input_file,
+    output_file,
+    state_dir,
+    result_dir,
+    calculation='eps',
+    smeartype='gauss',
+    intersmear=0.136,
+    intrasmear=0.0,
+    wmin=0.0,
+    wmax=30.0,
+    nw=600,
+    nbndmin=None,
+    nbndmax=None,
+    shift=0.0,
+    parallel_cores=1,
+    executable='epsilon.x',
+    prefix='nanoworks',
+):
+    """Render, execute, and validate one QE epsilon.x calculation."""
+    input_file = Path(
+        input_file
+    ).expanduser().resolve()
+    output_file = Path(
+        output_file
+    ).expanduser().resolve()
+    state_dir = Path(
+        state_dir
+    ).expanduser().resolve()
+    result_dir = Path(
+        result_dir
+    ).expanduser().resolve()
+
+    if not has_qe_state(
+        state_dir,
+        prefix=prefix,
+    ):
+        raise FileNotFoundError(
+            "A valid QE electronic state is required "
+            f"for epsilon.x: {state_dir}"
+        )
+
+    input_text = render_epsilon_input(
+        prefix=prefix,
+        outdir=state_dir,
+        calculation=calculation,
+        smeartype=smeartype,
+        intersmear=intersmear,
+        intrasmear=intrasmear,
+        wmin=wmin,
+        wmax=wmax,
+        nw=nw,
+        nbndmin=nbndmin,
+        nbndmax=nbndmax,
+        shift=shift,
+    )
+
+    input_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+    output_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+    result_dir.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    input_file.write_text(
+        input_text,
+        encoding='utf-8',
+    )
+
+    launcher = build_qe_launcher(
+        parallel_cores=parallel_cores
+    )
+
+    execution = run_qe_program(
+        input_file=input_file,
+        output_file=output_file,
+        executable=executable,
+        launcher=launcher,
+        cwd=result_dir,
+    )
+
+    metadata = parse_qe_auxiliary_output(
+        output_file,
+        expected_program='EPSILON',
+    )
+
+    if not metadata['job_done']:
+        raise RuntimeError(
+            "Quantum ESPRESSO epsilon.x finished without a "
+            "'JOB DONE.' marker. "
+            f"See '{output_file}'."
+        )
+
+    calculation = str(
+        calculation
+    ).strip().lower()
+
+    output_names = {
+        'eps': (
+            'epsr.dat',
+            'epsi.dat',
+            'eels.dat',
+            'ieps.dat',
+        ),
+        'jdos': (
+            'jdos.dat',
+        ),
+        'offdiag': tuple(
+            f'eps{first}{second}.dat'
+            for first in 'xyz'
+            for second in 'xyz'
+        ),
+    }[calculation]
+
+    result_files = {
+        name: result_dir / name
+        for name in output_names
+    }
+
+    missing_files = [
+        path
+        for path in result_files.values()
+        if not path.is_file()
+    ]
+
+    if missing_files:
+        raise RuntimeError(
+            "Quantum ESPRESSO epsilon.x finished but expected "
+            "data files were not created: "
+            + ", ".join(
+                str(path)
+                for path in missing_files
+            )
+        )
+
+    return {
+        'input_file': input_file,
+        'output_file': output_file,
+        'state_dir': state_dir,
+        'result_dir': result_dir,
+        'result_files': result_files,
+        'calculation': calculation,
+        'metadata': metadata,
+        'execution': execution,
+    }
+
 def run_pp_density(
     input_file,
     output_file,

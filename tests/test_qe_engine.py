@@ -61,6 +61,7 @@ from nanoworks.engine.qe import (
     has_qe_state,
     render_dos_input,
     render_epsilon_input,
+    run_epsilon,
     run_dos,
     parse_dos_output,
     render_projwfc_input,
@@ -1441,6 +1442,169 @@ class TestQEEngine(unittest.TestCase):
                 nbndmin=8,
                 nbndmax=4,
             )
+
+    def test_run_epsilon_requires_qe_state(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(
+                tmpdir
+            )
+
+            with self.assertRaisesRegex(
+                FileNotFoundError,
+                'valid QE electronic state',
+            ):
+                run_epsilon(
+                    input_file=tmpdir / 'epsilon.in',
+                    output_file=tmpdir / 'epsilon.out',
+                    state_dir=tmpdir / 'state',
+                    result_dir=tmpdir / 'optical',
+                )
+
+    def test_run_epsilon_validates_dielectric_outputs(self):
+        output_text = """
+         Program epsilon v.7.6 starts
+         JOB DONE.
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(
+                tmpdir
+            )
+            state_dir = tmpdir / 'state'
+            save_dir = state_dir / 'nanoworks.save'
+            save_dir.mkdir(
+                parents=True
+            )
+            (
+                save_dir
+                / 'data-file-schema.xml'
+            ).write_text(
+                '<qes/>',
+                encoding='utf-8',
+            )
+            result_dir = tmpdir / 'optical'
+
+            def fake_run_qe_program(**kwargs):
+                Path(
+                    kwargs['output_file']
+                ).write_text(
+                    output_text,
+                    encoding='utf-8',
+                )
+
+                for name in (
+                    'epsr.dat',
+                    'epsi.dat',
+                    'eels.dat',
+                    'ieps.dat',
+                ):
+                    (
+                        Path(kwargs['cwd'])
+                        / name
+                    ).write_text(
+                        '# epsilon data\n',
+                        encoding='utf-8',
+                    )
+
+                return {
+                    'returncode': 0,
+                }
+
+            with patch(
+                'nanoworks.engine.qe.run_qe_program',
+                side_effect=fake_run_qe_program,
+            ) as run:
+                workflow = run_epsilon(
+                    input_file=tmpdir / 'epsilon.in',
+                    output_file=tmpdir / 'epsilon.out',
+                    state_dir=state_dir,
+                    result_dir=result_dir,
+                    wmax=20.0,
+                    nw=401,
+                )
+
+            run.assert_called_once()
+            self.assertEqual(
+                run.call_args.kwargs['cwd'],
+                result_dir.resolve(),
+            )
+            self.assertEqual(
+                workflow['metadata']['program'],
+                'EPSILON',
+            )
+            self.assertTrue(
+                workflow['metadata']['job_done']
+            )
+            self.assertEqual(
+                set(workflow['result_files']),
+                {
+                    'epsr.dat',
+                    'epsi.dat',
+                    'eels.dat',
+                    'ieps.dat',
+                },
+            )
+            self.assertIn(
+                'wmax = 20',
+                (
+                    tmpdir
+                    / 'epsilon.in'
+                ).read_text(
+                    encoding='utf-8',
+                ),
+            )
+
+    def test_run_epsilon_rejects_missing_data_files(self):
+        output_text = """
+         Program epsilon v.7.6 starts
+         JOB DONE.
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(
+                tmpdir
+            )
+            state_dir = tmpdir / 'state'
+            save_dir = state_dir / 'nanoworks.save'
+            save_dir.mkdir(
+                parents=True
+            )
+            (
+                save_dir
+                / 'data-file-schema.xml'
+            ).write_text(
+                '<qes/>',
+                encoding='utf-8',
+            )
+
+            def fake_run_qe_program(**kwargs):
+                Path(
+                    kwargs['output_file']
+                ).write_text(
+                    output_text,
+                    encoding='utf-8',
+                )
+
+                return {
+                    'returncode': 0,
+                }
+
+            with (
+                patch(
+                    'nanoworks.engine.qe.run_qe_program',
+                    side_effect=fake_run_qe_program,
+                ),
+                self.assertRaisesRegex(
+                    RuntimeError,
+                    'expected data files were not created',
+                ),
+            ):
+                run_epsilon(
+                    input_file=tmpdir / 'epsilon.in',
+                    output_file=tmpdir / 'epsilon.out',
+                    state_dir=state_dir,
+                    result_dir=tmpdir / 'optical',
+                )
 
     def test_render_dos_input_rejects_invalid_bz_sum(self):
         with self.assertRaisesRegex(
