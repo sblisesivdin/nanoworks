@@ -10,7 +10,7 @@ There are some example calculations given with different usage scenarios. Please
 | Cr2O-spin         |Spin-dependent electronic properties of CrO2 |
 | Graphene-LCAO     | Pristine graphene and graphene with a defect with LCAO. Uses a single config for two calculations. |
 | Graphene-Charged  | Effect of charge in graphene with a defect with LCAO  |
-| Si-2atoms-optical | Three-step calculation. First step: ground, DOS, and Band calculations. Second and third steps for RPA and BSE optical calculations, respectively. Structure is given with a CIF file. |
+| Si-2atoms-optical | Combined GPAW and native QE RPA smoke workflows, plus focused GPAW RPA and BSE calculations. Structure is given with a CIF file. |
 | Al-phonon         | Phonon dispersion calculation of bulk Aluminum |
 | Si-phonon         | Phonon dispersion calculation of bulk Silicon |
 | ZnO with DFT+U    | Wurtzite ZnO calculation with DFT+U. Positions are given with the Bulk object. Hubbard params are: O-p: 7eV, Zn-d: 10eV|

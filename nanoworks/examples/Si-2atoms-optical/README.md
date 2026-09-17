@@ -1,8 +1,8 @@
 # Example: Two-Atom Silicon Optical Calculations
 
-This directory contains a combined GPAW RPA smoke workflow and separate RPA
-and BSE inputs. Optical calculations can now run in the same input as the
-ground-state and electronic post-processing stages.
+This directory contains combined GPAW and native Quantum ESPRESSO RPA smoke
+workflows plus separate GPAW RPA and BSE inputs. Optical calculations can run
+in the same input as the ground-state and electronic post-processing stages.
 
 ## Combined RPA workflow
 
@@ -28,6 +28,27 @@ a workflow smoke test. They are not converged settings for scientific use.
 Nanoworks always runs the optical stage last. It releases calculator references
 from the earlier stages before loading the optical state, reducing the chance
 that their memory use overlaps.
+
+## Native Quantum ESPRESSO RPA workflow
+
+`Si-QE-Combined-RPA-smoke.py` runs the corresponding native QE workflow. It
+performs a symmetry-free uniform-grid NSCF calculation and then calls
+`epsilon.x` for the independent-particle RPA dielectric response:
+
+```bash
+dftsolve \
+  -i Si-QE-Combined-RPA-smoke.py \
+  -g Si_mp-149_primitive_Example.cif
+```
+
+The QE pseudopotential directory must be configured as for the other native QE
+examples, and both `pw.x` and `epsilon.x` must be available in `PATH`.
+
+The workflow writes the raw `epsilon.x` files under the structure-prefixed
+`OPTICAL-QE-Result-Raw` directory, three seven-column optical tables for the x,
+y, and z directions, and dielectric, refractive-index, absorption, and
+reflectivity figures for each direction. Native QE optics currently supports
+`Opt_calc_type = 'RPA'`; BSE remains a GPAW-only option.
 
 ## Focused optical reruns
 
