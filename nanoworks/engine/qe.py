@@ -2377,6 +2377,7 @@ def render_pw_input(
     mixing_beta=None,
     electron_maxstep=None,
     diagonalization=None,
+    nosym=False,
     band_path=None,
     exx_additional_kpoints=None,
     relaxation_settings=None,
@@ -2586,6 +2587,9 @@ def render_pw_input(
             width_ev=width_ev,
         )
     )
+
+    if nosym:
+        system['nosym'] = True
 
     electrons = build_electrons_settings(
         conv_thr=conv_thr,
@@ -2819,6 +2823,7 @@ def render_nscf_input(
     mixing_beta=None,
     electron_maxstep=None,
     diagonalization=None,
+    nosym=False,
 ):
     """Render a complete QE pw.x NSCF input."""
     return render_pw_input(
@@ -2847,6 +2852,7 @@ def render_nscf_input(
         mixing_beta=mixing_beta,
         electron_maxstep=electron_maxstep,
         diagonalization=diagonalization,
+        nosym=nosym,
     )
 
 def render_relax_input(
@@ -7892,6 +7898,7 @@ def run_nscf(
     exx_fraction=None,
     omega=None,
     occupation=None,
+    nosym=False,
     parallel_cores=1,
     executable='pw.x',
     prefix='nanoworks',
@@ -7948,6 +7955,7 @@ def run_nscf(
         occupations=occupation_settings['occupations'],
         smearing=occupation_settings['smearing'],
         width_ev=occupation_settings['width_ev'],
+        nosym=nosym,
         prefix=prefix,
         pseudo_dir=pseudo_dir,
         outdir=state_dir,

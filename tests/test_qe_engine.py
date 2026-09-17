@@ -1927,6 +1927,33 @@ class TestQEEngine(unittest.TestCase):
             text,
         )
 
+        self.assertNotIn(
+            'nosym',
+            text,
+        )
+
+    def test_render_nscf_input_can_disable_symmetry(self):
+        atoms = bulk(
+            'Si',
+            'diamond',
+            a=5.43,
+        )
+
+        text = render_nscf_input(
+            atoms=atoms,
+            pseudopotentials={
+                'Si': 'Si.upf',
+            },
+            cutoff_ev=400.0,
+            kpoint_size=(8, 8, 8),
+            nosym=True,
+        )
+
+        self.assertIn(
+            'nosym = .true.',
+            text,
+        )
+
     def test_render_complete_bands_input(self):
         atoms = bulk(
             'Si',
