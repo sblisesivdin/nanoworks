@@ -24,6 +24,8 @@ THZ_PER_CM_MINUS_ONE = 0.0299792458
 BOLTZMANN_EV_PER_K = 8.617333262145e-5
 EV_PER_THZ = 4.135667696e-3
 KJ_PER_MOL_PER_EV = 96.48533212331002
+REDUCED_PLANCK_EV_SECONDS = 6.582119569e-16
+SPEED_OF_LIGHT_CM_PER_SECOND = 2.99792458e10
 
 
 def ev_to_rydberg(value):
@@ -3815,6 +3817,109 @@ def parse_epsilon_data_file(
         'components': components,
         'npoints': len(rows),
         'ncomponents': component_count,
+    }
+
+
+def prepare_epsilon_optical_data(
+    real_file,
+    imaginary_file,
+):
+    """Combine diagonal epsilon spectra and derive standard optical data."""
+    real = parse_epsilon_data_file(
+        real_file,
+        expected_components=3,
+    )
+    imaginary = parse_epsilon_data_file(
+        imaginary_file,
+        expected_components=3,
+    )
+
+    if real['npoints'] != imaginary['npoints'] or not np.allclose(
+        real['energies_ev'],
+        imaginary['energies_ev'],
+        rtol=0.0,
+        atol=1.0e-9,
+    ):
+        raise ValueError(
+            "QE epsilon real and imaginary spectra use different "
+            "energy grids."
+        )
+
+    energies_ev = real['energies_ev']
+    directions = {}
+
+    for component_index, direction in enumerate('xyz'):
+        epsilon_real = real['components'][
+            component_index
+        ]
+        epsilon_imaginary = imaginary['components'][
+            component_index
+        ]
+        refractive_index = []
+        extinction_coefficient = []
+        absorption_cm_inverse = []
+        reflectivity = []
+
+        for energy, eps_real, eps_imaginary in zip(
+            energies_ev,
+            epsilon_real,
+            epsilon_imaginary,
+        ):
+            epsilon_magnitude = math.hypot(
+                eps_real,
+                eps_imaginary,
+            )
+            refractive = math.sqrt(
+                max(
+                    0.0,
+                    (epsilon_magnitude + eps_real) / 2.0,
+                )
+            )
+            extinction = math.sqrt(
+                max(
+                    0.0,
+                    (epsilon_magnitude - eps_real) / 2.0,
+                )
+            )
+            reflection_denominator = (
+                (1.0 + refractive) ** 2
+                + extinction ** 2
+            )
+
+            refractive_index.append(
+                refractive
+            )
+            extinction_coefficient.append(
+                extinction
+            )
+            absorption_cm_inverse.append(
+                2.0 * energy * extinction
+                / (
+                    REDUCED_PLANCK_EV_SECONDS
+                    * SPEED_OF_LIGHT_CM_PER_SECOND
+                )
+            )
+            reflectivity.append(
+                (
+                    (1.0 - refractive) ** 2
+                    + extinction ** 2
+                )
+                / reflection_denominator
+            )
+
+        directions[direction] = {
+            'epsilon_real': epsilon_real,
+            'epsilon_imaginary': epsilon_imaginary,
+            'refractive_index': refractive_index,
+            'extinction_coefficient': extinction_coefficient,
+            'absorption_cm_inverse': absorption_cm_inverse,
+            'reflectivity': reflectivity,
+        }
+
+    return {
+        'energies_ev': energies_ev,
+        'directions': directions,
+        'npoints': real['npoints'],
     }
 
 

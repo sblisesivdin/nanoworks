@@ -38,6 +38,7 @@ from nanoworks.engine.qe import (
     run_qe_program,
     parse_qe_auxiliary_output,
     parse_epsilon_data_file,
+    prepare_epsilon_optical_data,
     parse_matdyn_frequency_file,
     parse_matdyn_dos_file,
     write_matdyn_band_data,
@@ -1698,6 +1699,96 @@ class TestQEEngine(unittest.TestCase):
                 parse_epsilon_data_file(
                     data_file,
                     expected_components=3,
+                )
+
+    def test_prepare_epsilon_optical_data(self):
+        real_content = """# energy epsr_x epsr_y epsr_z
+ 0.0  3.0  1.0  1.0
+ 1.0  3.0  1.0  1.0
+"""
+        imaginary_content = """# energy epsi_x epsi_y epsi_z
+ 0.0  4.0  0.0  0.0
+ 1.0  4.0  0.0  0.0
+"""
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+            real_file = tmpdir / 'epsr.dat'
+            imaginary_file = tmpdir / 'epsi.dat'
+            real_file.write_text(
+                real_content,
+                encoding='utf-8',
+            )
+            imaginary_file.write_text(
+                imaginary_content,
+                encoding='utf-8',
+            )
+
+            result = prepare_epsilon_optical_data(
+                real_file,
+                imaginary_file,
+            )
+
+        x_data = result['directions']['x']
+        self.assertEqual(
+            result['energies_ev'],
+            [0.0, 1.0],
+        )
+        self.assertEqual(
+            x_data['refractive_index'],
+            [2.0, 2.0],
+        )
+        self.assertEqual(
+            x_data['extinction_coefficient'],
+            [1.0, 1.0],
+        )
+        self.assertAlmostEqual(
+            x_data['absorption_cm_inverse'][0],
+            0.0,
+        )
+        self.assertAlmostEqual(
+            x_data['absorption_cm_inverse'][1],
+            101354.61433096675,
+        )
+        self.assertEqual(
+            x_data['reflectivity'],
+            [0.2, 0.2],
+        )
+        self.assertEqual(
+            result['directions']['y']['refractive_index'],
+            [1.0, 1.0],
+        )
+
+    def test_prepare_epsilon_optical_data_requires_matching_grids(self):
+        real_content = """# energy epsr_x epsr_y epsr_z
+ 0.0  1.0  1.0  1.0
+ 1.0  1.0  1.0  1.0
+"""
+        imaginary_content = """# energy epsi_x epsi_y epsi_z
+ 0.0  0.0  0.0  0.0
+ 2.0  0.0  0.0  0.0
+"""
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+            real_file = tmpdir / 'epsr.dat'
+            imaginary_file = tmpdir / 'epsi.dat'
+            real_file.write_text(
+                real_content,
+                encoding='utf-8',
+            )
+            imaginary_file.write_text(
+                imaginary_content,
+                encoding='utf-8',
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                'different energy grids',
+            ):
+                prepare_epsilon_optical_data(
+                    real_file,
+                    imaginary_file,
                 )
 
     def test_render_dos_input_rejects_invalid_bz_sum(self):
