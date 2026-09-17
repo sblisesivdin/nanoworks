@@ -238,6 +238,7 @@ warnings.filterwarnings('ignore')
 DFT_ENGINE_DEFAULTS = {
     'GPAW': {
         'XC_calc': 'LDA',
+        'Opt_calc_type': 'BSE',
         'DOS_occupation': None,
         'Fix_symmetry': False,
         'Phonon_PW_cutoff': 400,
@@ -247,6 +248,7 @@ DFT_ENGINE_DEFAULTS = {
     },
     'QE': {
         'XC_calc': 'PBE',
+        'Opt_calc_type': 'RPA',
         'DOS_occupation': 'tetrahedra',
         'Fix_symmetry': True,
         'Phonon_PW_cutoff': None,
@@ -365,7 +367,7 @@ class DFTConfig:
     Phonon_T_step: float = 10.0
     
     # Optical parameters
-    Opt_calc_type: str = 'BSE'
+    Opt_calc_type: Optional[str] = None
     Opt_shift_en: float = 0.0
     Opt_BSE_valence: Any = None
     Opt_BSE_conduction: Any = None
@@ -5016,14 +5018,216 @@ class dftsolve:
             return self._opticalcalc_gpaw()
 
         if self.Engine == 'QE':
-            raise NotImplementedError(
-                "Quantum ESPRESSO optical calculations are not "
-                "implemented yet."
-            )
+            return self._opticalcalc_qe()
 
         raise ValueError(
             f"Unsupported optical engine: {self.Engine}"
         )
+
+    def _opticalcalc_qe(self):
+        """Run the native QE NSCF and epsilon.x optical workflow."""
+        time61 = time.time()
+
+        parprint(
+            "Starting native QE RPA optical calculation..."
+        )
+
+        if self.Mode != 'PW':
+            raise ValueError(
+                "Quantum ESPRESSO optical calculations support "
+                "PW mode only."
+            )
+
+        if self.SOC_calc:
+            raise NotImplementedError(
+                "Quantum ESPRESSO SOC optical calculations are "
+                "not supported yet."
+            )
+
+        calculation_type = str(
+            self.Opt_calc_type
+        ).strip().upper()
+
+        if calculation_type != 'RPA':
+            raise NotImplementedError(
+                "Native Quantum ESPRESSO optical calculations "
+                "currently support Opt_calc_type = 'RPA' only; "
+                "epsilon.x does not provide the BSE workflow."
+            )
+
+        self.engine.validate_qe_xc(
+            self.XC_calc,
+            pseudo_xc='pbe',
+        )
+
+        state_dir = Path(
+            self.struct
+            + '-GROUND-QE-Result-State'
+        )
+
+        if not self.engine.has_qe_state(
+            state_dir,
+            prefix='nanoworks',
+        ):
+            raise FileNotFoundError(
+                f"{state_dir} does not contain a valid QE "
+                "ground-state result. Complete the ground-state "
+                "calculation before running optics."
+            )
+
+        pseudo_dir = get_qe_pseudo_dir(
+            relativistic='scalar',
+        )
+        pseudopotentials = resolve_qe_pseudopotentials(
+            self.bulk_configuration,
+            relativistic='scalar',
+        )
+        ground_gamma = (
+            self.Gamma
+            if self.Ground_gamma is None
+            else self.Ground_gamma
+        )
+        (
+            optical_kpoint_density,
+            optical_kpoint_size,
+            optical_gamma,
+        ) = resolve_stage_kpoint_settings(
+            stage_density=self.Opt_kpts_density,
+            stage_size=(
+                self.Opt_kpts_x,
+                self.Opt_kpts_y,
+                self.Opt_kpts_z,
+            ),
+            stage_gamma=self.Opt_gamma,
+            ground_density=self.Ground_kpts_density,
+            ground_size=(
+                self.Ground_kpts_x,
+                self.Ground_kpts_y,
+                self.Ground_kpts_z,
+            ),
+            ground_gamma=ground_gamma,
+        )
+        magnetic_moments = None
+
+        if self.Spin_calc:
+            magnetic_moments = resolve_initial_magnetic_moments(
+                atoms=self.bulk_configuration,
+                magmom_per_atom=self.Magmom_per_atom,
+                magmom_single_atom=self.Magmom_single_atom,
+            )
+
+        nscf_workflow = self.engine.run_nscf(
+            atoms=self.bulk_configuration,
+            input_file=Path(
+                self.struct
+                + '-OPTICAL-QE-Input-NSCF.in'
+            ),
+            output_file=Path(
+                self.struct
+                + '-OPTICAL-QE-Log-NSCF.txt'
+            ),
+            state_dir=state_dir,
+            pseudopotentials=pseudopotentials,
+            pseudo_dir=pseudo_dir,
+            cutoff_ev=self.Cut_off_energy,
+            kpoint_density=optical_kpoint_density,
+            kpoint_size=optical_kpoint_size,
+            gamma=optical_gamma,
+            total_charge=self.Total_charge,
+            nbands=self.Opt_num_of_bands,
+            spinpol=self.Spin_calc,
+            magnetic_moments=magnetic_moments,
+            setup_params=self.Setup_params,
+            xc_calc=self.XC_calc,
+            exx_fraction=self.XC_exx_fraction,
+            omega=self.XC_omega,
+            occupation={
+                'name': 'fermi-dirac',
+                'width': self.Opt_FD_smearing,
+            },
+            nosym=True,
+            parallel_cores=self.parallel_cores,
+            executable='pw.x',
+            prefix='nanoworks',
+        )
+
+        epsilon_workflow = self.engine.run_epsilon(
+            input_file=Path(
+                self.struct
+                + '-OPTICAL-QE-Input-Epsilon.in'
+            ),
+            output_file=Path(
+                self.struct
+                + '-OPTICAL-QE-Log-Epsilon.txt'
+            ),
+            state_dir=state_dir,
+            result_dir=Path(
+                self.struct
+                + '-OPTICAL-QE-Result-Raw'
+            ),
+            calculation='eps',
+            smeartype='gauss',
+            intersmear=self.Opt_eta,
+            intrasmear=0.0,
+            wmin=self.Opt_BSE_min_en,
+            wmax=self.Opt_BSE_max_en,
+            nw=self.Opt_BSE_num_of_data,
+            shift=self.Opt_shift_en,
+            parallel_cores=self.parallel_cores,
+            executable='epsilon.x',
+            prefix='nanoworks',
+        )
+
+        optical_data = epsilon_workflow[
+            'optical_data'
+        ]
+        table_files = self.engine.write_epsilon_optical_data(
+            optical_data,
+            Path(
+                self.struct
+                + '-OPTICAL-QE-Result-Calculation-RPA'
+            ),
+        )
+        figure_files = {}
+
+        if world.rank == 0:
+            for direction, table_file in table_files.items():
+                plot_data = np.loadtxt(
+                    table_file,
+                    skiprows=1,
+                )
+                figure_prefix = (
+                    self.struct
+                    + '-OPTICAL-QE-Graph-RPA-'
+                    + direction
+                    + 'direction'
+                )
+                self._generate_optical_figures(
+                    plot_data,
+                    figure_prefix,
+                    f"QE RPA ({direction})",
+                )
+                figure_files[direction] = figure_prefix
+
+        time62 = time.time()
+
+        with paropen(
+            self.struct
+            + f'-TIMINGS-{self.Engine}-Log-Timings.txt',
+            'a',
+        ) as fd:
+            print(
+                'Optical calculation: ',
+                round(time62 - time61, 2),
+                file=fd,
+            )
+
+        return {
+            'nscf': nscf_workflow,
+            'epsilon': epsilon_workflow,
+            'table_files': table_files,
+            'figure_prefixes': figure_files,
+        }
 
     def _opticalcalc_gpaw(self):
         """

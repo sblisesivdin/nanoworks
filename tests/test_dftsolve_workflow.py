@@ -41,20 +41,190 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         )
         solver._opticalcalc_gpaw.assert_called_once_with()
 
-    def test_opticalcalc_reports_qe_as_not_implemented(self):
+    def test_opticalcalc_dispatches_to_qe(self):
         solver = object.__new__(
             DFTSolver
         )
         solver.Engine = 'QE'
-        solver._opticalcalc_gpaw = Mock()
+        expected = object()
+        solver._opticalcalc_qe = Mock(
+            return_value=expected
+        )
+
+        result = solver.opticalcalc()
+
+        self.assertIs(
+            result,
+            expected,
+        )
+        solver._opticalcalc_qe.assert_called_once_with()
+
+    def test_qe_opticalcalc_runs_nscf_epsilon_and_writes_tables(self):
+        optical_data = {
+            'energies_ev': [0.0, 1.0],
+            'directions': {
+                direction: {
+                    'epsilon_real': [1.0, 2.0],
+                    'epsilon_imaginary': [0.0, 0.5],
+                    'refractive_index': [1.0, 1.5],
+                    'extinction_coefficient': [0.0, 0.2],
+                    'absorption_cm_inverse': [0.0, 1000.0],
+                    'reflectivity': [0.0, 0.05],
+                }
+                for direction in 'xyz'
+            },
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            solver = object.__new__(
+                DFTSolver
+            )
+            solver.Engine = 'QE'
+            solver.Mode = 'PW'
+            solver.SOC_calc = False
+            solver.Opt_calc_type = 'RPA'
+            solver.XC_calc = 'PBE'
+            solver.struct = str(
+                Path(tmpdir) / 'silicon'
+            )
+            solver.bulk_configuration = Atoms(
+                'Si2',
+                cell=[5.4, 5.4, 5.4],
+                pbc=True,
+            )
+            solver.Gamma = False
+            solver.Ground_gamma = None
+            solver.Ground_kpts_density = None
+            solver.Ground_kpts_x = 2
+            solver.Ground_kpts_y = 2
+            solver.Ground_kpts_z = 2
+            solver.Opt_kpts_density = None
+            solver.Opt_kpts_x = 4
+            solver.Opt_kpts_y = 4
+            solver.Opt_kpts_z = 4
+            solver.Opt_gamma = None
+            solver.Spin_calc = False
+            solver.Cut_off_energy = 500.0
+            solver.Total_charge = 0.0
+            solver.Opt_num_of_bands = 16
+            solver.Setup_params = None
+            solver.XC_exx_fraction = None
+            solver.XC_omega = None
+            solver.Opt_FD_smearing = 0.05
+            solver.Opt_eta = 0.1
+            solver.Opt_BSE_min_en = 0.0
+            solver.Opt_BSE_max_en = 10.0
+            solver.Opt_BSE_num_of_data = 101
+            solver.Opt_shift_en = 0.2
+            solver.parallel_cores = 2
+            solver._generate_optical_figures = Mock()
+
+            def write_tables(data, output_prefix):
+                self.assertIs(
+                    data,
+                    optical_data,
+                )
+                output_files = {}
+
+                for direction in 'xyz':
+                    output_file = Path(
+                        f"{output_prefix}-AllData_"
+                        f"{direction}direction.dat"
+                    )
+                    output_file.write_text(
+                        'header\n'
+                        '0 1 0 1 0 0 0\n'
+                        '1 2 0.5 1.5 0.2 1000 0.05\n',
+                        encoding='utf-8',
+                    )
+                    output_files[direction] = output_file
+
+                return output_files
+
+            solver.engine = SimpleNamespace(
+                validate_qe_xc=Mock(
+                    return_value='pbe'
+                ),
+                has_qe_state=Mock(
+                    return_value=True
+                ),
+                run_nscf=Mock(
+                    return_value={'result': {}}
+                ),
+                run_epsilon=Mock(
+                    return_value={
+                        'optical_data': optical_data,
+                    }
+                ),
+                write_epsilon_optical_data=Mock(
+                    side_effect=write_tables
+                ),
+            )
+
+            with (
+                patch(
+                    'nanoworks.dftsolve.get_qe_pseudo_dir',
+                    return_value=Path('pseudos'),
+                ),
+                patch(
+                    'nanoworks.dftsolve.resolve_qe_pseudopotentials',
+                    return_value={
+                        'Si': 'Si.upf',
+                    },
+                ),
+                patch(
+                    'nanoworks.dftsolve.parprint',
+                ),
+            ):
+                result = solver._opticalcalc_qe()
+
+        nscf_call = solver.engine.run_nscf.call_args.kwargs
+        self.assertEqual(
+            nscf_call['kpoint_size'],
+            (4, 4, 4),
+        )
+        self.assertTrue(
+            nscf_call['nosym']
+        )
+        self.assertEqual(
+            nscf_call['nbands'],
+            16,
+        )
+        epsilon_call = solver.engine.run_epsilon.call_args.kwargs
+        self.assertEqual(
+            epsilon_call['wmax'],
+            10.0,
+        )
+        self.assertEqual(
+            epsilon_call['nw'],
+            101,
+        )
+        self.assertEqual(
+            epsilon_call['intersmear'],
+            0.1,
+        )
+        self.assertEqual(
+            result['epsilon']['optical_data'],
+            optical_data,
+        )
+        self.assertEqual(
+            solver._generate_optical_figures.call_count,
+            3,
+        )
+
+    def test_qe_opticalcalc_rejects_bse(self):
+        solver = object.__new__(
+            DFTSolver
+        )
+        solver.Mode = 'PW'
+        solver.SOC_calc = False
+        solver.Opt_calc_type = 'BSE'
 
         with self.assertRaisesRegex(
             NotImplementedError,
-            'Quantum ESPRESSO optical calculations',
+            "Opt_calc_type = 'RPA' only",
         ):
-            solver.opticalcalc()
-
-        solver._opticalcalc_gpaw.assert_not_called()
+            solver._opticalcalc_qe()
 
     def test_opticalcalc_rejects_unknown_engine(self):
         solver = object.__new__(
@@ -345,6 +515,10 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         self.assertIsNone(
             config.Phonon_kpts_z
         )
+        self.assertEqual(
+            config.Opt_calc_type,
+            'RPA',
+        )
 
     def test_gpaw_engine_specific_defaults(self):
         config = DFTConfig(
@@ -369,6 +543,10 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         self.assertEqual(
             config.Phonon_PW_cutoff,
             400,
+        )
+        self.assertEqual(
+            config.Opt_calc_type,
+            'BSE',
         )
         self.assertEqual(
             (
