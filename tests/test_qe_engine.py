@@ -1494,17 +1494,27 @@ class TestQEEngine(unittest.TestCase):
                     encoding='utf-8',
                 )
 
-                for name in (
-                    'epsr.dat',
-                    'epsi.dat',
-                    'eels.dat',
-                    'ieps.dat',
-                ):
+                result_contents = {
+                    'epsr.dat': (
+                        '# energy epsr_x epsr_y epsr_z\n'
+                        '0.0 3.0 1.0 1.0\n'
+                        '1.0 3.0 1.0 1.0\n'
+                    ),
+                    'epsi.dat': (
+                        '# energy epsi_x epsi_y epsi_z\n'
+                        '0.0 4.0 0.0 0.0\n'
+                        '1.0 4.0 0.0 0.0\n'
+                    ),
+                    'eels.dat': '# epsilon data\n',
+                    'ieps.dat': '# epsilon data\n',
+                }
+
+                for name, content in result_contents.items():
                     (
                         Path(kwargs['cwd'])
                         / name
                     ).write_text(
-                        '# epsilon data\n',
+                        content,
                         encoding='utf-8',
                     )
 
@@ -1536,6 +1546,12 @@ class TestQEEngine(unittest.TestCase):
             )
             self.assertTrue(
                 workflow['metadata']['job_done']
+            )
+            self.assertEqual(
+                workflow['optical_data']['directions']['x'][
+                    'refractive_index'
+                ],
+                [2.0, 2.0],
             )
             self.assertEqual(
                 set(workflow['result_files']),

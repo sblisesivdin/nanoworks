@@ -8916,6 +8916,14 @@ def run_epsilon(
             )
         )
 
+    optical_data = None
+
+    if calculation == 'eps':
+        optical_data = prepare_epsilon_optical_data(
+            result_files['epsr.dat'],
+            result_files['epsi.dat'],
+        )
+
     return {
         'input_file': input_file,
         'output_file': output_file,
@@ -8923,6 +8931,7 @@ def run_epsilon(
         'result_dir': result_dir,
         'result_files': result_files,
         'calculation': calculation,
+        'optical_data': optical_data,
         'metadata': metadata,
         'execution': execution,
     }
