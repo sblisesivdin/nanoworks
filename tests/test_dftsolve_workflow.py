@@ -115,6 +115,9 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             solver.Opt_BSE_min_en = 0.0
             solver.Opt_BSE_max_en = 10.0
             solver.Opt_BSE_num_of_data = 101
+            solver.Opt_min_en = 0.0
+            solver.Opt_max_en = 10.0
+            solver.Opt_num_of_data = 101
             solver.Opt_shift_en = 0.2
             solver.parallel_cores = 2
             solver._generate_optical_figures = Mock()
@@ -519,6 +522,14 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             config.Opt_calc_type,
             'RPA',
         )
+        self.assertEqual(
+            (
+                config.Opt_min_en,
+                config.Opt_max_en,
+                config.Opt_num_of_data,
+            ),
+            (0.0, 20.0, 1001),
+        )
 
     def test_gpaw_engine_specific_defaults(self):
         config = DFTConfig(
@@ -572,6 +583,9 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             Phonon_kpts_x=4,
             Phonon_kpts_y=5,
             Phonon_kpts_z=6,
+            Opt_min_en=1.0,
+            Opt_max_en=12.0,
+            Opt_num_of_data=221,
         )
 
         self.assertEqual(
@@ -596,6 +610,14 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 config.Phonon_kpts_z,
             ),
             (4, 5, 6),
+        )
+        self.assertEqual(
+            (
+                config.Opt_min_en,
+                config.Opt_max_en,
+                config.Opt_num_of_data,
+            ),
+            (1.0, 12.0, 221),
         )
 
     def test_phononcalc_dispatches_to_gpaw(self):

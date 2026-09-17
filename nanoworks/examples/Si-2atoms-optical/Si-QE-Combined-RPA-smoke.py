@@ -49,9 +49,9 @@ Opt_kpts_z = 2
 Opt_gamma = True
 Opt_FD_smearing = 0.05
 Opt_eta = 0.1
-Opt_BSE_min_en = 0.0
-Opt_BSE_max_en = 10.0
-Opt_BSE_num_of_data = 101
+Opt_min_en = 0.0
+Opt_max_en = 10.0
+Opt_num_of_data = 101
 Opt_shift_en = 0.0
 
 Spin_calc = False

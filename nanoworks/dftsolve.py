@@ -374,6 +374,9 @@ class DFTConfig:
     Opt_BSE_min_en: float = 0.0
     Opt_BSE_max_en: float = 20.0
     Opt_BSE_num_of_data: int = 1001
+    Opt_min_en: Optional[float] = None
+    Opt_max_en: Optional[float] = None
+    Opt_num_of_data: Optional[int] = None
     Opt_num_of_bands: int = 8
     Opt_kpts_density: Optional[float] = None
     Opt_kpts_x: Optional[int] = None
@@ -430,6 +433,12 @@ class DFTConfig:
             self.Opt_BSE_valence = range(0, 3)
         if self.Opt_BSE_conduction is None:
             self.Opt_BSE_conduction = range(4, 7)
+        if self.Opt_min_en is None:
+            self.Opt_min_en = self.Opt_BSE_min_en
+        if self.Opt_max_en is None:
+            self.Opt_max_en = self.Opt_BSE_max_en
+        if self.Opt_num_of_data is None:
+            self.Opt_num_of_data = self.Opt_BSE_num_of_data
         if self.Opt_nblocks is None:
             self.Opt_nblocks = world.size
         
@@ -766,6 +775,9 @@ class dftsolve:
         self.Opt_BSE_min_en = config.Opt_BSE_min_en
         self.Opt_BSE_max_en = config.Opt_BSE_max_en
         self.Opt_BSE_num_of_data = config.Opt_BSE_num_of_data
+        self.Opt_min_en = config.Opt_min_en
+        self.Opt_max_en = config.Opt_max_en
+        self.Opt_num_of_data = config.Opt_num_of_data
         self.Opt_num_of_bands = config.Opt_num_of_bands
         self.Opt_kpts_density = config.Opt_kpts_density
         self.Opt_kpts_x = config.Opt_kpts_x
@@ -5151,6 +5163,10 @@ class dftsolve:
             prefix='nanoworks',
         )
 
+        parprint(
+            "QE optical NSCF calculation finished."
+        )
+
         epsilon_workflow = self.engine.run_epsilon(
             input_file=Path(
                 self.struct
@@ -5169,13 +5185,17 @@ class dftsolve:
             smeartype='gauss',
             intersmear=self.Opt_eta,
             intrasmear=0.0,
-            wmin=self.Opt_BSE_min_en,
-            wmax=self.Opt_BSE_max_en,
-            nw=self.Opt_BSE_num_of_data,
+            wmin=self.Opt_min_en,
+            wmax=self.Opt_max_en,
+            nw=self.Opt_num_of_data,
             shift=self.Opt_shift_en,
             parallel_cores=self.parallel_cores,
             executable='epsilon.x',
             prefix='nanoworks',
+        )
+
+        parprint(
+            "QE epsilon.x calculation finished."
         )
 
         optical_data = epsilon_workflow[
@@ -5188,6 +5208,15 @@ class dftsolve:
                 + '-OPTICAL-QE-Result-Calculation-RPA'
             ),
         )
+
+        for direction, table_file in table_files.items():
+            parprint(
+                "QE optical "
+                + direction
+                + "-direction data saved to: "
+                + str(table_file)
+            )
+
         figure_files = {}
 
         if world.rank == 0:
@@ -5208,6 +5237,10 @@ class dftsolve:
                     f"QE RPA ({direction})",
                 )
                 figure_files[direction] = figure_prefix
+                parprint(
+                    "QE optical figures saved with prefix: "
+                    + figure_prefix
+                )
 
         time62 = time.time()
 
@@ -5319,7 +5352,7 @@ class dftsolve:
                 parprint("Starting dielectric function calculation...")
                 # Writing to files
                 bse.get_dielectric_function(filename=self.struct+'-OPTICAL-GPAW-Result-Calculation-BSE_dielec.csv',
-                                            eta=self.Opt_eta, w_w=np.linspace(self.Opt_BSE_min_en, self.Opt_BSE_max_en, self.Opt_BSE_num_of_data),
+                                            eta=self.Opt_eta, w_w=np.linspace(self.Opt_min_en, self.Opt_max_en, self.Opt_num_of_data),
                                             write_eig=self.struct+'-OPTICAL-GPAW-Result-Calculation-BSE_eig.dat')
                 # Loading dielectric function spectrum to numpy
                 dielec = genfromtxt(self.struct+'-OPTICAL-GPAW-Result-Calculation-BSE_dielec.csv', delimiter=',')
@@ -5349,14 +5382,14 @@ class dftsolve:
                 # DIRECTION IS NOT WORKING FOR A WHILE, IN FUTURE THESE LINES CAN BE USED
                 bse.get_dielectric_function(filename=self.struct+'-OPTICAL-GPAW-Result-Calculation-BSE_dielec_xdirection.csv',
                                             q_c = [0.0, 0.0, 0.0], direction=0, eta=self.Opt_eta,
-                                            w_w=np.linspace(self.Opt_BSE_min_en, self.Opt_BSE_max_en, self.Opt_BSE_num_of_data),
+                                            w_w=np.linspace(self.Opt_min_en, self.Opt_max_en, self.Opt_num_of_data),
                                             write_eig=self.struct+'-OPTICAL-GPAW-Result-Calculation-BSE_eig_xdirection.dat')
                 bse.get_dielectric_function(q_c = [0.0, 0.0, 0.0], direction=1, eta=self.Opt_eta,
-                                            w_w=np.linspace(self.Opt_BSE_min_en, self.Opt_BSE_max_en, self.Opt_BSE_num_of_data),
+                                            w_w=np.linspace(self.Opt_min_en, self.Opt_max_en, self.Opt_num_of_data),
                                             filename=self.struct+'-OPTICAL-GPAW-Result-Calculation-BSE_dielec_ydirection.csv',
                                             write_eig=self.struct+'-OPTICAL-GPAW-Result-Calculation-BSE_eig_ydirection.dat')
                 bse.get_dielectric_function(q_c = [0.0, 0.0, 0.0], direction=2, eta=self.Opt_eta,
-                                            w_w=np.linspace(self.Opt_BSE_min_en, self.Opt_BSE_max_en, self.Opt_BSE_num_of_data),
+                                            w_w=np.linspace(self.Opt_min_en, self.Opt_max_en, self.Opt_num_of_data),
                                             filename=self.struct+'-OPTICAL-GPAW-Result-Calculation-BSE_dielec_zdirection.csv',
                                             write_eig=self.struct+'-OPTICAL-GPAW-Result-Calculation-BSE_eig_zdirection.dat')
 
