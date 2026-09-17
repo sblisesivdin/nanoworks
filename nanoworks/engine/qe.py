@@ -3697,6 +3697,127 @@ def parse_qe_auxiliary_output(
     }
 
 
+def parse_epsilon_data_file(
+    data_file,
+    expected_components=None,
+):
+    """Parse one numeric spectrum written by Quantum ESPRESSO epsilon.x."""
+    data_file = Path(
+        data_file
+    )
+
+    if not data_file.is_file():
+        raise FileNotFoundError(
+            "QE epsilon.x data file was not found: "
+            f"{data_file}"
+        )
+
+    if expected_components is not None:
+        expected_components = int(
+            expected_components
+        )
+
+        if expected_components <= 0:
+            raise ValueError(
+                "Expected epsilon component count must be positive."
+            )
+
+    rows = []
+    component_count = None
+
+    with data_file.open(
+        'r',
+        encoding='utf-8',
+        errors='replace',
+    ) as fd:
+        for line_number, line in enumerate(fd, start=1):
+            stripped = line.strip()
+
+            if not stripped or stripped.startswith('#'):
+                continue
+
+            try:
+                values = [
+                    float(
+                        value
+                        .replace('D', 'E')
+                        .replace('d', 'e')
+                    )
+                    for value in stripped.split()
+                ]
+            except ValueError as exc:
+                raise ValueError(
+                    "QE epsilon.x data row could not be parsed "
+                    f"at line {line_number} in '{data_file}'."
+                ) from exc
+
+            if len(values) < 2:
+                raise ValueError(
+                    "QE epsilon.x data rows must contain energy and "
+                    f"at least one component in '{data_file}'."
+                )
+
+            row_component_count = len(values) - 1
+
+            if component_count is None:
+                component_count = row_component_count
+            elif row_component_count != component_count:
+                raise ValueError(
+                    "QE epsilon.x data contains inconsistent "
+                    f"column counts in '{data_file}'."
+                )
+
+            rows.append(values)
+
+    if not rows:
+        raise ValueError(
+            "No QE epsilon.x data could be parsed from "
+            f"'{data_file}'."
+        )
+
+    if (
+        expected_components is not None
+        and component_count != expected_components
+    ):
+        raise ValueError(
+            "QE epsilon.x data component count does not match "
+            f"the expected value: expected {expected_components}, "
+            f"found {component_count}."
+        )
+
+    energies_ev = [
+        row[0]
+        for row in rows
+    ]
+
+    if any(
+        second <= first
+        for first, second in zip(
+            energies_ev,
+            energies_ev[1:],
+        )
+    ):
+        raise ValueError(
+            "QE epsilon.x energy grid must be strictly increasing "
+            f"in '{data_file}'."
+        )
+
+    components = [
+        [
+            row[component_index + 1]
+            for row in rows
+        ]
+        for component_index in range(component_count)
+    ]
+
+    return {
+        'energies_ev': energies_ev,
+        'components': components,
+        'npoints': len(rows),
+        'ncomponents': component_count,
+    }
+
+
 def parse_matdyn_frequency_file(frequency_file):
     """Parse q-points and phonon frequencies written by matdyn.x."""
     frequency_file = Path(

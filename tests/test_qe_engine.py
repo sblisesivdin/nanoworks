@@ -37,6 +37,7 @@ from nanoworks.engine.qe import (
     build_qe_command,
     run_qe_program,
     parse_qe_auxiliary_output,
+    parse_epsilon_data_file,
     parse_matdyn_frequency_file,
     parse_matdyn_dos_file,
     write_matdyn_band_data,
@@ -1604,6 +1605,99 @@ class TestQEEngine(unittest.TestCase):
                     output_file=tmpdir / 'epsilon.out',
                     state_dir=state_dir,
                     result_dir=tmpdir / 'optical',
+                )
+
+    def test_parse_epsilon_data_file(self):
+        content = """# energy grid [eV] epsr_x epsr_y epsr_z
+# plasmon frequencies [eV]
+ 0.000000000  1.0D+00  2.0D+00  3.0D+00
+ 0.500000000  1.1D+00  2.1D+00  3.1D+00
+ 1.000000000  1.2D+00  2.2D+00  3.2D+00
+"""
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            data_file = Path(tmpdir) / 'epsr.dat'
+            data_file.write_text(
+                content,
+                encoding='utf-8',
+            )
+
+            result = parse_epsilon_data_file(
+                data_file,
+                expected_components=3,
+            )
+
+        self.assertEqual(
+            result['energies_ev'],
+            [0.0, 0.5, 1.0],
+        )
+        self.assertEqual(
+            result['components'],
+            [
+                [1.0, 1.1, 1.2],
+                [2.0, 2.1, 2.2],
+                [3.0, 3.1, 3.2],
+            ],
+        )
+        self.assertEqual(
+            result['npoints'],
+            3,
+        )
+        self.assertEqual(
+            result['ncomponents'],
+            3,
+        )
+
+    def test_parse_epsilon_data_file_rejects_inconsistent_columns(self):
+        content = """# epsilon data
+ 0.0  1.0  2.0  3.0
+ 1.0  1.1  2.1
+"""
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            data_file = Path(tmpdir) / 'epsr.dat'
+            data_file.write_text(
+                content,
+                encoding='utf-8',
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                'inconsistent column counts',
+            ):
+                parse_epsilon_data_file(
+                    data_file
+                )
+
+    def test_parse_epsilon_data_file_validates_grid_and_components(self):
+        content = """# epsilon data
+ 0.0  1.0  2.0  3.0
+ 0.0  1.1  2.1  3.1
+"""
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            data_file = Path(tmpdir) / 'epsr.dat'
+            data_file.write_text(
+                content,
+                encoding='utf-8',
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                'component count does not match',
+            ):
+                parse_epsilon_data_file(
+                    data_file,
+                    expected_components=2,
+                )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                'strictly increasing',
+            ):
+                parse_epsilon_data_file(
+                    data_file,
+                    expected_components=3,
                 )
 
     def test_render_dos_input_rejects_invalid_bz_sum(self):
