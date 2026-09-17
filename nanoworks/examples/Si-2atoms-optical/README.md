@@ -1,21 +1,49 @@
-# Example: 2 Atoms Silicon Calculations (3 Steps)
+# Example: Two-Atom Silicon Optical Calculations
 
-This example has three steps. First step is the ground state, DOS and band structure calculations. And second and third steps are the calculations of optical properties. Please do not forget to run optical calculations seperately.
+This directory contains a combined GPAW RPA smoke workflow and separate RPA
+and BSE inputs. Optical calculations can now run in the same input as the
+ground-state and electronic post-processing stages.
 
-To run the first step of calculation with MPI please execute the following command in this folder.
+## Combined RPA workflow
 
-    dftsolve -p 4  -i Si-Step1-ground_dos_band.py -g Si_mp-149_primitive_Example.cif
+`Si-Combined-RPA-smoke.py` runs the following stages in one command:
 
-And then for the second step, there are two possibilities. Real and imaginary parts of dielectric function are usually calculated with random phase approximation (RPA). With GPAW, we can go beyond the RPA using the Bethe-Salpeter equation (BSE).
+1. ground state;
+2. DOS and PDOS;
+3. band structure;
+4. all-electron density;
+5. RPA optical properties.
 
-In this example, the second step is the optical properties calculation with RPA method. Optical calculations uses too much RAM. Here, our input is very easy and it is not important to run it with one or more cores. We are running the code on a single-core as:
+Run the example on a single process with:
 
-    dftsolve -i Si-Step2-optical-RPA.py -g Si_mp-149_primitive_Example.cif
+```bash
+dftsolve \
+  -i Si-Combined-RPA-smoke.py \
+  -g Si_mp-149_primitive_Example.cif
+```
 
-and, the third step is the optical properties calculation with BSE method. It can be executed as:
+The deliberately small k-point mesh, band count, and optical cutoff make this
+a workflow smoke test. They are not converged settings for scientific use.
 
-    dftsolve -i Si-Step3-optical-BSE.py -g Si_mp-149_primitive_Example.cif
+Nanoworks always runs the optical stage last. It releases calculator references
+from the earlier stages before loading the optical state, reducing the chance
+that their memory use overlaps.
 
-To use more cores to calculate, firstly observe your calculation's RAM usage with command `htop` or with a similar command. But for this example, it will be completed in a few seconds even with a single core. 
+## Focused optical reruns
 
-Output files of optical calculations will be named accordingly.
+The older inputs remain available when only an optical calculation should be
+repeated from an existing ground-state file:
+
+```bash
+dftsolve \
+  -i Si-Step2-optical-RPA.py \
+  -g Si_mp-149_primitive_Example.cif
+
+dftsolve \
+  -i Si-Step3-optical-BSE.py \
+  -g Si_mp-149_primitive_Example.cif
+```
+
+RPA and especially BSE production calculations may require substantially more
+memory. Increase k-point, band, and response cutoffs only after monitoring the
+memory use of the small example.

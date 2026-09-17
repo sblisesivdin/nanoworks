@@ -185,11 +185,19 @@ or:
     :Type: ``boolean``
     :Default: ``False``
 
-    Whether optical calculations are performed or not. Must be used independently from DOS_calc, Band_calc, and Density_calc. See examples directory.
+    Controls optical calculations. With the GPAW engine, optical calculations
+    can be requested in the same input as ground-state, DOS, band, density,
+    elastic, and phonon calculations. Nanoworks runs the optical stage last and
+    releases earlier calculator references before loading the optical state to
+    limit peak memory use.
+
+    The GPAW optical workflow has been validated with a combined
+    ground-state, DOS, band, density, and RPA calculation. Native QE optical
+    calculations are not implemented yet.
 
 .. code-block:: python
 
-    Optical_calc = False
+    Optical_calc = True
 
 .. describe:: SOC_calc
 

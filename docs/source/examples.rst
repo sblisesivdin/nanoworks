@@ -68,7 +68,9 @@ Optical Properties
 ------------------
 
 * **Silicon Optical Properties (RPA & BSE):**
-  A comprehensive three-step example that computes the dielectric function and absorption spectra of Silicon. (Folder: ``Si-2atoms-optical/``)
+  Includes a single-input GPAW workflow for ground-state, DOS, band, density,
+  and RPA optical calculations, plus separate RPA and BSE inputs for focused
+  optical reruns. (Folder: ``Si-2atoms-optical/``)
   1. Ground-state generation (Wavefunctions and DOS/Bands)
   2. Random Phase Approximation (RPA) calculations
   3. Bethe-Salpeter Equation (BSE) calculations
