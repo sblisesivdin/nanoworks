@@ -60,6 +60,13 @@ dftsolve -p <cores> -g <geometry.cif> -a
 *   `-v, --version`: Version information.
 *   `-p, --parallel`: Number of cores to run in parallel.
 *   `-a, --auto`: Auto mode. Automatically generate input parameters based on geometry.
+*   `--check`: Validate the workflow, executables, pseudopotentials, and saved-state dependencies without starting calculations or creating the output directory.
+
+Check an input before submitting a calculation:
+
+```bash
+dftsolve --check -p 4 -i input.py -g geometry.cif
+```
 
 ### 2. mdsolve (formerly asapsolve.py)
 Perform molecular dynamics calculations using ASAP3 or LAMMPS with OpenKIM interatomic potentials.

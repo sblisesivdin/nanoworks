@@ -37,12 +37,28 @@ phonon, and optical workflows are not supported yet.
 .. code-block:: console
 
    $ dftsolve -p <cores> -g <geometry.cif> -i <input.py>
-   
-or with auto mode.
+
+or with auto mode:
 
 .. code-block:: console
 
    $ dftsolve -p <cores> -g <geometry.cif> -a
+
+Preflight Check
+~~~~~~~~~~~~~~~
+
+Use ``--check`` to validate an input without starting calculations or creating
+its output directory:
+
+.. code-block:: console
+
+   $ dftsolve --check -p 4 -g geometry.cif -i input.py
+
+The report lists the resolved calculation stages, engine and mode, required
+executables, MPI launcher, QE pseudopotentials, and saved ground-state
+dependencies. It also rejects unsupported engine/stage combinations before a
+job is submitted. A ready workflow exits with status ``0``; a blocked workflow
+exits with status ``2``.
 
 **Arguments:**
 
@@ -52,6 +68,7 @@ or with auto mode.
 * -v, --version: Version information.
 * -p, --parallel: Number of cores to run in parallel
 * -a, --auto: Auto mode. Automatically generate input parameters based on geometry.
+* --check: Validate the workflow and dependencies without starting calculations.
 
 
 mdsolve (formerly asapsolve.py)
