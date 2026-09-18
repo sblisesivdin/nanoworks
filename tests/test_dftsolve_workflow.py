@@ -18,6 +18,7 @@ with patch.object(
         check_dft_configuration,
         dftsolve as DFTSolver,
         format_dft_preflight_report,
+        main,
         release_stage_resources,
         required_dft_executables,
         run_calculation_stages,
@@ -228,6 +229,77 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 for error in report['errors']
             ],
         )
+
+    def test_check_cli_does_not_create_output_or_run_calculations(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+            input_file = tmpdir / 'preflight_input.py'
+            geometry_file = tmpdir / 'silicon.cif'
+            output_dir = tmpdir / 'check-results'
+            input_file.write_text(
+                "Engine = 'QE'\n"
+                "Ground_calc = True\n"
+                "Outdirname = 'check-results'\n",
+                encoding='utf-8',
+            )
+            write(
+                geometry_file,
+                Atoms(
+                    'Si2',
+                    scaled_positions=[
+                        (0.0, 0.0, 0.0),
+                        (0.25, 0.25, 0.25),
+                    ],
+                    cell=[5.4, 5.4, 5.4],
+                    pbc=True,
+                ),
+            )
+            report = {
+                'ok': True,
+                'engine': 'QE',
+                'stages': ('ground',),
+                'checks': [],
+                'errors': [],
+            }
+
+            with (
+                patch.object(
+                    sys,
+                    'argv',
+                    [
+                        'dftsolve',
+                        '--check',
+                        '-i',
+                        str(input_file),
+                        '-g',
+                        str(geometry_file),
+                    ],
+                ),
+                patch(
+                    'nanoworks.dftsolve.check_dft_configuration',
+                    return_value=report,
+                ) as check,
+                patch(
+                    'nanoworks.dftsolve.format_dft_preflight_report',
+                    return_value='Result: READY',
+                ),
+                patch(
+                    'nanoworks.dftsolve.parprint',
+                ) as output,
+            ):
+                return_code = main()
+
+            self.assertEqual(
+                return_code,
+                0,
+            )
+            self.assertFalse(
+                output_dir.exists()
+            )
+            check.assert_called_once()
+            output.assert_any_call(
+                'Result: READY'
+            )
 
     def test_opticalcalc_dispatches_to_gpaw(self):
         solver = object.__new__(

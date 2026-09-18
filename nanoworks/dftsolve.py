@@ -464,7 +464,12 @@ class RawFormatter(HelpFormatter):
     def _fill_text(self, text, width, indent):
         return "\n".join([textwrap.fill(line, width) for line in textwrap.indent(textwrap.dedent(text), indent).splitlines()])
 
-def struct_from_file(inputfile, geometryfile):
+def struct_from_file(
+    inputfile,
+    geometryfile,
+    create_output=True,
+    report_structure=True,
+):
     """Load variables from parse function and return DFTConfig instance."""
     # Works like from FILE import *
     sys.path.append(str(Path(inputfile).parent))
@@ -489,9 +494,10 @@ def struct_from_file(inputfile, geometryfile):
     else:
         struct = Path(geometryfile).stem
         config.bulk_configuration = read(geometryfile, index='-1')
-        parprint("Number of atoms imported from CIF file:"+str(config.bulk_configuration.get_global_number_of_atoms()))
-        parprint("Spacegroup of CIF file:",get_spacegroup(config.bulk_configuration, symprec=1e-2))
-        parprint("Special Points usable for this spacegroup:",get_special_points(config.bulk_configuration.get_cell()))
+        if report_structure:
+            parprint("Number of atoms imported from CIF file:"+str(config.bulk_configuration.get_global_number_of_atoms()))
+            parprint("Spacegroup of CIF file:",get_spacegroup(config.bulk_configuration, symprec=1e-2))
+            parprint("Special Points usable for this spacegroup:",get_special_points(config.bulk_configuration.get_cell()))
 
     # Output directory
     input_dir = Path(inputfile).parent
@@ -500,12 +506,16 @@ def struct_from_file(inputfile, geometryfile):
     else:
         structpath = input_dir / struct
 
-    if not os.path.isdir(structpath):
+    if create_output and not os.path.isdir(structpath):
         os.makedirs(structpath, exist_ok=True)
     struct = os.path.join(str(structpath), struct)
     return struct, config
 
-def struct_from_auto(geometryfile):
+def struct_from_auto(
+    geometryfile,
+    write_output=True,
+    report_structure=True,
+):
     """Generate configuration automatically from geometry file."""
     struct_path = Path(geometryfile)
     struct_name = struct_path.stem
@@ -578,7 +588,7 @@ def struct_from_auto(geometryfile):
     input_dir = struct_path.parent
     structpath = input_dir / struct_name
     
-    if not os.path.isdir(structpath):
+    if write_output and not os.path.isdir(structpath):
         os.makedirs(structpath, exist_ok=True)
     struct = os.path.join(str(structpath), struct_name)
     
@@ -587,32 +597,35 @@ def struct_from_auto(geometryfile):
         struct
         + '-CONFIG-NANOWORKS-Input-Auto.py'
     )
-    with open(input_filename, 'w') as f:
-        f.write("from ase.io import read\n")
-        f.write("import numpy as np\n\n")
-        f.write(f"Mode = '{config.Mode}'\n")
-        f.write(f"Ground_calc = {config.Ground_calc}\n")
-        f.write(f"XC_calc = '{config.XC_calc}'\n")
-        f.write(f"XC_exx_fraction = {getattr(config, 'XC_exx_fraction', None)}\n")
-        f.write(f"XC_omega = {getattr(config, 'XC_omega', None)}\n")
-        f.write(f"XC_backend = '{getattr(config, 'XC_backend', 'pw')}'\n")
-        f.write(f"Cut_off_energy = {config.Cut_off_energy}\n")
-        f.write(f"Gamma = {config.Gamma}\n")
-        f.write(f"Optimizer = '{config.Optimizer}'\n")
-        f.write(f"Spin_calc = {config.Spin_calc}\n")
-        if config.Spin_calc:
-            f.write(f"Magmom_per_atom = {config.Magmom_per_atom}\n")
-        f.write(f"Ground_kpts_x = {config.Ground_kpts_x}\n")
-        f.write(f"Ground_kpts_y = {config.Ground_kpts_y}\n")
-        f.write(f"Ground_kpts_z = {config.Ground_kpts_z}\n")
-        f.write(f"DOS_calc = {config.DOS_calc}\n")
-        f.write(f"Band_calc = {config.Band_calc}\n")
-        f.write(f"\n# Geometry is handled via command line -g or loaded here if needed\n")
+    if write_output:
+        with open(input_filename, 'w') as f:
+            f.write("from ase.io import read\n")
+            f.write("import numpy as np\n\n")
+            f.write(f"Mode = '{config.Mode}'\n")
+            f.write(f"Ground_calc = {config.Ground_calc}\n")
+            f.write(f"XC_calc = '{config.XC_calc}'\n")
+            f.write(f"XC_exx_fraction = {getattr(config, 'XC_exx_fraction', None)}\n")
+            f.write(f"XC_omega = {getattr(config, 'XC_omega', None)}\n")
+            f.write(f"XC_backend = '{getattr(config, 'XC_backend', 'pw')}'\n")
+            f.write(f"Cut_off_energy = {config.Cut_off_energy}\n")
+            f.write(f"Gamma = {config.Gamma}\n")
+            f.write(f"Optimizer = '{config.Optimizer}'\n")
+            f.write(f"Spin_calc = {config.Spin_calc}\n")
+            if config.Spin_calc:
+                f.write(f"Magmom_per_atom = {config.Magmom_per_atom}\n")
+            f.write(f"Ground_kpts_x = {config.Ground_kpts_x}\n")
+            f.write(f"Ground_kpts_y = {config.Ground_kpts_y}\n")
+            f.write(f"Ground_kpts_z = {config.Ground_kpts_z}\n")
+            f.write(f"DOS_calc = {config.DOS_calc}\n")
+            f.write(f"Band_calc = {config.Band_calc}\n")
+            f.write(f"\n# Geometry is handled via command line -g or loaded here if needed\n")
 
-    parprint(f"Auto-configured for {struct_name}: PBE, 450eV, Spin={config.Spin_calc}")
-    parprint(f"Geometry analysis: Cell {cell_lengths}, Spans {spans}")
-    parprint(f"Vacuum detected: {is_vacuum} -> K-points set to {kpts}")
-    parprint(f"Generated input file: {input_filename}")
+    if report_structure:
+        parprint(f"Auto-configured for {struct_name}: PBE, 450eV, Spin={config.Spin_calc}")
+        parprint(f"Geometry analysis: Cell {cell_lengths}, Spans {spans}")
+        parprint(f"Vacuum detected: {is_vacuum} -> K-points set to {kpts}")
+        if write_output:
+            parprint(f"Generated input file: {input_filename}")
     
     return struct, config
 
@@ -6467,6 +6480,7 @@ def main():
     parser.add_argument("-v", "--version", dest="version", action='store_true')
     parser.add_argument("-e", "--energy", dest="energymeas", action='store_true')
     parser.add_argument("-p", "--parallel", dest="parallel", type=int, help="Number of cores to run in parallel")
+    parser.add_argument("--check", dest="check", action='store_true', help="Validate the selected workflow without running calculations")
 
     args = None
 
@@ -6507,7 +6521,7 @@ def main():
         if args.geometryfile :
             inFile = os.path.join(os.getcwd(),args.geometryfile)
 
-        if args.energymeas == True:
+        if args.energymeas == True and not args.check:
             try:
                 import pyRAPL
                 energymeas = True
@@ -6533,9 +6547,36 @@ def main():
 
     # Load struct and config
     if args.auto:
-        struct, config = struct_from_auto(inFile)
+        struct, config = struct_from_auto(
+            inFile,
+            write_output=not args.check,
+            report_structure=not args.check,
+        )
     else:
-        struct, config = struct_from_file(inputfile = configpath, geometryfile = inFile)
+        struct, config = struct_from_file(
+            inputfile=configpath,
+            geometryfile=inFile,
+            create_output=not args.check,
+            report_structure=not args.check,
+        )
+
+    if REQUESTED_PARALLEL is not None:
+        parallel_cores = REQUESTED_PARALLEL
+    else:
+        parallel_cores = world.size
+
+    if args.check:
+        report = check_dft_configuration(
+            config,
+            struct=struct,
+            parallel_cores=parallel_cores,
+        )
+        parprint(
+            format_dft_preflight_report(
+                report
+            )
+        )
+        return 0 if report['ok'] else 2
 
     # Parallel execution is backend-specific.
     #
@@ -6550,11 +6591,6 @@ def main():
             REQUESTED_PARALLEL,
             FILTERED_ARGS,
         )
-    
-    if REQUESTED_PARALLEL is not None:
-        parallel_cores = REQUESTED_PARALLEL
-    else:
-        parallel_cores = world.size
     
     # Write timings of calculation
     with paropen(
@@ -6598,5 +6634,7 @@ def main():
             config.Engine,
         )
 
+    return 0
+
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
