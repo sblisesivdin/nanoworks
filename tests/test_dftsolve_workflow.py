@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 import sys
+import json
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -17,6 +18,7 @@ with patch.object(
         DFTConfig,
         check_dft_configuration,
         dftsolve as DFTSolver,
+        format_dft_preflight_json,
         format_dft_preflight_report,
         main,
         release_stage_resources,
@@ -146,6 +148,25 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 error['detail']
                 for error in report['errors']
             ],
+        )
+
+        payload = json.loads(
+            format_dft_preflight_json(report)
+        )
+        self.assertEqual(
+            payload['schema_version'],
+            1,
+        )
+        self.assertFalse(
+            payload['ok']
+        )
+        self.assertEqual(
+            payload['error_count'],
+            len(payload['errors']),
+        )
+        self.assertIsInstance(
+            payload['stages'],
+            list,
         )
 
     def test_qe_preflight_rejects_unsupported_elastic_stage(self):
@@ -300,6 +321,103 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             output.assert_any_call(
                 'Result: READY'
             )
+
+    def test_check_json_cli_uses_machine_readable_formatter(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+            input_file = tmpdir / 'preflight_input.py'
+            geometry_file = tmpdir / 'silicon.cif'
+            input_file.write_text(
+                "Engine = 'QE'\n"
+                "Ground_calc = True\n",
+                encoding='utf-8',
+            )
+            write(
+                geometry_file,
+                Atoms(
+                    'Si2',
+                    scaled_positions=[
+                        (0.0, 0.0, 0.0),
+                        (0.25, 0.25, 0.25),
+                    ],
+                    cell=[5.4, 5.4, 5.4],
+                    pbc=True,
+                ),
+            )
+            report = {
+                'ok': False,
+                'engine': 'QE',
+                'stages': ('ground',),
+                'checks': [],
+                'errors': [{
+                    'status': 'error',
+                    'name': 'executable:pw.x',
+                    'detail': 'pw.x was not found in PATH.',
+                }],
+            }
+
+            with (
+                patch.object(
+                    sys,
+                    'argv',
+                    [
+                        'dftsolve',
+                        '--check',
+                        '--json',
+                        '-i',
+                        str(input_file),
+                        '-g',
+                        str(geometry_file),
+                    ],
+                ),
+                patch(
+                    'nanoworks.dftsolve.check_dft_configuration',
+                    return_value=report,
+                ),
+                patch(
+                    'nanoworks.dftsolve.parprint',
+                ) as output,
+            ):
+                return_code = main()
+
+            self.assertEqual(
+                return_code,
+                2,
+            )
+            rendered = output.call_args.args[0]
+            payload = json.loads(rendered)
+            self.assertEqual(
+                payload['error_count'],
+                1,
+            )
+            self.assertEqual(
+                payload['stages'],
+                ['ground'],
+            )
+
+    def test_json_cli_requires_check_mode(self):
+        with (
+            patch.object(
+                sys,
+                'argv',
+                [
+                    'dftsolve',
+                    '--json',
+                ],
+            ),
+            patch(
+                'nanoworks.dftsolve.parprint',
+            ) as output,
+        ):
+            return_code = main()
+
+        self.assertEqual(
+            return_code,
+            2,
+        )
+        output.assert_called_once_with(
+            'ERROR: --json requires --check.'
+        )
 
     def test_opticalcalc_dispatches_to_gpaw(self):
         solver = object.__new__(

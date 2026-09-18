@@ -14,6 +14,7 @@ import sys
 import os, glob
 import gc
 import importlib.util
+import json
 import shutil
 import subprocess
 
@@ -6471,6 +6472,25 @@ def format_dft_preflight_report(report):
     return '\n'.join(lines)
 
 
+def format_dft_preflight_json(report):
+    """Format a versioned machine-readable preflight report."""
+    payload = {
+        'schema_version': 1,
+        'ok': bool(report['ok']),
+        'engine': report['engine'],
+        'stages': list(report['stages']),
+        'checks': report['checks'],
+        'errors': report['errors'],
+        'error_count': len(report['errors']),
+    }
+
+    return json.dumps(
+        payload,
+        indent=2,
+        sort_keys=True,
+    )
+
+
 def main():
     meter = None
     parser = ArgumentParser(prog ='dftsolve.py', description=Description, formatter_class=RawFormatter)
@@ -6481,6 +6501,7 @@ def main():
     parser.add_argument("-e", "--energy", dest="energymeas", action='store_true')
     parser.add_argument("-p", "--parallel", dest="parallel", type=int, help="Number of cores to run in parallel")
     parser.add_argument("--check", dest="check", action='store_true', help="Validate the selected workflow without running calculations")
+    parser.add_argument("--json", dest="json", action='store_true', help="Print --check results as machine-readable JSON")
 
     args = None
 
@@ -6494,6 +6515,10 @@ def main():
     if args is None:
         parprint("No arguments used.")
         sys.exit(1)
+
+    if args.json and not args.check:
+        parprint("ERROR: --json requires --check.")
+        return 2
 
     energymeas = False
     inFile = None
@@ -6571,11 +6596,16 @@ def main():
             struct=struct,
             parallel_cores=parallel_cores,
         )
-        parprint(
-            format_dft_preflight_report(
+        if args.json:
+            output = format_dft_preflight_json(
                 report
             )
-        )
+        else:
+            output = format_dft_preflight_report(
+                report
+            )
+
+        parprint(output)
         return 0 if report['ok'] else 2
 
     # Parallel execution is backend-specific.
