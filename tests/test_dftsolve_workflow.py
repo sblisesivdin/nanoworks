@@ -15,13 +15,219 @@ with patch.object(
 ):
     from nanoworks.dftsolve import (
         DFTConfig,
+        check_dft_configuration,
         dftsolve as DFTSolver,
+        format_dft_preflight_report,
         release_stage_resources,
+        required_dft_executables,
         run_calculation_stages,
     )
 
 
 class TestDFTSolveWorkflow(unittest.TestCase):
+
+    def test_required_qe_executables_follow_selected_stages(self):
+        config = DFTConfig(
+            Engine='QE',
+            Ground_calc=True,
+            DOS_calc=True,
+            Band_calc=True,
+            Projected_band_plot=True,
+            Density_calc=True,
+            Phonon_calc=True,
+            Optical_calc=True,
+        )
+
+        self.assertEqual(
+            set(required_dft_executables(config)),
+            {
+                'bands.x',
+                'dos.x',
+                'epsilon.x',
+                'matdyn.x',
+                'ph.x',
+                'pp.x',
+                'projwfc.x',
+                'pw.x',
+                'q2r.x',
+            },
+        )
+
+    def test_qe_preflight_accepts_complete_optical_workflow(self):
+        config = DFTConfig(
+            Engine='QE',
+            Ground_calc=True,
+            Optical_calc=True,
+            bulk_configuration=Atoms(
+                'Si2',
+                cell=[5.4, 5.4, 5.4],
+                pbc=True,
+            ),
+        )
+
+        with (
+            patch(
+                'nanoworks.dftsolve.shutil.which',
+                side_effect=lambda name: f'/usr/bin/{name}',
+            ),
+            patch(
+                'nanoworks.dftsolve.get_qe_pseudo_dir',
+                return_value=Path('/pseudos'),
+            ),
+            patch(
+                'nanoworks.dftsolve.resolve_qe_pseudopotentials',
+                return_value={
+                    'Si': 'Si.upf',
+                },
+            ),
+        ):
+            report = check_dft_configuration(
+                config,
+                struct='silicon',
+                parallel_cores=2,
+            )
+
+        self.assertTrue(
+            report['ok']
+        )
+        self.assertEqual(
+            report['errors'],
+            [],
+        )
+        self.assertIn(
+            '[OK] executable:epsilon.x: /usr/bin/epsilon.x',
+            format_dft_preflight_report(report),
+        )
+
+    def test_qe_preflight_reports_missing_executable(self):
+        config = DFTConfig(
+            Engine='QE',
+            Ground_calc=True,
+            Optical_calc=True,
+            bulk_configuration=Atoms(
+                'Si2',
+                cell=[5.4, 5.4, 5.4],
+                pbc=True,
+            ),
+        )
+
+        with (
+            patch(
+                'nanoworks.dftsolve.shutil.which',
+                side_effect=lambda name: (
+                    None
+                    if name == 'epsilon.x'
+                    else f'/usr/bin/{name}'
+                ),
+            ),
+            patch(
+                'nanoworks.dftsolve.get_qe_pseudo_dir',
+                return_value=Path('/pseudos'),
+            ),
+            patch(
+                'nanoworks.dftsolve.resolve_qe_pseudopotentials',
+                return_value={
+                    'Si': 'Si.upf',
+                },
+            ),
+        ):
+            report = check_dft_configuration(
+                config,
+                struct='silicon',
+            )
+
+        self.assertFalse(
+            report['ok']
+        )
+        self.assertIn(
+            'epsilon.x was not found in PATH.',
+            [
+                error['detail']
+                for error in report['errors']
+            ],
+        )
+
+    def test_qe_preflight_rejects_unsupported_elastic_stage(self):
+        config = DFTConfig(
+            Engine='QE',
+            Ground_calc=True,
+            Elastic_calc=True,
+            bulk_configuration=Atoms(
+                'Si2',
+                cell=[5.4, 5.4, 5.4],
+                pbc=True,
+            ),
+        )
+
+        with (
+            patch(
+                'nanoworks.dftsolve.shutil.which',
+                return_value='/usr/bin/pw.x',
+            ),
+            patch(
+                'nanoworks.dftsolve.get_qe_pseudo_dir',
+                return_value=Path('/pseudos'),
+            ),
+            patch(
+                'nanoworks.dftsolve.resolve_qe_pseudopotentials',
+                return_value={
+                    'Si': 'Si.upf',
+                },
+            ),
+        ):
+            report = check_dft_configuration(
+                config,
+                struct='silicon',
+            )
+
+        self.assertFalse(
+            report['ok']
+        )
+        self.assertIn(
+            'elastic',
+            [
+                error['name']
+                for error in report['errors']
+            ],
+        )
+
+    def test_qe_preflight_requires_saved_state_when_ground_is_skipped(self):
+        config = DFTConfig(
+            Engine='QE',
+            Ground_calc=False,
+            Density_calc=True,
+            bulk_configuration=Atoms(
+                'Si2',
+                cell=[5.4, 5.4, 5.4],
+                pbc=True,
+            ),
+        )
+
+        with (
+            patch(
+                'nanoworks.dftsolve.shutil.which',
+                return_value='/usr/bin/pp.x',
+            ),
+            patch(
+                'nanoworks.engine.qe.has_qe_state',
+                return_value=False,
+            ),
+        ):
+            report = check_dft_configuration(
+                config,
+                struct='silicon',
+            )
+
+        self.assertFalse(
+            report['ok']
+        )
+        self.assertIn(
+            'ground-state',
+            [
+                error['name']
+                for error in report['errors']
+            ],
+        )
 
     def test_opticalcalc_dispatches_to_gpaw(self):
         solver = object.__new__(

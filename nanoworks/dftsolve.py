@@ -13,6 +13,7 @@ Description = f'''
 import sys
 import os, glob
 import gc
+import importlib.util
 import shutil
 import subprocess
 
@@ -5987,6 +5988,474 @@ def run_calculation_stages(solver, config):
             release_stage_resources(
                 solver
             )
+
+
+def required_dft_executables(config):
+    """Return external executables required by the selected workflow."""
+    if config.Engine != 'QE':
+        return ()
+
+    executables = set()
+
+    if config.Ground_calc:
+        executables.add('pw.x')
+
+    if config.DOS_calc:
+        executables.update({
+            'pw.x',
+            'dos.x',
+            'projwfc.x',
+        })
+
+    if config.Band_calc:
+        executables.update({
+            'pw.x',
+            'bands.x',
+        })
+
+        if config.Projected_band_plot:
+            executables.add('projwfc.x')
+
+    if config.Density_calc:
+        executables.add('pp.x')
+
+    if config.Phonon_calc:
+        executables.update({
+            'ph.x',
+            'q2r.x',
+            'matdyn.x',
+        })
+
+    if config.Optical_calc:
+        executables.update({
+            'pw.x',
+            'epsilon.x',
+        })
+
+    return tuple(
+        sorted(executables)
+    )
+
+
+def check_dft_configuration(
+    config,
+    struct,
+    parallel_cores=1,
+):
+    """Check workflow capabilities and runtime dependencies without running DFT."""
+    checks = []
+
+    def add(status, name, detail):
+        checks.append({
+            'status': status,
+            'name': name,
+            'detail': detail,
+        })
+
+    stages = resolve_calculation_stages(
+        config
+    )
+    add(
+        'ok',
+        'workflow',
+        ' -> '.join(stages),
+    )
+
+    try:
+        parallel_cores = int(
+            parallel_cores
+        )
+    except (TypeError, ValueError):
+        parallel_cores = 0
+
+    if parallel_cores <= 0:
+        add(
+            'error',
+            'parallel',
+            'Parallel core count must be a positive integer.',
+        )
+    else:
+        add(
+            'ok',
+            'parallel',
+            f'{parallel_cores} process(es)',
+        )
+
+    if config.bulk_configuration is None:
+        add(
+            'error',
+            'structure',
+            'No atomic structure was supplied.',
+        )
+    else:
+        add(
+            'ok',
+            'structure',
+            str(
+                config.bulk_configuration
+                .get_global_number_of_atoms()
+            )
+            + ' atom(s)',
+        )
+
+    if config.Cut_off_energy <= 0:
+        add(
+            'error',
+            'cutoff',
+            'Cut_off_energy must be positive.',
+        )
+    else:
+        add(
+            'ok',
+            'cutoff',
+            f'{config.Cut_off_energy:g} eV',
+        )
+
+    if config.Energy_max <= config.Energy_min:
+        add(
+            'error',
+            'energy-window',
+            'Energy_max must be greater than Energy_min.',
+        )
+
+    engine = load_engine_module(
+        config.Engine
+    )
+
+    if config.Engine == 'QE':
+        if config.Mode != 'PW':
+            add(
+                'error',
+                'mode',
+                'The QE backend supports PW mode only.',
+            )
+        else:
+            add(
+                'ok',
+                'mode',
+                'PW',
+            )
+
+        if str(config.vdW_calc).strip().upper() != 'NONE':
+            add(
+                'error',
+                'vdW',
+                'QE vdW corrections are not supported yet.',
+            )
+
+        if config.SOC_calc:
+            add(
+                'error',
+                'soc',
+                'QE SOC workflows are not supported yet.',
+            )
+
+        if config.Elastic_calc:
+            add(
+                'error',
+                'elastic',
+                'Native QE elastic calculations are not supported yet.',
+            )
+
+        hybrid = str(
+            config.XC_calc
+        ).strip().lower() in {
+            'hse06',
+            'hse03',
+            'pbe0',
+        }
+
+        if hybrid and config.Geo_optim:
+            add(
+                'error',
+                'hybrid-geometry',
+                'QE hybrid geometry optimization is not supported.',
+            )
+
+        if hybrid and config.Phonon_calc:
+            add(
+                'error',
+                'hybrid-phonon',
+                'QE hybrid phonons are not supported.',
+            )
+
+        if hybrid and config.Optical_calc:
+            add(
+                'error',
+                'hybrid-optical',
+                'QE hybrid optical calculations are not supported.',
+            )
+
+        if (
+            config.Optical_calc
+            and str(config.Opt_calc_type).strip().upper() != 'RPA'
+        ):
+            add(
+                'error',
+                'optical-method',
+                "Native QE optics requires Opt_calc_type = 'RPA'.",
+            )
+
+        if config.Optical_calc:
+            if config.Opt_max_en <= config.Opt_min_en:
+                add(
+                    'error',
+                    'optical-grid',
+                    'Opt_max_en must be greater than Opt_min_en.',
+                )
+
+            if int(config.Opt_num_of_data) < 2:
+                add(
+                    'error',
+                    'optical-grid',
+                    'Opt_num_of_data must be at least 2.',
+                )
+
+        if config.DOS_calc:
+            try:
+                dos_occupation = engine.resolve_qe_occupation(
+                    config.DOS_occupation
+                )
+            except Exception as exc:
+                add(
+                    'error',
+                    'dos-occupation',
+                    str(exc),
+                )
+            else:
+                if dos_occupation['occupations'] not in {
+                    'tetrahedra',
+                    'tetrahedra_lin',
+                    'tetrahedra_opt',
+                }:
+                    add(
+                        'error',
+                        'dos-occupation',
+                        'QE DOS requires a tetrahedron occupation.',
+                    )
+
+        for executable in required_dft_executables(config):
+            resolved = shutil.which(
+                executable
+            )
+
+            if resolved is None:
+                add(
+                    'error',
+                    f'executable:{executable}',
+                    f'{executable} was not found in PATH.',
+                )
+            else:
+                add(
+                    'ok',
+                    f'executable:{executable}',
+                    resolved,
+                )
+
+        if parallel_cores > 1:
+            mpi_executable = (
+                shutil.which('mpiexec')
+                or shutil.which('mpirun')
+                or shutil.which('srun')
+            )
+
+            if mpi_executable is None:
+                add(
+                    'error',
+                    'mpi-launcher',
+                    'mpiexec, mpirun, or srun was not found.',
+                )
+            else:
+                add(
+                    'ok',
+                    'mpi-launcher',
+                    mpi_executable,
+                )
+
+        pseudo_required = any((
+            config.Ground_calc,
+            config.DOS_calc,
+            config.Band_calc,
+            config.Optical_calc,
+        ))
+
+        if pseudo_required and config.bulk_configuration is not None:
+            try:
+                pseudo_dir = get_qe_pseudo_dir(
+                    relativistic='scalar',
+                )
+                pseudopotentials = resolve_qe_pseudopotentials(
+                    config.bulk_configuration,
+                    relativistic='scalar',
+                )
+            except Exception as exc:
+                add(
+                    'error',
+                    'pseudopotentials',
+                    str(exc),
+                )
+            else:
+                add(
+                    'ok',
+                    'pseudopotentials',
+                    f'{len(pseudopotentials)} species in {pseudo_dir}',
+                )
+
+        if not config.Ground_calc:
+            state_dir = Path(
+                struct
+                + '-GROUND-QE-Result-State'
+            )
+
+            if engine.has_qe_state(
+                state_dir,
+                prefix='nanoworks',
+            ):
+                add(
+                    'ok',
+                    'ground-state',
+                    str(state_dir),
+                )
+            else:
+                add(
+                    'error',
+                    'ground-state',
+                    'Ground_calc is False and no valid QE state was found at '
+                    + str(state_dir),
+                )
+
+    elif config.Engine == 'GPAW':
+        if config.Mode not in {
+            'PW',
+            'LCAO',
+        }:
+            add(
+                'error',
+                'mode',
+                'The GPAW backend supports PW and LCAO modes.',
+            )
+        else:
+            add(
+                'ok',
+                'mode',
+                config.Mode,
+            )
+
+        if importlib.util.find_spec('gpaw') is None:
+            add(
+                'error',
+                'python:gpaw',
+                'The gpaw Python package is not installed.',
+            )
+        else:
+            add(
+                'ok',
+                'python:gpaw',
+                'installed',
+            )
+
+        for stage, module_name in (
+            ('elastic', 'elastic'),
+            ('phonon', 'phonopy'),
+        ):
+            if (
+                getattr(config, f'{stage.capitalize()}_calc')
+                and importlib.util.find_spec(module_name) is None
+            ):
+                add(
+                    'error',
+                    f'python:{module_name}',
+                    f'{module_name} is required for the {stage} stage.',
+                )
+
+        if config.Optical_calc and config.Mode != 'PW':
+            add(
+                'error',
+                'optical-mode',
+                'GPAW optical calculations require PW mode.',
+            )
+
+        if parallel_cores > 1:
+            mpi_executable = (
+                shutil.which('mpiexec')
+                or shutil.which('mpirun')
+                or shutil.which('srun')
+            )
+
+            if mpi_executable is None:
+                add(
+                    'error',
+                    'mpi-launcher',
+                    'mpiexec, mpirun, or srun was not found.',
+                )
+
+            if shutil.which('gpaw') is None:
+                add(
+                    'error',
+                    'executable:gpaw',
+                    'The gpaw command was not found in PATH.',
+                )
+
+        if not config.Ground_calc:
+            state_file = Path(
+                struct
+                + '-GROUND-GPAW-Result-State.gpw'
+            )
+
+            if state_file.is_file():
+                add(
+                    'ok',
+                    'ground-state',
+                    str(state_file),
+                )
+            else:
+                add(
+                    'error',
+                    'ground-state',
+                    'Ground_calc is False and no GPAW state was found at '
+                    + str(state_file),
+                )
+
+    errors = [
+        check
+        for check in checks
+        if check['status'] == 'error'
+    ]
+
+    return {
+        'ok': not errors,
+        'engine': config.Engine,
+        'stages': stages,
+        'checks': checks,
+        'errors': errors,
+    }
+
+
+def format_dft_preflight_report(report):
+    """Format a deterministic human-readable preflight report."""
+    lines = [
+        'dftsolve preflight check',
+        f"Engine: {report['engine']}",
+        'Stages: ' + ' -> '.join(report['stages']),
+        '',
+    ]
+
+    for check in report['checks']:
+        label = check['status'].upper()
+        lines.append(
+            f"[{label}] {check['name']}: {check['detail']}"
+        )
+
+    lines.extend([
+        '',
+        (
+            'Result: READY'
+            if report['ok']
+            else f"Result: BLOCKED ({len(report['errors'])} error(s))"
+        ),
+    ])
+
+    return '\n'.join(lines)
 
 
 def main():
