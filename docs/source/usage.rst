@@ -60,6 +60,13 @@ dependencies. It also rejects unsupported engine/stage combinations before a
 job is submitted. A ready workflow exits with status ``0``; a blocked workflow
 exits with status ``2``.
 
+Use ``--json`` with ``--check`` for a versioned machine-readable report suitable
+for CI and job-submission scripts:
+
+.. code-block:: console
+
+   $ dftsolve --check --json -p 4 -g geometry.cif -i input.py
+
 **Arguments:**
 
 * -g, --geometry: Path to the geometry file (CIF format).
@@ -69,6 +76,7 @@ exits with status ``2``.
 * -p, --parallel: Number of cores to run in parallel
 * -a, --auto: Auto mode. Automatically generate input parameters based on geometry.
 * --check: Validate the workflow and dependencies without starting calculations.
+* --json: Print ``--check`` results as machine-readable JSON.
 
 
 mdsolve (formerly asapsolve.py)
