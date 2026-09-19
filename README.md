@@ -82,10 +82,10 @@ Prepare a native QE workflow for inspection or later execution:
 dftsolve --dry-run -p 4 -i input.py -g geometry.cif
 ```
 
-Dry-run generation supports native semilocal QE workflows. It does not require
-the QE executables or an existing saved state, but installed pseudopotentials
-are required to render `pw.x` inputs. Hybrid DOS and band dry runs are not yet
-supported.
+Dry-run generation supports native semilocal workflows and the supported QE
+hybrid ground-state, DOS/PDOS, band, and projected-band workflows. It does not
+require the QE executables or an existing saved state, but installed
+pseudopotentials are required to render `pw.x` inputs.
 
 ### 2. mdsolve (formerly asapsolve.py)
 Perform molecular dynamics calculations using ASAP3 or LAMMPS with OpenKIM interatomic potentials.

@@ -77,12 +77,14 @@ program:
 
    $ dftsolve --dry-run -p 4 -g geometry.cif -i input.py
 
-The command writes the selected semilocal QE workflow inputs, a versioned JSON
-plan, and an executable shell script in the normal result directory. The plan
-records job dependencies, commands, input/output paths, working directories,
-and requested process count. QE executables and an existing saved state are not
-required during preparation; pseudopotentials are required when a ``pw.x``
-input is rendered. Hybrid DOS and band dry-run generation is not supported yet.
+The command writes the selected QE workflow inputs, a versioned JSON plan, and
+an executable shell script in the normal result directory. The plan records job
+dependencies, commands, input/output paths, working directories, and requested
+process count. Semilocal workflows and the supported hybrid ground-state,
+DOS/PDOS, band, and projected-band workflows can be prepared. Hybrid band plans
+also record the physical band-point indices and the EXX helper-point range. QE
+executables and an existing saved state are not required during preparation;
+pseudopotentials are required when a ``pw.x`` input is rendered.
 
 **Arguments:**
 
