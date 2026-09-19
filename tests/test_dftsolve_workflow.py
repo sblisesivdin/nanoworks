@@ -626,6 +626,128 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             prepare.assert_called_once()
             execute.assert_not_called()
 
+    def test_qe_hybrid_dry_run_writes_stage_specific_scf_inputs(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            struct = Path(tmpdir) / 'hybrid-dry-run' / 'silicon'
+            config = DFTConfig(
+                Engine='QE',
+                XC_calc='HSE06',
+                Ground_calc=True,
+                DOS_calc=True,
+                Band_calc=True,
+                Band_path='GXG',
+                Band_npoints=5,
+                Projected_band_plot=True,
+                Ground_kpts_x=2,
+                Ground_kpts_y=2,
+                Ground_kpts_z=2,
+                bulk_configuration=Atoms(
+                    'Si2',
+                    scaled_positions=[
+                        (0.0, 0.0, 0.0),
+                        (0.25, 0.25, 0.25),
+                    ],
+                    cell=[5.4, 5.4, 5.4],
+                    pbc=True,
+                ),
+            )
+
+            with (
+                patch(
+                    'nanoworks.dftsolve.get_qe_pseudo_dir',
+                    return_value=Path('/pseudos'),
+                ),
+                patch(
+                    'nanoworks.dftsolve.resolve_qe_pseudopotentials',
+                    return_value={
+                        'Si': 'Si.upf',
+                    },
+                ),
+                patch(
+                    'nanoworks.engine.qe.subprocess.run',
+                ) as execute,
+            ):
+                plan = prepare_qe_dry_run(
+                    config,
+                    struct=struct,
+                )
+
+            execute.assert_not_called()
+            jobs = {
+                job['id']: job
+                for job in plan['jobs']
+            }
+            self.assertEqual(
+                set(jobs),
+                {
+                    'ground',
+                    'dos-hybrid-scf',
+                    'dos-total',
+                    'dos-projected',
+                    'band-hybrid-scf',
+                    'band-postprocess',
+                    'band-projections',
+                },
+            )
+            self.assertEqual(
+                jobs['dos-total']['depends_on'],
+                ['dos-hybrid-scf'],
+            )
+            self.assertEqual(
+                jobs['band-postprocess']['depends_on'],
+                ['band-hybrid-scf'],
+            )
+            self.assertEqual(
+                jobs['band-projections']['depends_on'],
+                ['band-postprocess'],
+            )
+
+            dos_scf = Path(
+                jobs['dos-hybrid-scf']['input_file']
+            ).read_text(encoding='utf-8')
+            band_scf = Path(
+                jobs['band-hybrid-scf']['input_file']
+            ).read_text(encoding='utf-8')
+            bands_postprocess = Path(
+                jobs['band-postprocess']['input_file']
+            ).read_text(encoding='utf-8')
+
+            self.assertIn(
+                "calculation = 'scf'",
+                dos_scf,
+            )
+            self.assertNotIn(
+                'ADDITIONAL_K_POINTS',
+                dos_scf,
+            )
+            self.assertIn(
+                'ADDITIONAL_K_POINTS crystal',
+                band_scf,
+            )
+            self.assertIn(
+                'nqx1 = 2',
+                band_scf,
+            )
+            self.assertIn(
+                '&BANDS',
+                bands_postprocess,
+            )
+            self.assertTrue(
+                jobs['band-hybrid-scf'][
+                    'metadata'
+                ][
+                    'helper_count'
+                ] > 0
+            )
+            self.assertEqual(
+                jobs['band-postprocess'][
+                    'metadata'
+                ][
+                    'band_indices'
+                ],
+                list(range(config.Band_npoints)),
+            )
+
     def test_opticalcalc_dispatches_to_gpaw(self):
         solver = object.__new__(
             DFTSolver

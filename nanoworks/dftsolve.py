@@ -6521,15 +6521,6 @@ def prepare_qe_dry_run(
         'pbe0',
     }
 
-    if hybrid and any((
-        config.DOS_calc,
-        config.Band_calc,
-    )):
-        raise NotImplementedError(
-            "QE hybrid DOS and band dry-run generation is not supported "
-            "yet because their SCF k-point construction is workflow-specific."
-        )
-
     parallel_cores = int(parallel_cores)
 
     if parallel_cores <= 0:
@@ -6597,6 +6588,7 @@ def prepare_qe_dry_run(
         input_text,
         depends_on=None,
         working_directory=None,
+        metadata=None,
     ):
         input_file = Path(input_file).expanduser().resolve()
         output_file = Path(output_file).expanduser().resolve()
@@ -6640,6 +6632,7 @@ def prepare_qe_dry_run(
             ),
             'command': command,
             'depends_on': list(depends_on or []),
+            'metadata': dict(metadata or {}),
         })
 
     ground_state_dir = Path(
@@ -6791,13 +6784,43 @@ def prepare_qe_dry_run(
             - float(config.Energy_min)
         ) / (int(config.DOS_npoints) - 1)
 
-        add_job(
-            'dos-nscf',
-            'dos',
-            'pw.x',
-            Path(str(struct) + '-DOS-QE-Input-NSCF.in'),
-            Path(str(struct) + '-DOS-QE-Log-NSCF.txt'),
-            engine.render_nscf_input(
+        if hybrid:
+            dos_state_dir = Path(
+                str(struct) + '-DOS-QE-Result-State'
+            ).resolve()
+            setup_directories.add(
+                str(dos_state_dir)
+            )
+            dos_pw = {
+                **common_pw,
+                'outdir': dos_state_dir,
+            }
+            dos_electronic_job = 'dos-hybrid-scf'
+            dos_input_file = Path(
+                str(struct) + '-DOS-QE-Input-Hybrid-SCF.in'
+            )
+            dos_output_file = Path(
+                str(struct) + '-DOS-QE-Log-Hybrid-SCF.txt'
+            )
+            dos_input_text = engine.render_scf_input(
+                **dos_pw,
+                kpoint_size=dos_mesh,
+                gamma=dos_gamma,
+                nbands=config.DOS_num_of_bands,
+                occupations=qe_dos_occupation['occupations'],
+                smearing=qe_dos_occupation['smearing'],
+                width_ev=qe_dos_occupation['width_ev'],
+            )
+        else:
+            dos_state_dir = ground_state_dir
+            dos_electronic_job = 'dos-nscf'
+            dos_input_file = Path(
+                str(struct) + '-DOS-QE-Input-NSCF.in'
+            )
+            dos_output_file = Path(
+                str(struct) + '-DOS-QE-Log-NSCF.txt'
+            )
+            dos_input_text = engine.render_nscf_input(
                 **common_pw,
                 kpoint_size=dos_mesh,
                 gamma=dos_gamma,
@@ -6805,8 +6828,25 @@ def prepare_qe_dry_run(
                 occupations=qe_dos_occupation['occupations'],
                 smearing=qe_dos_occupation['smearing'],
                 width_ev=qe_dos_occupation['width_ev'],
-            ),
+            )
+
+        add_job(
+            dos_electronic_job,
+            'dos',
+            'pw.x',
+            dos_input_file,
+            dos_output_file,
+            dos_input_text,
             depends_on=ground_dependency,
+            metadata={
+                'calculation': (
+                    'scf'
+                    if hybrid
+                    else 'nscf'
+                ),
+                'hybrid': hybrid,
+                'kpoint_size': list(dos_mesh),
+            },
         )
         add_job(
             'dos-total',
@@ -6816,12 +6856,12 @@ def prepare_qe_dry_run(
             Path(str(struct) + '-DOS-QE-Log-DOS.txt'),
             engine.render_dos_input(
                 prefix='nanoworks',
-                outdir=ground_state_dir,
+                outdir=dos_state_dir,
                 fildos=Path(str(struct) + '-DOS-QE-Result-Raw-DOS.dat'),
                 bz_sum=qe_dos_occupation['occupations'],
                 delta_e=delta_e,
             ),
-            depends_on=['dos-nscf'],
+            depends_on=[dos_electronic_job],
         )
         add_job(
             'dos-projected',
@@ -6831,15 +6871,15 @@ def prepare_qe_dry_run(
             Path(str(struct) + '-DOS-QE-Log-PDOS.txt'),
             engine.render_projwfc_input(
                 prefix='nanoworks',
-                outdir=ground_state_dir,
+                outdir=dos_state_dir,
                 filpdos=Path(str(struct) + '-DOS-QE-Result-Raw-PDOS'),
                 delta_e=delta_e,
             ),
-            depends_on=['dos-nscf'],
+            depends_on=[dos_electronic_job],
         )
         notes.append(
             "DOS and PDOS dry-run inputs omit Emin/Emax because the absolute "
-            "energy window depends on the NSCF Fermi energy."
+            "energy window depends on the electronic-stage Fermi energy."
         )
 
     if config.Band_calc:
@@ -6851,22 +6891,132 @@ def prepare_qe_dry_run(
         band_occupation = engine.resolve_qe_occupation(
             config.Occupation
         )
-        add_job(
-            'band',
-            'band',
-            'pw.x',
-            Path(str(struct) + '-BAND-QE-Input-Bands.in'),
-            Path(str(struct) + '-BAND-QE-Log-Bands.txt'),
-            engine.render_bands_input(
+
+        if hybrid:
+            band_state_dir = Path(
+                str(struct) + '-BAND-QE-Result-State'
+            ).resolve()
+            setup_directories.add(
+                str(band_state_dir)
+            )
+            band_mesh = engine.resolve_qe_kpoint_size(
+                atoms,
+                density=config.Ground_kpts_density,
+                size=(
+                    config.Ground_kpts_x,
+                    config.Ground_kpts_y,
+                    config.Ground_kpts_z,
+                ),
+            )
+            additional_kpoints = (
+                engine.build_qe_exx_additional_kpoints(
+                    band_path=band_path,
+                    qpoint_grid=band_mesh,
+                )
+            )
+            helper_indices = list(
+                additional_kpoints['helper_indices']
+            )
+            hybrid_index_metadata = {
+                'band_indices': list(
+                    additional_kpoints['band_indices']
+                ),
+                'helper_count': len(helper_indices),
+                'helper_index_range': (
+                    [
+                        helper_indices[0],
+                        helper_indices[-1] + 1,
+                    ]
+                    if helper_indices
+                    else []
+                ),
+            }
+            band_pw = {
                 **common_pw,
-                band_path=band_path,
-                nbands=config.Band_num_of_bands,
-                occupations=band_occupation['occupations'],
-                smearing=band_occupation['smearing'],
-                width_ev=band_occupation['width_ev'],
-            ),
-            depends_on=ground_dependency,
-        )
+                'outdir': band_state_dir,
+            }
+            add_job(
+                'band-hybrid-scf',
+                'band',
+                'pw.x',
+                Path(
+                    str(struct)
+                    + '-BAND-QE-Input-Hybrid-SCF.in'
+                ),
+                Path(
+                    str(struct)
+                    + '-BAND-QE-Log-Hybrid-SCF.txt'
+                ),
+                engine.render_scf_input(
+                    **band_pw,
+                    kpoint_size=band_mesh,
+                    gamma=ground_gamma,
+                    nbands=config.Band_num_of_bands,
+                    occupations=band_occupation['occupations'],
+                    smearing=band_occupation['smearing'],
+                    width_ev=band_occupation['width_ev'],
+                    exx_additional_kpoints=additional_kpoints,
+                ),
+                depends_on=ground_dependency,
+                metadata={
+                    'calculation': 'scf',
+                    'hybrid': True,
+                    'qpoint_grid': list(
+                        additional_kpoints['qpoint_grid']
+                    ),
+                    **hybrid_index_metadata,
+                },
+            )
+            add_job(
+                'band-postprocess',
+                'band',
+                'bands.x',
+                Path(
+                    str(struct)
+                    + '-BAND-QE-Input-Bands.x.in'
+                ),
+                Path(
+                    str(struct)
+                    + '-BAND-QE-Log-Bands.x.txt'
+                ),
+                engine.render_bands_postprocess_input(
+                    prefix='nanoworks',
+                    outdir=band_state_dir,
+                    filband=Path(
+                        str(struct)
+                        + '-BAND-QE-Result-Bands.x.dat'
+                    ),
+                    lsym=False,
+                ),
+                depends_on=['band-hybrid-scf'],
+                metadata={
+                    **hybrid_index_metadata,
+                },
+            )
+            band_projection_dependency = 'band-postprocess'
+        else:
+            band_state_dir = ground_state_dir
+            add_job(
+                'band',
+                'band',
+                'pw.x',
+                Path(str(struct) + '-BAND-QE-Input-Bands.in'),
+                Path(str(struct) + '-BAND-QE-Log-Bands.txt'),
+                engine.render_bands_input(
+                    **common_pw,
+                    band_path=band_path,
+                    nbands=config.Band_num_of_bands,
+                    occupations=band_occupation['occupations'],
+                    smearing=band_occupation['smearing'],
+                    width_ev=band_occupation['width_ev'],
+                ),
+                depends_on=ground_dependency,
+                metadata={
+                    'calculation': 'bands',
+                    'hybrid': False,
+                },
+            )
+            band_projection_dependency = 'band'
 
         if config.Projected_band_plot:
             add_job(
@@ -6877,7 +7027,7 @@ def prepare_qe_dry_run(
                 Path(str(struct) + '-BAND-QE-Log-Projections.txt'),
                 engine.render_projwfc_input(
                     prefix='nanoworks',
-                    outdir=ground_state_dir,
+                    outdir=band_state_dir,
                     filpdos=Path(
                         str(struct)
                         + '-BAND-QE-Result-Projections-pdos'
@@ -6889,7 +7039,15 @@ def prepare_qe_dry_run(
                     lsym=False,
                     diag_basis=False,
                 ),
-                depends_on=['band'],
+                depends_on=[band_projection_dependency],
+                metadata={
+                    'hybrid': hybrid,
+                    **(
+                        hybrid_index_metadata
+                        if hybrid
+                        else {}
+                    ),
+                },
             )
 
     if config.Density_calc:
