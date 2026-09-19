@@ -67,6 +67,23 @@ for CI and job-submission scripts:
 
    $ dftsolve --check --json -p 4 -g geometry.cif -i input.py
 
+QE Dry Run
+~~~~~~~~~~
+
+Use ``--dry-run`` to render native QE input files without launching any QE
+program:
+
+.. code-block:: console
+
+   $ dftsolve --dry-run -p 4 -g geometry.cif -i input.py
+
+The command writes the selected semilocal QE workflow inputs, a versioned JSON
+plan, and an executable shell script in the normal result directory. The plan
+records job dependencies, commands, input/output paths, working directories,
+and requested process count. QE executables and an existing saved state are not
+required during preparation; pseudopotentials are required when a ``pw.x``
+input is rendered. Hybrid DOS and band dry-run generation is not supported yet.
+
 **Arguments:**
 
 * -g, --geometry: Path to the geometry file (CIF format).
@@ -77,6 +94,7 @@ for CI and job-submission scripts:
 * -a, --auto: Auto mode. Automatically generate input parameters based on geometry.
 * --check: Validate the workflow and dependencies without starting calculations.
 * --json: Print ``--check`` results as machine-readable JSON.
+* --dry-run: Write native QE inputs and an execution plan without running calculations.
 
 
 mdsolve (formerly asapsolve.py)
