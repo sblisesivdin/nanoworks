@@ -2,6 +2,7 @@ import tempfile
 import unittest
 import sys
 import json
+import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -21,6 +22,7 @@ with patch.object(
         format_dft_preflight_json,
         format_dft_preflight_report,
         main,
+        prepare_qe_dry_run,
         release_stage_resources,
         required_dft_executables,
         run_calculation_stages,
@@ -418,6 +420,211 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         output.assert_called_once_with(
             'ERROR: --json requires --check.'
         )
+
+    def test_qe_dry_run_writes_inputs_plan_and_script_without_execution(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            struct = Path(tmpdir) / 'dry-run' / 'silicon'
+            config = DFTConfig(
+                Engine='QE',
+                Ground_calc=True,
+                DOS_calc=True,
+                Band_calc=True,
+                Band_path='GXG',
+                Projected_band_plot=True,
+                Density_calc=True,
+                Phonon_calc=True,
+                Phonon_path='GXG',
+                Optical_calc=True,
+                bulk_configuration=Atoms(
+                    'Si2',
+                    scaled_positions=[
+                        (0.0, 0.0, 0.0),
+                        (0.25, 0.25, 0.25),
+                    ],
+                    cell=[5.4, 5.4, 5.4],
+                    pbc=True,
+                ),
+            )
+
+            with (
+                patch(
+                    'nanoworks.dftsolve.get_qe_pseudo_dir',
+                    return_value=Path('/pseudos'),
+                ),
+                patch(
+                    'nanoworks.dftsolve.resolve_qe_pseudopotentials',
+                    return_value={
+                        'Si': 'Si.upf',
+                    },
+                ),
+                patch(
+                    'nanoworks.dftsolve.shutil.which',
+                    return_value=None,
+                ),
+                patch(
+                    'nanoworks.engine.qe.subprocess.run',
+                ) as execute,
+            ):
+                plan = prepare_qe_dry_run(
+                    config,
+                    struct=struct,
+                    parallel_cores=4,
+                )
+
+            execute.assert_not_called()
+            self.assertEqual(
+                plan['schema_version'],
+                1,
+            )
+            self.assertEqual(
+                plan['parallel_cores'],
+                4,
+            )
+            job_ids = {
+                job['id']
+                for job in plan['jobs']
+            }
+            self.assertEqual(
+                job_ids,
+                {
+                    'ground',
+                    'dos-nscf',
+                    'dos-total',
+                    'dos-projected',
+                    'band',
+                    'band-projections',
+                    'density-pseudo-total',
+                    'phonon-grid',
+                    'phonon-force-constants',
+                    'phonon-band',
+                    'phonon-dos',
+                    'optical-nscf',
+                    'optical-epsilon',
+                },
+            )
+
+            for job in plan['jobs']:
+                self.assertTrue(
+                    Path(job['input_file']).is_file()
+                )
+                self.assertEqual(
+                    job['command'][:3],
+                    ['mpiexec', '-np', '4'],
+                )
+
+            plan_file = Path(plan['plan_file'])
+            script_file = Path(plan['script_file'])
+            self.assertTrue(
+                plan_file.is_file()
+            )
+            self.assertTrue(
+                script_file.is_file()
+            )
+            self.assertTrue(
+                script_file.stat().st_mode & 0o111
+            )
+            syntax_check = subprocess.run(
+                [
+                    'bash',
+                    '-n',
+                    str(script_file),
+                ],
+                capture_output=True,
+                check=False,
+                text=True,
+            )
+            self.assertEqual(
+                syntax_check.returncode,
+                0,
+                syntax_check.stderr,
+            )
+            stored_plan = json.loads(
+                plan_file.read_text(encoding='utf-8')
+            )
+            self.assertEqual(
+                stored_plan['jobs'],
+                plan['jobs'],
+            )
+            self.assertIn(
+                "calculation = 'scf'",
+                Path(
+                    plan['jobs'][0]['input_file']
+                ).read_text(encoding='utf-8'),
+            )
+
+    def test_dry_run_cli_stops_before_calculation_stages(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+            input_file = tmpdir / 'dry_run_input.py'
+            geometry_file = tmpdir / 'silicon.cif'
+            input_file.write_text(
+                "Engine = 'QE'\n"
+                "Ground_calc = True\n",
+                encoding='utf-8',
+            )
+            write(
+                geometry_file,
+                Atoms(
+                    'Si2',
+                    scaled_positions=[
+                        (0.0, 0.0, 0.0),
+                        (0.25, 0.25, 0.25),
+                    ],
+                    cell=[5.4, 5.4, 5.4],
+                    pbc=True,
+                ),
+            )
+            report = {
+                'ok': True,
+                'engine': 'QE',
+                'stages': ('ground',),
+                'checks': [],
+                'errors': [],
+            }
+            plan = {
+                'stages': ['ground'],
+                'jobs': [{}],
+                'plan_file': '/tmp/plan.json',
+                'script_file': '/tmp/run.sh',
+            }
+
+            with (
+                patch.object(
+                    sys,
+                    'argv',
+                    [
+                        'dftsolve',
+                        '--dry-run',
+                        '-i',
+                        str(input_file),
+                        '-g',
+                        str(geometry_file),
+                    ],
+                ),
+                patch(
+                    'nanoworks.dftsolve.check_dft_configuration',
+                    return_value=report,
+                ) as check,
+                patch(
+                    'nanoworks.dftsolve.prepare_qe_dry_run',
+                    return_value=plan,
+                ) as prepare,
+                patch(
+                    'nanoworks.dftsolve.run_calculation_stages',
+                ) as execute,
+                patch(
+                    'nanoworks.dftsolve.parprint',
+                ),
+            ):
+                return_code = main()
+
+            self.assertEqual(
+                return_code,
+                0,
+            )
+            check.assert_called_once()
+            prepare.assert_called_once()
+            execute.assert_not_called()
 
     def test_opticalcalc_dispatches_to_gpaw(self):
         solver = object.__new__(

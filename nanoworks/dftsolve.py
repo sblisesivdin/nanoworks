@@ -15,6 +15,7 @@ import os, glob
 import gc
 import importlib.util
 import json
+import shlex
 import shutil
 import subprocess
 
@@ -6055,6 +6056,8 @@ def check_dft_configuration(
     config,
     struct,
     parallel_cores=1,
+    check_executables=True,
+    check_saved_state=True,
 ):
     """Check workflow capabilities and runtime dependencies without running DFT."""
     checks = []
@@ -6248,25 +6251,26 @@ def check_dft_configuration(
                         'QE DOS requires a tetrahedron occupation.',
                     )
 
-        for executable in required_dft_executables(config):
-            resolved = shutil.which(
-                executable
-            )
-
-            if resolved is None:
-                add(
-                    'error',
-                    f'executable:{executable}',
-                    f'{executable} was not found in PATH.',
-                )
-            else:
-                add(
-                    'ok',
-                    f'executable:{executable}',
-                    resolved,
+        if check_executables:
+            for executable in required_dft_executables(config):
+                resolved = shutil.which(
+                    executable
                 )
 
-        if parallel_cores > 1:
+                if resolved is None:
+                    add(
+                        'error',
+                        f'executable:{executable}',
+                        f'{executable} was not found in PATH.',
+                    )
+                else:
+                    add(
+                        'ok',
+                        f'executable:{executable}',
+                        resolved,
+                    )
+
+        if check_executables and parallel_cores > 1:
             mpi_executable = (
                 shutil.which('mpiexec')
                 or shutil.which('mpirun')
@@ -6315,7 +6319,7 @@ def check_dft_configuration(
                     f'{len(pseudopotentials)} species in {pseudo_dir}',
                 )
 
-        if not config.Ground_calc:
+        if check_saved_state and not config.Ground_calc:
             state_dir = Path(
                 struct
                 + '-GROUND-QE-Result-State'
@@ -6355,13 +6359,16 @@ def check_dft_configuration(
                 config.Mode,
             )
 
-        if importlib.util.find_spec('gpaw') is None:
+        if (
+            check_executables
+            and importlib.util.find_spec('gpaw') is None
+        ):
             add(
                 'error',
                 'python:gpaw',
                 'The gpaw Python package is not installed.',
             )
-        else:
+        elif check_executables:
             add(
                 'ok',
                 'python:gpaw',
@@ -6389,7 +6396,7 @@ def check_dft_configuration(
                 'GPAW optical calculations require PW mode.',
             )
 
-        if parallel_cores > 1:
+        if check_executables and parallel_cores > 1:
             mpi_executable = (
                 shutil.which('mpiexec')
                 or shutil.which('mpirun')
@@ -6410,7 +6417,7 @@ def check_dft_configuration(
                     'The gpaw command was not found in PATH.',
                 )
 
-        if not config.Ground_calc:
+        if check_saved_state and not config.Ground_calc:
             state_file = Path(
                 struct
                 + '-GROUND-GPAW-Result-State.gpw'
@@ -6491,6 +6498,670 @@ def format_dft_preflight_json(report):
     )
 
 
+def prepare_qe_dry_run(
+    config,
+    struct,
+    parallel_cores=1,
+):
+    """Write QE input files and a command plan without executing QE."""
+    if config.Engine != 'QE':
+        raise NotImplementedError(
+            "dftsolve --dry-run currently supports Engine = 'QE' only."
+        )
+
+    engine = load_engine_module('QE')
+    validated_xc = engine.validate_qe_xc(
+        config.XC_calc,
+        pseudo_xc='pbe',
+        allow_hybrid=True,
+    )
+    hybrid = str(validated_xc).strip().lower() in {
+        'hse06',
+        'hse03',
+        'pbe0',
+    }
+
+    if hybrid and any((
+        config.DOS_calc,
+        config.Band_calc,
+    )):
+        raise NotImplementedError(
+            "QE hybrid DOS and band dry-run generation is not supported "
+            "yet because their SCF k-point construction is workflow-specific."
+        )
+
+    parallel_cores = int(parallel_cores)
+
+    if parallel_cores <= 0:
+        raise ValueError(
+            "Dry-run parallel core count must be a positive integer."
+        )
+
+    struct = Path(struct).expanduser().resolve()
+    struct.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+    atoms = config.bulk_configuration
+    jobs = []
+    setup_directories = set()
+    notes = []
+
+    if config.Geo_optim and any((
+        config.DOS_calc,
+        config.Band_calc,
+        config.Density_calc,
+        config.Phonon_calc,
+        config.Optical_calc,
+    )):
+        notes.append(
+            "Downstream inputs contain the supplied geometry. Regenerate the "
+            "dry-run deck after relaxation if the optimized geometry must be "
+            "embedded in those inputs."
+        )
+
+    def command_for(executable, input_file):
+        command = []
+
+        if parallel_cores > 1:
+            launcher = (
+                shutil.which('mpiexec')
+                or shutil.which('mpirun')
+                or shutil.which('srun')
+                or 'mpiexec'
+            )
+            flag = (
+                '-n'
+                if Path(launcher).name == 'srun'
+                else '-np'
+            )
+            command.extend([
+                str(launcher),
+                flag,
+                str(parallel_cores),
+            ])
+
+        command.extend([
+            executable,
+            '-i',
+            str(input_file),
+        ])
+        return command
+
+    def add_job(
+        job_id,
+        stage,
+        executable,
+        input_file,
+        output_file,
+        input_text,
+        depends_on=None,
+        working_directory=None,
+    ):
+        input_file = Path(input_file).expanduser().resolve()
+        output_file = Path(output_file).expanduser().resolve()
+        input_file.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+        input_file.write_text(
+            input_text,
+            encoding='utf-8',
+        )
+
+        command = command_for(
+            executable,
+            input_file,
+        )
+        working_directory = (
+            Path(working_directory).expanduser().resolve()
+            if working_directory is not None
+            else None
+        )
+
+        if working_directory is not None:
+            setup_directories.add(
+                str(working_directory)
+            )
+
+        setup_directories.add(
+            str(output_file.parent)
+        )
+        jobs.append({
+            'id': job_id,
+            'stage': stage,
+            'executable': executable,
+            'input_file': str(input_file),
+            'output_file': str(output_file),
+            'working_directory': (
+                str(working_directory)
+                if working_directory is not None
+                else None
+            ),
+            'command': command,
+            'depends_on': list(depends_on or []),
+        })
+
+    ground_state_dir = Path(
+        str(struct) + '-GROUND-QE-Result-State'
+    ).resolve()
+    setup_directories.add(
+        str(ground_state_dir)
+    )
+
+    pseudo_dir = None
+    pseudopotentials = None
+    magnetic_moments = None
+    needs_pw_input = any((
+        config.Ground_calc,
+        config.DOS_calc,
+        config.Band_calc,
+        config.Optical_calc,
+    ))
+
+    if needs_pw_input:
+        pseudo_dir = get_qe_pseudo_dir(
+            relativistic='scalar',
+        )
+        pseudopotentials = resolve_qe_pseudopotentials(
+            atoms,
+            relativistic='scalar',
+        )
+
+        if config.Spin_calc:
+            magnetic_moments = resolve_initial_magnetic_moments(
+                atoms=atoms,
+                magmom_per_atom=config.Magmom_per_atom,
+                magmom_single_atom=config.Magmom_single_atom,
+            )
+
+    ground_gamma = (
+        config.Gamma
+        if config.Ground_gamma is None
+        else config.Ground_gamma
+    )
+    common_pw = {
+        'atoms': atoms,
+        'pseudopotentials': pseudopotentials,
+        'cutoff_ev': config.Cut_off_energy,
+        'total_charge': config.Total_charge,
+        'spinpol': config.Spin_calc,
+        'magnetic_moments': magnetic_moments,
+        'setup_params': config.Setup_params,
+        'xc_calc': config.XC_calc,
+        'exx_fraction': config.XC_exx_fraction,
+        'omega': config.XC_omega,
+        'prefix': 'nanoworks',
+        'pseudo_dir': pseudo_dir,
+        'outdir': ground_state_dir,
+    }
+
+    if config.Ground_calc:
+        ground_mesh = engine.resolve_qe_kpoint_size(
+            atoms,
+            density=config.Ground_kpts_density,
+            size=(
+                config.Ground_kpts_x,
+                config.Ground_kpts_y,
+                config.Ground_kpts_z,
+            ),
+        )
+        ground_occupation = engine.resolve_qe_occupation(
+            config.Occupation
+        )
+        ground_kwargs = {
+            **common_pw,
+            'kpoint_size': ground_mesh,
+            'gamma': ground_gamma,
+            'nbands': config.Ground_num_of_bands,
+            'occupations': ground_occupation['occupations'],
+            'smearing': ground_occupation['smearing'],
+            'width_ev': ground_occupation['width_ev'],
+        }
+
+        if config.Geo_optim:
+            variable_cell = True in config.Relax_cell
+            label = 'VC-RELAX' if variable_cell else 'RELAX'
+            input_text = engine.render_relax_input(
+                optimizer=config.Optimizer,
+                max_force=config.Max_F_tolerance,
+                max_step=config.Max_step,
+                relax_cell=config.Relax_cell,
+                hydrostatic_pressure=config.Hydrostatic_pressure,
+                fix_symmetry=config.Fix_symmetry,
+                **ground_kwargs,
+            )
+        else:
+            label = 'SCF'
+            input_text = engine.render_scf_input(
+                **ground_kwargs
+            )
+
+        add_job(
+            'ground',
+            'ground',
+            'pw.x',
+            Path(str(struct) + f'-GROUND-QE-Input-{label}.in'),
+            Path(str(struct) + f'-GROUND-QE-Log-{label}.txt'),
+            input_text,
+        )
+    else:
+        notes.append(
+            "Ground_calc is False; generated post-processing commands expect "
+            f"an existing QE state in {ground_state_dir}."
+        )
+
+    ground_dependency = ['ground'] if config.Ground_calc else []
+
+    if config.DOS_calc:
+        (
+            dos_density,
+            dos_size,
+            dos_gamma,
+        ) = resolve_stage_kpoint_settings(
+            stage_density=config.DOS_kpts_density,
+            stage_size=(
+                config.DOS_kpts_x,
+                config.DOS_kpts_y,
+                config.DOS_kpts_z,
+            ),
+            stage_gamma=config.DOS_gamma,
+            ground_density=config.Ground_kpts_density,
+            ground_size=(
+                config.Ground_kpts_x,
+                config.Ground_kpts_y,
+                config.Ground_kpts_z,
+            ),
+            ground_gamma=ground_gamma,
+        )
+        dos_mesh = engine.resolve_qe_kpoint_size(
+            atoms,
+            density=dos_density,
+            size=dos_size,
+        )
+        dos_occupation = resolve_stage_occupation(
+            config.DOS_occupation,
+            config.Occupation,
+        )
+        qe_dos_occupation = engine.resolve_qe_occupation(
+            dos_occupation
+        )
+        delta_e = (
+            float(config.Energy_max)
+            - float(config.Energy_min)
+        ) / (int(config.DOS_npoints) - 1)
+
+        add_job(
+            'dos-nscf',
+            'dos',
+            'pw.x',
+            Path(str(struct) + '-DOS-QE-Input-NSCF.in'),
+            Path(str(struct) + '-DOS-QE-Log-NSCF.txt'),
+            engine.render_nscf_input(
+                **common_pw,
+                kpoint_size=dos_mesh,
+                gamma=dos_gamma,
+                nbands=config.DOS_num_of_bands,
+                occupations=qe_dos_occupation['occupations'],
+                smearing=qe_dos_occupation['smearing'],
+                width_ev=qe_dos_occupation['width_ev'],
+            ),
+            depends_on=ground_dependency,
+        )
+        add_job(
+            'dos-total',
+            'dos',
+            'dos.x',
+            Path(str(struct) + '-DOS-QE-Input-DOS.in'),
+            Path(str(struct) + '-DOS-QE-Log-DOS.txt'),
+            engine.render_dos_input(
+                prefix='nanoworks',
+                outdir=ground_state_dir,
+                fildos=Path(str(struct) + '-DOS-QE-Result-Raw-DOS.dat'),
+                bz_sum=qe_dos_occupation['occupations'],
+                delta_e=delta_e,
+            ),
+            depends_on=['dos-nscf'],
+        )
+        add_job(
+            'dos-projected',
+            'dos',
+            'projwfc.x',
+            Path(str(struct) + '-DOS-QE-Input-PDOS.in'),
+            Path(str(struct) + '-DOS-QE-Log-PDOS.txt'),
+            engine.render_projwfc_input(
+                prefix='nanoworks',
+                outdir=ground_state_dir,
+                filpdos=Path(str(struct) + '-DOS-QE-Result-Raw-PDOS'),
+                delta_e=delta_e,
+            ),
+            depends_on=['dos-nscf'],
+        )
+        notes.append(
+            "DOS and PDOS dry-run inputs omit Emin/Emax because the absolute "
+            "energy window depends on the NSCF Fermi energy."
+        )
+
+    if config.Band_calc:
+        band_path = engine.build_band_path(
+            atoms,
+            path=config.Band_path,
+            npoints=config.Band_npoints,
+        )
+        band_occupation = engine.resolve_qe_occupation(
+            config.Occupation
+        )
+        add_job(
+            'band',
+            'band',
+            'pw.x',
+            Path(str(struct) + '-BAND-QE-Input-Bands.in'),
+            Path(str(struct) + '-BAND-QE-Log-Bands.txt'),
+            engine.render_bands_input(
+                **common_pw,
+                band_path=band_path,
+                nbands=config.Band_num_of_bands,
+                occupations=band_occupation['occupations'],
+                smearing=band_occupation['smearing'],
+                width_ev=band_occupation['width_ev'],
+            ),
+            depends_on=ground_dependency,
+        )
+
+        if config.Projected_band_plot:
+            add_job(
+                'band-projections',
+                'band',
+                'projwfc.x',
+                Path(str(struct) + '-BAND-QE-Input-Projections.in'),
+                Path(str(struct) + '-BAND-QE-Log-Projections.txt'),
+                engine.render_projwfc_input(
+                    prefix='nanoworks',
+                    outdir=ground_state_dir,
+                    filpdos=Path(
+                        str(struct)
+                        + '-BAND-QE-Result-Projections-pdos'
+                    ),
+                    filproj=Path(
+                        str(struct)
+                        + '-BAND-QE-Result-Projections'
+                    ),
+                    lsym=False,
+                    diag_basis=False,
+                ),
+                depends_on=['band'],
+            )
+
+    if config.Density_calc:
+        density_jobs = [
+            ('Pseudo-Total', 0, 0 if config.Spin_calc else None),
+        ]
+
+        if config.Spin_calc:
+            density_jobs.extend([
+                ('Pseudo-Up', 0, 1),
+                ('Pseudo-Down', 0, 2),
+                ('Spin-Density', 6, None),
+            ])
+
+        for label, plot_num, spin_component in density_jobs:
+            add_job(
+                'density-' + label.lower(),
+                'density',
+                'pp.x',
+                Path(str(struct) + f'-EDENSITY-QE-Input-{label}.in'),
+                Path(str(struct) + f'-EDENSITY-QE-Log-{label}.txt'),
+                engine.render_pp_input(
+                    prefix='nanoworks',
+                    outdir=ground_state_dir,
+                    filplot=Path(
+                        str(struct)
+                        + f'-EDENSITY-QE-Result-{label}.dat'
+                    ),
+                    fileout=Path(
+                        str(struct)
+                        + f'-EDENSITY-QE-Result-{label}.cube'
+                    ),
+                    plot_num=plot_num,
+                    spin_component=spin_component,
+                ),
+                depends_on=ground_dependency,
+            )
+
+    if config.Phonon_calc:
+        qpoint_grid = engine.resolve_qe_phonon_qpoint_grid(
+            config.Phonon_supercell
+        )
+        phonon_path = engine.build_band_path(
+            atoms,
+            path=config.Phonon_path,
+            npoints=config.Phonon_npoints,
+        )
+        fildyn = Path(
+            str(struct) + '-PHONON-QE-Result-Dynamical-Matrix'
+        )
+        flfrc = Path(
+            str(struct) + '-PHONON-QE-Result-Force-Constants.fc'
+        )
+        add_job(
+            'phonon-grid',
+            'phonon',
+            'ph.x',
+            Path(str(struct) + '-PHONON-QE-Input-PH.in'),
+            Path(str(struct) + '-PHONON-QE-Log-PH.txt'),
+            engine.render_ph_input(
+                prefix='nanoworks',
+                outdir=ground_state_dir,
+                fildyn=fildyn,
+                qpoint_grid=qpoint_grid,
+            ),
+            depends_on=ground_dependency,
+        )
+        add_job(
+            'phonon-force-constants',
+            'phonon',
+            'q2r.x',
+            Path(str(struct) + '-PHONON-QE-Input-Q2R.in'),
+            Path(str(struct) + '-PHONON-QE-Log-Q2R.txt'),
+            engine.render_q2r_input(
+                fildyn=fildyn,
+                flfrc=flfrc,
+                zasr='no',
+            ),
+            depends_on=['phonon-grid'],
+        )
+        add_job(
+            'phonon-band',
+            'phonon',
+            'matdyn.x',
+            Path(str(struct) + '-PHONON-QE-Input-Matdyn-Band.in'),
+            Path(str(struct) + '-PHONON-QE-Log-Matdyn-Band.txt'),
+            engine.render_matdyn_band_input(
+                flfrc=flfrc,
+                flfrq=Path(
+                    str(struct) + '-PHONON-QE-Result-Band.freq'
+                ),
+                band_path=phonon_path,
+                acoustic_sum_rule=config.Phonon_acoustic_sum_rule,
+            ),
+            depends_on=['phonon-force-constants'],
+        )
+        add_job(
+            'phonon-dos',
+            'phonon',
+            'matdyn.x',
+            Path(str(struct) + '-PHONON-QE-Input-Matdyn-DOS.in'),
+            Path(str(struct) + '-PHONON-QE-Log-Matdyn-DOS.txt'),
+            engine.render_matdyn_dos_input(
+                flfrc=flfrc,
+                fldos=Path(
+                    str(struct) + '-PHONON-QE-Result-DOS.dat'
+                ),
+                qpoint_grid=(
+                    config.Phonon_qpts_x,
+                    config.Phonon_qpts_y,
+                    config.Phonon_qpts_z,
+                ),
+                acoustic_sum_rule=config.Phonon_acoustic_sum_rule,
+            ),
+            depends_on=['phonon-force-constants'],
+        )
+
+    if config.Optical_calc:
+        (
+            optical_density,
+            optical_size,
+            optical_gamma,
+        ) = resolve_stage_kpoint_settings(
+            stage_density=config.Opt_kpts_density,
+            stage_size=(
+                config.Opt_kpts_x,
+                config.Opt_kpts_y,
+                config.Opt_kpts_z,
+            ),
+            stage_gamma=config.Opt_gamma,
+            ground_density=config.Ground_kpts_density,
+            ground_size=(
+                config.Ground_kpts_x,
+                config.Ground_kpts_y,
+                config.Ground_kpts_z,
+            ),
+            ground_gamma=ground_gamma,
+        )
+        optical_mesh = engine.resolve_qe_kpoint_size(
+            atoms,
+            density=optical_density,
+            size=optical_size,
+        )
+        optical_occupation = engine.resolve_qe_occupation({
+            'name': 'fermi-dirac',
+            'width': config.Opt_FD_smearing,
+        })
+        add_job(
+            'optical-nscf',
+            'optical',
+            'pw.x',
+            Path(str(struct) + '-OPTICAL-QE-Input-NSCF.in'),
+            Path(str(struct) + '-OPTICAL-QE-Log-NSCF.txt'),
+            engine.render_nscf_input(
+                **common_pw,
+                kpoint_size=optical_mesh,
+                gamma=optical_gamma,
+                nbands=config.Opt_num_of_bands,
+                occupations=optical_occupation['occupations'],
+                smearing=optical_occupation['smearing'],
+                width_ev=optical_occupation['width_ev'],
+                nosym=True,
+            ),
+            depends_on=ground_dependency,
+        )
+        optical_result_dir = Path(
+            str(struct) + '-OPTICAL-QE-Result-Raw'
+        ).resolve()
+        add_job(
+            'optical-epsilon',
+            'optical',
+            'epsilon.x',
+            Path(str(struct) + '-OPTICAL-QE-Input-Epsilon.in'),
+            Path(str(struct) + '-OPTICAL-QE-Log-Epsilon.txt'),
+            engine.render_epsilon_input(
+                prefix='nanoworks',
+                outdir=ground_state_dir,
+                calculation='eps',
+                smeartype='gauss',
+                intersmear=config.Opt_eta,
+                intrasmear=0.0,
+                wmin=config.Opt_min_en,
+                wmax=config.Opt_max_en,
+                nw=config.Opt_num_of_data,
+                shift=config.Opt_shift_en,
+            ),
+            depends_on=['optical-nscf'],
+            working_directory=optical_result_dir,
+        )
+
+    plan_file = Path(
+        str(struct) + '-DRYRUN-QE-Plan.json'
+    )
+    script_file = Path(
+        str(struct) + '-DRYRUN-QE-Run.sh'
+    )
+    plan = {
+        'schema_version': 1,
+        'engine': 'QE',
+        'dry_run': True,
+        'parallel_cores': parallel_cores,
+        'stages': list(resolve_calculation_stages(config)),
+        'jobs': jobs,
+        'notes': notes,
+        'plan_file': str(plan_file),
+        'script_file': str(script_file),
+    }
+    plan_file.write_text(
+        json.dumps(
+            plan,
+            indent=2,
+            sort_keys=True,
+        ) + '\n',
+        encoding='utf-8',
+    )
+
+    script_lines = [
+        '#!/usr/bin/env bash',
+        'set -euo pipefail',
+        '',
+        '# Generated by dftsolve --dry-run; inspect before execution.',
+    ]
+
+    for directory in sorted(setup_directories):
+        script_lines.append(
+            'mkdir -p ' + shlex.quote(directory)
+        )
+
+    script_lines.append('')
+
+    for job in jobs:
+        command = shlex.join(job['command'])
+        output_file = shlex.quote(job['output_file'])
+
+        if job['working_directory'] is None:
+            script_lines.append(
+                f"{command} > {output_file}"
+            )
+        else:
+            script_lines.append(
+                '(cd '
+                + shlex.quote(job['working_directory'])
+                + ' && '
+                + command
+                + ' > '
+                + output_file
+                + ')'
+            )
+
+    script_file.write_text(
+        '\n'.join(script_lines) + '\n',
+        encoding='utf-8',
+    )
+    script_file.chmod(
+        script_file.stat().st_mode | 0o111
+    )
+
+    return plan
+
+
+def format_dft_dry_run_report(plan):
+    """Format a concise summary of generated QE dry-run artifacts."""
+    return '\n'.join([
+        'dftsolve QE dry run',
+        'Stages: ' + ' -> '.join(plan['stages']),
+        f"Jobs: {len(plan['jobs'])}",
+        f"Plan: {plan['plan_file']}",
+        f"Script: {plan['script_file']}",
+        'Result: PREPARED (no calculations executed)',
+    ])
+
+
 def main():
     meter = None
     parser = ArgumentParser(prog ='dftsolve.py', description=Description, formatter_class=RawFormatter)
@@ -6502,6 +7173,7 @@ def main():
     parser.add_argument("-p", "--parallel", dest="parallel", type=int, help="Number of cores to run in parallel")
     parser.add_argument("--check", dest="check", action='store_true', help="Validate the selected workflow without running calculations")
     parser.add_argument("--json", dest="json", action='store_true', help="Print --check results as machine-readable JSON")
+    parser.add_argument("--dry-run", dest="dry_run", action='store_true', help="Write QE inputs and an execution plan without running calculations")
 
     args = None
 
@@ -6518,6 +7190,10 @@ def main():
 
     if args.json and not args.check:
         parprint("ERROR: --json requires --check.")
+        return 2
+
+    if args.check and args.dry_run:
+        parprint("ERROR: --check and --dry-run cannot be used together.")
         return 2
 
     energymeas = False
@@ -6546,7 +7222,11 @@ def main():
         if args.geometryfile :
             inFile = os.path.join(os.getcwd(),args.geometryfile)
 
-        if args.energymeas == True and not args.check:
+        if (
+            args.energymeas == True
+            and not args.check
+            and not args.dry_run
+        ):
             try:
                 import pyRAPL
                 energymeas = True
@@ -6574,15 +7254,27 @@ def main():
     if args.auto:
         struct, config = struct_from_auto(
             inFile,
-            write_output=not args.check,
-            report_structure=not args.check,
+            write_output=(
+                not args.check
+                and not args.dry_run
+            ),
+            report_structure=(
+                not args.check
+                and not args.dry_run
+            ),
         )
     else:
         struct, config = struct_from_file(
             inputfile=configpath,
             geometryfile=inFile,
-            create_output=not args.check,
-            report_structure=not args.check,
+            create_output=(
+                not args.check
+                and not args.dry_run
+            ),
+            report_structure=(
+                not args.check
+                and not args.dry_run
+            ),
         )
 
     if REQUESTED_PARALLEL is not None:
@@ -6607,6 +7299,43 @@ def main():
 
         parprint(output)
         return 0 if report['ok'] else 2
+
+    if args.dry_run:
+        report = check_dft_configuration(
+            config,
+            struct=struct,
+            parallel_cores=parallel_cores,
+            check_executables=False,
+            check_saved_state=False,
+        )
+
+        if not report['ok']:
+            parprint(
+                format_dft_preflight_report(
+                    report
+                )
+            )
+            return 2
+
+        try:
+            plan = prepare_qe_dry_run(
+                config,
+                struct=struct,
+                parallel_cores=parallel_cores,
+            )
+        except Exception as exc:
+            parprint(
+                "ERROR: QE dry-run preparation failed: "
+                + str(exc)
+            )
+            return 2
+
+        parprint(
+            format_dft_dry_run_report(
+                plan
+            )
+        )
+        return 0
 
     # Parallel execution is backend-specific.
     #
