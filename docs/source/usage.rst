@@ -96,15 +96,18 @@ batch script:
 
    $ dftsolve --dry-run --scheduler slurm -p 48 \
        --slurm-time 2-00:00:00 --slurm-memory 64G \
-       --slurm-account PROJECT -g geometry.cif -i input.py
+       --slurm-account PROJECT --slurm-qos normal \
+       --slurm-module gcc/13.2 \
+       --slurm-module quantum-espresso/7.3.1 \
+       -g geometry.cif -i input.py
 
 The requested process count becomes both ``#SBATCH --ntasks`` and the task
 count for each sequential ``srun`` step. Optional account, partition, memory,
-wall-time, and job-name settings are written as ``#SBATCH`` directives. The
-JSON plan is updated with the resolved scheduler settings. Load the
-site-specific Quantum ESPRESSO module in the generated ``.slurm`` file before
-submitting it with ``sbatch``. This keeps cluster-specific module names outside
-Nanoworks.
+wall-time, QoS, and job-name settings are written as ``#SBATCH`` directives.
+Each ``--slurm-module`` value becomes a ``module load`` line and is also stored
+in the JSON plan. Repeat the option when the site requires compiler, MPI, and
+Quantum ESPRESSO modules. If the option is omitted, add the site-specific
+environment setup to the generated ``.slurm`` file before submission.
 
 **Arguments:**
 
@@ -122,6 +125,8 @@ Nanoworks.
 * --slurm-memory: Optional Slurm memory request such as ``64G``.
 * --slurm-partition: Optional Slurm partition name.
 * --slurm-account: Optional Slurm account or project name.
+* --slurm-qos: Optional Slurm quality-of-service name.
+* --slurm-module: Module to load; repeat for multiple modules.
 * --slurm-job-name: Optional Slurm job name.
 
 

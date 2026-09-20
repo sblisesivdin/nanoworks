@@ -65,7 +65,8 @@ dftsolve -p <cores> -g <geometry.cif> -a
 *   `--dry-run`: Write QE input files, a JSON execution plan, and a shell script without running calculations.
 *   `--scheduler {local,slurm}`: Generate a local or Slurm execution script for `--dry-run`.
 *   `--slurm-time`: Slurm wall time in `HH:MM:SS` or `D-HH:MM:SS` form.
-*   `--slurm-memory`, `--slurm-partition`, `--slurm-account`, `--slurm-job-name`: Optional Slurm resource settings.
+*   `--slurm-memory`, `--slurm-partition`, `--slurm-account`, `--slurm-qos`, `--slurm-job-name`: Optional Slurm resource settings.
+*   `--slurm-module`: Module to load in the generated script; repeat the option to load multiple modules.
 
 Check an input before submitting a calculation:
 
@@ -95,12 +96,14 @@ Generate a Slurm batch script together with the input deck:
 ```bash
 dftsolve --dry-run --scheduler slurm -p 48 \
   --slurm-time 2-00:00:00 --slurm-memory 64G \
-  --slurm-account PROJECT -i input.py -g geometry.cif
+  --slurm-account PROJECT --slurm-qos normal \
+  --slurm-module gcc/13.2 --slurm-module quantum-espresso/7.3.1 \
+  -i input.py -g geometry.cif
 ```
 
 The generated `.slurm` file uses one MPI task per requested process and
-sequential `srun` steps. Add the site-specific Quantum ESPRESSO module command
-before submitting it with `sbatch`.
+sequential `srun` steps. If `--slurm-module` is omitted, add the site-specific
+Quantum ESPRESSO environment setup before submitting it with `sbatch`.
 
 ### 2. mdsolve (formerly asapsolve.py)
 Perform molecular dynamics calculations using ASAP3 or LAMMPS with OpenKIM interatomic potentials.

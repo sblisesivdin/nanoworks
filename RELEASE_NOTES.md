@@ -334,3 +334,4 @@
 * `PW-Optical-SingleCoreOnly.py` script for optical calculations.
 * `PW-Electronic-changename.py` script for electronic calculations. 
 * First scripts for personal usage.
+- Slurm dry-run scripts can now request a QoS and load one or more site modules.
