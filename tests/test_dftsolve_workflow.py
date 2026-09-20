@@ -26,6 +26,7 @@ with patch.object(
         release_stage_resources,
         required_dft_executables,
         run_calculation_stages,
+        write_qe_slurm_script,
     )
 
 
@@ -552,6 +553,72 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 ).read_text(encoding='utf-8'),
             )
 
+            slurm_script = write_qe_slurm_script(
+                plan,
+                wall_time='2-12:30:00',
+                memory='64G',
+                partition='compute',
+                account='project123',
+                job_name='Si combined workflow',
+            )
+            slurm_text = slurm_script.read_text(
+                encoding='utf-8'
+            )
+            self.assertIn(
+                '#SBATCH --job-name=Si-combined-workflow',
+                slurm_text,
+            )
+            self.assertIn(
+                '#SBATCH --ntasks=4',
+                slurm_text,
+            )
+            self.assertIn(
+                '#SBATCH --time=2-12:30:00',
+                slurm_text,
+            )
+            self.assertIn(
+                '#SBATCH --mem=64G',
+                slurm_text,
+            )
+            self.assertIn(
+                '#SBATCH --partition=compute',
+                slurm_text,
+            )
+            self.assertIn(
+                '#SBATCH --account=project123',
+                slurm_text,
+            )
+            self.assertEqual(
+                slurm_text.count('srun -n 4'),
+                len(plan['jobs']),
+            )
+            slurm_syntax = subprocess.run(
+                [
+                    'bash',
+                    '-n',
+                    str(slurm_script),
+                ],
+                capture_output=True,
+                check=False,
+                text=True,
+            )
+            self.assertEqual(
+                slurm_syntax.returncode,
+                0,
+                slurm_syntax.stderr,
+            )
+            stored_slurm_plan = json.loads(
+                plan_file.read_text(encoding='utf-8')
+            )
+            self.assertEqual(
+                stored_slurm_plan['scheduler'],
+                'slurm',
+            )
+            self.assertEqual(
+                stored_slurm_plan['slurm']['ntasks'],
+                4,
+            )
+
     def test_dry_run_cli_stops_before_calculation_stages(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir = Path(tmpdir)
@@ -595,6 +662,12 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                     [
                         'dftsolve',
                         '--dry-run',
+                        '--scheduler',
+                        'slurm',
+                        '--slurm-time',
+                        '12:00:00',
+                        '--slurm-account',
+                        'project123',
                         '-i',
                         str(input_file),
                         '-g',
@@ -610,6 +683,9 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                     return_value=plan,
                 ) as prepare,
                 patch(
+                    'nanoworks.dftsolve.write_qe_slurm_script',
+                ) as write_slurm,
+                patch(
                     'nanoworks.dftsolve.run_calculation_stages',
                 ) as execute,
                 patch(
@@ -624,7 +700,64 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             )
             check.assert_called_once()
             prepare.assert_called_once()
+            write_slurm.assert_called_once_with(
+                plan,
+                wall_time='12:00:00',
+                memory=None,
+                partition=None,
+                account='project123',
+                job_name=None,
+            )
             execute.assert_not_called()
+
+    def test_slurm_scheduler_requires_dry_run(self):
+        with (
+            patch.object(
+                sys,
+                'argv',
+                [
+                    'dftsolve',
+                    '--scheduler',
+                    'slurm',
+                ],
+            ),
+            patch(
+                'nanoworks.dftsolve.parprint',
+            ) as output,
+        ):
+            return_code = main()
+
+        self.assertEqual(
+            return_code,
+            2,
+        )
+        output.assert_called_once_with(
+            'ERROR: --scheduler requires --dry-run.'
+        )
+
+    def test_slurm_writer_rejects_invalid_wall_time(self):
+        plan = {
+            'engine': 'QE',
+            'dry_run': True,
+            'parallel_cores': 4,
+            'jobs': [{
+                'executable': 'pw.x',
+                'input_file': '/tmp/input.in',
+                'output_file': '/tmp/output.out',
+                'working_directory': None,
+            }],
+            'plan_file': '/tmp/plan.json',
+            'script_file': '/tmp/run.sh',
+        }
+
+        with self.assertRaisesRegex(
+            ValueError,
+            'Slurm time',
+        ):
+            write_qe_slurm_script(
+                plan,
+                wall_time='12:90:00',
+            )
 
     def test_qe_hybrid_dry_run_writes_stage_specific_scf_inputs(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -746,6 +879,18 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                     'band_indices'
                 ],
                 list(range(config.Band_npoints)),
+            )
+            hybrid_slurm = write_qe_slurm_script(
+                plan,
+                wall_time='08:00:00',
+            ).read_text(encoding='utf-8')
+            self.assertIn(
+                'srun -n 1 bands.x -i',
+                hybrid_slurm,
+            )
+            self.assertIn(
+                'srun -n 1 projwfc.x -i',
+                hybrid_slurm,
             )
 
     def test_opticalcalc_dispatches_to_gpaw(self):

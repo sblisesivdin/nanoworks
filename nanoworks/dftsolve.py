@@ -7248,10 +7248,12 @@ def prepare_qe_dry_run(
         'schema_version': 1,
         'engine': 'QE',
         'dry_run': True,
+        'scheduler': 'local',
         'parallel_cores': parallel_cores,
         'stages': list(resolve_calculation_stages(config)),
         'jobs': jobs,
         'notes': notes,
+        'setup_directories': sorted(setup_directories),
         'plan_file': str(plan_file),
         'script_file': str(script_file),
     }
@@ -7308,16 +7310,271 @@ def prepare_qe_dry_run(
     return plan
 
 
+def write_qe_slurm_script(
+    plan,
+    wall_time='24:00:00',
+    memory=None,
+    partition=None,
+    account=None,
+    job_name=None,
+):
+    """Write a Slurm batch script from a QE dry-run plan."""
+    if plan.get('engine') != 'QE' or not plan.get('dry_run'):
+        raise ValueError(
+            "A native QE dry-run plan is required for Slurm generation."
+        )
+
+    jobs = list(plan.get('jobs', []))
+
+    if not jobs:
+        raise ValueError(
+            "The QE dry-run plan does not contain any executable jobs."
+        )
+
+    parallel_cores = int(plan.get('parallel_cores', 0))
+
+    if parallel_cores <= 0:
+        raise ValueError(
+            "The QE dry-run plan has an invalid parallel core count."
+        )
+
+    def validate_token(name, value):
+        if value is None:
+            return None
+
+        value = str(value).strip()
+
+        if not value:
+            raise ValueError(
+                f"Slurm {name} must not be empty."
+            )
+
+        allowed = set(
+            'abcdefghijklmnopqrstuvwxyz'
+            'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+            '0123456789._-'
+        )
+
+        if any(character not in allowed for character in value):
+            raise ValueError(
+                f"Slurm {name} contains unsupported characters."
+            )
+
+        return value
+
+    wall_time = str(wall_time).strip()
+    day_count = None
+    clock = wall_time
+
+    if '-' in wall_time:
+        day_text, clock = wall_time.split('-', 1)
+
+        if not day_text.isdigit():
+            raise ValueError(
+                "Slurm time must use HH:MM:SS or D-HH:MM:SS."
+            )
+
+        day_count = int(day_text)
+
+    clock_parts = clock.split(':')
+
+    if (
+        len(clock_parts) != 3
+        or not all(part.isdigit() for part in clock_parts)
+    ):
+        raise ValueError(
+            "Slurm time must use HH:MM:SS or D-HH:MM:SS."
+        )
+
+    hours, minutes, seconds = (
+        int(part)
+        for part in clock_parts
+    )
+
+    if (
+        minutes >= 60
+        or seconds >= 60
+        or (day_count is not None and hours >= 24)
+        or (
+            (day_count is None or day_count == 0)
+            and hours == 0
+            and minutes == 0
+            and seconds == 0
+        )
+    ):
+        raise ValueError(
+            "Slurm time contains an invalid clock value."
+        )
+
+    memory = validate_token('memory', memory)
+    partition = validate_token('partition', partition)
+    account = validate_token('account', account)
+
+    if job_name is None:
+        plan_name = Path(
+            plan['plan_file']
+        ).name
+        job_name = plan_name.split(
+            '-DRYRUN-',
+            1,
+        )[0]
+
+    raw_job_name = str(job_name).strip()
+    job_name = ''.join(
+        character
+        if character.isalnum() or character in '-_'
+        else '-'
+        for character in raw_job_name
+    ).strip('-_')[:64]
+
+    if not job_name:
+        job_name = 'nanoworks-qe'
+
+    local_script = Path(
+        plan['script_file']
+    )
+    slurm_script = local_script.with_suffix(
+        '.slurm'
+    )
+    output_prefix = str(
+        local_script.with_suffix('')
+    )
+    slurm_output = output_prefix + '-SLURM-%j.out'
+    slurm_error = output_prefix + '-SLURM-%j.err'
+    lines = [
+        '#!/usr/bin/env bash',
+        f'#SBATCH --job-name={job_name}',
+        '#SBATCH --nodes=1',
+        f'#SBATCH --ntasks={parallel_cores}',
+        '#SBATCH --cpus-per-task=1',
+        f'#SBATCH --time={wall_time}',
+        f'#SBATCH --output={slurm_output}',
+        f'#SBATCH --error={slurm_error}',
+    ]
+
+    if partition is not None:
+        lines.append(
+            f'#SBATCH --partition={partition}'
+        )
+
+    if account is not None:
+        lines.append(
+            f'#SBATCH --account={account}'
+        )
+
+    if memory is not None:
+        lines.append(
+            f'#SBATCH --mem={memory}'
+        )
+
+    lines.extend([
+        '',
+        'set -euo pipefail',
+        '',
+        '# Load the site-specific Quantum ESPRESSO module here if needed.',
+        'export OMP_NUM_THREADS=1',
+        'export OPENBLAS_NUM_THREADS=1',
+        'export MKL_NUM_THREADS=1',
+        'export VECLIB_MAXIMUM_THREADS=1',
+        'export NUMEXPR_NUM_THREADS=1',
+        'export OMP_DYNAMIC=FALSE',
+        '',
+    ])
+
+    for directory in plan.get('setup_directories', []):
+        lines.append(
+            'mkdir -p ' + shlex.quote(str(directory))
+        )
+
+    if plan.get('setup_directories'):
+        lines.append('')
+
+    for job in jobs:
+        command = shlex.join([
+            'srun',
+            '-n',
+            str(parallel_cores),
+            str(job['executable']),
+            '-i',
+            str(job['input_file']),
+        ])
+        output_file = shlex.quote(
+            str(job['output_file'])
+        )
+        working_directory = job.get(
+            'working_directory'
+        )
+
+        if working_directory is None:
+            lines.append(
+                f"{command} > {output_file}"
+            )
+        else:
+            lines.append(
+                '(cd '
+                + shlex.quote(str(working_directory))
+                + ' && '
+                + command
+                + ' > '
+                + output_file
+                + ')'
+            )
+
+    slurm_script.write_text(
+        '\n'.join(lines) + '\n',
+        encoding='utf-8',
+    )
+    slurm_script.chmod(
+        slurm_script.stat().st_mode | 0o111
+    )
+    plan['scheduler'] = 'slurm'
+    plan['slurm'] = {
+        'script_file': str(slurm_script),
+        'job_name': job_name,
+        'nodes': 1,
+        'ntasks': parallel_cores,
+        'cpus_per_task': 1,
+        'time': wall_time,
+        'memory': memory,
+        'partition': partition,
+        'account': account,
+        'output': slurm_output,
+        'error': slurm_error,
+    }
+    plan['slurm_script_file'] = str(
+        slurm_script
+    )
+    Path(plan['plan_file']).write_text(
+        json.dumps(
+            plan,
+            indent=2,
+            sort_keys=True,
+        ) + '\n',
+        encoding='utf-8',
+    )
+
+    return slurm_script
+
+
 def format_dft_dry_run_report(plan):
     """Format a concise summary of generated QE dry-run artifacts."""
-    return '\n'.join([
+    lines = [
         'dftsolve QE dry run',
         'Stages: ' + ' -> '.join(plan['stages']),
         f"Jobs: {len(plan['jobs'])}",
         f"Plan: {plan['plan_file']}",
         f"Script: {plan['script_file']}",
-        'Result: PREPARED (no calculations executed)',
-    ])
+    ]
+
+    if plan.get('slurm_script_file'):
+        lines.append(
+            f"Slurm: {plan['slurm_script_file']}"
+        )
+
+    lines.append(
+        'Result: PREPARED (no calculations executed)'
+    )
+    return '\n'.join(lines)
 
 
 def main():
@@ -7332,6 +7589,12 @@ def main():
     parser.add_argument("--check", dest="check", action='store_true', help="Validate the selected workflow without running calculations")
     parser.add_argument("--json", dest="json", action='store_true', help="Print --check results as machine-readable JSON")
     parser.add_argument("--dry-run", dest="dry_run", action='store_true', help="Write QE inputs and an execution plan without running calculations")
+    parser.add_argument("--scheduler", choices=('local', 'slurm'), default='local', help="Execution script type generated by --dry-run")
+    parser.add_argument("--slurm-time", default='24:00:00', help="Slurm wall time (HH:MM:SS or D-HH:MM:SS)")
+    parser.add_argument("--slurm-memory", help="Optional Slurm memory request, for example 32G")
+    parser.add_argument("--slurm-partition", help="Optional Slurm partition name")
+    parser.add_argument("--slurm-account", help="Optional Slurm account/project name")
+    parser.add_argument("--slurm-job-name", help="Optional Slurm job name")
 
     args = None
 
@@ -7352,6 +7615,10 @@ def main():
 
     if args.check and args.dry_run:
         parprint("ERROR: --check and --dry-run cannot be used together.")
+        return 2
+
+    if args.scheduler != 'local' and not args.dry_run:
+        parprint("ERROR: --scheduler requires --dry-run.")
         return 2
 
     energymeas = False
@@ -7481,6 +7748,16 @@ def main():
                 struct=struct,
                 parallel_cores=parallel_cores,
             )
+
+            if args.scheduler == 'slurm':
+                write_qe_slurm_script(
+                    plan,
+                    wall_time=args.slurm_time,
+                    memory=args.slurm_memory,
+                    partition=args.slurm_partition,
+                    account=args.slurm_account,
+                    job_name=args.slurm_job_name,
+                )
         except Exception as exc:
             parprint(
                 "ERROR: QE dry-run preparation failed: "
