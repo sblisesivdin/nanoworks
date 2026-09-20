@@ -7316,6 +7316,8 @@ def write_qe_slurm_script(
     memory=None,
     partition=None,
     account=None,
+    qos=None,
+    modules=None,
     job_name=None,
 ):
     """Write a Slurm batch script from a QE dry-run plan."""
@@ -7338,7 +7340,7 @@ def write_qe_slurm_script(
             "The QE dry-run plan has an invalid parallel core count."
         )
 
-    def validate_token(name, value):
+    def validate_token(name, value, extra_characters=''):
         if value is None:
             return None
 
@@ -7353,6 +7355,7 @@ def write_qe_slurm_script(
             'abcdefghijklmnopqrstuvwxyz'
             'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
             '0123456789._-'
+            + extra_characters
         )
 
         if any(character not in allowed for character in value):
@@ -7409,6 +7412,15 @@ def write_qe_slurm_script(
     memory = validate_token('memory', memory)
     partition = validate_token('partition', partition)
     account = validate_token('account', account)
+    qos = validate_token('qos', qos)
+    modules = [
+        validate_token(
+            'module name',
+            module,
+            extra_characters='+/@:',
+        )
+        for module in (modules or [])
+    ]
 
     if job_name is None:
         plan_name = Path(
@@ -7462,6 +7474,11 @@ def write_qe_slurm_script(
             f'#SBATCH --account={account}'
         )
 
+    if qos is not None:
+        lines.append(
+            f'#SBATCH --qos={qos}'
+        )
+
     if memory is not None:
         lines.append(
             f'#SBATCH --mem={memory}'
@@ -7471,7 +7488,20 @@ def write_qe_slurm_script(
         '',
         'set -euo pipefail',
         '',
-        '# Load the site-specific Quantum ESPRESSO module here if needed.',
+    ])
+
+    if modules:
+        for module in modules:
+            lines.append(
+                'module load ' + shlex.quote(module)
+            )
+        lines.append('')
+    else:
+        lines.extend([
+            '# Load the site-specific Quantum ESPRESSO module here if needed.',
+        ])
+
+    lines.extend([
         'export OMP_NUM_THREADS=1',
         'export OPENBLAS_NUM_THREADS=1',
         'export MKL_NUM_THREADS=1',
@@ -7538,6 +7568,8 @@ def write_qe_slurm_script(
         'memory': memory,
         'partition': partition,
         'account': account,
+        'qos': qos,
+        'modules': modules,
         'output': slurm_output,
         'error': slurm_error,
     }
@@ -7594,6 +7626,8 @@ def main():
     parser.add_argument("--slurm-memory", help="Optional Slurm memory request, for example 32G")
     parser.add_argument("--slurm-partition", help="Optional Slurm partition name")
     parser.add_argument("--slurm-account", help="Optional Slurm account/project name")
+    parser.add_argument("--slurm-qos", help="Optional Slurm quality-of-service name")
+    parser.add_argument("--slurm-module", action='append', default=[], help="Module to load in the Slurm script; repeat for multiple modules")
     parser.add_argument("--slurm-job-name", help="Optional Slurm job name")
 
     args = None
@@ -7756,6 +7790,8 @@ def main():
                     memory=args.slurm_memory,
                     partition=args.slurm_partition,
                     account=args.slurm_account,
+                    qos=args.slurm_qos,
+                    modules=args.slurm_module,
                     job_name=args.slurm_job_name,
                 )
         except Exception as exc:

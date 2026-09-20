@@ -559,6 +559,11 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 memory='64G',
                 partition='compute',
                 account='project123',
+                qos='normal',
+                modules=[
+                    'gcc/13.2',
+                    'quantum-espresso/7.3.1',
+                ],
                 job_name='Si combined workflow',
             )
             slurm_text = slurm_script.read_text(
@@ -586,6 +591,18 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             )
             self.assertIn(
                 '#SBATCH --account=project123',
+                slurm_text,
+            )
+            self.assertIn(
+                '#SBATCH --qos=normal',
+                slurm_text,
+            )
+            self.assertIn(
+                'module load gcc/13.2',
+                slurm_text,
+            )
+            self.assertIn(
+                'module load quantum-espresso/7.3.1',
                 slurm_text,
             )
             self.assertEqual(
@@ -668,6 +685,12 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                         '12:00:00',
                         '--slurm-account',
                         'project123',
+                        '--slurm-qos',
+                        'normal',
+                        '--slurm-module',
+                        'gcc/13.2',
+                        '--slurm-module',
+                        'quantum-espresso/7.3.1',
                         '-i',
                         str(input_file),
                         '-g',
@@ -706,6 +729,11 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 memory=None,
                 partition=None,
                 account='project123',
+                qos='normal',
+                modules=[
+                    'gcc/13.2',
+                    'quantum-espresso/7.3.1',
+                ],
                 job_name=None,
             )
             execute.assert_not_called()
@@ -757,6 +785,30 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             write_qe_slurm_script(
                 plan,
                 wall_time='12:90:00',
+            )
+
+    def test_slurm_writer_rejects_unsafe_module_name(self):
+        plan = {
+            'engine': 'QE',
+            'dry_run': True,
+            'parallel_cores': 4,
+            'jobs': [{
+                'executable': 'pw.x',
+                'input_file': '/tmp/input.in',
+                'output_file': '/tmp/output.out',
+                'working_directory': None,
+            }],
+            'plan_file': '/tmp/plan.json',
+            'script_file': '/tmp/run.sh',
+        }
+
+        with self.assertRaisesRegex(
+            ValueError,
+            'module name',
+        ):
+            write_qe_slurm_script(
+                plan,
+                modules=['qe/7.3; touch unsafe'],
             )
 
     def test_qe_hybrid_dry_run_writes_stage_specific_scf_inputs(self):
