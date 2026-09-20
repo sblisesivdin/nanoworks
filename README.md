@@ -63,6 +63,9 @@ dftsolve -p <cores> -g <geometry.cif> -a
 *   `--check`: Validate the workflow, executables, pseudopotentials, and saved-state dependencies without starting calculations or creating the output directory.
 *   `--json`: Print `--check` results as versioned machine-readable JSON.
 *   `--dry-run`: Write QE input files, a JSON execution plan, and a shell script without running calculations.
+*   `--scheduler {local,slurm}`: Generate a local or Slurm execution script for `--dry-run`.
+*   `--slurm-time`: Slurm wall time in `HH:MM:SS` or `D-HH:MM:SS` form.
+*   `--slurm-memory`, `--slurm-partition`, `--slurm-account`, `--slurm-job-name`: Optional Slurm resource settings.
 
 Check an input before submitting a calculation:
 
@@ -86,6 +89,18 @@ Dry-run generation supports native semilocal workflows and the supported QE
 hybrid ground-state, DOS/PDOS, band, and projected-band workflows. It does not
 require the QE executables or an existing saved state, but installed
 pseudopotentials are required to render `pw.x` inputs.
+
+Generate a Slurm batch script together with the input deck:
+
+```bash
+dftsolve --dry-run --scheduler slurm -p 48 \
+  --slurm-time 2-00:00:00 --slurm-memory 64G \
+  --slurm-account PROJECT -i input.py -g geometry.cif
+```
+
+The generated `.slurm` file uses one MPI task per requested process and
+sequential `srun` steps. Add the site-specific Quantum ESPRESSO module command
+before submitting it with `sbatch`.
 
 ### 2. mdsolve (formerly asapsolve.py)
 Perform molecular dynamics calculations using ASAP3 or LAMMPS with OpenKIM interatomic potentials.

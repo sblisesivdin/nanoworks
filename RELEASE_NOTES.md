@@ -8,6 +8,7 @@
 - `dftsolve --check` validates stages, executables, MPI launchers, QE pseudopotentials, saved ground states, and unsupported workflow combinations without running calculations.
 - `dftsolve --check --json` provides versioned machine-readable validation output for CI and job-submission scripts.
 - `dftsolve --dry-run` writes semilocal and supported hybrid QE input decks, a JSON job plan, and a shell script without executing QE.
+- `dftsolve --dry-run --scheduler slurm` creates a sequential `srun` batch script with optional account, partition, memory, wall-time and job-name directives.
 - Native QE `HSE06`, `HSE03` and `PBE0` support ground-state, DOS/PDOS, band, projected-band and density calculations.
 - QE hybrid DOS/PDOS uses a dedicated hybrid SCF followed by `dos.x` and `projwfc.x`; a separate hybrid NSCF calculation is not used.
 - QE hybrid band calculations add zero-weight band-path states to the SCF, then use `bands.x`; projected bands additionally use `projwfc.x`.

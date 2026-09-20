@@ -86,6 +86,26 @@ also record the physical band-point indices and the EXX helper-point range. QE
 executables and an existing saved state are not required during preparation;
 pseudopotentials are required when a ``pw.x`` input is rendered.
 
+Slurm Script Generation
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Use ``--scheduler slurm`` with ``--dry-run`` to generate an additional Slurm
+batch script:
+
+.. code-block:: console
+
+   $ dftsolve --dry-run --scheduler slurm -p 48 \
+       --slurm-time 2-00:00:00 --slurm-memory 64G \
+       --slurm-account PROJECT -g geometry.cif -i input.py
+
+The requested process count becomes both ``#SBATCH --ntasks`` and the task
+count for each sequential ``srun`` step. Optional account, partition, memory,
+wall-time, and job-name settings are written as ``#SBATCH`` directives. The
+JSON plan is updated with the resolved scheduler settings. Load the
+site-specific Quantum ESPRESSO module in the generated ``.slurm`` file before
+submitting it with ``sbatch``. This keeps cluster-specific module names outside
+Nanoworks.
+
 **Arguments:**
 
 * -g, --geometry: Path to the geometry file (CIF format).
@@ -97,6 +117,12 @@ pseudopotentials are required when a ``pw.x`` input is rendered.
 * --check: Validate the workflow and dependencies without starting calculations.
 * --json: Print ``--check`` results as machine-readable JSON.
 * --dry-run: Write native QE inputs and an execution plan without running calculations.
+* --scheduler: Select ``local`` or ``slurm`` script generation for ``--dry-run``.
+* --slurm-time: Slurm wall time in ``HH:MM:SS`` or ``D-HH:MM:SS`` form.
+* --slurm-memory: Optional Slurm memory request such as ``64G``.
+* --slurm-partition: Optional Slurm partition name.
+* --slurm-account: Optional Slurm account or project name.
+* --slurm-job-name: Optional Slurm job name.
 
 
 mdsolve (formerly asapsolve.py)
