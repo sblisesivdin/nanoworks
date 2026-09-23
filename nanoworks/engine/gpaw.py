@@ -391,11 +391,16 @@ def prepare_optical_calc(
     gamma,
 ):
     """Prepare a GPAW calculator for optical-response calculations."""
+    parallel = {
+        'domain': 1,
+    }
+
     if hybrid:
         return load_gpaw_calc(
             filename,
             hybrid=True,
             txt=txt,
+            parallel=parallel,
         )
 
     return load_gpaw_calc(
@@ -403,6 +408,7 @@ def prepare_optical_calc(
     ).fixed_density(
         txt=txt,
         nbands=nbands,
+        parallel=parallel,
         occupations=FermiDirac(smearing),
         kpts=build_kpoint_spec(
             density=kpoint_density,

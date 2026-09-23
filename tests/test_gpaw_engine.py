@@ -735,6 +735,9 @@ class TestGPAWEngine(unittest.TestCase):
         loaded_calc.fixed_density.assert_called_once_with(
             txt='sample-OPTICAL-GPAW-Log-Calculation.txt',
             nbands=16,
+            parallel={
+                'domain': 1,
+            },
             occupations=occupation,
             kpts={
                 'size': (12, 12, 6),
@@ -767,6 +770,9 @@ class TestGPAWEngine(unittest.TestCase):
             'hybrid-GROUND-GPAW-Result-State.gpw',
             hybrid=True,
             txt='hybrid-OPTICAL-GPAW-Log-Calculation.txt',
+            parallel={
+                'domain': 1,
+            },
         )
 
         prepared_calc.fixed_density.assert_not_called()
