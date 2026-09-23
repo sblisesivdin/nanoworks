@@ -46,6 +46,11 @@ Advanced DFT Methods & Corrections
 * **Cr2O Spin-Polarized Calculations:**
   Demonstrates how to configure and run spin-polarized calculations for magnetic systems, extracting local magnetic moments and spin-resolved band structures. (Folder: ``Cr2O-spin/``)
 
+* **Fe Native QE Spin Smoke Test:**
+  Runs a compact collinear-spin QE workflow for bcc Fe, covering ground state,
+  spin-resolved DOS/PDOS, bands, projected bands, and pseudo-valence density
+  Cube files from one input. (Folder: ``Fe-QE-spin-smoke/``)
+
 * **Si with HSE06 Hybrid Functional:**
   An advanced GPAW example showing how to apply the HSE06 hybrid functional
   for more accurate band gap predictions in Silicon. Native QE also supports

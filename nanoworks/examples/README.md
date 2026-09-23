@@ -8,6 +8,7 @@ There are some example calculations given with different usage scenarios. Please
 | ----------------- | ------ |
 | Bulk-GaAs-noCIF   | Ground, DOS, and Band calculations of bulk GaAs with PW. Positions are given with an Atom object.          |
 | Cr2O-spin         |Spin-dependent electronic properties of CrO2 |
+| Fe-QE-spin-smoke  | Native QE Ground/DOS/PDOS/Band/PBand/Density smoke workflow for ferromagnetic bcc Fe |
 | Graphene-LCAO     | Pristine graphene and graphene with a defect with LCAO. Uses a single config for two calculations. |
 | Graphene-Charged  | Effect of charge in graphene with a defect with LCAO  |
 | Si-2atoms-optical | Combined GPAW and native QE RPA smoke workflows, plus focused GPAW RPA and BSE calculations. Structure is given with a CIF file. |
