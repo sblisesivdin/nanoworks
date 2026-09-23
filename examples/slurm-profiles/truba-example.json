@@ -1,0 +1,13 @@
+{
+  "slurm": {
+    "time": "1-00:00:00",
+    "memory": "64G",
+    "partition": "compute",
+    "account": "YOUR_PROJECT",
+    "qos": "normal",
+    "modules": [
+      "quantum-espresso/7.6"
+    ],
+    "job_name": "nanoworks-qe"
+  }
+}

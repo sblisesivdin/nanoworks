@@ -68,6 +68,7 @@ dftsolve -p <cores> -g <geometry.cif> -a
 *   `--json`: Print `--check` results as versioned machine-readable JSON.
 *   `--dry-run`: Write QE input files, a JSON execution plan, and a shell script without running calculations.
 *   `--scheduler {local,slurm}`: Generate a local or Slurm execution script for `--dry-run`.
+*   `--cluster-profile`: Load reusable Slurm settings from a JSON file or a named user profile.
 *   `--slurm-time`: Slurm wall time in `HH:MM:SS` or `D-HH:MM:SS` form.
 *   `--slurm-memory`, `--slurm-partition`, `--slurm-account`, `--slurm-qos`, `--slurm-job-name`: Optional Slurm resource settings.
 *   `--slurm-module`: Module to load in the generated script; repeat the option to load multiple modules.
@@ -108,6 +109,18 @@ dftsolve --dry-run --scheduler slurm -p 48 \
 The generated `.slurm` file uses one MPI task per requested process and
 sequential `srun` steps. If `--slurm-module` is omitted, add the site-specific
 Quantum ESPRESSO environment setup before submitting it with `sbatch`.
+
+Reusable cluster settings can be stored in
+`~/.config/nanoworks/clusters/truba.json` and selected by name:
+
+```bash
+dftsolve --dry-run --cluster-profile truba -p 48 \
+  -i input.py -g geometry.cif
+```
+
+The profile supports `time`, `memory`, `partition`, `account`, `qos`,
+`modules`, and `job_name`. Explicit `--slurm-*` options override profile
+values. See `examples/slurm-profiles/truba-example.json`.
 
 ### 2. mdsolve (formerly asapsolve.py)
 Perform molecular dynamics calculations using ASAP3 or LAMMPS with OpenKIM interatomic potentials.

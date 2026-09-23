@@ -115,6 +115,37 @@ in the JSON plan. Repeat the option when the site requires compiler, MPI, and
 Quantum ESPRESSO modules. If the option is omitted, add the site-specific
 environment setup to the generated ``.slurm`` file before submission.
 
+Reusable Cluster Profiles
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Slurm settings can be stored in a JSON profile instead of being repeated on
+every command. Pass a file path directly or place a named profile at
+``~/.config/nanoworks/clusters/<name>.json``:
+
+.. code-block:: json
+
+   {
+     "slurm": {
+       "time": "1-00:00:00",
+       "memory": "64G",
+       "partition": "compute",
+       "account": "YOUR_PROJECT",
+       "qos": "normal",
+       "modules": ["quantum-espresso/7.6"],
+       "job_name": "nanoworks-qe"
+     }
+   }
+
+.. code-block:: console
+
+   $ dftsolve --dry-run --cluster-profile truba -p 48 \
+       -g geometry.cif -i input.py
+
+Supplying ``--cluster-profile`` selects Slurm automatically. Explicit
+``--slurm-*`` options override the corresponding profile values. Profiles do
+not accept arbitrary shell commands; module names and scheduler values pass
+the same validation used for direct command-line options.
+
 **Arguments:**
 
 * -g, --geometry: Path to the geometry file (CIF format).
@@ -127,6 +158,7 @@ environment setup to the generated ``.slurm`` file before submission.
 * --json: Print ``--check`` results as machine-readable JSON.
 * --dry-run: Write native QE inputs and an execution plan without running calculations.
 * --scheduler: Select ``local`` or ``slurm`` script generation for ``--dry-run``.
+* --cluster-profile: JSON Slurm profile path or a name from the user profile directory.
 * --slurm-time: Slurm wall time in ``HH:MM:SS`` or ``D-HH:MM:SS`` form.
 * --slurm-memory: Optional Slurm memory request such as ``64G``.
 * --slurm-partition: Optional Slurm partition name.
