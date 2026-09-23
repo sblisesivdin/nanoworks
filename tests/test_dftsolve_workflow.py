@@ -17,6 +17,8 @@ with patch.object(
 ):
     from nanoworks.dftsolve import (
         DFTConfig,
+        GPAW_STAGE_GROUP_ENV,
+        build_gpaw_process_command,
         check_dft_configuration,
         dftsolve as DFTSolver,
         format_dft_preflight_json,
@@ -26,6 +28,8 @@ with patch.object(
         release_stage_resources,
         required_dft_executables,
         run_calculation_stages,
+        run_gpaw_stage_processes,
+        should_split_gpaw_optical,
         write_qe_slurm_script,
     )
 
@@ -1216,6 +1220,129 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 'phonon',
                 'optical',
             ],
+        )
+
+    def test_run_calculation_stages_accepts_selected_stage_group(self):
+        calls = []
+        solver = SimpleNamespace(
+            groundcalc=lambda: calls.append('ground'),
+            doscalc=lambda: calls.append('dos'),
+            opticalcalc=lambda: calls.append('optical'),
+        )
+        config = SimpleNamespace(
+            DOS_calc=True,
+            Optical_calc=True,
+        )
+
+        run_calculation_stages(
+            solver,
+            config,
+            stages=('optical',),
+        )
+
+        self.assertEqual(
+            calls,
+            ['optical'],
+        )
+
+    def test_mixed_gpaw_optical_workflow_requires_process_split(self):
+        self.assertTrue(
+            should_split_gpaw_optical(
+                SimpleNamespace(
+                    Engine='GPAW',
+                    Ground_calc=True,
+                    Optical_calc=True,
+                )
+            )
+        )
+        self.assertFalse(
+            should_split_gpaw_optical(
+                SimpleNamespace(
+                    Engine='GPAW',
+                    Ground_calc=False,
+                    Optical_calc=True,
+                )
+            )
+        )
+        self.assertFalse(
+            should_split_gpaw_optical(
+                SimpleNamespace(
+                    Engine='QE',
+                    Ground_calc=True,
+                    Optical_calc=True,
+                )
+            )
+        )
+
+    def test_build_serial_gpaw_process_command_uses_fresh_python(self):
+        command = build_gpaw_process_command(
+            None,
+            ['-i', 'input.py', '-g', 'geometry.cif'],
+        )
+
+        self.assertEqual(
+            command[0],
+            sys.executable,
+        )
+        self.assertTrue(
+            command[1].endswith('nanoworks/dftsolve.py')
+        )
+        self.assertEqual(
+            command[2:],
+            ['-i', 'input.py', '-g', 'geometry.cif'],
+        )
+
+    def test_gpaw_stage_processes_are_sequential_and_stop_on_failure(self):
+        completed = [
+            SimpleNamespace(returncode=0),
+            SimpleNamespace(returncode=7),
+        ]
+
+        with (
+            patch(
+                'nanoworks.dftsolve.build_gpaw_process_command',
+                return_value=['python', 'dftsolve.py'],
+            ),
+            patch(
+                'nanoworks.dftsolve.subprocess.run',
+                side_effect=completed,
+            ) as run,
+            patch(
+                'nanoworks.dftsolve.parprint',
+            ) as output,
+        ):
+            return_code = run_gpaw_stage_processes(
+                4,
+                ['-i', 'input.py'],
+            )
+
+        self.assertEqual(
+            return_code,
+            7,
+        )
+        self.assertEqual(
+            run.call_count,
+            2,
+        )
+        self.assertEqual(
+            run.call_args_list[0].kwargs['env'][GPAW_STAGE_GROUP_ENV],
+            'electronic',
+        )
+        self.assertEqual(
+            run.call_args_list[1].kwargs['env'][GPAW_STAGE_GROUP_ENV],
+            'optical',
+        )
+        self.assertNotIn(
+            'GPAW_MPI_BACKEND',
+            run.call_args_list[0].kwargs['env'],
+        )
+        self.assertEqual(
+            run.call_args_list[0].kwargs['env']['OMP_NUM_THREADS'],
+            '1',
+        )
+        self.assertIn(
+            'exit code 7',
+            output.call_args.args[0],
         )
 
     def test_release_stage_resources_detaches_calculator_and_synchronizes(self):

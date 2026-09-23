@@ -109,11 +109,25 @@ def extract_parallel_request():
     return parallel, filtered_args
 
 
-def restart_gpaw_with_mpi(
+GPAW_STAGE_GROUP_ENV = 'NANOWORKS_GPAW_STAGE_GROUP'
+
+
+def build_gpaw_process_command(
     parallel,
     filtered_args,
 ):
-    """Restart dftsolve under MPI for the GPAW backend."""
+    """Build a fresh GPAW process command for the requested core count."""
+    script_path = os.path.abspath(
+        __file__
+    )
+
+    if parallel is None:
+        return [
+            sys.executable,
+            script_path,
+            *filtered_args,
+        ]
+
     mpi_exe = (
         shutil.which('mpiexec')
         or shutil.which('mpirun')
@@ -121,11 +135,10 @@ def restart_gpaw_with_mpi(
     )
 
     if mpi_exe is None:
-        print(
-            "Error: mpiexec, mpirun, or srun "
-            "not found for parallel execution."
+        raise RuntimeError(
+            "mpiexec, mpirun, or srun not found for "
+            "parallel GPAW execution."
         )
-        sys.exit(1)
 
     flag = (
         '-n'
@@ -133,17 +146,12 @@ def restart_gpaw_with_mpi(
         else '-np'
     )
 
-    script_path = os.path.abspath(
-        __file__
-    )
-
     gpaw_exe = shutil.which('gpaw')
 
     if gpaw_exe is None:
-        print(
-            "Error: GPAW command was not found in PATH."
+        raise RuntimeError(
+            "GPAW command was not found in PATH."
         )
-        sys.exit(1)
     
     os.environ['OMP_NUM_THREADS'] = '1'
     os.environ['OPENBLAS_NUM_THREADS'] = '1'
@@ -151,7 +159,7 @@ def restart_gpaw_with_mpi(
     os.environ['VECLIB_MAXIMUM_THREADS'] = '1'
     os.environ['NUMEXPR_NUM_THREADS'] = '1'
 
-    cmd = [
+    return [
         mpi_exe,
         flag,
         str(parallel),
@@ -160,6 +168,23 @@ def restart_gpaw_with_mpi(
         '--',
         script_path,
     ] + filtered_args
+
+
+def restart_gpaw_with_mpi(
+    parallel,
+    filtered_args,
+):
+    """Restart dftsolve under MPI for the GPAW backend."""
+    try:
+        cmd = build_gpaw_process_command(
+            parallel,
+            filtered_args,
+        )
+    except RuntimeError as exc:
+        print(
+            'Error: ' + str(exc)
+        )
+        sys.exit(1)
 
     print(
         f"Restarting GPAW calculation with "
@@ -5986,9 +6011,90 @@ def release_stage_resources(solver):
     world.barrier()
 
 
-def run_calculation_stages(solver, config):
+def should_split_gpaw_optical(config):
+    """Return whether a mixed GPAW workflow needs an optical process boundary."""
+    if (
+        config.Engine != 'GPAW'
+        or not getattr(config, 'Optical_calc', False)
+    ):
+        return False
+
+    return any((
+        getattr(config, 'Ground_calc', False),
+        getattr(config, 'Elastic_calc', False),
+        getattr(config, 'DOS_calc', False),
+        getattr(config, 'Band_calc', False),
+        getattr(config, 'Density_calc', False),
+        getattr(config, 'Phonon_calc', False),
+    ))
+
+
+def run_gpaw_stage_processes(
+    parallel,
+    filtered_args,
+):
+    """Run GPAW electronic and optical stages in fresh processes."""
+    try:
+        command = build_gpaw_process_command(
+            parallel,
+            filtered_args,
+        )
+    except RuntimeError as exc:
+        parprint(
+            'ERROR: ' + str(exc)
+        )
+        return 1
+
+    for stage_group in ('electronic', 'optical'):
+        child_env = os.environ.copy()
+        child_env[GPAW_STAGE_GROUP_ENV] = stage_group
+        child_env['OMP_NUM_THREADS'] = '1'
+        child_env['OPENBLAS_NUM_THREADS'] = '1'
+        child_env['MKL_NUM_THREADS'] = '1'
+        child_env['VECLIB_MAXIMUM_THREADS'] = '1'
+        child_env['NUMEXPR_NUM_THREADS'] = '1'
+        child_env['OMP_DYNAMIC'] = 'FALSE'
+
+        if parallel is not None:
+            child_env.pop(
+                'GPAW_MPI_BACKEND',
+                None,
+            )
+
+        parprint(
+            "Starting GPAW "
+            + stage_group
+            + " stage process..."
+        )
+        completed = subprocess.run(
+            command,
+            env=child_env,
+            check=False,
+        )
+
+        if completed.returncode != 0:
+            parprint(
+                "ERROR: GPAW "
+                + stage_group
+                + " stage process failed with exit code "
+                + str(completed.returncode)
+                + "."
+            )
+            return completed.returncode
+
+    return 0
+
+
+def run_calculation_stages(
+    solver,
+    config,
+    stages=None,
+):
     """Run all requested DFT stages in dependency-safe order."""
-    for stage in resolve_calculation_stages(config):
+    if stages is None:
+        stages = resolve_calculation_stages(config)
+
+    for stage in stages:
         if stage == 'optical':
             release_stage_resources(
                 solver
@@ -7808,6 +7914,39 @@ def main():
         )
         return 0
 
+    gpaw_stage_group = os.environ.get(
+        GPAW_STAGE_GROUP_ENV
+    )
+
+    if gpaw_stage_group not in (None, 'electronic', 'optical'):
+        parprint(
+            "ERROR: Invalid internal GPAW stage group: "
+            + gpaw_stage_group
+        )
+        return 2
+
+    if (
+        gpaw_stage_group is None
+        and should_split_gpaw_optical(config)
+    ):
+        if world.size != 1:
+            parprint(
+                "ERROR: Automatic GPAW optical process separation must "
+                "start from the serial dftsolve command. Use "
+                "'dftsolve -p N' instead of launching dftsolve under "
+                "MPI directly."
+            )
+            return 2
+
+        parprint(
+            "GPAW optical calculation will run in a fresh process "
+            "after the electronic stages to release memory."
+        )
+        return run_gpaw_stage_processes(
+            REQUESTED_PARALLEL,
+            FILTERED_ARGS,
+        )
+
     # Parallel execution is backend-specific.
     #
     # GPAW requires the complete Python calculation to run under MPI.
@@ -7839,14 +7978,27 @@ def main():
     )
 
     # Run structure calculation
-    dftsolver.structurecalc()
+    if gpaw_stage_group != 'optical':
+        dftsolver.structurecalc()
 
     # Run ground state and every requested downstream calculation.
     # Optical stays last because its response step can require much more
     # memory than the other post-processing stages.
+    selected_stages = None
+
+    if gpaw_stage_group == 'electronic':
+        selected_stages = tuple(
+            stage
+            for stage in resolve_calculation_stages(config)
+            if stage != 'optical'
+        )
+    elif gpaw_stage_group == 'optical':
+        selected_stages = ('optical',)
+
     run_calculation_stages(
         dftsolver,
         config,
+        stages=selected_stages,
     )
 
     # Ending of timings
