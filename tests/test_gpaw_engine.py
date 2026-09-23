@@ -2,6 +2,17 @@
 
 import unittest
 from unittest.mock import patch, MagicMock
+
+try:
+    from gpaw import PW, MixerSum
+except ModuleNotFoundError as exc:
+    if exc.name != 'gpaw':
+        raise
+
+    raise unittest.SkipTest(
+        'GPAW helper tests require the optional gpaw dependency.'
+    ) from exc
+
 from nanoworks.engine.gpaw import (
     build_hybrid_xc,
     create_gpaw_calc,
@@ -22,8 +33,8 @@ from nanoworks.engine.gpaw import (
     prepare_dos_calc,
     prepare_band_calc,
 )
-from gpaw import PW, MixerSum
 from ase.units import Hartree
+
 
 class TestGPAWEngine(unittest.TestCase):
     """Verify GPAW calculator creation and hybrid detection."""
