@@ -16,6 +16,7 @@
 - `XC_exx_fraction` and `XC_omega` tune hybrid exact exchange and HSE screening. `XC_backend` selects the GPAW hybrid backend.
 - Stage-specific k-point and band-count keywords are supported for ground-state, DOS, optical, elastic and band workflows.
 - Combined GPAW inputs automatically run the memory-intensive optical stage in a fresh process after the other requested stages release their memory.
+- GPAW optical-state preparation leaves MPI k-point, domain and band distribution automatic, avoiding invalid layouts when the process count exceeds the irreducible k-point count.
 - `DOS_occupation` selects the QE tetrahedron scheme. `DOS_width` remains the GPAW DOS width setting.
 - `Projected_band_plot` and `Projections` support orbital-projected (fat) bands with GPAW and QE.
 - `qeconverter` converts common QE inputs and accepts `--xc HSE06`, `--xc HSE03` and `--xc PBE0` overrides.
