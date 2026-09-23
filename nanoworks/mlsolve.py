@@ -55,6 +55,12 @@ class MLConfig:
     model: str = 'mace'
     task: str = 'optimize'
     device: str = 'cpu'
+    variant: str = 'medium'
+    dtype: str = 'float64'
+    organic: bool = False
+    dispersion: bool = False
+    model_path: Optional[str] = None
+    model_name: str = '7net-0'
     fmax: float = 0.05
     steps: int = 200
     cell_relax: bool = True

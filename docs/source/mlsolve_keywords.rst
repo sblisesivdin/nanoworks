@@ -39,6 +39,53 @@ General Parameters
 
     Specifies the computing device for the ML model. Use ``'cuda'`` for NVIDIA GPUs or ``'mps'`` for Apple Silicon to significantly speed up calculations.
 
+Model Parameters
+----------------
+
+The following options configure the selected model. Options for other models are ignored.
+
+.. describe:: variant
+
+    :Type: ``str``
+    :Default: ``'medium'``
+
+    MACE model variant, passed to ``mace_mp`` or ``mace_off``.
+
+.. describe:: dtype
+
+    :Type: ``str``
+    :Default: ``'float64'``
+
+    MACE default floating-point type (for example, ``'float32'``).
+
+.. describe:: organic
+
+    :Type: ``bool``
+    :Default: ``False``
+
+    Use ``mace_off`` instead of ``mace_mp`` when ``True``.
+
+.. describe:: dispersion
+
+    :Type: ``bool``
+    :Default: ``False``
+
+    Enable dispersion in ``mace_mp``. Not used with ``organic=True``.
+
+.. describe:: model_path
+
+    :Type: ``str`` or ``None``
+    :Default: ``None``
+
+    Path to a CHGNet model file. If omitted, the pretrained model is loaded.
+
+.. describe:: model_name
+
+    :Type: ``str``
+    :Default: ``'7net-0'``
+
+    SevenNet model identifier.
+
 Optimization Parameters
 -----------------------
 
