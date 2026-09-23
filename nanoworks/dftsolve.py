@@ -7356,6 +7356,7 @@ def prepare_qe_dry_run(
         'dry_run': True,
         'scheduler': 'local',
         'parallel_cores': parallel_cores,
+        'spin_polarized': bool(config.Spin_calc),
         'stages': list(resolve_calculation_stages(config)),
         'jobs': jobs,
         'notes': notes,

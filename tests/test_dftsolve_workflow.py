@@ -486,6 +486,9 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 plan['parallel_cores'],
                 4,
             )
+            self.assertFalse(
+                plan['spin_polarized']
+            )
             job_ids = {
                 job['id']
                 for job in plan['jobs']
@@ -644,6 +647,139 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             self.assertEqual(
                 stored_slurm_plan['slurm']['profile_file'],
                 '/profiles/truba.json',
+            )
+
+    def test_qe_spin_dry_run_writes_combined_spin_workflow(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            struct = Path(tmpdir) / 'spin-dry-run' / 'iron'
+            config = DFTConfig(
+                Engine='QE',
+                Ground_calc=True,
+                DOS_calc=True,
+                Band_calc=True,
+                Band_path='GX',
+                Projected_band_plot=True,
+                Density_calc=True,
+                Spin_calc=True,
+                Magmom_per_atom=2.0,
+                bulk_configuration=Atoms(
+                    'Fe',
+                    cell=[2.87, 2.87, 2.87],
+                    pbc=True,
+                ),
+            )
+
+            with (
+                patch(
+                    'nanoworks.dftsolve.get_qe_pseudo_dir',
+                    return_value=Path('/pseudos'),
+                ),
+                patch(
+                    'nanoworks.dftsolve.resolve_qe_pseudopotentials',
+                    return_value={
+                        'Fe': 'Fe.upf',
+                    },
+                ),
+                patch(
+                    'nanoworks.engine.qe.read_upf_z_valence',
+                    return_value=8.0,
+                ),
+                patch(
+                    'nanoworks.dftsolve.shutil.which',
+                    return_value=None,
+                ),
+            ):
+                plan = prepare_qe_dry_run(
+                    config,
+                    struct=struct,
+                    parallel_cores=2,
+                )
+
+            self.assertTrue(
+                plan['spin_polarized']
+            )
+
+            jobs = {
+                job['id']: job
+                for job in plan['jobs']
+            }
+            self.assertEqual(
+                set(jobs),
+                {
+                    'ground',
+                    'dos-nscf',
+                    'dos-total',
+                    'dos-projected',
+                    'band',
+                    'band-projections',
+                    'density-pseudo-total',
+                    'density-pseudo-up',
+                    'density-pseudo-down',
+                    'density-spin-density',
+                },
+            )
+
+            for job_id in (
+                'ground',
+                'dos-nscf',
+                'band',
+            ):
+                input_text = Path(
+                    jobs[job_id]['input_file']
+                ).read_text(
+                    encoding='utf-8'
+                )
+                self.assertIn(
+                    'nspin = 2',
+                    input_text,
+                )
+                self.assertIn(
+                    'starting_magnetization(1) = 0.25',
+                    input_text,
+                )
+
+            density_components = {
+                'density-pseudo-total': 0,
+                'density-pseudo-up': 1,
+                'density-pseudo-down': 2,
+            }
+
+            for job_id, spin_component in density_components.items():
+                input_text = Path(
+                    jobs[job_id]['input_file']
+                ).read_text(
+                    encoding='utf-8'
+                )
+                self.assertIn(
+                    f'spin_component = {spin_component}',
+                    input_text,
+                )
+
+            spin_density_text = Path(
+                jobs[
+                    'density-spin-density'
+                ][
+                    'input_file'
+                ]
+            ).read_text(
+                encoding='utf-8'
+            )
+            self.assertIn(
+                'plot_num = 6',
+                spin_density_text,
+            )
+            self.assertNotIn(
+                'spin_component',
+                spin_density_text,
+            )
+
+            stored_plan = json.loads(
+                Path(plan['plan_file']).read_text(
+                    encoding='utf-8'
+                )
+            )
+            self.assertTrue(
+                stored_plan['spin_polarized']
             )
 
     def test_dry_run_cli_stops_before_calculation_stages(self):
@@ -2357,6 +2493,89 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             allow_hybrid=True,
         )
         solver.engine.run_pp_density.assert_called_once()
+
+    def test_qe_spin_densitycalc_dispatches_all_components(self):
+        solver = object.__new__(
+            DFTSolver
+        )
+        solver.struct = 'iron'
+        solver.XC_calc = 'PBE'
+        solver.Spin_calc = True
+        solver.parallel_cores = 4
+        solver.engine = SimpleNamespace(
+            validate_qe_xc=Mock(
+                return_value='pbe'
+            ),
+            run_pp_density=Mock(
+                side_effect=lambda **kwargs: kwargs
+            ),
+        )
+
+        with patch(
+            'nanoworks.dftsolve.parprint',
+        ):
+            outputs = solver._densitycalc_qe()
+
+        solver.engine.validate_qe_xc.assert_called_once_with(
+            'PBE',
+            pseudo_xc='pbe',
+            allow_hybrid=True,
+        )
+        self.assertEqual(
+            set(outputs),
+            {
+                'Pseudo-Total',
+                'Pseudo-Up',
+                'Pseudo-Down',
+                'Spin-Density',
+            },
+        )
+
+        calls = [
+            (
+                call.kwargs['cube_file'].name,
+                call.kwargs['plot_num'],
+                call.kwargs['spin_component'],
+            )
+            for call in (
+                solver.engine.run_pp_density.call_args_list
+            )
+        ]
+        self.assertEqual(
+            calls,
+            [
+                (
+                    'iron-EDENSITY-QE-Result-Pseudo-Total.cube',
+                    0,
+                    0,
+                ),
+                (
+                    'iron-EDENSITY-QE-Result-Pseudo-Up.cube',
+                    0,
+                    1,
+                ),
+                (
+                    'iron-EDENSITY-QE-Result-Pseudo-Down.cube',
+                    0,
+                    2,
+                ),
+                (
+                    'iron-EDENSITY-QE-Result-Spin-Density.cube',
+                    6,
+                    None,
+                ),
+            ],
+        )
+
+        for call in solver.engine.run_pp_density.call_args_list:
+            self.assertEqual(
+                call.kwargs['state_dir'],
+                Path('iron-GROUND-QE-Result-State'),
+            )
+            self.assertEqual(
+                call.kwargs['parallel_cores'],
+                4,
+            )
 
     def test_qe_doscalc_dispatches_hybrid_dos_workflow(self):
         solver = object.__new__(
