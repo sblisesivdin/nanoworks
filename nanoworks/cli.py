@@ -1,11 +1,59 @@
 import sys
 import argparse
+from importlib import metadata
 from pathlib import Path
 import os
 import shutil
 import importlib.resources as pkg_resources
 import nanoworks
 from nanoworks.pseudos import install_qe_pseudopotentials
+
+
+def _installed_version(distribution_name, optional=False):
+    """Return an installed distribution version without importing it."""
+    try:
+        return metadata.version(distribution_name)
+    except metadata.PackageNotFoundError:
+        suffix = " (optional)" if optional else ""
+        return "not installed" + suffix
+
+
+def print_version_information():
+    """Print package versions for both minimal and extended installs."""
+    dependencies = (
+        ("ASE", "ase", False),
+        ("GPAW", "gpaw", True),
+        ("Phonopy", "phonopy", True),
+        ("ASAP3", "asap3", True),
+    )
+
+    print("--------------------------------------------------------------------")
+    print("Welcome to Nanoworks!")
+    print(f"Version: {nanoworks.__version__}")
+    print("--------------------------------------------------------------------")
+    print("Libraries used:")
+    for label, distribution_name, optional in dependencies:
+        print(
+            f"{label}: "
+            f"{_installed_version(distribution_name, optional=optional)}"
+        )
+    print("--------------------------------------------------------------------")
+
+    folders = ["optimizations", "examples"]
+    for folder in folders:
+        path = find_package_folder(folder)
+        if path:
+            print(f"{folder.capitalize()} folder: {path}")
+        else:
+            print(
+                f"Could not locate {folder} folder. "
+                "(It may not be included in the installation)"
+            )
+
+    print("--------------------------------------------------------------------")
+    print("If you do not have examples, run nanoworks --install-examples")
+    print("and then continue with each example. Every example has its own README.md")
+    print("You can install pseudopotantions for QE with --install-qe-pseudos")
 
 def deploy_examples():
     # Find the user's home directory
@@ -117,50 +165,7 @@ def main():
         sys.exit(0)
     
     if args.version:
-        import ase
-        import gpaw
-        import phonopy
-        try:
-            import asap3
-        except ImportError:
-            print("--------------------------------------------------------------------")
-            print("Welcome to Nanoworks!")
-            print(f"Version: {nanoworks.__version__}")
-            print("--------------------------------------------------------------------")
-            print("Libraries used:") 
-            print(f"ASE: {ase.__version__}, GPAW: {gpaw.__version__}, Phonopy: {phonopy.__version__}")
-            print("--------------------------------------------------------------------")
-            folders = ["optimizations", "examples"]
-            for folder in folders:
-                path = find_package_folder(folder)
-                if path:
-                    print(f"{folder.capitalize()} folder: {path}")
-                else:
-                    print(f"Could not locate {folder} folder. (It may not be included in the installation)")
-            print("--------------------------------------------------------------------")
-            print("If you do not have examples, run nanoworks --install-examples")
-            print("and then continue with each example. Every example has its own README.md")
-            print("You can install pseudopotantions for QE with --install-qe-pseudos")
-            sys.exit(1)
-        
-        print("--------------------------------------------------------------------")
-        print("Welcome to Nanoworks!")
-        print(f"Version: {nanoworks.__version__}")
-        print("--------------------------------------------------------------------")
-        print("Libraries used:") 
-        print(f"ASE: {ase.__version__}, GPAW: {gpaw.__version__}, Phonopy: {phonopy.__version__}, ASAP3: {asap3.__version__}")
-        print("--------------------------------------------------------------------")
-        folders = ["optimizations", "examples"]
-        for folder in folders:
-            path = find_package_folder(folder)
-            if path:
-                print(f"{folder.capitalize()} folder: {path}")
-            else:
-                print(f"Could not locate {folder} folder. (It may not be included in the installation)")
-        print("--------------------------------------------------------------------")
-        print("If you do not have examples, run nanoworks --install-examples")
-        print("and then continue with each example. Every example has its own README.md")
-        print("You can install pseudopotantions for QE with --install-qe-pseudos")
+        print_version_information()
     
 
 if __name__ == "__main__":
