@@ -43,6 +43,10 @@ After installation, the following commands will be available in your terminal:
 ### 1. dftsolve (formerly gpawsolve.py)
 The main driver for DFT calculations using GPAW or Quantum ESPRESSO. GPAW runs the complete Python workflow under MPI, while Nanoworks launches the supported QE executables with the number of processes requested by the `-p` argument. Native QE includes ground-state, geometry, electronic, density, DFPT phonon, and `epsilon.x` RPA optical workflows. QE hybrid `HSE06`, `HSE03`, and `PBE0` workflows use native plane-wave exact exchange for ground-state, DOS/PDOS, band, projected-band, and density calculations; hybrid geometry, elastic, phonon, and optical workflows are not supported yet.
 
+Combined GPAW inputs run their electronic stages first and automatically start
+the memory-intensive optical stage in a fresh process. The user still supplies
+one input and one `dftsolve` command; `-p` applies to both stage processes.
+
 **Usage:**
 ```bash
 dftsolve -p <cores> -g <geometry.cif> -i <input.py> 

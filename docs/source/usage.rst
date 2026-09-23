@@ -34,6 +34,12 @@ and, when requested, ``projwfc.x``. QE density post-processing uses ``pp.x``
 and a completed ground-state calculation. QE hybrid geometry, elastic,
 phonon, and optical workflows are not supported yet.
 
+When a GPAW input enables optical calculations together with ground-state or
+other post-processing stages, the same ``dftsolve`` command automatically uses
+two sequential processes. The electronic stages finish first; optical then
+starts in a fresh process so the earlier GPAW wave-function memory has been
+released. With ``-p``, both processes use the requested MPI process count.
+
 .. code-block:: console
 
    $ dftsolve -p <cores> -g <geometry.cif> -i <input.py>

@@ -188,9 +188,11 @@ or:
 
     Controls optical calculations. With the GPAW engine, optical calculations
     can be requested in the same input as ground-state, DOS, band, density,
-    elastic, and phonon calculations. Nanoworks runs the optical stage last and
-    releases earlier calculator references before loading the optical state to
-    limit peak memory use.
+    elastic, and phonon calculations. For such a combined GPAW workflow,
+    Nanoworks runs the non-optical stages first and then starts the optical
+    stage in a fresh process. Exiting the first process releases its GPAW
+    calculators and wave-function memory before the larger optical state is
+    loaded. A failure in the first stage group prevents optical execution.
 
     The GPAW and native QE optical workflows have both been validated with a
     combined ground-state, DOS, band, density, and RPA calculation. Native QE
