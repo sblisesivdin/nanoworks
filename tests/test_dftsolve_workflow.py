@@ -23,6 +23,7 @@ with patch.object(
         dftsolve as DFTSolver,
         format_dft_preflight_json,
         format_dft_preflight_report,
+        load_slurm_profile,
         main,
         prepare_qe_dry_run,
         release_stage_resources,
@@ -569,6 +570,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                     'quantum-espresso/7.3.1',
                 ],
                 job_name='Si combined workflow',
+                profile_file='/profiles/truba.json',
             )
             slurm_text = slurm_script.read_text(
                 encoding='utf-8'
@@ -638,6 +640,10 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             self.assertEqual(
                 stored_slurm_plan['slurm']['ntasks'],
                 4,
+            )
+            self.assertEqual(
+                stored_slurm_plan['slurm']['profile_file'],
+                '/profiles/truba.json',
             )
 
     def test_dry_run_cli_stops_before_calculation_stages(self):
@@ -739,6 +745,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                     'quantum-espresso/7.3.1',
                 ],
                 job_name=None,
+                profile_file=None,
             )
             execute.assert_not_called()
 
@@ -767,6 +774,107 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             'ERROR: --scheduler requires --dry-run.'
         )
 
+    def test_cluster_profile_implies_slurm_and_cli_overrides_values(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+            input_file = tmpdir / 'dry_run_input.py'
+            geometry_file = tmpdir / 'silicon.cif'
+            profile_file = tmpdir / 'truba.json'
+            input_file.write_text(
+                "Engine = 'QE'\n"
+                "Ground_calc = True\n",
+                encoding='utf-8',
+            )
+            write(
+                geometry_file,
+                Atoms(
+                    'Si2',
+                    scaled_positions=[
+                        (0.0, 0.0, 0.0),
+                        (0.25, 0.25, 0.25),
+                    ],
+                    cell=[5.4, 5.4, 5.4],
+                    pbc=True,
+                ),
+            )
+            profile_file.write_text(
+                json.dumps({
+                    'slurm': {
+                        'time': '2-00:00:00',
+                        'memory': '64G',
+                        'partition': 'compute',
+                        'account': 'project123',
+                        'modules': ['qe/profile'],
+                    },
+                }),
+                encoding='utf-8',
+            )
+            report = {
+                'ok': True,
+                'engine': 'QE',
+                'stages': ('ground',),
+                'checks': [],
+                'errors': [],
+            }
+            plan = {
+                'stages': ['ground'],
+                'jobs': [{}],
+                'plan_file': '/tmp/plan.json',
+                'script_file': '/tmp/run.sh',
+            }
+
+            with (
+                patch.object(
+                    sys,
+                    'argv',
+                    [
+                        'dftsolve',
+                        '--dry-run',
+                        '--cluster-profile',
+                        str(profile_file),
+                        '--slurm-time',
+                        '06:00:00',
+                        '--slurm-module',
+                        'qe/override',
+                        '-i',
+                        str(input_file),
+                        '-g',
+                        str(geometry_file),
+                    ],
+                ),
+                patch(
+                    'nanoworks.dftsolve.check_dft_configuration',
+                    return_value=report,
+                ),
+                patch(
+                    'nanoworks.dftsolve.prepare_qe_dry_run',
+                    return_value=plan,
+                ),
+                patch(
+                    'nanoworks.dftsolve.write_qe_slurm_script',
+                ) as write_slurm,
+                patch(
+                    'nanoworks.dftsolve.parprint',
+                ),
+            ):
+                return_code = main()
+
+            self.assertEqual(
+                return_code,
+                0,
+            )
+            write_slurm.assert_called_once_with(
+                plan,
+                wall_time='06:00:00',
+                memory='64G',
+                partition='compute',
+                account='project123',
+                qos=None,
+                modules=['qe/override'],
+                job_name=None,
+                profile_file=str(profile_file.resolve()),
+            )
+
     def test_slurm_writer_rejects_invalid_wall_time(self):
         plan = {
             'engine': 'QE',
@@ -790,6 +898,101 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 plan,
                 wall_time='12:90:00',
             )
+
+    def test_load_slurm_profile_accepts_json_settings(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            profile_file = Path(tmpdir) / 'truba.json'
+            profile_file.write_text(
+                json.dumps({
+                    'slurm': {
+                        'time': '2-00:00:00',
+                        'memory': '64G',
+                        'partition': 'compute',
+                        'account': 'project123',
+                        'qos': 'normal',
+                        'modules': [
+                            'gcc/13.2',
+                            'quantum-espresso/7.3.1',
+                        ],
+                        'job_name': 'nanoworks-qe',
+                    },
+                }),
+                encoding='utf-8',
+            )
+
+            profile = load_slurm_profile(
+                profile_file
+            )
+
+        self.assertEqual(
+            profile['time'],
+            '2-00:00:00',
+        )
+        self.assertEqual(
+            profile['modules'],
+            [
+                'gcc/13.2',
+                'quantum-espresso/7.3.1',
+            ],
+        )
+        self.assertEqual(
+            profile['profile_file'],
+            str(profile_file.resolve()),
+        )
+
+    def test_load_slurm_profile_resolves_named_user_profile(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            profile_file = (
+                Path(tmpdir)
+                / '.config'
+                / 'nanoworks'
+                / 'clusters'
+                / 'truba.json'
+            )
+            profile_file.parent.mkdir(
+                parents=True
+            )
+            profile_file.write_text(
+                json.dumps({
+                    'slurm': {
+                        'account': 'project123',
+                    },
+                }),
+                encoding='utf-8',
+            )
+
+            with patch(
+                'nanoworks.dftsolve.Path.home',
+                return_value=Path(tmpdir),
+            ):
+                profile = load_slurm_profile(
+                    'truba'
+                )
+
+        self.assertEqual(
+            profile['account'],
+            'project123',
+        )
+
+    def test_load_slurm_profile_rejects_unknown_setting(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            profile_file = Path(tmpdir) / 'invalid.json'
+            profile_file.write_text(
+                json.dumps({
+                    'slurm': {
+                        'shell_command': 'unsafe',
+                    },
+                }),
+                encoding='utf-8',
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                'shell_command',
+            ):
+                load_slurm_profile(
+                    profile_file
+                )
 
     def test_slurm_writer_rejects_unsafe_module_name(self):
         plan = {
