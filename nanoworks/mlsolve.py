@@ -188,6 +188,17 @@ def get_ml_calculator(model_type, device='cpu', **kwargs):
     else:
         sys.exit(f"Error: Unknown model type '{model_type}'. Supported options: mace, chgnet, sevennet")
 
+
+def get_optimizer(name):
+    """Return the requested ASE optimizer, rejecting unsupported names."""
+    optimizers = {'BFGS': BFGS, 'FIRE': FIRE, 'LBFGS': LBFGS}
+    try:
+        return optimizers[name.upper()]
+    except (AttributeError, KeyError) as exc:
+        raise ValueError(
+            f"Unknown optimizer {name!r}. Choose BFGS, FIRE, or LBFGS."
+        ) from exc
+
 # -----------------------------------------------------------------------------
 # SECTION 2: ARGUMENT PARSING & MAIN LOGIC
 # -----------------------------------------------------------------------------
@@ -283,10 +294,8 @@ def main():
             opt_target = atoms
 
         # Optimizer selection
-        if config.optimizer.upper() == 'FIRE':
-            dyn = FIRE(opt_target, trajectory=config.trajectory, logfile=config.logfile)
-        else:
-            dyn = BFGS(opt_target, trajectory=config.trajectory, logfile=config.logfile)
+        optimizer_class = get_optimizer(config.optimizer)
+        dyn = optimizer_class(opt_target, trajectory=config.trajectory, logfile=config.logfile)
 
         try:
             dyn.run(fmax=config.fmax, steps=config.steps)
