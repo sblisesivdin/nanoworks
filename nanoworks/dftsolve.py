@@ -1887,6 +1887,7 @@ class dftsolve:
         else:
             ef = calc.get_fermi_level()
 
+        # Keep GPAW CSV energies on the same E - Ef axis as the DOS graph and QE exports.
         chem_sym = self.bulk_configuration.get_chemical_symbols()
 
         if self.SOC_calc:
@@ -1963,6 +1964,7 @@ class dftsolve:
             
             rawdos = DOSCalculator.from_calculator(filename=self.struct+'-GROUND-GPAW-Result-State.gpw', soc=False, theta=0.0, phi=0.0, shift_fermi_level=False)
             energies = rawdos.get_energies(npoints=self.DOS_npoints)
+            shifted_energies = energies - ef
 
             # Weights initialization
             pdossweightsdown = [0.0] * self.DOS_npoints
@@ -2011,20 +2013,20 @@ class dftsolve:
                     pdosfweightsdown = pdosfweightsdown + pdosf
                     totaldosweightsdown = totaldosweightsdown + dosspdf
 
-                    for x in zip(energies, pdoss, pdosp, pdospz, pdospx, pdospy, pdosd, pdosd3z2_r2, pdosdzx, pdosdyz, pdosdx2_y2, pdosdxy, pdosf, dosspdf):
+                    for x in zip(shifted_energies, pdoss, pdosp, pdospz, pdospx, pdospy, pdosd, pdosd3z2_r2, pdosdzx, pdosdyz, pdosdx2_y2, pdosdxy, pdosf, dosspdf):
                         print(*x, sep=", ", file=fd)
 
             # Writing DOS
             parprint("Saving DOS for spin down...")
             with paropen(self.struct+f'-DOS-{self.Engine}-Result-DOS-Down.csv', "w") as fd:
-                for x in zip(energies, totaldosweightsdown):
+                for x in zip(shifted_energies, totaldosweightsdown):
                     print(*x, sep=", ", file=fd)
 
             # Writing PDOS
             parprint("Saving PDOS for spin down...")
             with paropen(self.struct+f'-DOS-{self.Engine}-Result-PDOS-Down.csv', "w") as fd:
                 print("Energy, s-total, p-total, pz, px, py, d-total, d3z2_r2, dzx, dyz, dx2_y2, dxy, f-total, TOTAL", file=fd)
-                for x in zip(energies, pdossweightsdown, pdospweightsdown, pdospzweightsdown, pdospxweightsdown, pdospyweightsdown, pdosdweightsdown, pdosd3z2_r2weightsdown, pdosdzxweightsdown, pdosdyzweightsdown, pdosdx2_y2weightsdown, pdosdxyweightsdown, pdosfweightsdown, totaldosweightsdown):
+                for x in zip(shifted_energies, pdossweightsdown, pdospweightsdown, pdospzweightsdown, pdospxweightsdown, pdospyweightsdown, pdosdweightsdown, pdosd3z2_r2weightsdown, pdosdzxweightsdown, pdosdyzweightsdown, pdosdx2_y2weightsdown, pdosdxyweightsdown, pdosfweightsdown, totaldosweightsdown):
                     print(*x, sep=", ", file=fd)
 
             # ==========================================
@@ -2033,6 +2035,7 @@ class dftsolve:
             parprint("Calculating and saving Raw PDOS for spin up...")
             rawdos = DOSCalculator.from_calculator(self.struct+'-GROUND-GPAW-Result-State.gpw', soc=False, theta=0.0, phi=0.0, shift_fermi_level=False)
             energies = rawdos.get_energies(npoints=self.DOS_npoints)
+            shifted_energies = energies - ef
 
             # Weights initialization
             pdossweightsup = [0.0] * self.DOS_npoints
@@ -2081,20 +2084,20 @@ class dftsolve:
                     pdosfweightsup = pdosfweightsup + pdosf
                     totaldosweightsup = totaldosweightsup + dosspdf
 
-                    for x in zip(energies, pdoss, pdosp, pdospz, pdospx, pdospy, pdosd, pdosd3z2_r2, pdosdzx, pdosdyz, pdosdx2_y2, pdosdxy, pdosf, dosspdf):
+                    for x in zip(shifted_energies, pdoss, pdosp, pdospz, pdospx, pdospy, pdosd, pdosd3z2_r2, pdosdzx, pdosdyz, pdosdx2_y2, pdosdxy, pdosf, dosspdf):
                         print(*x, sep=", ", file=fd)
 
             # Writing DOS
             parprint("Saving DOS for spin up...")
             with paropen(self.struct+f'-DOS-{self.Engine}-Result-DOS-Up.csv', "w") as fd:
-                for x in zip(energies, totaldosweightsup):
+                for x in zip(shifted_energies, totaldosweightsup):
                     print(*x, sep=", ", file=fd)
 
             # Writing PDOS
             parprint("Saving PDOS for spin up...")
             with paropen(self.struct+f'-DOS-{self.Engine}-Result-PDOS-Up.csv', "w") as fd:
                 print("Energy, s-total, p-total, pz, px, py, d-total, d3z2_r2, dzx, dyz, dx2_y2, dxy, f-total, TOTAL", file=fd)
-                for x in zip(energies, pdossweightsup, pdospweightsup, pdospzweightsup, pdospxweightsup, pdospyweightsup, pdosdweightsup, pdosd3z2_r2weightsup, pdosdzxweightsup, pdosdyzweightsup, pdosdx2_y2weightsup, pdosdxyweightsup, pdosfweightsup, totaldosweightsup):
+                for x in zip(shifted_energies, pdossweightsup, pdospweightsup, pdospzweightsup, pdospxweightsup, pdospyweightsup, pdosdweightsup, pdosd3z2_r2weightsup, pdosdzxweightsup, pdosdyzweightsup, pdosdx2_y2weightsup, pdosdxyweightsup, pdosfweightsup, totaldosweightsup):
                     print(*x, sep=", ", file=fd)
 
         else:
@@ -2107,6 +2110,7 @@ class dftsolve:
             
             rawdos = DOSCalculator.from_calculator(self.struct+'-GROUND-GPAW-Result-State.gpw', soc=False, theta=0.0, phi=0.0, shift_fermi_level=False)
             energies = rawdos.get_energies(npoints=self.DOS_npoints)
+            shifted_energies = energies - ef
 
             totaldosweights = [0.0] * self.DOS_npoints
             pdossweights = [0.0] * self.DOS_npoints
@@ -2157,20 +2161,20 @@ class dftsolve:
                     pdosfweights = pdosfweights + pdosf
                     totaldosweights = totaldosweights + dosspdf
 
-                    for x in zip(energies, pdoss, pdosp, pdospz, pdospx, pdospy, pdosd, pdosd3z2_r2, pdosdzx, pdosdyz, pdosdx2_y2, pdosdxy, pdosf, dosspdf):
+                    for x in zip(shifted_energies, pdoss, pdosp, pdospz, pdospx, pdospy, pdosd, pdosd3z2_r2, pdosdzx, pdosdyz, pdosdx2_y2, pdosdxy, pdosf, dosspdf):
                         print(*x, sep=", ", file=fd)
 
             # Writing DOS
             parprint("Saving DOS...")
             with paropen(self.struct+f'-DOS-{self.Engine}-Result-DOS.csv', "w") as fd:
-                for x in zip(energies, totaldosweights):
+                for x in zip(shifted_energies, totaldosweights):
                     print(*x, sep=", ", file=fd)
 
             # Writing PDOS
             parprint("Saving PDOS...")
             with paropen(self.struct+f'-DOS-{self.Engine}-Result-PDOS.csv', "w") as fd:
                 print("Energy, s-total, p-total, pz, px, py, d-total, d3z2_r2, dzx, dyz, dx2_y2, dxy, f-total, TOTAL", file=fd)
-                for x in zip(energies, pdossweights, pdospweights, pdospzweights, pdospxweights, pdospyweights, pdosdweights, pdosd3z2_r2weights, pdosdzxweights, pdosdyzweights, pdosdx2_y2weights, pdosdxyweights, pdosfweights, totaldosweights):
+                for x in zip(shifted_energies, pdossweights, pdospweights, pdospzweights, pdospxweights, pdospyweights, pdosdweights, pdosd3z2_r2weights, pdosdzxweights, pdosdyzweights, pdosdx2_y2weights, pdosdxyweights, pdosfweights, totaldosweights):
                     print(*x, sep=", ", file=fd)
 
         # Finish DOS calc
@@ -2188,10 +2192,6 @@ class dftsolve:
                 downf = pd.read_csv(self.struct+f'-DOS-{self.Engine}-Result-DOS-Down.csv', header=None)
                 upf = pd.read_csv(self.struct+f'-DOS-{self.Engine}-Result-DOS-Up.csv', header=None)
 
-                # SUBTRACT the Fermi level (Ef) to shift the 0 point accurately.
-                downf[0] = downf[0] - ef
-                upf[0] = upf[0] - ef
-
                 ax.plot(downf[0], -1.0*downf[1], 'r', linewidth=1.5, label='Spin Down')
                 ax.plot(upf[0], upf[1], 'b', linewidth=1.5, label='Spin Up')
 
@@ -2200,9 +2200,6 @@ class dftsolve:
 
             else:
                 dosf = pd.read_csv(self.struct+f'-DOS-{self.Engine}-Result-DOS.csv', header=None)
-
-                # SUBTRACT the Fermi level (Ef) to shift the 0 point accurately
-                dosf[0] = dosf[0] - ef
 
                 ax.plot(dosf[0], dosf[1], 'b', linewidth=1.5)
                 ax.fill_between(dosf[0], 0, dosf[1], facecolor='blue', alpha=0.2)
