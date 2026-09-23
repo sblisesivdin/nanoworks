@@ -8,9 +8,12 @@ include = ["nanoworks*"]
 [tool.setuptools.package-data]
 "nanoworks" = ["examples/*", "examples/**/*"]
 
+[tool.setuptools.dynamic]
+version = {attr = "nanoworks.__version__"}
+
 [project]
 name = "nanoworks"
-version = "26.8.0"
+dynamic = ["version"]
 description = " Nanoworks is a unified, high-level Python orchestrator for conducting DFT, MD and ML calculations"
 readme = "README.md"
 requires-python = ">=3.8" 

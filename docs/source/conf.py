@@ -1,13 +1,15 @@
 # Configuration file for the Sphinx documentation builder.
 
+from nanoworks import __version__
+
 # -- Project information
 
 project = 'Nanoworks'
 copyright = '2026, S.B. Lisesivdin, B.Sarikavak-Lisesivdin'
 author = 'S.B. Lisesivdin'
 
-release = '26.8.0'
-version = '26.8'
+release = __version__
+version = '.'.join(__version__.split('.')[:2])
 
 # -- General configuration
 
