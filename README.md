@@ -29,8 +29,12 @@ It acts as a wrapper and orchestrator for several powerful scientific libraries,
 For Debian/Ubuntu systems, run the automated installation script:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sblisesivdin/nanoworks/refs/heads/main/install_scripts/install-all-Debian-based.sh | bash
+curl -fsSL https://github.com/sblisesivdin/nanoworks/releases/latest/download/install-all-Debian-based.sh | bash
 ```
+
+This release asset pins the installed Python package to the same Nanoworks
+version as the release. For example, the exact-version URL for v26.8.0 is
+`https://github.com/sblisesivdin/nanoworks/releases/download/v26.8.0/install-all-Debian-based.sh`.
 
 ### Detailed Installation
 

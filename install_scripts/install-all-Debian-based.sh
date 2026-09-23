@@ -5,6 +5,15 @@ ENV_NAME=".venv_nw"
 INSTALL_DIR="$HOME/$ENV_NAME"
 USERNAME=$(whoami)
 
+# Release assets set this value before running the installer.  Leaving it empty
+# keeps the script on the development channel and installs the newest package.
+NANOWORKS_VERSION="${NANOWORKS_VERSION:-}"
+
+if [[ -n "$NANOWORKS_VERSION" && ! "$NANOWORKS_VERSION" =~ ^[0-9]+(\.[0-9]+){2}([A-Za-z0-9.-]+)?$ ]]; then
+    echo "Invalid NANOWORKS_VERSION: $NANOWORKS_VERSION" >&2
+    exit 2
+fi
+
 echo "Starting installation script for GPAW and related tools..."
 echo ""
 
@@ -25,25 +34,35 @@ read -r -p "Enter your choice [1-4, default=4]: " choice < /dev/tty || choice="4
 
 case "$choice" in
     1)
-        NW_PACKAGE="nanoworks"
+        NW_EXTRA=""
         MODE_NAME="DFT only"
         ;;
     2)
-        NW_PACKAGE="nanoworks[md]"
+        NW_EXTRA="[md]"
         MODE_NAME="DFT + MD"
         ;;
     3)
-        NW_PACKAGE="nanoworks[ml]"
+        NW_EXTRA="[ml]"
         MODE_NAME="DFT + ML"
         ;;
     *)
-        NW_PACKAGE="nanoworks[all]"
+        NW_EXTRA="[all]"
         MODE_NAME="DFT + MD + ML"
         ;;
 esac
 
+NW_PACKAGE="nanoworks${NW_EXTRA}"
+if [[ -n "$NANOWORKS_VERSION" ]]; then
+    NW_PACKAGE="${NW_PACKAGE}==${NANOWORKS_VERSION}"
+fi
+
 echo ""
 echo "-> You selected: $MODE_NAME ($NW_PACKAGE)"
+if [[ -n "$NANOWORKS_VERSION" ]]; then
+    echo "-> Stable release pin: $NANOWORKS_VERSION"
+else
+    echo "-> Development channel: newest package from PyPI"
+fi
 echo "-> Proceeding with system setup..."
 echo ""
 # ---------------------------------------------------------

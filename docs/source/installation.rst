@@ -11,7 +11,11 @@ For Debian/Ubuntu systems, run the automated installation script:
 
 .. code-block:: console
 
-    $ curl -fsSL https://raw.githubusercontent.com/sblisesivdin/nanoworks/refs/heads/main/install_scripts/install-all-Debian-based.sh | bash
+    $ curl -fsSL https://github.com/sblisesivdin/nanoworks/releases/latest/download/install-all-Debian-based.sh | bash
+
+The release installer pins the Python package to the same Nanoworks version as
+the GitHub release. For example, the exact-version URL for v26.8.0 is
+``https://github.com/sblisesivdin/nanoworks/releases/download/v26.8.0/install-all-Debian-based.sh``.
 
 Detailed Installation of Nanoworks to Linux Systems 
 ---------------------------------------------------
