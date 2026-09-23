@@ -4514,13 +4514,13 @@ def calculate_phonon_thermal_properties(
     )
 
     total_mode_weight = float(
-        np.trapz(
+        np.trapezoid(
             dos_thz,
             frequencies,
         )
     )
     integrated_mode_weight = float(
-        np.trapz(
+        np.trapezoid(
             positive_dos,
             positive_frequencies,
         )
@@ -4530,7 +4530,7 @@ def calculate_phonon_thermal_properties(
         total_mode_weight - integrated_mode_weight,
     )
     zero_point_energy_ev = float(
-        np.trapz(
+        np.trapezoid(
             0.5 * mode_energies * positive_dos,
             positive_frequencies,
         )
@@ -4602,19 +4602,19 @@ def calculate_phonon_thermal_properties(
             / one_minus_exp_negative_x ** 2
         )
 
-        free_energy_ev[index] = np.trapz(
+        free_energy_ev[index] = np.trapezoid(
             free_energy_integrand,
             positive_frequencies,
         )
-        internal_energy_ev[index] = np.trapz(
+        internal_energy_ev[index] = np.trapezoid(
             internal_energy_integrand,
             positive_frequencies,
         )
-        entropy_ev_per_k[index] = np.trapz(
+        entropy_ev_per_k[index] = np.trapezoid(
             entropy_integrand,
             positive_frequencies,
         )
-        heat_capacity_ev_per_k[index] = np.trapz(
+        heat_capacity_ev_per_k[index] = np.trapezoid(
             heat_capacity_integrand,
             positive_frequencies,
         )

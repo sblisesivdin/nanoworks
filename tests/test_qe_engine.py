@@ -3,6 +3,8 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
+import numpy as np
+
 from nanoworks.engine import load_engine_module
 from ase.units import Bohr
 from ase import Atoms
@@ -520,7 +522,7 @@ class TestQEEngine(unittest.TestCase):
             engine.QE_REFERENCE_VERSION,
             (7, 2),
         )
-    
+
     def test_cell_parameters_are_built_in_angstrom(self):
         atoms = Atoms(
             'GaAs',
@@ -547,7 +549,7 @@ class TestQEEngine(unittest.TestCase):
                 (0.0, 0.0, 5.65),
             ],
         )
-    
+
     def test_atomic_positions_are_built_in_angstrom(self):
         atoms = Atoms(
             'GaAs',
@@ -569,7 +571,7 @@ class TestQEEngine(unittest.TestCase):
                 ('As', 1.4125, 1.4125, 1.4125),
             ],
         )
-    
+
     def test_atomic_species_use_pseudopotential_mapping(self):
         atoms = Atoms(
             'GaAsGa',
@@ -598,7 +600,7 @@ class TestQEEngine(unittest.TestCase):
 
         self.assertGreater(species[0][1], 0.0)
         self.assertGreater(species[1][1], 0.0)
-    
+
     def test_atomic_species_reject_missing_pseudopotential(self):
         atoms = Atoms(
             'GaAs',
@@ -618,7 +620,7 @@ class TestQEEngine(unittest.TestCase):
                     'Ga': 'Ga.upf',
                 },
             )
-    
+
     def test_gamma_centered_kpoint_mesh(self):
         settings = build_kpoint_settings(
             (4, 4, 4),
@@ -628,7 +630,7 @@ class TestQEEngine(unittest.TestCase):
         self.assertEqual(settings['option'], 'automatic')
         self.assertEqual(settings['size'], (4, 4, 4))
         self.assertEqual(settings['shift'], (0, 0, 0))
-    
+
     def test_monkhorst_pack_even_mesh_is_shifted(self):
         settings = build_kpoint_settings(
             (4, 6, 8),
@@ -637,7 +639,7 @@ class TestQEEngine(unittest.TestCase):
 
         self.assertEqual(settings['size'], (4, 6, 8))
         self.assertEqual(settings['shift'], (1, 1, 1))
-    
+
     def test_monkhorst_pack_shift_depends_on_mesh_parity(self):
         settings = build_kpoint_settings(
             (4, 5, 6),
@@ -645,7 +647,7 @@ class TestQEEngine(unittest.TestCase):
         )
 
         self.assertEqual(settings['shift'], (1, 0, 1))
-    
+
     def test_kpoint_mesh_rejects_nonpositive_values(self):
         with self.assertRaises(ValueError):
             build_kpoint_settings((4, 0, 4))
@@ -757,7 +759,7 @@ class TestQEEngine(unittest.TestCase):
             settings,
             {'occupations': 'fixed'},
         )
-    
+
     def test_smearing_settings_convert_width_to_rydberg(self):
         settings = build_occupation_settings(
             occupations='smearing',
@@ -777,7 +779,7 @@ class TestQEEngine(unittest.TestCase):
             settings['degauss'],
             0.1 / 13.605693122994,
         )
-    
+
     def test_cold_smearing_alias(self):
         settings = build_occupation_settings(
             occupations='smearing',
@@ -789,7 +791,7 @@ class TestQEEngine(unittest.TestCase):
             settings['smearing'],
             'marzari-vanderbilt',
         )
-    
+
     def test_tetrahedra_has_no_smearing_parameters(self):
         settings = build_occupation_settings(
             'tetrahedra'
@@ -799,14 +801,14 @@ class TestQEEngine(unittest.TestCase):
             settings,
             {'occupations': 'tetrahedra'},
         )
-    
+
     def test_smearing_requires_width(self):
         with self.assertRaises(ValueError):
             build_occupation_settings(
                 occupations='smearing',
                 smearing='gaussian',
             )
-    
+
     def test_electrons_settings_can_use_qe_defaults(self):
         settings = build_electrons_settings()
 
@@ -2298,12 +2300,12 @@ class TestQEEngine(unittest.TestCase):
             "cell_dofree = 'all'",
             text,
         )
-        
+
         self.assertIn(
             "! NOTICE: The normal-strain Relax_cell mask",
             text,
         )
-        
+
         self.assertIn(
             'press = 25',
             text,
@@ -2412,7 +2414,7 @@ class TestQEEngine(unittest.TestCase):
                 kpoint_size=(4, 4, 4),
                 relaxation_settings=settings,
             )
-        
+
     def test_rydberg_to_ev(self):
         self.assertAlmostEqual(
             rydberg_to_ev(1.0),
@@ -2458,7 +2460,7 @@ class TestQEEngine(unittest.TestCase):
                     state_dir
                 )
             )
-    
+
     def test_has_qe_state_rejects_missing_state_directory(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             state_dir = (
@@ -2471,7 +2473,7 @@ class TestQEEngine(unittest.TestCase):
                     state_dir
                 )
             )
-            
+
     @patch('nanoworks.engine.qe.shutil.which')
     def test_resolve_qe_executable_from_path(
         self,
@@ -2539,7 +2541,7 @@ class TestQEEngine(unittest.TestCase):
          Program PWSCF v.7.2 starts
 
     !    total energy              =     -15.12345678 Ry
-    
+
          the Fermi energy is     5.4321 ev
 
          JOB DONE.
@@ -2559,7 +2561,7 @@ class TestQEEngine(unittest.TestCase):
             self.assertTrue(
                 result['job_done']
             )
-            
+
             self.assertEqual(
                 result['qe_version'],
                 (7, 2),
@@ -2569,7 +2571,7 @@ class TestQEEngine(unittest.TestCase):
                 result['fermi_energy_ev'],
                 5.4321,
             )
-        
+
             self.assertAlmostEqual(
                 result['total_energy_ry'],
                 -15.12345678,
@@ -2580,7 +2582,7 @@ class TestQEEngine(unittest.TestCase):
                 -15.12345678
                 * 13.605693122994,
             )
-    
+
     def test_parse_pw_output_with_patch_version(self):
         output_text = """
          Program PWSCF v.7.2.1 starts
@@ -2607,7 +2609,7 @@ class TestQEEngine(unittest.TestCase):
                 result['qe_version'],
                 (7, 2, 1),
             )
-        
+
     def test_parse_pw_output_without_version(self):
         output_text = """
          JOB DONE.
@@ -2631,7 +2633,7 @@ class TestQEEngine(unittest.TestCase):
             self.assertIsNone(
                 result['qe_version']
             )
-            
+
     def test_parse_pw_output_without_fermi_energy(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             output_file = (
@@ -3045,7 +3047,7 @@ class TestQEEngine(unittest.TestCase):
                 environment['OMP_DYNAMIC'],
                 'FALSE',
             )
-    
+
     def test_qe_launcher_is_none_for_single_core(self):
         launcher = build_qe_launcher(
             parallel_cores=1
@@ -3054,7 +3056,7 @@ class TestQEEngine(unittest.TestCase):
         self.assertIsNone(
             launcher
         )
-    
+
     @patch('nanoworks.engine.qe.shutil.which')
     def test_qe_launcher_uses_mpiexec(
         self,
@@ -3206,12 +3208,6 @@ class TestQEEngine(unittest.TestCase):
             'pbe',
         )
 
-    def test_qe_xc_accepts_pbe(self):
-        self.assertEqual(
-            validate_qe_xc('PBE'),
-            'pbe',
-        )
-    
     def test_validate_qe_version_accepts_reference_version(self):
         result = validate_qe_version(
             (7, 2)
@@ -3221,7 +3217,7 @@ class TestQEEngine(unittest.TestCase):
             result,
             (7, 2),
         )
-    
+
     def test_validate_qe_version_accepts_patch_version(self):
         result = validate_qe_version(
             (7, 2, 1)
@@ -3359,6 +3355,9 @@ class TestQEEngine(unittest.TestCase):
                 }
 
             with patch(
+                'nanoworks.engine.qe.build_qe_launcher',
+                return_value=['mpiexec', '-np', '4'],
+            ) as build_launcher, patch(
                 'nanoworks.engine.qe.run_qe_program',
                 side_effect=fake_run_qe_program,
             ) as run:
@@ -3379,6 +3378,15 @@ class TestQEEngine(unittest.TestCase):
             self.assertEqual(
                 run.call_count,
                 1,
+            )
+            build_launcher.assert_called_once_with(
+                parallel_cores=4,
+            )
+            self.assertEqual(
+                run.call_args.kwargs[
+                    'launcher'
+                ],
+                ['mpiexec', '-np', '4'],
             )
             self.assertEqual(
                 run.call_args.kwargs[
@@ -4163,553 +4171,553 @@ class TestQEEngine(unittest.TestCase):
                     dos_file
                 )
 
-def test_render_projwfc_input(self):
-    text = render_projwfc_input(
-        prefix='nanoworks',
-        outdir='/tmp/qe-state',
-        filpdos='/tmp/gaas-pdos',
-        filproj='/tmp/gaas-projections.dat',
-        emin=1.0,
-        emax=10.0,
-        delta_e=0.02,
-    )
-
-    self.assertIn(
-        '&PROJWFC',
-        text,
-    )
-
-    self.assertIn(
-        "prefix = 'nanoworks'",
-        text,
-    )
-
-    self.assertIn(
-        "outdir = '/tmp/qe-state'",
-        text,
-    )
-
-    self.assertIn(
-        "filpdos = '/tmp/gaas-pdos'",
-        text,
-    )
-
-    self.assertIn(
-        "filproj = '/tmp/gaas-projections.dat'",
-        text,
-    )
-
-    self.assertIn(
-        'Emin = 1',
-        text,
-    )
-
-    self.assertIn(
-        'Emax = 10',
-        text,
-    )
-
-    self.assertIn(
-        'DeltaE = 0.02',
-        text,
-    )
-
-    self.assertIn(
-        'lsym = .true.',
-        text,
-    )
-
-    self.assertNotIn(
-        'degauss',
-        text,
-    )
-
-def test_render_projwfc_input_omits_optional_projection_file(self):
-    text = render_projwfc_input(
-        prefix='nanoworks',
-        outdir='/tmp/qe-state',
-        filpdos='/tmp/gaas-pdos',
-    )
-
-    self.assertNotIn(
-        'filproj',
-        text,
-    )
-
-def test_render_projwfc_input_rejects_invalid_energy_range(self):
-    with self.assertRaisesRegex(
-        ValueError,
-        'Emax must be greater than Emin',
-    ):
-        render_projwfc_input(
-            emin=5.0,
-            emax=-5.0,
+    def test_render_projwfc_input(self):
+        text = render_projwfc_input(
+            prefix='nanoworks',
+            outdir='/tmp/qe-state',
+            filpdos='/tmp/gaas-pdos',
+            filproj='/tmp/gaas-projections.dat',
+            emin=1.0,
+            emax=10.0,
+            delta_e=0.02,
         )
 
-def test_run_projwfc_requires_qe_state(self):
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmpdir = Path(
-            tmpdir
+        self.assertIn(
+            '&PROJWFC',
+            text,
         )
 
-        with self.assertRaisesRegex(
-            FileNotFoundError,
-            'valid QE electronic state',
-        ):
-            run_projwfc(
-                input_file=tmpdir / 'pdos.in',
-                output_file=tmpdir / 'pdos.out',
-                state_dir=tmpdir / 'state',
-                pdos_prefix=tmpdir / 'pdos',
-            )
-
-def test_parse_projwfc_pdos_p_file(self):
-    with tempfile.TemporaryDirectory() as tmpdir:
-        pdos_file = (
-            Path(tmpdir)
-            / 'test.pdos_atm#2(As)_wfc#3(p)'
+        self.assertIn(
+            "prefix = 'nanoworks'",
+            text,
         )
 
-        pdos_file.write_text(
-            "# E (eV) ldos(E) pdos(E) pdos(E) pdos(E)\n"
-            "2.048 0.186E-01 0.621E-02 0.622E-02 0.623E-02\n"
-            "2.078 0.175E-01 0.583E-02 0.584E-02 0.585E-02\n",
-            encoding='utf-8',
+        self.assertIn(
+            "outdir = '/tmp/qe-state'",
+            text,
         )
 
-        result = parse_projwfc_pdos_file(
-            pdos_file
+        self.assertIn(
+            "filpdos = '/tmp/gaas-pdos'",
+            text,
         )
 
-    self.assertEqual(
-        result['atom_index'],
-        2,
-    )
-
-    self.assertEqual(
-        result['symbol'],
-        'As',
-    )
-
-    self.assertEqual(
-        result['wfc_index'],
-        3,
-    )
-
-    self.assertEqual(
-        result['orbital'],
-        'p',
-    )
-
-    self.assertEqual(
-        result['components']['pz'],
-        [0.00621, 0.00583],
-    )
-
-    self.assertEqual(
-        result['components']['px'],
-        [0.00622, 0.00584],
-    )
-
-    self.assertEqual(
-        result['components']['py'],
-        [0.00623, 0.00585],
-    )
-    
-    self.assertFalse(
-        result['spin_polarized']
-    )
-
-    self.assertIsNone(
-        result['ldos_up']
-    )
-
-    self.assertIsNone(
-        result['components_up']
-    )
-
-def test_parse_spin_polarized_projwfc_pdos_p_file(self):
-    with tempfile.TemporaryDirectory() as tmpdir:
-        pdos_file = (
-            Path(tmpdir)
-            / 'test.pdos_atm#2(As)_wfc#3(p)'
+        self.assertIn(
+            "filproj = '/tmp/gaas-projections.dat'",
+            text,
         )
 
-        pdos_file.write_text(
-            "# E ldosup ldosdw "
-            "pzup pzdw pxup pxdw pyup pydw\n"
-            "1.0 0.60 0.30 "
-            "0.10 0.05 0.20 0.10 0.30 0.15\n"
-            "2.0 0.90 0.60 "
-            "0.20 0.10 0.30 0.20 0.40 0.30\n",
-            encoding='utf-8',
+        self.assertIn(
+            'Emin = 1',
+            text,
         )
 
-        result = parse_projwfc_pdos_file(
-            pdos_file
+        self.assertIn(
+            'Emax = 10',
+            text,
         )
 
-    self.assertTrue(
-        result['spin_polarized']
-    )
-
-    self.assertEqual(
-        result['ldos_up'],
-        [0.6, 0.9],
-    )
-
-    self.assertEqual(
-        result['ldos_down'],
-        [0.3, 0.6],
-    )
-
-    self.assertEqual(
-        result['components_up']['pz'],
-        [0.1, 0.2],
-    )
-
-    self.assertEqual(
-        result['components_down']['pz'],
-        [0.05, 0.1],
-    )
-
-    self.assertEqual(
-        result['components_up']['px'],
-        [0.2, 0.3],
-    )
-
-    self.assertEqual(
-        result['components_down']['py'],
-        [0.15, 0.3],
-    )
-
-    self.assertAlmostEqual(
-        result['components']['pz'][0],
-        0.15,
-    )
-
-    self.assertAlmostEqual(
-        result['ldos'][1],
-        1.5,
-    )
-
-def test_parse_projwfc_pdos_d_file(self):
-    with tempfile.TemporaryDirectory() as tmpdir:
-        pdos_file = (
-            Path(tmpdir)
-            / 'test.pdos_atm#1(Ga)_wfc#1(d)'
+        self.assertIn(
+            'DeltaE = 0.02',
+            text,
         )
 
-        pdos_file.write_text(
-            "# E ldos d1 d2 d3 d4 d5\n"
-            "2.048 0.198E-02 "
-            "0.654E-03 0.223E-03 0.224E-03 "
-            "0.438E-03 0.439E-03\n",
-            encoding='utf-8',
+        self.assertIn(
+            'lsym = .true.',
+            text,
         )
 
-        result = parse_projwfc_pdos_file(
-            pdos_file
+        self.assertNotIn(
+            'degauss',
+            text,
         )
 
-    self.assertEqual(
-        result['orbital'],
-        'd',
-    )
-
-    self.assertEqual(
-        result['components']['d3z2_r2'],
-        [0.000654],
-    )
-
-    self.assertEqual(
-        result['components']['dxz'],
-        [0.000223],
-    )
-
-    self.assertEqual(
-        result['components']['dyz'],
-        [0.000224],
-    )
-
-    self.assertEqual(
-        result['components']['dx2_y2'],
-        [0.000438],
-    )
-
-    self.assertEqual(
-        result['components']['dxy'],
-        [0.000439],
-    )
-
-def test_parse_projwfc_pdos_s_file(self):
-    with tempfile.TemporaryDirectory() as tmpdir:
-        pdos_file = (
-            Path(tmpdir)
-            / 'test.pdos_atm#1(Ga)_wfc#2(s)'
+    def test_render_projwfc_input_omits_optional_projection_file(self):
+        text = render_projwfc_input(
+            prefix='nanoworks',
+            outdir='/tmp/qe-state',
+            filpdos='/tmp/gaas-pdos',
         )
 
-        pdos_file.write_text(
-            "# E ldos pdos\n"
-            "2.048 0.842E-01 0.842E-01\n",
-            encoding='utf-8',
+        self.assertNotIn(
+            'filproj',
+            text,
         )
 
-        result = parse_projwfc_pdos_file(
-            pdos_file
-        )
-
-    self.assertEqual(
-        result['components']['s'],
-        [0.0842],
-    )
-
-def test_aggregate_projwfc_pdos(self):
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmpdir = Path(
-            tmpdir
-        )
-
-        prefix = (
-            tmpdir
-            / 'nanoworks-pdos'
-        )
-
-        ga_s = Path(
-            str(prefix)
-            + '.pdos_atm#1(Ga)_wfc#2(s)'
-        )
-
-        ga_p = Path(
-            str(prefix)
-            + '.pdos_atm#1(Ga)_wfc#3(p)'
-        )
-
-        as_p = Path(
-            str(prefix)
-            + '.pdos_atm#2(As)_wfc#3(p)'
-        )
-
-        ga_s.write_text(
-            "# E ldos s\n"
-            "1.0 0.10 0.10\n"
-            "2.0 0.20 0.20\n",
-            encoding='utf-8',
-        )
-
-        ga_p.write_text(
-            "# E ldos pz px py\n"
-            "1.0 0.60 0.10 0.20 0.30\n"
-            "2.0 0.90 0.20 0.30 0.40\n",
-            encoding='utf-8',
-        )
-
-        as_p.write_text(
-            "# E ldos pz px py\n"
-            "1.0 0.30 0.05 0.10 0.15\n"
-            "2.0 0.60 0.10 0.20 0.30\n",
-            encoding='utf-8',
-        )
-
-        result = aggregate_projwfc_pdos(
-            prefix
-        )
-
-    self.assertEqual(
-        result['energies_ev'],
-        [1.0, 2.0],
-    )
-
-    self.assertEqual(
-        result['s_total'],
-        [0.1, 0.2],
-    )
-
-    self.assertEqual(
-        result['p_total'],
-        [0.9, 1.5],
-    )
-
-    self.assertAlmostEqual(
-        result['total'][0],
-        1.0,
-    )
-
-    self.assertAlmostEqual(
-        result['total'][1],
-        1.7,
-    )
-
-    self.assertEqual(
-        result['pz'],
-        [0.15, 0.30],
-    )
-
-    self.assertEqual(
-        result['px'],
-        [0.30, 0.50],
-    )
-
-    self.assertEqual(
-        result['py'],
-        [0.45, 0.70],
-    )
-
-    self.assertEqual(
-        result['d_total'],
-        [0.0, 0.0],
-    )
-
-    self.assertEqual(
-        result['f_total'],
-        [0.0, 0.0],
-    )
-
-    self.assertFalse(
-        result['spin_polarized']
-    )
-
-    self.assertIsNone(
-        result['spin_up']
-    )
-
-    self.assertIsNone(
-        result['spin_down']
-    )
-
-def test_aggregate_spin_polarized_projwfc_pdos(self):
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmpdir = Path(
-            tmpdir
-        )
-
-        prefix = (
-            tmpdir
-            / 'nanoworks-pdos'
-        )
-
-        s_file = Path(
-            str(prefix)
-            + '.pdos_atm#1(Ga)_wfc#1(s)'
-        )
-
-        p_file = Path(
-            str(prefix)
-            + '.pdos_atm#1(Ga)_wfc#2(p)'
-        )
-
-        s_file.write_text(
-            "# E ldosup ldosdw sup sdw\n"
-            "1.0 0.10 0.04 0.10 0.04\n"
-            "2.0 0.20 0.08 0.20 0.08\n",
-            encoding='utf-8',
-        )
-
-        p_file.write_text(
-            "# E ldosup ldosdw "
-            "pzup pzdw pxup pxdw pyup pydw\n"
-            "1.0 0.60 0.30 "
-            "0.10 0.05 0.20 0.10 0.30 0.15\n"
-            "2.0 0.90 0.60 "
-            "0.20 0.10 0.30 0.20 0.40 0.30\n",
-            encoding='utf-8',
-        )
-
-        result = aggregate_projwfc_pdos(
-            prefix
-        )
-
-    self.assertTrue(
-        result['spin_polarized']
-    )
-
-    self.assertEqual(
-        result['spin_up']['s_total'],
-        [0.1, 0.2],
-    )
-
-    self.assertEqual(
-        result['spin_down']['s_total'],
-        [0.04, 0.08],
-    )
-
-    self.assertEqual(
-        result['spin_up']['p_total'],
-        [0.6, 0.9],
-    )
-
-    self.assertEqual(
-        result['spin_down']['p_total'],
-        [0.3, 0.6],
-    )
-
-    self.assertEqual(
-        result['spin_up']['pz'],
-        [0.1, 0.2],
-    )
-
-    self.assertEqual(
-        result['spin_down']['py'],
-        [0.15, 0.3],
-    )
-
-    self.assertAlmostEqual(
-        result['spin_up']['total'][0],
-        0.7,
-    )
-
-    self.assertAlmostEqual(
-        result['spin_down']['total'][0],
-        0.34,
-    )
-
-    self.assertAlmostEqual(
-        result['total'][0],
-        1.04,
-    )
-
-def test_aggregate_projwfc_pdos_rejects_mismatched_energy_grid(self):
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmpdir = Path(
-            tmpdir
-        )
-
-        prefix = (
-            tmpdir
-            / 'nanoworks-pdos'
-        )
-
-        first = Path(
-            str(prefix)
-            + '.pdos_atm#1(Ga)_wfc#2(s)'
-        )
-
-        second = Path(
-            str(prefix)
-            + '.pdos_atm#2(As)_wfc#2(s)'
-        )
-
-        first.write_text(
-            "# E ldos s\n"
-            "1.0 0.10 0.10\n"
-            "2.0 0.20 0.20\n",
-            encoding='utf-8',
-        )
-
-        second.write_text(
-            "# E ldos s\n"
-            "1.0 0.10 0.10\n"
-            "2.1 0.20 0.20\n",
-            encoding='utf-8',
-        )
-
+    def test_render_projwfc_input_rejects_invalid_energy_range(self):
         with self.assertRaisesRegex(
             ValueError,
-            'same energy grid',
+            'Emax must be greater than Emin',
         ):
-            aggregate_projwfc_pdos(
+            render_projwfc_input(
+                emin=5.0,
+                emax=-5.0,
+            )
+
+    def test_run_projwfc_requires_qe_state(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(
+                tmpdir
+            )
+
+            with self.assertRaisesRegex(
+                FileNotFoundError,
+                'valid QE electronic state',
+            ):
+                run_projwfc(
+                    input_file=tmpdir / 'pdos.in',
+                    output_file=tmpdir / 'pdos.out',
+                    state_dir=tmpdir / 'state',
+                    pdos_prefix=tmpdir / 'pdos',
+                )
+
+    def test_parse_projwfc_pdos_p_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pdos_file = (
+                Path(tmpdir)
+                / 'test.pdos_atm#2(As)_wfc#3(p)'
+            )
+
+            pdos_file.write_text(
+                "# E (eV) ldos(E) pdos(E) pdos(E) pdos(E)\n"
+                "2.048 0.186E-01 0.621E-02 0.622E-02 0.623E-02\n"
+                "2.078 0.175E-01 0.583E-02 0.584E-02 0.585E-02\n",
+                encoding='utf-8',
+            )
+
+            result = parse_projwfc_pdos_file(
+                pdos_file
+            )
+
+        self.assertEqual(
+            result['atom_index'],
+            2,
+        )
+
+        self.assertEqual(
+            result['symbol'],
+            'As',
+        )
+
+        self.assertEqual(
+            result['wfc_index'],
+            3,
+        )
+
+        self.assertEqual(
+            result['orbital'],
+            'p',
+        )
+
+        self.assertEqual(
+            result['components']['pz'],
+            [0.00621, 0.00583],
+        )
+
+        self.assertEqual(
+            result['components']['px'],
+            [0.00622, 0.00584],
+        )
+
+        self.assertEqual(
+            result['components']['py'],
+            [0.00623, 0.00585],
+        )
+
+        self.assertFalse(
+            result['spin_polarized']
+        )
+
+        self.assertIsNone(
+            result['ldos_up']
+        )
+
+        self.assertIsNone(
+            result['components_up']
+        )
+
+    def test_parse_spin_polarized_projwfc_pdos_p_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pdos_file = (
+                Path(tmpdir)
+                / 'test.pdos_atm#2(As)_wfc#3(p)'
+            )
+
+            pdos_file.write_text(
+                "# E ldosup ldosdw "
+                "pzup pzdw pxup pxdw pyup pydw\n"
+                "1.0 0.60 0.30 "
+                "0.10 0.05 0.20 0.10 0.30 0.15\n"
+                "2.0 0.90 0.60 "
+                "0.20 0.10 0.30 0.20 0.40 0.30\n",
+                encoding='utf-8',
+            )
+
+            result = parse_projwfc_pdos_file(
+                pdos_file
+            )
+
+        self.assertTrue(
+            result['spin_polarized']
+        )
+
+        self.assertEqual(
+            result['ldos_up'],
+            [0.6, 0.9],
+        )
+
+        self.assertEqual(
+            result['ldos_down'],
+            [0.3, 0.6],
+        )
+
+        self.assertEqual(
+            result['components_up']['pz'],
+            [0.1, 0.2],
+        )
+
+        self.assertEqual(
+            result['components_down']['pz'],
+            [0.05, 0.1],
+        )
+
+        self.assertEqual(
+            result['components_up']['px'],
+            [0.2, 0.3],
+        )
+
+        self.assertEqual(
+            result['components_down']['py'],
+            [0.15, 0.3],
+        )
+
+        self.assertAlmostEqual(
+            result['components']['pz'][0],
+            0.15,
+        )
+
+        self.assertAlmostEqual(
+            result['ldos'][1],
+            1.5,
+        )
+
+    def test_parse_projwfc_pdos_d_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pdos_file = (
+                Path(tmpdir)
+                / 'test.pdos_atm#1(Ga)_wfc#1(d)'
+            )
+
+            pdos_file.write_text(
+                "# E ldos d1 d2 d3 d4 d5\n"
+                "2.048 0.198E-02 "
+                "0.654E-03 0.223E-03 0.224E-03 "
+                "0.438E-03 0.439E-03\n",
+                encoding='utf-8',
+            )
+
+            result = parse_projwfc_pdos_file(
+                pdos_file
+            )
+
+        self.assertEqual(
+            result['orbital'],
+            'd',
+        )
+
+        self.assertEqual(
+            result['components']['d3z2_r2'],
+            [0.000654],
+        )
+
+        self.assertEqual(
+            result['components']['dxz'],
+            [0.000223],
+        )
+
+        self.assertEqual(
+            result['components']['dyz'],
+            [0.000224],
+        )
+
+        self.assertEqual(
+            result['components']['dx2_y2'],
+            [0.000438],
+        )
+
+        self.assertEqual(
+            result['components']['dxy'],
+            [0.000439],
+        )
+
+    def test_parse_projwfc_pdos_s_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pdos_file = (
+                Path(tmpdir)
+                / 'test.pdos_atm#1(Ga)_wfc#2(s)'
+            )
+
+            pdos_file.write_text(
+                "# E ldos pdos\n"
+                "2.048 0.842E-01 0.842E-01\n",
+                encoding='utf-8',
+            )
+
+            result = parse_projwfc_pdos_file(
+                pdos_file
+            )
+
+        self.assertEqual(
+            result['components']['s'],
+            [0.0842],
+        )
+
+    def test_aggregate_projwfc_pdos(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(
+                tmpdir
+            )
+
+            prefix = (
+                tmpdir
+                / 'nanoworks-pdos'
+            )
+
+            ga_s = Path(
+                str(prefix)
+                + '.pdos_atm#1(Ga)_wfc#2(s)'
+            )
+
+            ga_p = Path(
+                str(prefix)
+                + '.pdos_atm#1(Ga)_wfc#3(p)'
+            )
+
+            as_p = Path(
+                str(prefix)
+                + '.pdos_atm#2(As)_wfc#3(p)'
+            )
+
+            ga_s.write_text(
+                "# E ldos s\n"
+                "1.0 0.10 0.10\n"
+                "2.0 0.20 0.20\n",
+                encoding='utf-8',
+            )
+
+            ga_p.write_text(
+                "# E ldos pz px py\n"
+                "1.0 0.60 0.10 0.20 0.30\n"
+                "2.0 0.90 0.20 0.30 0.40\n",
+                encoding='utf-8',
+            )
+
+            as_p.write_text(
+                "# E ldos pz px py\n"
+                "1.0 0.30 0.05 0.10 0.15\n"
+                "2.0 0.60 0.10 0.20 0.30\n",
+                encoding='utf-8',
+            )
+
+            result = aggregate_projwfc_pdos(
                 prefix
             )
+
+        self.assertEqual(
+            result['energies_ev'],
+            [1.0, 2.0],
+        )
+
+        self.assertEqual(
+            result['s_total'],
+            [0.1, 0.2],
+        )
+
+        np.testing.assert_allclose(
+            result['p_total'],
+            [0.9, 1.5],
+        )
+
+        self.assertAlmostEqual(
+            result['total'][0],
+            1.0,
+        )
+
+        self.assertAlmostEqual(
+            result['total'][1],
+            1.7,
+        )
+
+        np.testing.assert_allclose(
+            result['pz'],
+            [0.15, 0.30],
+        )
+
+        np.testing.assert_allclose(
+            result['px'],
+            [0.30, 0.50],
+        )
+
+        np.testing.assert_allclose(
+            result['py'],
+            [0.45, 0.70],
+        )
+
+        self.assertEqual(
+            result['d_total'],
+            [0.0, 0.0],
+        )
+
+        self.assertEqual(
+            result['f_total'],
+            [0.0, 0.0],
+        )
+
+        self.assertFalse(
+            result['spin_polarized']
+        )
+
+        self.assertIsNone(
+            result['spin_up']
+        )
+
+        self.assertIsNone(
+            result['spin_down']
+        )
+
+    def test_aggregate_spin_polarized_projwfc_pdos(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(
+                tmpdir
+            )
+
+            prefix = (
+                tmpdir
+                / 'nanoworks-pdos'
+            )
+
+            s_file = Path(
+                str(prefix)
+                + '.pdos_atm#1(Ga)_wfc#1(s)'
+            )
+
+            p_file = Path(
+                str(prefix)
+                + '.pdos_atm#1(Ga)_wfc#2(p)'
+            )
+
+            s_file.write_text(
+                "# E ldosup ldosdw sup sdw\n"
+                "1.0 0.10 0.04 0.10 0.04\n"
+                "2.0 0.20 0.08 0.20 0.08\n",
+                encoding='utf-8',
+            )
+
+            p_file.write_text(
+                "# E ldosup ldosdw "
+                "pzup pzdw pxup pxdw pyup pydw\n"
+                "1.0 0.60 0.30 "
+                "0.10 0.05 0.20 0.10 0.30 0.15\n"
+                "2.0 0.90 0.60 "
+                "0.20 0.10 0.30 0.20 0.40 0.30\n",
+                encoding='utf-8',
+            )
+
+            result = aggregate_projwfc_pdos(
+                prefix
+            )
+
+        self.assertTrue(
+            result['spin_polarized']
+        )
+
+        self.assertEqual(
+            result['spin_up']['s_total'],
+            [0.1, 0.2],
+        )
+
+        self.assertEqual(
+            result['spin_down']['s_total'],
+            [0.04, 0.08],
+        )
+
+        self.assertEqual(
+            result['spin_up']['p_total'],
+            [0.6, 0.9],
+        )
+
+        self.assertEqual(
+            result['spin_down']['p_total'],
+            [0.3, 0.6],
+        )
+
+        self.assertEqual(
+            result['spin_up']['pz'],
+            [0.1, 0.2],
+        )
+
+        self.assertEqual(
+            result['spin_down']['py'],
+            [0.15, 0.3],
+        )
+
+        self.assertAlmostEqual(
+            result['spin_up']['total'][0],
+            0.7,
+        )
+
+        self.assertAlmostEqual(
+            result['spin_down']['total'][0],
+            0.34,
+        )
+
+        self.assertAlmostEqual(
+            result['total'][0],
+            1.04,
+        )
+
+    def test_aggregate_projwfc_pdos_rejects_mismatched_energy_grid(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(
+                tmpdir
+            )
+
+            prefix = (
+                tmpdir
+                / 'nanoworks-pdos'
+            )
+
+            first = Path(
+                str(prefix)
+                + '.pdos_atm#1(Ga)_wfc#2(s)'
+            )
+
+            second = Path(
+                str(prefix)
+                + '.pdos_atm#2(As)_wfc#2(s)'
+            )
+
+            first.write_text(
+                "# E ldos s\n"
+                "1.0 0.10 0.10\n"
+                "2.0 0.20 0.20\n",
+                encoding='utf-8',
+            )
+
+            second.write_text(
+                "# E ldos s\n"
+                "1.0 0.10 0.10\n"
+                "2.1 0.20 0.20\n",
+                encoding='utf-8',
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                'same energy grid',
+            ):
+                aggregate_projwfc_pdos(
+                    prefix
+                )
 
     def test_parse_pw_relaxed_atomic_positions(self):
         atoms = bulk(
@@ -4754,8 +4762,9 @@ def test_aggregate_projwfc_pdos_rejects_mismatched_energy_grid(self):
             relaxed.positions[1, 2],
             1.6,
         )
-        self.assertTrue(
-            relaxed.cell == atoms.cell
+        np.testing.assert_allclose(
+            relaxed.cell.array,
+            atoms.cell.array,
         )
 
     def test_parse_pw_relaxed_cell_and_crystal_positions(self):
@@ -5503,7 +5512,7 @@ def test_aggregate_projwfc_pdos_rejects_mismatched_energy_grid(self):
                 [-0.5, 1.5],
             ],
         )
-        self.assertEqual(
+        np.testing.assert_allclose(
             result['eigenvalues_down_ev'],
             [
                 [-0.8, 1.2],
@@ -5511,138 +5520,140 @@ def test_aggregate_projwfc_pdos_rejects_mismatched_energy_grid(self):
             ],
         )
 
-def test_run_band_projections_requires_qe_state(self):
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmpdir = Path(
-            tmpdir
-        )
-
-        with self.assertRaisesRegex(
-            FileNotFoundError,
-            'valid QE bands state',
-        ):
-            run_band_projections(
-                input_file=tmpdir / 'proj.in',
-                output_file=tmpdir / 'proj.out',
-                state_dir=tmpdir / 'state',
-                projection_prefix=(
-                    tmpdir
-                    / 'bands-proj'
-                ),
+    def test_run_band_projections_requires_qe_state(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(
+                tmpdir
             )
 
+            with self.assertRaisesRegex(
+                FileNotFoundError,
+                'valid QE bands state',
+            ):
+                run_band_projections(
+                    input_file=tmpdir / 'proj.in',
+                    output_file=tmpdir / 'proj.out',
+                    state_dir=tmpdir / 'state',
+                    projection_prefix=(
+                        tmpdir
+                        / 'bands-proj'
+                    ),
+                )
 
-def test_run_spin_polarized_band_projections(self):
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmpdir = Path(
-            tmpdir
-        )
 
-        state_dir = (
-            tmpdir
-            / 'state'
-        )
+    def test_run_spin_polarized_band_projections(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(
+                tmpdir
+            )
 
-        save_dir = (
-            state_dir
-            / 'nanoworks.save'
-        )
+            state_dir = (
+                tmpdir
+                / 'state'
+            )
 
-        save_dir.mkdir(
-            parents=True
-        )
+            save_dir = (
+                state_dir
+                / 'nanoworks.save'
+            )
 
-        (
-            save_dir
-            / 'data-file-schema.xml'
-        ).write_text(
-            '<espresso/>',
-            encoding='utf-8',
-        )
+            save_dir.mkdir(
+                parents=True
+            )
 
-        projection_prefix = (
-            tmpdir
-            / 'bands-proj'
-        )
-
-        def fake_run_qe_program(**kwargs):
-            Path(
-                kwargs['output_file']
+            (
+                save_dir
+                / 'data-file-schema.xml'
             ).write_text(
-                'JOB DONE.\n',
+                '<espresso/>',
                 encoding='utf-8',
             )
 
-            Path(
-                str(projection_prefix)
-                + '.projwfc_up'
-            ).write_text(
-                'up projections\n',
-                encoding='utf-8',
+            projection_prefix = (
+                tmpdir
+                / 'bands-proj'
             )
 
-            Path(
-                str(projection_prefix)
-                + '.projwfc_down'
-            ).write_text(
-                'down projections\n',
-                encoding='utf-8',
-            )
+            def fake_run_qe_program(**kwargs):
+                Path(
+                    kwargs['output_file']
+                ).write_text(
+                    'JOB DONE.\n',
+                    encoding='utf-8',
+                )
 
-            return {
-                'returncode': 0,
-            }
+                Path(
+                    str(projection_prefix)
+                    + '.projwfc_up'
+                ).write_text(
+                    'up projections\n',
+                    encoding='utf-8',
+                )
 
-        with patch(
-            'nanoworks.engine.qe.run_qe_program',
-            side_effect=fake_run_qe_program,
-        ):
-            workflow = run_band_projections(
-                input_file=tmpdir / 'proj.in',
-                output_file=tmpdir / 'proj.out',
-                state_dir=state_dir,
-                projection_prefix=projection_prefix,
-                spinpol=True,
-            )
+                Path(
+                    str(projection_prefix)
+                    + '.projwfc_down'
+                ).write_text(
+                    'down projections\n',
+                    encoding='utf-8',
+                )
 
-        input_text = (
-            workflow['input_file']
-            .read_text(
-                encoding='utf-8',
+                return {
+                    'returncode': 0,
+                }
+
+            with patch(
+                'nanoworks.engine.qe.run_qe_program',
+                side_effect=fake_run_qe_program,
+            ):
+                workflow = run_band_projections(
+                    input_file=tmpdir / 'proj.in',
+                    output_file=tmpdir / 'proj.out',
+                    state_dir=state_dir,
+                    projection_prefix=projection_prefix,
+                    spinpol=True,
+                )
+
+            input_text = (
+                workflow['input_file']
+                .read_text(
+                    encoding='utf-8',
+                )
             )
+            projection_up_exists = workflow[
+                'projection_up_file'
+            ].is_file()
+            projection_down_exists = workflow[
+                'projection_down_file'
+            ].is_file()
+
+        self.assertIn(
+            "filproj = "
+            f"'{projection_prefix}'",
+            input_text,
         )
 
-    self.assertIn(
-        "filproj = "
-        f"'{projection_prefix}'",
-        input_text,
-    )
+        self.assertIn(
+            'lsym = .false.',
+            input_text,
+        )
 
-    self.assertIn(
-        'lsym = .false.',
-        input_text,
-    )
+        self.assertTrue(
+            projection_up_exists
+        )
 
-    self.assertTrue(
-        workflow[
-            'projection_up_file'
-        ].is_file()
-    )
+        self.assertTrue(
+            projection_down_exists
+        )
 
-    self.assertTrue(
-        workflow[
-            'projection_down_file'
-        ].is_file()
-    )
-
-    self.assertEqual(
-        len(
-            workflow[
-                'projection_files'
-            ]
-        ),
-        2,
-    )
+        self.assertEqual(
+            len(
+                workflow[
+                    'projection_files'
+                ]
+            ),
+            2,
+        )
 
     def test_parse_projwfc_band_file(self):
         projection_text = """
@@ -5762,10 +5773,13 @@ def test_run_spin_polarized_band_projections(self):
         projection_text = """
         8 8 8 8 8 8 1 1
         0 5.0 0.0 0.0 0.0 0.0 0.0
+        1.0 0.0 0.0
+        0.0 1.0 0.0
+        0.0 0.0 1.0
         10.0 4.0 30.0 9
         1 Fe 16.0
         1 0.0 0.0 0.0 1
-        3 1 1
+        1 3 1
         F F
         1 1 Fe 4S 1 0 1
         1 1 0.10
@@ -5911,7 +5925,7 @@ def test_run_spin_polarized_band_projections(self):
             second['selected_state_count'],
             2,
         )
-        self.assertEqual(
+        np.testing.assert_allclose(
             second['weights'],
             [
                 [0.51, 0.62],
@@ -5968,7 +5982,7 @@ def test_run_spin_polarized_band_projections(self):
             total['label'],
             'Total Contribution',
         )
-        self.assertEqual(
+        np.testing.assert_allclose(
             total['weights'],
             [
                 [0.40, 0.60],
@@ -6218,7 +6232,7 @@ def test_run_spin_polarized_band_projections(self):
         band_path = build_band_path(
             atoms=atoms,
             path='GX',
-            npoints=1,
+            npoints=2,
         )
 
         output_text = """
@@ -6227,6 +6241,10 @@ def test_run_spin_polarized_band_projections(self):
               k = 0.0000 0.0000 0.0000 ( 123 PWs)   bands (ev):
 
             -5.0000
+
+              k = 0.5000 0.0000 0.0000 ( 120 PWs)   bands (ev):
+
+            -4.5000
 
          JOB DONE.
         """
@@ -6483,6 +6501,9 @@ def test_run_spin_polarized_band_projections(self):
                 }
 
             with patch(
+                'nanoworks.engine.qe.build_qe_launcher',
+                return_value=['mpiexec', '-np', '4'],
+            ) as build_launcher, patch(
                 'nanoworks.engine.qe.run_qe_program',
                 side_effect=fake_run_qe_program,
             ) as run:
@@ -6509,6 +6530,15 @@ def test_run_spin_polarized_band_projections(self):
             self.assertEqual(
                 run.call_count,
                 1,
+            )
+            build_launcher.assert_called_once_with(
+                parallel_cores=4,
+            )
+            self.assertEqual(
+                run.call_args.kwargs[
+                    'launcher'
+                ],
+                ['mpiexec', '-np', '4'],
             )
 
             self.assertEqual(
@@ -7011,7 +7041,7 @@ def test_run_spin_polarized_band_projections(self):
             'U Si-3p 4',
             input_text,
         )
-        
+
     def test_parse_pw_bands_output_supports_adjacent_values(self):
         output_text = """
         Program PWSCF v.7.2 starts
