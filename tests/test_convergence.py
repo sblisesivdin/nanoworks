@@ -252,6 +252,10 @@ class TestConvergenceCore(unittest.TestCase):
         self.assertTrue(
             backend.calls[0]['kpoint_settings']['gamma']
         )
+        self.assertNotIn(
+            'size',
+            backend.calls[0]['kpoint_settings'],
+        )
         self.assertEqual(result.selection.value, 4.0)
 
     def test_kpoint_mesh_sweep_preserves_meshes(self):
@@ -283,6 +287,10 @@ class TestConvergenceCore(unittest.TestCase):
         self.assertEqual(
             result.points[-1].kpoint_settings['size'],
             (6, 6, 1),
+        )
+        self.assertNotIn(
+            'density',
+            result.points[-1].kpoint_settings,
         )
 
     def test_kpoint_sweep_rejects_unsorted_meshes(self):

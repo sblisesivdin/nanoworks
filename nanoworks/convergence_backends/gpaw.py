@@ -59,6 +59,11 @@ class GPAWStaticEnergyBackend:
         if mixer is None:
             mixer = engine.create_default_mixer()
 
+        kpoint_density = kpoint_settings.get('density')
+        kpoint_size = kpoint_settings.get('size')
+        if kpoint_density is None and kpoint_size is None:
+            kpoint_size = (5, 5, 5)
+
         common = {
             'cutoff': float(cutoff_ev),
             'mixer': mixer,
@@ -67,8 +72,8 @@ class GPAWStaticEnergyBackend:
             'txt': str(workdir / 'gpaw-scf.txt'),
             'convergence': settings.get('convergence', {}),
             'occupations': settings.get('occupation'),
-            'kpoint_density': kpoint_settings.get('density'),
-            'kpoint_size': kpoint_settings.get('size', (5, 5, 5)),
+            'kpoint_density': kpoint_density,
+            'kpoint_size': kpoint_size,
             'gamma': bool(kpoint_settings.get('gamma', False)),
             'nbands': settings.get('nbands'),
         }
@@ -101,10 +106,12 @@ class GPAWStaticEnergyBackend:
 
         metadata = {
             'log_file': str(workdir / 'gpaw-scf.txt'),
-            'kpoint_density': kpoint_settings.get('density'),
-            'kpoint_size': kpoint_settings.get('size', (5, 5, 5)),
             'hybrid': bool(engine.is_hybrid(actual_xc)),
         }
+        if kpoint_density is not None:
+            metadata['kpoint_density'] = kpoint_density
+        else:
+            metadata['kpoint_size'] = kpoint_size
 
         return StaticEnergyResult(
             engine=self.name,

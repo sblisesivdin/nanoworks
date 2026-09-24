@@ -10,6 +10,12 @@
 - `dftsolve --dry-run` writes semilocal and supported hybrid QE input decks, a JSON job plan, and a shell script without executing QE.
 - `dftsolve --dry-run --scheduler slurm` creates a sequential `srun` batch script with optional account, partition, memory, wall-time and job-name directives.
 - Reusable JSON cluster profiles store Slurm resources and module names; explicit command-line settings override profile values.
+- Slurm dry-run scripts support QoS selection and loading site modules.
+- `dftconverge` runs ordered cutoff, k-point and lattice convergence workflows with GPAW or QE from one input.
+- Convergence runs report every completed point immediately and save JSON, CSV and optimized-CIF results.
+- K-point density and explicit-mesh modes are mutually exclusive in convergence inputs and outputs.
+- QE convergence can select installed scalar- or fully relativistic PseudoDojo sets with `QE_pseudo_relativistic`.
+- The QE pseudo installer reports set type, version, file count, table, directory and manifest information.
 - Native QE `HSE06`, `HSE03` and `PBE0` support ground-state, DOS/PDOS, band, projected-band and density calculations.
 - QE hybrid DOS/PDOS uses a dedicated hybrid SCF followed by `dos.x` and `projwfc.x`; a separate hybrid NSCF calculation is not used.
 - QE hybrid band calculations add zero-weight band-path states to the SCF, then use `bands.x`; projected bands additionally use `projwfc.x`.
@@ -25,6 +31,10 @@
 - The `dftsolve -p N` interface is retained. GPAW runs under MPI and QE executables are launched with the requested process count.
 - LAMMPS is available in `mdsolve` alongside ASAP3 with shared temperature, time-step, damping and parameter-sweep settings.
 - `mlsolve` supports geometry optimization and static calculations with MACE, CHGNet and SevenNet.
+- `mlsolve` honors the selected optimizer and exposes model-specific options in input files.
+- GPAW DOS data exports use the same Fermi-energy reference as the plotted DOS.
+- Release installers are version-pinned; command version output also works in minimal installations.
+- Packaging includes the optimization helpers and preserves the executable `mlsolve` command.
 - The DFT engine layer, keyword reference and QE examples are updated while preserving the established GPAW workflow.
 
 ### Version 26.8.0 - Aug 3, 2026
@@ -336,4 +346,3 @@
 * `PW-Optical-SingleCoreOnly.py` script for optical calculations.
 * `PW-Electronic-changename.py` script for electronic calculations. 
 * First scripts for personal usage.
-- Slurm dry-run scripts can now request a QoS and load one or more site modules.

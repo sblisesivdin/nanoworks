@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, Mock, patch
 
 from ase import Atoms
 
@@ -108,6 +108,107 @@ class TestDFTConvergeCLI(unittest.TestCase):
                     ])
 
         self.assertIn('cannot mix densities and meshes', errors.getvalue())
+
+    def test_check_rejects_ground_density_with_explicit_mesh(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            input_file = root / 'convergence.py'
+            geometry_file = root / 'structure.cif'
+            input_file.write_text(
+                "Engine = 'GPAW'\n"
+                "Convergence_tasks = ['cutoff']\n"
+                "Convergence_cutoffs = [300, 400, 500]\n"
+                "Ground_kpts_density = 3.0\n"
+                "Ground_kpts_x = 4\n",
+                encoding='utf-8',
+            )
+            geometry_file.write_text('not parsed by check', encoding='utf-8')
+
+            errors = io.StringIO()
+            with redirect_stderr(errors):
+                with self.assertRaises(SystemExit):
+                    dftconverge.main([
+                        '--check',
+                        '-i',
+                        str(input_file),
+                        '-g',
+                        str(geometry_file),
+                    ])
+
+        self.assertIn('mutually exclusive', errors.getvalue())
+
+    def test_check_validates_qe_relativistic_mode_without_engines(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            input_file = root / 'convergence.py'
+            geometry_file = root / 'structure.cif'
+            geometry_file.write_text('not parsed by check', encoding='utf-8')
+
+            input_file.write_text(
+                "Engine = 'QE'\n"
+                "Convergence_tasks = ['cutoff']\n"
+                "Convergence_cutoffs = [300, 400, 500]\n"
+                "QE_pseudo_relativistic = 'full'\n",
+                encoding='utf-8',
+            )
+            self.assertEqual(
+                dftconverge.main([
+                    '--check',
+                    '-i',
+                    str(input_file),
+                    '-g',
+                    str(geometry_file),
+                ]),
+                0,
+            )
+
+            input_file.write_text(
+                "Engine = 'QE'\n"
+                "Convergence_tasks = ['cutoff']\n"
+                "Convergence_cutoffs = [300, 400, 500]\n"
+                "QE_pseudo_relativistic = 'invalid'\n",
+                encoding='utf-8',
+            )
+            errors = io.StringIO()
+            with redirect_stderr(errors):
+                with self.assertRaises(SystemExit):
+                    dftconverge.main([
+                        '--check',
+                        '-i',
+                        str(input_file),
+                        '-g',
+                        str(geometry_file),
+                    ])
+
+        self.assertIn("must be 'scalar' or 'full'", errors.getvalue())
+
+    def test_check_rejects_soc_instead_of_silently_ignoring_it(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            input_file = root / 'convergence.py'
+            geometry_file = root / 'structure.cif'
+            input_file.write_text(
+                "Engine = 'QE'\n"
+                "Convergence_tasks = ['cutoff']\n"
+                "Convergence_cutoffs = [300, 400, 500]\n"
+                "QE_pseudo_relativistic = 'full'\n"
+                "SOC_calc = True\n",
+                encoding='utf-8',
+            )
+            geometry_file.write_text('not parsed by check', encoding='utf-8')
+
+            errors = io.StringIO()
+            with redirect_stderr(errors):
+                with self.assertRaises(SystemExit):
+                    dftconverge.main([
+                        '--check',
+                        '-i',
+                        str(input_file),
+                        '-g',
+                        str(geometry_file),
+                    ])
+
+        self.assertIn('does not enable SOC', errors.getvalue())
 
     def test_packaged_convergence_examples_pass_check(self):
         example_root = (
@@ -290,6 +391,7 @@ class TestDFTConvergeCLI(unittest.TestCase):
                     'Ground_kpts_y': 6,
                     'Ground_kpts_z': 2,
                     'XC_calc': 'PBE',
+                    'QE_pseudo_relativistic': 'FULL',
                 },
                 plan=plan,
                 structure_reader=Mock(return_value=Atoms(
@@ -326,6 +428,19 @@ class TestDFTConvergeCLI(unittest.TestCase):
             pseudo_dir=Path('/pseudos'),
             executable='pw.x',
         )
+        pseudo_dir_getter.assert_called_once_with(
+            family='pseudodojo',
+            xc='pbe',
+            relativistic='full',
+            accuracy='standard',
+        )
+        pseudo_resolver.assert_called_once_with(
+            ANY,
+            family='pseudodojo',
+            xc='pbe',
+            relativistic='full',
+            accuracy='standard',
+        )
         self.assertEqual(len(backend.calls), 11)
         self.assertEqual(
             backend.calls[0]['kpoint_settings']['size'],
@@ -343,6 +458,10 @@ class TestDFTConvergeCLI(unittest.TestCase):
             call['kpoint_settings']['density'] == 4.0
             for call in backend.calls[8:]
         ))
+        self.assertTrue(all(
+            'size' not in call['kpoint_settings']
+            for call in backend.calls[4:]
+        ))
         self.assertEqual(summary['schema_version'], 1)
         self.assertEqual(summary['selected']['cutoff_ev'], 500.0)
         self.assertEqual(
@@ -350,6 +469,10 @@ class TestDFTConvergeCLI(unittest.TestCase):
             {'density': 4.0},
         )
         self.assertEqual(summary['selected']['lattice_scale'], 1.0)
+        self.assertEqual(
+            summary['sweeps']['kpoints'][0]['kpoint_settings'],
+            {'density': 2.0, 'gamma': True},
+        )
         self.assertEqual(len(rows), 11)
         self.assertEqual(rows[-1]['task'], 'lattice')
         self.assertTrue(optimized_structure_exists)

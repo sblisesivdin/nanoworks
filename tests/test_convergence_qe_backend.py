@@ -53,6 +53,7 @@ class TestQEConvergenceBackend(unittest.TestCase):
         kwargs = engine.run_scf.call_args.kwargs
         self.assertEqual(kwargs['cutoff_ev'], 500.0)
         self.assertEqual(kwargs['kpoint_density'], 3.0)
+        self.assertIsNone(kwargs['kpoint_size'])
         self.assertTrue(kwargs['gamma'])
         self.assertEqual(kwargs['parallel_cores'], 8)
         self.assertEqual(kwargs['pseudopotentials'], {'Si': 'Si.upf'})

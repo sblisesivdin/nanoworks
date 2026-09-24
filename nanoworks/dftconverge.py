@@ -299,6 +299,50 @@ def _validate_kpoint_values(config, minimum_count):
         )
 
 
+def _validate_ground_kpoint_settings(config):
+    """Validate the fixed k-point mode used outside a k-point sweep."""
+    density = config.get('Ground_kpts_density')
+    mesh_keys = (
+        'Ground_kpts_x',
+        'Ground_kpts_y',
+        'Ground_kpts_z',
+    )
+
+    if density is not None and any(key in config for key in mesh_keys):
+        raise ValueError(
+            'Ground_kpts_density and Ground_kpts_x/y/z are mutually '
+            'exclusive; choose a density or an explicit mesh.'
+        )
+
+    if density is not None:
+        if isinstance(density, bool):
+            raise TypeError(
+                'Ground_kpts_density must be a finite positive number.'
+            )
+        try:
+            density = float(density)
+        except (TypeError, ValueError) as exc:
+            raise TypeError(
+                'Ground_kpts_density must be a finite positive number.'
+            ) from exc
+        if not math.isfinite(density) or density <= 0.0:
+            raise ValueError(
+                'Ground_kpts_density must be a finite positive number.'
+            )
+        return
+
+    for key in mesh_keys:
+        value = config.get(key, 5)
+        if isinstance(value, bool):
+            raise TypeError(key + ' must be a positive integer.')
+        try:
+            integer = int(value)
+        except (TypeError, ValueError) as exc:
+            raise TypeError(key + ' must be a positive integer.') from exc
+        if integer != value or integer <= 0:
+            raise ValueError(key + ' must be a positive integer.')
+
+
 def validate_convergence_config(config, plan):
     """Validate execution settings without reading atoms or DFT engines."""
     consecutive = config.get('Convergence_consecutive_points', 2)
@@ -372,6 +416,31 @@ def validate_convergence_config(config, plan):
         if not math.isfinite(cutoff) or cutoff <= 0.0:
             raise ValueError('Cut_off_energy must be finite and positive.')
 
+    uses_ground_kpoints = (
+        'cutoff' in plan.tasks
+        or (
+            'lattice' in plan.tasks
+            and 'kpoints' not in plan.tasks
+        )
+    )
+    if uses_ground_kpoints:
+        _validate_ground_kpoint_settings(config)
+
+    if bool(config.get('SOC_calc', False)):
+        raise ValueError(
+            'SOC_calc is not supported by dftconverge yet. Selecting '
+            'fully relativistic pseudopotentials does not enable SOC.'
+        )
+
+    if plan.engine == 'QE':
+        relativistic = str(
+            config.get('QE_pseudo_relativistic', 'scalar')
+        ).strip().lower()
+        if relativistic not in ('scalar', 'full'):
+            raise ValueError(
+                "QE_pseudo_relativistic must be 'scalar' or 'full'."
+            )
+
     return config
 
 
@@ -381,12 +450,18 @@ def _build_kpoint_settings(config):
     if gamma is None:
         gamma = config.get('Gamma', True)
 
+    density = config.get('Ground_kpts_density')
+    if density is not None:
+        return {
+            'density': float(density),
+            'gamma': bool(gamma),
+        }
+
     return {
-        'density': config.get('Ground_kpts_density'),
         'size': (
-            config.get('Ground_kpts_x', 5),
-            config.get('Ground_kpts_y', 5),
-            config.get('Ground_kpts_z', 5),
+            int(config.get('Ground_kpts_x', 5)),
+            int(config.get('Ground_kpts_y', 5)),
+            int(config.get('Ground_kpts_z', 5)),
         ),
         'gamma': bool(gamma),
     }
@@ -449,10 +524,16 @@ def _build_backend(
         pseudo_resolver = resolve_qe_pseudopotentials
 
     pseudo_options = {
-        'family': config.get('QE_pseudo_family', 'pseudodojo'),
-        'xc': config.get('QE_pseudo_xc', 'pbe'),
-        'relativistic': config.get('QE_pseudo_relativistic', 'scalar'),
-        'accuracy': config.get('QE_pseudo_accuracy', 'standard'),
+        'family': str(
+            config.get('QE_pseudo_family', 'pseudodojo')
+        ).strip().lower(),
+        'xc': str(config.get('QE_pseudo_xc', 'pbe')).strip().lower(),
+        'relativistic': str(
+            config.get('QE_pseudo_relativistic', 'scalar')
+        ).strip().lower(),
+        'accuracy': str(
+            config.get('QE_pseudo_accuracy', 'standard')
+        ).strip().lower(),
     }
     pseudo_dir = config.get('QE_pseudo_dir')
     if pseudo_dir is None:
@@ -728,7 +809,6 @@ def execute_convergence_plan(
             else:
                 lattice_kpoints = {
                     'density': selected_kpoint,
-                    'size': (5, 5, 5),
                     'gamma': _build_kpoint_settings(config)['gamma'],
                 }
         else:
@@ -782,6 +862,19 @@ def _selected_kpoint_json(selection):
     return {'density': value}
 
 
+def _kpoint_settings_json(settings):
+    """Return one explicit, JSON-safe k-point mode."""
+    rendered = {
+        'gamma': bool(settings.get('gamma', False)),
+    }
+    density = settings.get('density')
+    if density is not None:
+        rendered['density'] = density
+    else:
+        rendered['size'] = list(settings['size'])
+    return rendered
+
+
 def _result_summary(plan, result):
     """Build the stable, engine-independent JSON result structure."""
     cutoff_selection = None
@@ -828,11 +921,9 @@ def _result_summary(plan, result):
                     if isinstance(point.value, tuple)
                     else point.value
                 ),
-                'kpoint_settings': {
-                    'density': point.kpoint_settings.get('density'),
-                    'size': list(point.kpoint_settings.get('size', ())),
-                    'gamma': point.kpoint_settings.get('gamma', False),
-                },
+                'kpoint_settings': _kpoint_settings_json(
+                    point.kpoint_settings
+                ),
                 'total_energy_ev': point.total_energy_ev,
                 'energy_ev_per_atom': point.energy_ev_per_atom,
             }

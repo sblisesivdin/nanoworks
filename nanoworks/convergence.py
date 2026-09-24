@@ -473,7 +473,6 @@ def _normalize_kpoint_candidate(value, gamma):
         return (
             {
                 'density': density,
-                'size': (5, 5, 5),
                 'gamma': bool(gamma),
             },
             density,
@@ -516,7 +515,6 @@ def _normalize_kpoint_candidate(value, gamma):
     normalized_mesh = tuple(normalized_mesh)
     return (
         {
-            'density': None,
             'size': normalized_mesh,
             'gamma': bool(gamma),
         },

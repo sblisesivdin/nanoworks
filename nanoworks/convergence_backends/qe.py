@@ -47,6 +47,10 @@ class QEStaticEnergyBackend:
         workdir.mkdir(parents=True, exist_ok=True)
         kpoint_settings = dict(kpoint_settings)
         settings = dict(settings)
+        kpoint_density = kpoint_settings.get('density')
+        kpoint_size = kpoint_settings.get('size')
+        if kpoint_density is None and kpoint_size is None:
+            kpoint_size = (5, 5, 5)
 
         calculation = self.engine_module.run_scf(
             atoms=atoms,
@@ -56,8 +60,8 @@ class QEStaticEnergyBackend:
             pseudopotentials=self.pseudopotentials,
             pseudo_dir=self.pseudo_dir,
             cutoff_ev=float(cutoff_ev),
-            kpoint_density=kpoint_settings.get('density'),
-            kpoint_size=kpoint_settings.get('size', (5, 5, 5)),
+            kpoint_density=kpoint_density,
+            kpoint_size=kpoint_size,
             gamma=bool(kpoint_settings.get('gamma', False)),
             total_charge=settings.get('total_charge', 0.0),
             nbands=settings.get('nbands'),

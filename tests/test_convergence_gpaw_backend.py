@@ -80,6 +80,7 @@ class TestGPAWConvergenceBackend(unittest.TestCase):
         self.assertEqual(kwargs['cutoff'], 500.0)
         self.assertEqual(kwargs['xc'], 'PBE')
         self.assertEqual(kwargs['kpoint_density'], 3.0)
+        self.assertIsNone(kwargs['kpoint_size'])
         self.assertTrue(kwargs['gamma'])
         self.assertEqual(kwargs['parallel'], {'domain': 8})
         self.assertEqual(kwargs['mixer'], 'default-mixer')
@@ -108,6 +109,7 @@ class TestGPAWConvergenceBackend(unittest.TestCase):
         self.assertEqual(kwargs['xc_calc'], 'HSE06')
         self.assertEqual(kwargs['exx_fraction'], 0.25)
         self.assertEqual(kwargs['omega'], 0.11)
+        self.assertIsNone(kwargs['kpoint_density'])
         self.assertEqual(kwargs['kpoint_size'], (4, 4, 4))
         engine.create_regular_pw_ground_calc.assert_not_called()
 
