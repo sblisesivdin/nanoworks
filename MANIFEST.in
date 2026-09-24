@@ -1,6 +1,5 @@
 graft nanoworks
 graft examples
-graft optimizations
 include pyproject.toml
 include README.md
 include LICENSE.md

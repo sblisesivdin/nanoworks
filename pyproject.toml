@@ -8,9 +8,6 @@ include = ["nanoworks*"]
 [tool.setuptools.package-data]
 "nanoworks" = ["examples/*", "examples/**/*"]
 
-[tool.setuptools.data-files]
-"share/nanoworks/optimizations" = ["optimizations/*.py"]
-
 [tool.setuptools.dynamic]
 version = {attr = "nanoworks.__version__"}
 

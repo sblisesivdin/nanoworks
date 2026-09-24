@@ -203,12 +203,20 @@ vaspconverter \
   --system-name Silicon
 ```
 
-### Helper Scripts
-Nanoworks includes several optimization scripts (found via the `nanoworks` command) to help converge DFT parameters:
-*   `optimize_cutoff.py`
-*   `optimize_kpoints.py`
-*   `optimize_kptsdensity.py`
-*   `optimize_latticeparam.py`
+### DFT Parameter Convergence
+
+Use `dftconverge` for ordered plane-wave cutoff, k-point, and lattice-scale
+convergence with GPAW or Quantum ESPRESSO:
+
+```bash
+dftconverge --check -p 4 -g structure.cif -i convergence.py
+dftconverge -p 4 -g structure.cif -i convergence.py
+```
+
+The workflow prints every completed point and saves JSON, CSV, and optimized
+structure results. See the
+[convergence documentation](https://nanoworks.readthedocs.io/en/latest/dftconverge.html)
+for input keywords and examples.
 
 ## Examples
 

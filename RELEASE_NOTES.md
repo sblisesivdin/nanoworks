@@ -34,7 +34,7 @@
 - `mlsolve` honors the selected optimizer and exposes model-specific options in input files.
 - GPAW DOS data exports use the same Fermi-energy reference as the plotted DOS.
 - Release installers are version-pinned; command version output also works in minimal installations.
-- Packaging includes the optimization helpers and preserves the executable `mlsolve` command.
+- Legacy standalone optimization helpers are replaced by `dftconverge` and removed from packages.
 - The DFT engine layer, keyword reference and QE examples are updated while preserving the established GPAW workflow.
 
 ### Version 26.8.0 - Aug 3, 2026

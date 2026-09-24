@@ -48,25 +48,22 @@ class TestNanoworksCLI(unittest.TestCase):
         self.assertIn('available for SOC workflows', rendered)
         self.assertIn('dftconverge --check', rendered)
 
-    def test_package_folder_uses_installed_share_directory(self):
+    def test_package_folder_uses_packaged_examples_directory(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             package_dir = root / 'site-packages' / 'nanoworks'
             package_dir.mkdir(parents=True)
-            shared_dir = (
-                root / 'venv' / 'share' / 'nanoworks' / 'optimizations'
-            )
-            shared_dir.mkdir(parents=True)
+            examples_dir = package_dir / 'examples'
+            examples_dir.mkdir()
 
             with patch.object(
                 cli.nanoworks,
                 '__file__',
                 str(package_dir / '__init__.py'),
             ):
-                with patch.object(cli.sys, 'prefix', str(root / 'venv')):
-                    located = cli.find_package_folder('optimizations')
+                located = cli.find_package_folder('examples')
 
-            self.assertEqual(located, shared_dir.resolve())
+            self.assertEqual(located, examples_dir.resolve())
 
     @patch('nanoworks.cli.find_package_folder', return_value=None)
     @patch('nanoworks.cli.metadata.version')

@@ -90,16 +90,14 @@ def print_version_information():
         )
     print("--------------------------------------------------------------------")
 
-    folders = ["optimizations", "examples"]
-    for folder in folders:
-        path = find_package_folder(folder)
-        if path:
-            print(f"{folder.capitalize()} folder: {path}")
-        else:
-            print(
-                f"Could not locate {folder} folder. "
-                "(It may not be included in the installation)"
-            )
+    examples_path = find_package_folder("examples")
+    if examples_path:
+        print(f"Examples folder: {examples_path}")
+    else:
+        print(
+            "Could not locate examples folder. "
+            "(It may not be included in the installation)"
+        )
 
     print("--------------------------------------------------------------------")
     print("If you do not have examples, run nanoworks --install-examples")

@@ -304,16 +304,6 @@ Command for creating nanoworks input and geometry files from VASP files
    $ vaspconverter --poscar POSCAR --incar INCAR --kpoints KPOINTS --output-dir example_folder --system-name Silicon
 
 
-Helper Scripts
---------------
-
-Nanoworks includes several optimization scripts (found via the `nanoworks` command) to help converge DFT parameters:
-
-* optimize_cutoff.py
-* optimize_kpoints.py
-* optimize_kptsdensity.py
-* optimize_latticeparam.py
-
 Examples
 --------
 
