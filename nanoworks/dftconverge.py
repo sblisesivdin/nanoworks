@@ -1,6 +1,8 @@
 """Command-line entry point for Nanoworks convergence workflows."""
 
 import argparse
+import csv
+import json
 import runpy
 from pathlib import Path
 
@@ -188,6 +190,20 @@ def _build_backend(
     )
 
 
+def _resolve_workdir(config, plan):
+    """Resolve convergence output paths relative to the input file."""
+    workdir = Path(
+        config.get(
+            'Convergence_workdir',
+            plan.geometry_file.stem + '-convergence',
+        )
+    )
+    if not workdir.is_absolute():
+        workdir = plan.input_file.parent / workdir
+
+    return workdir
+
+
 def execute_convergence_plan(
     config,
     plan,
@@ -213,14 +229,7 @@ def execute_convergence_plan(
         pseudo_resolver=pseudo_resolver,
     )
 
-    workdir = Path(
-        config.get(
-            'Convergence_workdir',
-            plan.geometry_file.stem + '-convergence',
-        )
-    )
-    if not workdir.is_absolute():
-        workdir = plan.input_file.parent / workdir
+    workdir = _resolve_workdir(config, plan)
 
     tolerance = config.get('Convergence_energy_tolerance', 0.001)
     consecutive_points = config.get(
@@ -348,7 +357,194 @@ def execute_convergence_plan(
     )
 
 
-def format_convergence_result(plan, result):
+def _selected_kpoint_json(selection):
+    """Return a JSON-safe selected k-point description."""
+    if selection is None:
+        return None
+
+    value = selection.value
+    if isinstance(value, tuple):
+        return {'size': list(value)}
+
+    return {'density': value}
+
+
+def _result_summary(plan, result):
+    """Build the stable, engine-independent JSON result structure."""
+    cutoff_selection = None
+    if result.cutoff is not None and result.cutoff.selection is not None:
+        cutoff_selection = result.cutoff.selection.value
+
+    lattice_selection = None
+    if result.lattice is not None and result.lattice.selection is not None:
+        lattice_selection = result.lattice.selection.scale
+
+    summary = {
+        'schema_version': 1,
+        'engine': plan.engine,
+        'tasks': list(plan.tasks),
+        'input_file': str(plan.input_file),
+        'geometry_file': str(plan.geometry_file),
+        'selected': {
+            'cutoff_ev': cutoff_selection,
+            'kpoints': (
+                None
+                if result.kpoints is None
+                else _selected_kpoint_json(result.kpoints.selection)
+            ),
+            'lattice_scale': lattice_selection,
+        },
+        'sweeps': {},
+    }
+
+    if result.cutoff is not None:
+        summary['sweeps']['cutoff'] = [
+            {
+                'cutoff_ev': point.cutoff_ev,
+                'total_energy_ev': point.total_energy_ev,
+                'energy_ev_per_atom': point.energy_ev_per_atom,
+            }
+            for point in result.cutoff.points
+        ]
+
+    if result.kpoints is not None:
+        summary['sweeps']['kpoints'] = [
+            {
+                'value': (
+                    list(point.value)
+                    if isinstance(point.value, tuple)
+                    else point.value
+                ),
+                'kpoint_settings': {
+                    'density': point.kpoint_settings.get('density'),
+                    'size': list(point.kpoint_settings.get('size', ())),
+                    'gamma': point.kpoint_settings.get('gamma', False),
+                },
+                'total_energy_ev': point.total_energy_ev,
+                'energy_ev_per_atom': point.energy_ev_per_atom,
+            }
+            for point in result.kpoints.points
+        ]
+
+    if result.lattice is not None:
+        summary['sweeps']['lattice'] = [
+            {
+                'scale': point.scale,
+                'cell': [list(vector) for vector in point.cell],
+                'total_energy_ev': point.total_energy_ev,
+                'energy_ev_per_atom': point.energy_ev_per_atom,
+            }
+            for point in result.lattice.points
+        ]
+
+    return summary
+
+
+def _result_rows(result):
+    """Yield flat rows suitable for plotting or spreadsheet import."""
+    if result.cutoff is not None:
+        for point in result.cutoff.points:
+            yield {
+                'task': 'cutoff',
+                'parameter_type': 'cutoff_ev',
+                'parameter_value': '{:g}'.format(point.cutoff_ev),
+                'total_energy_ev': point.total_energy_ev,
+                'energy_ev_per_atom': point.energy_ev_per_atom,
+            }
+
+    if result.kpoints is not None:
+        for point in result.kpoints.points:
+            if isinstance(point.value, tuple):
+                parameter_type = 'kpoint_mesh'
+                parameter_value = 'x'.join(
+                    str(value) for value in point.value
+                )
+            else:
+                parameter_type = 'kpoint_density'
+                parameter_value = '{:g}'.format(point.value)
+
+            yield {
+                'task': 'kpoints',
+                'parameter_type': parameter_type,
+                'parameter_value': parameter_value,
+                'total_energy_ev': point.total_energy_ev,
+                'energy_ev_per_atom': point.energy_ev_per_atom,
+            }
+
+    if result.lattice is not None:
+        for point in result.lattice.points:
+            yield {
+                'task': 'lattice',
+                'parameter_type': 'lattice_scale',
+                'parameter_value': '{:g}'.format(point.scale),
+                'total_energy_ev': point.total_energy_ev,
+                'energy_ev_per_atom': point.energy_ev_per_atom,
+            }
+
+
+def write_convergence_results(
+    config,
+    plan,
+    result,
+    *,
+    structure_writer=None,
+):
+    """Persist machine-readable results and the optimized structure."""
+    workdir = _resolve_workdir(config, plan)
+    workdir.mkdir(parents=True, exist_ok=True)
+
+    summary_file = workdir / 'convergence-results.json'
+    summary_file.write_text(
+        json.dumps(
+            _result_summary(plan, result),
+            indent=2,
+            sort_keys=True,
+        ) + '\n',
+        encoding='utf-8',
+    )
+
+    csv_file = workdir / 'convergence-results.csv'
+    fieldnames = (
+        'task',
+        'parameter_type',
+        'parameter_value',
+        'total_energy_ev',
+        'energy_ev_per_atom',
+    )
+    with csv_file.open('w', encoding='utf-8', newline='') as fd:
+        writer = csv.DictWriter(fd, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(_result_rows(result))
+
+    artifacts = {
+        'summary': summary_file,
+        'table': csv_file,
+    }
+
+    if (
+        result.lattice is not None
+        and result.lattice.selection is not None
+        and result.lattice.optimized_atoms is not None
+    ):
+        if structure_writer is None:
+            from ase.io import write
+
+            structure_writer = write
+
+        structure_file = (
+            workdir / (plan.geometry_file.stem + '-optimized.cif')
+        )
+        structure_writer(
+            str(structure_file),
+            result.lattice.optimized_atoms,
+            format='cif',
+        )
+        artifacts['optimized_structure'] = structure_file
+
+    return artifacts
+
+
+def format_convergence_result(plan, result, artifacts=None):
     """Render completed convergence sweeps."""
     lines = [
         'Nanoworks dftconverge result',
@@ -421,6 +617,13 @@ def format_convergence_result(plan, result):
                 )
             )
 
+    if artifacts:
+        lines.append('Artifacts:')
+        lines.extend(
+            '  {0}: {1}'.format(name, path)
+            for name, path in artifacts.items()
+        )
+
     return '\n'.join(lines)
 
 
@@ -441,7 +644,12 @@ def main(argv=None):
             rendered = format_plan(plan)
         else:
             result = execute_convergence_plan(config, plan)
-            rendered = format_convergence_result(plan, result)
+            artifacts = write_convergence_results(config, plan, result)
+            rendered = format_convergence_result(
+                plan,
+                result,
+                artifacts=artifacts,
+            )
     except (
         NotImplementedError,
         OSError,

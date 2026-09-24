@@ -1,4 +1,6 @@
+import csv
 import io
+import json
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -143,6 +145,22 @@ class TestDFTConvergeCLI(unittest.TestCase):
                 pseudo_dir_getter=pseudo_dir_getter,
                 pseudo_resolver=pseudo_resolver,
             )
+            artifacts = dftconverge.write_convergence_results(
+                config={},
+                plan=plan,
+                result=result,
+            )
+            summary = json.loads(
+                artifacts['summary'].read_text(encoding='utf-8')
+            )
+            with artifacts['table'].open(
+                encoding='utf-8',
+                newline='',
+            ) as fd:
+                rows = list(csv.DictReader(fd))
+            optimized_structure_exists = (
+                artifacts['optimized_structure'].is_file()
+            )
 
         backend_loader.assert_called_once_with(
             'QE',
@@ -167,6 +185,16 @@ class TestDFTConvergeCLI(unittest.TestCase):
             call['kpoint_settings']['density'] == 4.0
             for call in backend.calls[8:]
         ))
+        self.assertEqual(summary['schema_version'], 1)
+        self.assertEqual(summary['selected']['cutoff_ev'], 500.0)
+        self.assertEqual(
+            summary['selected']['kpoints'],
+            {'density': 4.0},
+        )
+        self.assertEqual(summary['selected']['lattice_scale'], 1.0)
+        self.assertEqual(len(rows), 11)
+        self.assertEqual(rows[-1]['task'], 'lattice')
+        self.assertTrue(optimized_structure_exists)
 
     def test_cutoff_execution_maps_gpaw_spin_configuration(self):
         atoms = Mock()
