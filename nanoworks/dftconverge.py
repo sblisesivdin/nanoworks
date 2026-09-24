@@ -6,8 +6,10 @@ from pathlib import Path
 
 import nanoworks
 from nanoworks.convergence import (
+    ConvergenceRunResult,
     build_convergence_plan,
     run_cutoff_sweep,
+    run_kpoint_sweep,
 )
 from nanoworks.convergence_backends import load_convergence_backend
 from nanoworks.engine import resolve_initial_magnetic_moments
@@ -195,17 +197,9 @@ def execute_convergence_plan(
     pseudo_resolver=None,
 ):
     """Execute the implemented portion of a validated workflow plan."""
-    if plan.tasks != ('cutoff',):
+    if 'lattice' in plan.tasks:
         raise NotImplementedError(
-            'Calculation execution currently supports only '
-            "Convergence_tasks = ['cutoff']; kpoints and lattice "
-            'execution will be added next.'
-        )
-
-    cutoff_values = config.get('Convergence_cutoffs')
-    if cutoff_values is None:
-        raise ValueError(
-            'Cutoff execution requires Convergence_cutoffs.'
+            'Lattice convergence execution is not available yet.'
         )
 
     if structure_reader is None:
@@ -232,53 +226,128 @@ def execute_convergence_plan(
     if not workdir.is_absolute():
         workdir = plan.input_file.parent / workdir
 
-    return run_cutoff_sweep(
-        backend=backend,
-        atoms=atoms,
-        cutoff_values=cutoff_values,
-        kpoint_settings=_build_kpoint_settings(config),
-        workdir=workdir / 'cutoff',
-        settings=_build_static_energy_settings(
-            config,
-            atoms,
-            plan.engine,
-        ),
-        parallel_cores=plan.parallel_cores,
-        tolerance_ev_per_atom=config.get(
-            'Convergence_energy_tolerance',
-            0.001,
-        ),
-        consecutive_points=config.get(
-            'Convergence_consecutive_points',
-            2,
-        ),
+    tolerance = config.get('Convergence_energy_tolerance', 0.001)
+    consecutive_points = config.get(
+        'Convergence_consecutive_points',
+        2,
     )
-
-
-def format_cutoff_result(plan, result):
-    """Render a completed cutoff sweep."""
-    lines = [
-        'Nanoworks dftconverge cutoff result',
-        'Engine: ' + plan.engine,
-        'Points:',
-    ]
-    lines.extend(
-        '  {0:g} eV: {1:.12g} eV ({2:.12g} eV/atom)'.format(
-            point.cutoff_ev,
-            point.total_energy_ev,
-            point.energy_ev_per_atom,
-        )
-        for point in result.points
+    settings = _build_static_energy_settings(
+        config,
+        atoms,
+        plan.engine,
     )
+    cutoff_result = None
+    kpoint_result = None
 
-    if result.selection is None:
-        lines.append('Selected cutoff: none (tolerance not reached)')
-    else:
-        lines.append(
-            'Selected cutoff: {0:g} eV'.format(
-                result.selection.value
+    if 'cutoff' in plan.tasks:
+        cutoff_values = config.get('Convergence_cutoffs')
+        if cutoff_values is None:
+            raise ValueError(
+                'Cutoff execution requires Convergence_cutoffs.'
             )
+
+        cutoff_result = run_cutoff_sweep(
+            backend=backend,
+            atoms=atoms,
+            cutoff_values=cutoff_values,
+            kpoint_settings=_build_kpoint_settings(config),
+            workdir=workdir / 'cutoff',
+            settings=settings,
+            parallel_cores=plan.parallel_cores,
+            tolerance_ev_per_atom=tolerance,
+            consecutive_points=consecutive_points,
         )
+
+    if 'kpoints' in plan.tasks:
+        kpoint_values = config.get('Convergence_kpoints')
+        if kpoint_values is None:
+            raise ValueError(
+                'K-point execution requires Convergence_kpoints.'
+            )
+
+        if cutoff_result is not None:
+            if cutoff_result.selection is None:
+                raise RuntimeError(
+                    'Cutoff convergence was not reached; k-point '
+                    'execution was not started.'
+                )
+            cutoff_ev = cutoff_result.selection.value
+        else:
+            cutoff_ev = config.get('Cut_off_energy')
+            if cutoff_ev is None:
+                raise ValueError(
+                    'K-point-only execution requires Cut_off_energy.'
+                )
+
+        kpoint_result = run_kpoint_sweep(
+            backend=backend,
+            atoms=atoms,
+            kpoint_values=kpoint_values,
+            cutoff_ev=cutoff_ev,
+            workdir=workdir / 'kpoints',
+            settings=settings,
+            parallel_cores=plan.parallel_cores,
+            gamma=_build_kpoint_settings(config)['gamma'],
+            tolerance_ev_per_atom=tolerance,
+            consecutive_points=consecutive_points,
+        )
+
+    return ConvergenceRunResult(
+        cutoff=cutoff_result,
+        kpoints=kpoint_result,
+    )
+
+
+def format_convergence_result(plan, result):
+    """Render completed convergence sweeps."""
+    lines = [
+        'Nanoworks dftconverge result',
+        'Engine: ' + plan.engine,
+    ]
+
+    if result.cutoff is not None:
+        lines.append('Cutoff points:')
+        lines.extend(
+            '  {0:g} eV: {1:.12g} eV ({2:.12g} eV/atom)'.format(
+                point.cutoff_ev,
+                point.total_energy_ev,
+                point.energy_ev_per_atom,
+            )
+            for point in result.cutoff.points
+        )
+        if result.cutoff.selection is None:
+            lines.append('Selected cutoff: none (tolerance not reached)')
+        else:
+            lines.append(
+                'Selected cutoff: {0:g} eV'.format(
+                    result.cutoff.selection.value
+                )
+            )
+
+    if result.kpoints is not None:
+        lines.append('K-point points:')
+        for point in result.kpoints.points:
+            if isinstance(point.value, tuple):
+                label = 'x'.join(str(value) for value in point.value)
+            else:
+                label = '{:g} density'.format(point.value)
+            lines.append(
+                '  {0}: {1:.12g} eV ({2:.12g} eV/atom)'.format(
+                    label,
+                    point.total_energy_ev,
+                    point.energy_ev_per_atom,
+                )
+            )
+
+        if result.kpoints.selection is None:
+            lines.append('Selected k-points: none (tolerance not reached)')
+        else:
+            selected = result.kpoints.selection.value
+            if isinstance(selected, tuple):
+                selected = 'x'.join(str(value) for value in selected)
+            else:
+                selected = '{:g} density'.format(selected)
+            lines.append('Selected k-points: ' + selected)
 
     return '\n'.join(lines)
 
@@ -300,7 +369,7 @@ def main(argv=None):
             rendered = format_plan(plan)
         else:
             result = execute_convergence_plan(config, plan)
-            rendered = format_cutoff_result(plan, result)
+            rendered = format_convergence_result(plan, result)
     except (
         NotImplementedError,
         OSError,

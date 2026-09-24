@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from nanoworks import dftconverge
-from nanoworks.convergence import StaticEnergyResult
+from nanoworks.convergence import ConvergenceRunResult, StaticEnergyResult
 
 
 class TestDFTConvergeCLI(unittest.TestCase):
@@ -66,15 +66,26 @@ class TestDFTConvergeCLI(unittest.TestCase):
 
             def calculate_static_energy(self, atoms, **kwargs):
                 self.calls.append(kwargs)
-                energies = {
-                    400.0: -20.0,
-                    450.0: -20.02,
-                    500.0: -20.021,
-                    550.0: -20.0215,
-                }
+                density = kwargs['kpoint_settings']['density']
+                if density is None:
+                    energies = {
+                        400.0: -20.0,
+                        450.0: -20.02,
+                        500.0: -20.021,
+                        550.0: -20.0215,
+                    }
+                    energy = energies[kwargs['cutoff_ev']]
+                else:
+                    energies = {
+                        2.0: -20.0,
+                        3.0: -20.02,
+                        4.0: -20.021,
+                        5.0: -20.0215,
+                    }
+                    energy = energies[density]
                 return StaticEnergyResult(
                     engine='QE',
-                    total_energy_ev=energies[kwargs['cutoff_ev']],
+                    total_energy_ev=energy,
                 )
 
         backend = FakeBackend()
@@ -91,7 +102,7 @@ class TestDFTConvergeCLI(unittest.TestCase):
             plan = dftconverge.build_convergence_plan(
                 config={
                     'Engine': 'QE',
-                    'Convergence_tasks': ['cutoff'],
+                    'Convergence_tasks': ['cutoff', 'kpoints'],
                 },
                 input_file=input_file,
                 geometry_file=geometry_file,
@@ -101,8 +112,9 @@ class TestDFTConvergeCLI(unittest.TestCase):
             result = dftconverge.execute_convergence_plan(
                 config={
                     'Engine': 'QE',
-                    'Convergence_tasks': ['cutoff'],
+                    'Convergence_tasks': ['cutoff', 'kpoints'],
                     'Convergence_cutoffs': [400, 450, 500, 550],
+                    'Convergence_kpoints': [2.0, 3.0, 4.0, 5.0],
                     'Ground_kpts_x': 6,
                     'Ground_kpts_y': 6,
                     'Ground_kpts_z': 2,
@@ -121,13 +133,18 @@ class TestDFTConvergeCLI(unittest.TestCase):
             pseudo_dir=Path('/pseudos'),
             executable='pw.x',
         )
-        self.assertEqual(len(backend.calls), 4)
+        self.assertEqual(len(backend.calls), 8)
         self.assertEqual(
             backend.calls[0]['kpoint_settings']['size'],
             (6, 6, 2),
         )
         self.assertEqual(backend.calls[0]['parallel_cores'], 6)
-        self.assertEqual(result.selection.value, 500.0)
+        self.assertEqual(result.cutoff.selection.value, 500.0)
+        self.assertEqual(result.kpoints.selection.value, 4.0)
+        self.assertTrue(all(
+            call['cutoff_ev'] == 500.0
+            for call in backend.calls[4:]
+        ))
 
     def test_cutoff_execution_maps_gpaw_spin_configuration(self):
         atoms = Mock()
@@ -193,7 +210,7 @@ class TestDFTConvergeCLI(unittest.TestCase):
 
             with self.assertRaisesRegex(
                 NotImplementedError,
-                'currently supports only',
+                'Lattice convergence',
             ):
                 dftconverge.execute_convergence_plan(
                     config={},
@@ -224,12 +241,13 @@ class TestDFTConvergeCLI(unittest.TestCase):
                 ),
             )
             fake_result.selection = Mock(value=400.0)
+            fake_run_result = ConvergenceRunResult(cutoff=fake_result)
 
             output = io.StringIO()
             with patch.object(
                 dftconverge,
                 'execute_convergence_plan',
-                return_value=fake_result,
+                return_value=fake_run_result,
             ) as execute, redirect_stdout(output):
                 result = dftconverge.main([
                     '-i',

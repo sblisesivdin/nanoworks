@@ -86,6 +86,33 @@ class CutoffSweepResult:
     selection: Optional[ConvergenceSelection]
 
 
+@dataclass(frozen=True)
+class KPointSweepPoint:
+    """One completed k-point sampling calculation."""
+
+    value: Any
+    kpoint_settings: Dict[str, Any]
+    total_energy_ev: float
+    energy_ev_per_atom: float
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class KPointSweepResult:
+    """Completed k-point sweep and its optional selection."""
+
+    points: Tuple[KPointSweepPoint, ...]
+    selection: Optional[ConvergenceSelection]
+
+
+@dataclass(frozen=True)
+class ConvergenceRunResult:
+    """Results produced by an ordered convergence workflow."""
+
+    cutoff: Optional[CutoffSweepResult] = None
+    kpoints: Optional[KPointSweepResult] = None
+
+
 def normalize_convergence_tasks(tasks=None):
     """Return requested tasks once, in dependency-safe workflow order."""
     if tasks is None:
@@ -378,6 +405,188 @@ def run_cutoff_sweep(
     )
 
     return CutoffSweepResult(
+        points=tuple(points),
+        selection=selection,
+    )
+
+
+def _normalize_kpoint_candidate(value, gamma):
+    """Return a backend setting, display value, and ordering metric."""
+    if isinstance(value, (bool, str, bytes)):
+        raise TypeError(
+            'K-point candidates must be densities or three-value meshes.'
+        )
+
+    try:
+        density = float(value)
+    except (TypeError, ValueError):
+        density = None
+
+    if density is not None:
+        if not math.isfinite(density) or density <= 0.0:
+            raise ValueError(
+                'K-point densities must be finite and greater than zero.'
+            )
+
+        return (
+            {
+                'density': density,
+                'size': (5, 5, 5),
+                'gamma': bool(gamma),
+            },
+            density,
+            density,
+        )
+
+    try:
+        mesh = tuple(value)
+    except TypeError as exc:
+        raise TypeError(
+            'K-point candidates must be densities or three-value meshes.'
+        ) from exc
+
+    if len(mesh) != 3:
+        raise ValueError(
+            'Each explicit k-point mesh must contain three values.'
+        )
+
+    normalized_mesh = []
+    for component in mesh:
+        if isinstance(component, bool):
+            raise TypeError(
+                'K-point mesh components must be positive integers.'
+            )
+
+        try:
+            integer = int(component)
+        except (TypeError, ValueError) as exc:
+            raise TypeError(
+                'K-point mesh components must be positive integers.'
+            ) from exc
+
+        if integer != component or integer <= 0:
+            raise ValueError(
+                'K-point mesh components must be positive integers.'
+            )
+
+        normalized_mesh.append(integer)
+
+    normalized_mesh = tuple(normalized_mesh)
+    return (
+        {
+            'density': None,
+            'size': normalized_mesh,
+            'gamma': bool(gamma),
+        },
+        normalized_mesh,
+        math.prod(normalized_mesh),
+    )
+
+
+def run_kpoint_sweep(
+    backend: StaticEnergyBackend,
+    atoms: Any,
+    kpoint_values: Sequence[Any],
+    cutoff_ev: float,
+    workdir: Path,
+    settings: Optional[Mapping[str, Any]] = None,
+    parallel_cores: int = 1,
+    gamma: bool = False,
+    tolerance_ev_per_atom: float = 0.001,
+    consecutive_points: int = 2,
+) -> KPointSweepResult:
+    """Run an ordered density or explicit-mesh k-point sweep."""
+    candidates = tuple(
+        _normalize_kpoint_candidate(value, gamma)
+        for value in kpoint_values
+    )
+
+    if len(candidates) < consecutive_points + 1:
+        raise ValueError(
+            'K-point sweep does not contain enough values for the '
+            'requested convergence window.'
+        )
+
+    metrics = tuple(candidate[2] for candidate in candidates)
+    if any(
+        current <= previous
+        for previous, current in zip(metrics, metrics[1:])
+    ):
+        raise ValueError(
+            'K-point candidates must be strictly increasing.'
+        )
+
+    cutoff_ev = float(cutoff_ev)
+    if not math.isfinite(cutoff_ev) or cutoff_ev <= 0.0:
+        raise ValueError(
+            'Cutoff value must be finite and greater than zero.'
+        )
+
+    try:
+        atom_count = len(atoms)
+    except TypeError as exc:
+        raise TypeError(
+            'The convergence structure must provide an atom count.'
+        ) from exc
+
+    if atom_count <= 0:
+        raise ValueError(
+            'The convergence structure must contain at least one atom.'
+        )
+
+    if parallel_cores <= 0:
+        raise ValueError('Parallel core count must be greater than zero.')
+
+    settings = {} if settings is None else dict(settings)
+    workdir = Path(workdir)
+    workdir.mkdir(parents=True, exist_ok=True)
+    points = []
+
+    for index, (kpoint_settings, value, _) in enumerate(candidates):
+        if isinstance(value, tuple):
+            label_value = 'x'.join(str(component) for component in value)
+            label_kind = 'mesh'
+        else:
+            label_value = ('{:.8g}'.format(value)).replace('.', 'p')
+            label_kind = 'density'
+
+        result = backend.calculate_static_energy(
+            atoms,
+            cutoff_ev=cutoff_ev,
+            kpoint_settings=kpoint_settings,
+            workdir=workdir / '{:03d}-{}-{}'.format(
+                index,
+                label_kind,
+                label_value,
+            ),
+            settings=settings,
+            parallel_cores=parallel_cores,
+        )
+        energy = float(result.total_energy_ev)
+        if not math.isfinite(energy):
+            raise RuntimeError(
+                'Static-energy backend returned a non-finite energy.'
+            )
+
+        points.append(
+            KPointSweepPoint(
+                value=value,
+                kpoint_settings=dict(kpoint_settings),
+                total_energy_ev=energy,
+                energy_ev_per_atom=energy / atom_count,
+                metadata=dict(result.metadata),
+            )
+        )
+
+    selection = select_converged_value(
+        values=[point.value for point in points],
+        total_energies_ev=[point.total_energy_ev for point in points],
+        atom_count=atom_count,
+        tolerance_ev_per_atom=tolerance_ev_per_atom,
+        consecutive_points=consecutive_points,
+    )
+
+    return KPointSweepResult(
         points=tuple(points),
         selection=selection,
     )

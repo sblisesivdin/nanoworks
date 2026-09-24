@@ -8,6 +8,7 @@ from nanoworks.convergence import (
     build_convergence_plan,
     normalize_convergence_tasks,
     run_cutoff_sweep,
+    run_kpoint_sweep,
     select_converged_value,
 )
 
@@ -207,6 +208,91 @@ class TestConvergenceCore(unittest.TestCase):
                 atoms=[object()],
                 cutoff_values=[400, 500, 450],
                 kpoint_settings={'size': (4, 4, 4)},
+                workdir=Path('unused'),
+            )
+
+    def test_kpoint_density_sweep_uses_common_backend(self):
+        class FakeBackend:
+            name = 'FAKE'
+
+            def __init__(self):
+                self.calls = []
+
+            def calculate_static_energy(self, atoms, **kwargs):
+                self.calls.append(kwargs)
+                energies = {
+                    2.0: -20.0,
+                    3.0: -20.02,
+                    4.0: -20.021,
+                    5.0: -20.0215,
+                }
+                density = kwargs['kpoint_settings']['density']
+                return StaticEnergyResult(
+                    engine=self.name,
+                    total_energy_ev=energies[density],
+                )
+
+        backend = FakeBackend()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = run_kpoint_sweep(
+                backend=backend,
+                atoms=[object(), object()],
+                kpoint_values=[2.0, 3.0, 4.0, 5.0],
+                cutoff_ev=500,
+                workdir=Path(temp_dir),
+                parallel_cores=4,
+                gamma=True,
+            )
+
+        self.assertEqual(len(backend.calls), 4)
+        self.assertEqual(backend.calls[0]['cutoff_ev'], 500.0)
+        self.assertTrue(
+            backend.calls[0]['kpoint_settings']['gamma']
+        )
+        self.assertEqual(result.selection.value, 4.0)
+
+    def test_kpoint_mesh_sweep_preserves_meshes(self):
+        class FakeBackend:
+            name = 'FAKE'
+
+            def calculate_static_energy(self, atoms, **kwargs):
+                mesh = kwargs['kpoint_settings']['size']
+                energies = {
+                    (2, 2, 1): -10.0,
+                    (4, 4, 1): -10.001,
+                    (6, 6, 1): -10.0015,
+                }
+                return StaticEnergyResult(
+                    engine=self.name,
+                    total_energy_ev=energies[mesh],
+                )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = run_kpoint_sweep(
+                backend=FakeBackend(),
+                atoms=[object()],
+                kpoint_values=[(2, 2, 1), (4, 4, 1), (6, 6, 1)],
+                cutoff_ev=450,
+                workdir=Path(temp_dir),
+            )
+
+        self.assertEqual(result.selection.value, (4, 4, 1))
+        self.assertEqual(
+            result.points[-1].kpoint_settings['size'],
+            (6, 6, 1),
+        )
+
+    def test_kpoint_sweep_rejects_unsorted_meshes(self):
+        class UnusedBackend:
+            def calculate_static_energy(self, *args, **kwargs):
+                raise AssertionError('backend must not be called')
+
+        with self.assertRaisesRegex(ValueError, 'strictly increasing'):
+            run_kpoint_sweep(
+                backend=UnusedBackend(),
+                atoms=[object()],
+                kpoint_values=[(4, 4, 1), (2, 2, 1), (6, 6, 1)],
+                cutoff_ev=450,
                 workdir=Path('unused'),
             )
 
