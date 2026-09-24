@@ -6,6 +6,7 @@ There are some example calculations given with different usage scenarios. Please
 
 | Name              | Notes  | 
 | ----------------- | ------ |
+| Convergence       | Common GPAW/QE cutoff, k-point, and lattice-scale optimization workflow for bulk Si |
 | Bulk-GaAs-noCIF   | Ground, DOS, and Band calculations of bulk GaAs with PW. Positions are given with an Atom object.          |
 | Cr2O-spin         |Spin-dependent electronic properties of CrO2 |
 | Fe-QE-spin-smoke  | Native QE Ground/DOS/PDOS/Band/PBand/Density smoke workflow for ferromagnetic bcc Fe |

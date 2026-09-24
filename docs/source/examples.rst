@@ -22,6 +22,11 @@ Below is a categorized overview of the available examples and what they demonstr
 Electronic Properties & Basic DFT
 ---------------------------------
 
+* **Silicon Convergence (GPAW and QE):**
+  Runs the same ordered cutoff, k-point, and lattice-scale workflow with both
+  engines and writes JSON, CSV, and optimized-CIF results. (Folder:
+  ``Convergence/``)
+
 * **Bulk GaAs (No CIF):**
   Demonstrates how to construct a bulk Gallium Arsenide (GaAs) structure purely using Atomic Simulation Environment (ASE) built-in methods, without relying on an external .cif file. (Folder: ``Bulk-GaAs-noCIF/``)
 

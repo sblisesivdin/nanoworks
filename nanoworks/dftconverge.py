@@ -3,7 +3,11 @@
 import argparse
 import csv
 import json
+import math
+import os
 import runpy
+import shutil
+import sys
 from pathlib import Path
 
 import nanoworks
@@ -16,6 +20,9 @@ from nanoworks.convergence import (
 )
 from nanoworks.convergence_backends import load_convergence_backend
 from nanoworks.engine import resolve_initial_magnetic_moments
+
+
+GPAW_MPI_ENV = 'NANOWORKS_DFTCONVERGE_MPI'
 
 
 def load_convergence_input(input_file):
@@ -76,6 +83,80 @@ def create_parser():
     return parser
 
 
+def build_gpaw_mpi_command(parallel_cores, args):
+    """Build the GPAW MPI restart command for dftconverge."""
+    mpi_executable = (
+        shutil.which('mpiexec')
+        or shutil.which('mpirun')
+        or shutil.which('srun')
+    )
+    if mpi_executable is None:
+        raise RuntimeError(
+            'mpiexec, mpirun, or srun was not found for parallel GPAW.'
+        )
+
+    gpaw_executable = shutil.which('gpaw')
+    if gpaw_executable is None:
+        raise RuntimeError('GPAW command was not found in PATH.')
+
+    process_flag = (
+        '-n'
+        if 'srun' in Path(mpi_executable).name
+        else '-np'
+    )
+    return [
+        mpi_executable,
+        process_flag,
+        str(parallel_cores),
+        gpaw_executable,
+        'python',
+        '--',
+        str(Path(__file__).resolve()),
+        '-p',
+        str(parallel_cores),
+        '-i',
+        str(args.input),
+        '-g',
+        str(args.geometry),
+    ]
+
+
+def restart_gpaw_with_mpi(parallel_cores, args):
+    """Replace the serial command with a GPAW MPI process."""
+    command = build_gpaw_mpi_command(parallel_cores, args)
+    child_environment = os.environ.copy()
+    child_environment[GPAW_MPI_ENV] = '1'
+    child_environment.pop('GPAW_MPI_BACKEND', None)
+
+    for variable in (
+        'OMP_NUM_THREADS',
+        'OPENBLAS_NUM_THREADS',
+        'MKL_NUM_THREADS',
+        'VECLIB_MAXIMUM_THREADS',
+        'NUMEXPR_NUM_THREADS',
+    ):
+        child_environment[variable] = '1'
+
+    print(
+        'Restarting GPAW convergence with '
+        + str(parallel_cores)
+        + ' processes: '
+        + ' '.join(command)
+    )
+    sys.stdout.flush()
+    os.execvpe(command[0], command, child_environment)
+
+
+def _parallel_rank():
+    """Return the ASE/GPAW rank while remaining serial for QE."""
+    try:
+        from ase.parallel import world
+    except ImportError:
+        return 0
+
+    return world.rank
+
+
 def format_plan(plan):
     """Render a concise human-readable convergence plan."""
     lines = [
@@ -93,6 +174,205 @@ def format_plan(plan):
     )
     lines.append('Result: VALID (no calculations executed)')
     return '\n'.join(lines)
+
+
+def _positive_float_values(config, key, minimum_count):
+    """Validate an increasing positive numeric convergence sequence."""
+    values = config.get(key)
+    if values is None:
+        raise ValueError(key + ' is required for the selected tasks.')
+    if isinstance(values, (str, bytes)):
+        raise TypeError(key + ' must be a numeric sequence.')
+
+    try:
+        values = tuple(float(value) for value in values)
+    except (TypeError, ValueError) as exc:
+        raise TypeError(key + ' must be a numeric sequence.') from exc
+
+    if len(values) < minimum_count:
+        raise ValueError(
+            key + ' must contain at least ' + str(minimum_count) + ' values.'
+        )
+    if any(
+        not math.isfinite(value) or value <= 0.0
+        for value in values
+    ):
+        raise ValueError(key + ' values must be finite and positive.')
+    if any(
+        current <= previous
+        for previous, current in zip(values, values[1:])
+    ):
+        raise ValueError(key + ' values must be strictly increasing.')
+
+
+def _validate_kpoint_values(config, minimum_count):
+    """Validate density or explicit-mesh k-point candidates."""
+    values = config.get('Convergence_kpoints')
+    if values is None:
+        raise ValueError(
+            'Convergence_kpoints is required for the selected tasks.'
+        )
+    if isinstance(values, (str, bytes)):
+        raise TypeError(
+            'Convergence_kpoints must be a sequence.'
+        )
+
+    try:
+        values = tuple(values)
+    except TypeError as exc:
+        raise TypeError(
+            'Convergence_kpoints must be a sequence.'
+        ) from exc
+
+    if len(values) < minimum_count:
+        raise ValueError(
+            'Convergence_kpoints must contain at least '
+            + str(minimum_count)
+            + ' values.'
+        )
+
+    modes = []
+    metrics = []
+    for value in values:
+        if isinstance(value, (bool, str, bytes)):
+            raise TypeError(
+                'K-point candidates must be densities or '
+                'three-value meshes.'
+            )
+        try:
+            density = float(value)
+        except (TypeError, ValueError):
+            density = None
+
+        if density is not None:
+            if not math.isfinite(density) or density <= 0.0:
+                raise ValueError(
+                    'K-point densities must be finite and positive.'
+                )
+            modes.append('density')
+            metrics.append(density)
+            continue
+
+        try:
+            mesh = tuple(value)
+        except TypeError as exc:
+            raise TypeError(
+                'K-point candidates must be densities or '
+                'three-value meshes.'
+            ) from exc
+        if len(mesh) != 3:
+            raise ValueError(
+                'Each explicit k-point mesh must contain three values.'
+            )
+
+        normalized = []
+        for component in mesh:
+            if isinstance(component, bool):
+                raise TypeError(
+                    'K-point mesh components must be positive integers.'
+                )
+            try:
+                integer = int(component)
+            except (TypeError, ValueError) as exc:
+                raise TypeError(
+                    'K-point mesh components must be positive integers.'
+                ) from exc
+            if integer != component or integer <= 0:
+                raise ValueError(
+                    'K-point mesh components must be positive integers.'
+                )
+            normalized.append(integer)
+
+        modes.append('mesh')
+        metrics.append(math.prod(normalized))
+
+    if len(set(modes)) != 1:
+        raise ValueError(
+            'Convergence_kpoints cannot mix densities and meshes.'
+        )
+    if any(
+        current <= previous
+        for previous, current in zip(metrics, metrics[1:])
+    ):
+        raise ValueError(
+            'Convergence_kpoints values must be strictly increasing.'
+        )
+
+
+def validate_convergence_config(config, plan):
+    """Validate execution settings without reading atoms or DFT engines."""
+    consecutive = config.get('Convergence_consecutive_points', 2)
+    if isinstance(consecutive, bool):
+        raise TypeError(
+            'Convergence_consecutive_points must be a positive integer.'
+        )
+    try:
+        normalized_consecutive = int(consecutive)
+    except (TypeError, ValueError) as exc:
+        raise TypeError(
+            'Convergence_consecutive_points must be a positive integer.'
+        ) from exc
+    if normalized_consecutive != consecutive or normalized_consecutive <= 0:
+        raise ValueError(
+            'Convergence_consecutive_points must be a positive integer.'
+        )
+
+    tolerance = float(
+        config.get('Convergence_energy_tolerance', 0.001)
+    )
+    if not math.isfinite(tolerance) or tolerance <= 0.0:
+        raise ValueError(
+            'Convergence_energy_tolerance must be finite and positive.'
+        )
+
+    minimum_count = normalized_consecutive + 1
+    if 'cutoff' in plan.tasks:
+        _positive_float_values(
+            config,
+            'Convergence_cutoffs',
+            minimum_count,
+        )
+    if 'kpoints' in plan.tasks:
+        _validate_kpoint_values(config, minimum_count)
+    if 'lattice' in plan.tasks:
+        _positive_float_values(
+            config,
+            'Convergence_lattice_scales',
+            3,
+        )
+
+        axes = config.get('Convergence_lattice_axes')
+        if axes is not None:
+            try:
+                axes = tuple(axes)
+            except TypeError as exc:
+                raise TypeError(
+                    'Convergence_lattice_axes must contain three booleans.'
+                ) from exc
+            if (
+                len(axes) != 3
+                or any(not isinstance(value, bool) for value in axes)
+                or not any(axes)
+            ):
+                raise ValueError(
+                    'Convergence_lattice_axes must select at least one '
+                    'of three boolean axes.'
+                )
+
+    if 'cutoff' not in plan.tasks and any(
+        task in plan.tasks for task in ('kpoints', 'lattice')
+    ):
+        cutoff = config.get('Cut_off_energy')
+        if cutoff is None:
+            raise ValueError(
+                'K-point or lattice execution without a cutoff sweep '
+                'requires Cut_off_energy.'
+            )
+        cutoff = float(cutoff)
+        if not math.isfinite(cutoff) or cutoff <= 0.0:
+            raise ValueError('Cut_off_energy must be finite and positive.')
+
+    return config
 
 
 def _build_kpoint_settings(config):
@@ -214,6 +494,8 @@ def execute_convergence_plan(
     pseudo_resolver=None,
 ):
     """Execute the implemented portion of a validated workflow plan."""
+    validate_convergence_config(config, plan)
+
     if structure_reader is None:
         from ase.io import read
 
@@ -641,15 +923,30 @@ def main(argv=None):
             parallel_cores=args.parallel,
         )
         if args.check:
+            validate_convergence_config(config, plan)
             rendered = format_plan(plan)
         else:
+            if (
+                plan.engine == 'GPAW'
+                and plan.parallel_cores > 1
+                and os.environ.get(GPAW_MPI_ENV) != '1'
+            ):
+                restart_gpaw_with_mpi(plan.parallel_cores, args)
+
             result = execute_convergence_plan(config, plan)
-            artifacts = write_convergence_results(config, plan, result)
-            rendered = format_convergence_result(
-                plan,
-                result,
-                artifacts=artifacts,
-            )
+            if _parallel_rank() == 0:
+                artifacts = write_convergence_results(
+                    config,
+                    plan,
+                    result,
+                )
+                rendered = format_convergence_result(
+                    plan,
+                    result,
+                    artifacts=artifacts,
+                )
+            else:
+                rendered = None
     except (
         NotImplementedError,
         OSError,
@@ -659,7 +956,8 @@ def main(argv=None):
     ) as exc:
         parser.error(str(exc))
 
-    print(rendered)
+    if rendered is not None:
+        print(rendered)
     return 0
 
 

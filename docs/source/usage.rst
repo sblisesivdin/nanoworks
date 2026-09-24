@@ -168,6 +168,20 @@ the same validation used for direct command-line options.
 * --slurm-job-name: Optional Slurm job name.
 
 
+dftconverge
+-----------
+
+Run engine-independent cutoff, k-point, and lattice-scale optimization with
+GPAW or Quantum ESPRESSO:
+
+.. code-block:: console
+
+   $ dftconverge --check -p 4 -g structure.cif -i convergence.py
+   $ dftconverge -p 4 -g structure.cif -i convergence.py
+
+See :doc:`dftconverge` for input keywords, task dependencies, and outputs.
+
+
 mdsolve (formerly asapsolve.py)
 ----------------------------------
 

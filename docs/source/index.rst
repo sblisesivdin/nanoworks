@@ -207,6 +207,7 @@ Documentation
    installation
    examples
    usage
+   dftconverge
 
 .. toctree::
    :maxdepth: 2

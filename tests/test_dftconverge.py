@@ -22,7 +22,10 @@ class TestDFTConvergeCLI(unittest.TestCase):
             geometry_file = root / 'structure.cif'
             input_file.write_text(
                 "Engine = 'QE'\n"
-                "Convergence_tasks = ['lattice', 'cutoff', 'kpoints']\n",
+                "Convergence_tasks = ['lattice', 'cutoff', 'kpoints']\n"
+                "Convergence_cutoffs = [300, 400, 500]\n"
+                "Convergence_kpoints = [2.0, 3.0, 4.0]\n"
+                "Convergence_lattice_scales = [0.98, 1.0, 1.02]\n",
                 encoding='utf-8',
             )
             geometry_file.write_text('test geometry', encoding='utf-8')
@@ -52,6 +55,159 @@ class TestDFTConvergeCLI(unittest.TestCase):
         )
         self.assertIn('Parallel processes: 4', rendered)
         self.assertIn('no calculations executed', rendered)
+
+    def test_check_rejects_missing_task_values_without_engines(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            input_file = root / 'convergence.py'
+            geometry_file = root / 'structure.cif'
+            input_file.write_text(
+                "Engine = 'GPAW'\n"
+                "Convergence_tasks = ['cutoff']\n",
+                encoding='utf-8',
+            )
+            geometry_file.write_text('not parsed by check', encoding='utf-8')
+
+            errors = io.StringIO()
+            with redirect_stderr(errors):
+                with self.assertRaises(SystemExit) as raised:
+                    dftconverge.main([
+                        '--check',
+                        '-i',
+                        str(input_file),
+                        '-g',
+                        str(geometry_file),
+                    ])
+
+        self.assertEqual(raised.exception.code, 2)
+        self.assertIn('Convergence_cutoffs is required', errors.getvalue())
+
+    def test_check_rejects_mixed_kpoint_candidate_types(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            input_file = root / 'convergence.py'
+            geometry_file = root / 'structure.cif'
+            input_file.write_text(
+                "Engine = 'QE'\n"
+                "Convergence_tasks = ['kpoints']\n"
+                "Cut_off_energy = 500\n"
+                "Convergence_kpoints = [2.0, (4, 4, 4), 5.0]\n",
+                encoding='utf-8',
+            )
+            geometry_file.write_text('not parsed by check', encoding='utf-8')
+
+            errors = io.StringIO()
+            with redirect_stderr(errors):
+                with self.assertRaises(SystemExit):
+                    dftconverge.main([
+                        '--check',
+                        '-i',
+                        str(input_file),
+                        '-g',
+                        str(geometry_file),
+                    ])
+
+        self.assertIn('cannot mix densities and meshes', errors.getvalue())
+
+    def test_packaged_convergence_examples_pass_check(self):
+        example_root = (
+            Path(__file__).resolve().parents[1]
+            / 'nanoworks'
+            / 'examples'
+            / 'Convergence'
+        )
+
+        for input_name, engine in (
+            ('Si-GPAW-convergence.py', 'GPAW'),
+            ('Si-QE-convergence.py', 'QE'),
+        ):
+            with self.subTest(engine=engine):
+                output = io.StringIO()
+                with redirect_stdout(output):
+                    result = dftconverge.main([
+                        '--check',
+                        '-p',
+                        '4',
+                        '-i',
+                        str(example_root / input_name),
+                        '-g',
+                        str(example_root / 'Si.cif'),
+                    ])
+
+                self.assertEqual(result, 0)
+                self.assertIn('Engine: ' + engine, output.getvalue())
+                self.assertIn('Result: VALID', output.getvalue())
+
+    def test_gpaw_parallel_command_uses_gpaw_python(self):
+        args = Mock(
+            input='convergence.py',
+            geometry='structure.cif',
+        )
+
+        def find_executable(name):
+            return {
+                'mpiexec': '/usr/bin/mpiexec',
+                'gpaw': '/opt/gpaw/bin/gpaw',
+            }.get(name)
+
+        with patch.object(
+            dftconverge.shutil,
+            'which',
+            side_effect=find_executable,
+        ):
+            command = dftconverge.build_gpaw_mpi_command(8, args)
+
+        self.assertEqual(command[:7], [
+            '/usr/bin/mpiexec',
+            '-np',
+            '8',
+            '/opt/gpaw/bin/gpaw',
+            'python',
+            '--',
+            str(Path(dftconverge.__file__).resolve()),
+        ])
+        self.assertEqual(
+            command[-6:],
+            ['-p', '8', '-i', 'convergence.py', '-g', 'structure.cif'],
+        )
+
+    def test_main_restarts_parallel_gpaw_before_execution(self):
+        class Restarted(Exception):
+            pass
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            input_file = root / 'convergence.py'
+            geometry_file = root / 'structure.cif'
+            input_file.write_text(
+                "Engine = 'GPAW'\n"
+                "Convergence_tasks = ['cutoff']\n"
+                "Convergence_cutoffs = [300, 400, 500]\n",
+                encoding='utf-8',
+            )
+            geometry_file.write_text(
+                'not read before restart',
+                encoding='utf-8',
+            )
+
+            with patch.dict(
+                dftconverge.os.environ,
+                {dftconverge.GPAW_MPI_ENV: '0'},
+            ), patch.object(
+                dftconverge,
+                'restart_gpaw_with_mpi',
+                side_effect=Restarted,
+            ) as restart, self.assertRaises(Restarted):
+                dftconverge.main([
+                    '-p',
+                    '4',
+                    '-i',
+                    str(input_file),
+                    '-g',
+                    str(geometry_file),
+                ])
+
+        restart.assert_called_once()
 
     def test_cutoff_execution_maps_qe_configuration(self):
         class FakeBackend:
