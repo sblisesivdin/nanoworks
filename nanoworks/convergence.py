@@ -68,6 +68,24 @@ class ConvergencePlan:
     parallel_cores: int = 1
 
 
+@dataclass(frozen=True)
+class CutoffSweepPoint:
+    """One completed plane-wave cutoff calculation."""
+
+    cutoff_ev: float
+    total_energy_ev: float
+    energy_ev_per_atom: float
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class CutoffSweepResult:
+    """Completed cutoff sweep and its optional convergence selection."""
+
+    points: Tuple[CutoffSweepPoint, ...]
+    selection: Optional[ConvergenceSelection]
+
+
 def normalize_convergence_tasks(tasks=None):
     """Return requested tasks once, in dependency-safe workflow order."""
     if tasks is None:
@@ -257,3 +275,109 @@ def select_converged_value(
             )
 
     return None
+
+
+def run_cutoff_sweep(
+    backend: StaticEnergyBackend,
+    atoms: Any,
+    cutoff_values: Sequence[float],
+    kpoint_settings: Mapping[str, Any],
+    workdir: Path,
+    settings: Optional[Mapping[str, Any]] = None,
+    parallel_cores: int = 1,
+    tolerance_ev_per_atom: float = 0.001,
+    consecutive_points: int = 2,
+) -> CutoffSweepResult:
+    """Run an ordered cutoff sweep through an injected DFT backend."""
+    cutoffs = tuple(float(value) for value in cutoff_values)
+
+    if len(cutoffs) < consecutive_points + 1:
+        raise ValueError(
+            'Cutoff sweep does not contain enough values for the '
+            'requested convergence window.'
+        )
+
+    if any(
+        not math.isfinite(value) or value <= 0.0
+        for value in cutoffs
+    ):
+        raise ValueError(
+            'Cutoff values must be finite and greater than zero.'
+        )
+
+    if any(
+        current <= previous
+        for previous, current in zip(cutoffs, cutoffs[1:])
+    ):
+        raise ValueError(
+            'Cutoff values must be strictly increasing.'
+        )
+
+    try:
+        atom_count = len(atoms)
+    except TypeError as exc:
+        raise TypeError(
+            'The convergence structure must provide an atom count.'
+        ) from exc
+
+    if atom_count <= 0:
+        raise ValueError(
+            'The convergence structure must contain at least one atom.'
+        )
+
+    if parallel_cores <= 0:
+        raise ValueError('Parallel core count must be greater than zero.')
+
+    settings = {} if settings is None else dict(settings)
+    kpoint_settings = dict(kpoint_settings)
+    workdir = Path(workdir)
+    workdir.mkdir(parents=True, exist_ok=True)
+
+    points = []
+
+    for index, cutoff_ev in enumerate(cutoffs):
+        label = ('{:03d}-{:.8g}eV'.format(index, cutoff_ev)).replace(
+            '.',
+            'p',
+        )
+        point_workdir = workdir / label
+
+        result = backend.calculate_static_energy(
+            atoms,
+            cutoff_ev=cutoff_ev,
+            kpoint_settings=kpoint_settings,
+            workdir=point_workdir,
+            settings=settings,
+            parallel_cores=parallel_cores,
+        )
+
+        energy = float(result.total_energy_ev)
+        if not math.isfinite(energy):
+            raise RuntimeError(
+                'Static-energy backend returned a non-finite energy.'
+            )
+
+        points.append(
+            CutoffSweepPoint(
+                cutoff_ev=cutoff_ev,
+                total_energy_ev=energy,
+                energy_ev_per_atom=energy / atom_count,
+                metadata=dict(result.metadata),
+            )
+        )
+
+    selection = select_converged_value(
+        values=cutoffs,
+        total_energies_ev=[
+            point.total_energy_ev
+            for point in points
+        ],
+        atom_count=atom_count,
+        tolerance_ev_per_atom=tolerance_ev_per_atom,
+        consecutive_points=consecutive_points,
+    )
+
+    return CutoffSweepResult(
+        points=tuple(points),
+        selection=selection,
+    )

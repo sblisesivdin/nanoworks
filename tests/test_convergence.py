@@ -4,8 +4,10 @@ from pathlib import Path
 
 from nanoworks.convergence import (
     ORDERED_CONVERGENCE_TASKS,
+    StaticEnergyResult,
     build_convergence_plan,
     normalize_convergence_tasks,
+    run_cutoff_sweep,
     select_converged_value,
 )
 
@@ -125,6 +127,87 @@ class TestConvergenceCore(unittest.TestCase):
                 total_energies_ev=[-10.0, -10.001],
                 atom_count=1,
                 consecutive_points=2,
+            )
+
+    def test_cutoff_sweep_uses_injected_backend(self):
+        class FakeBackend:
+            name = 'FAKE'
+
+            def __init__(self):
+                self.calls = []
+
+            def calculate_static_energy(
+                self,
+                atoms,
+                *,
+                cutoff_ev,
+                kpoint_settings,
+                workdir,
+                settings,
+                parallel_cores,
+            ):
+                self.calls.append({
+                    'cutoff_ev': cutoff_ev,
+                    'kpoint_settings': dict(kpoint_settings),
+                    'workdir': workdir,
+                    'settings': dict(settings),
+                    'parallel_cores': parallel_cores,
+                })
+                energies = {
+                    400.0: -20.0000,
+                    450.0: -20.0200,
+                    500.0: -20.0214,
+                    550.0: -20.0220,
+                }
+                return StaticEnergyResult(
+                    engine=self.name,
+                    total_energy_ev=energies[cutoff_ev],
+                    metadata={'mock': True},
+                )
+
+        backend = FakeBackend()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = run_cutoff_sweep(
+                backend=backend,
+                atoms=[object(), object()],
+                cutoff_values=[400, 450, 500, 550],
+                kpoint_settings={
+                    'density': 3.0,
+                    'gamma': True,
+                },
+                workdir=Path(temp_dir),
+                settings={'xc_calc': 'PBE'},
+                parallel_cores=4,
+                tolerance_ev_per_atom=0.001,
+                consecutive_points=2,
+            )
+
+        self.assertEqual(len(backend.calls), 4)
+        self.assertEqual(backend.calls[0]['cutoff_ev'], 400.0)
+        self.assertEqual(backend.calls[0]['parallel_cores'], 4)
+        self.assertEqual(
+            backend.calls[0]['kpoint_settings']['density'],
+            3.0,
+        )
+        self.assertEqual(result.selection.value, 500.0)
+        self.assertAlmostEqual(
+            result.points[-1].energy_ev_per_atom,
+            -10.011,
+        )
+
+    def test_cutoff_sweep_rejects_unsorted_values_before_running(self):
+        class UnusedBackend:
+            def calculate_static_energy(self, *args, **kwargs):
+                raise AssertionError('backend must not be called')
+
+        with self.assertRaisesRegex(ValueError, 'strictly increasing'):
+            run_cutoff_sweep(
+                backend=UnusedBackend(),
+                atoms=[object()],
+                cutoff_values=[400, 500, 450],
+                kpoint_settings={'size': (4, 4, 4)},
+                workdir=Path('unused'),
             )
 
 
