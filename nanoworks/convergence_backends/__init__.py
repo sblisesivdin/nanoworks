@@ -6,6 +6,10 @@ from nanoworks.engine import normalize_engine_name
 
 
 _BACKENDS = {
+    'GPAW': (
+        'nanoworks.convergence_backends.gpaw',
+        'GPAWStaticEnergyBackend',
+    ),
     'QE': (
         'nanoworks.convergence_backends.qe',
         'QEStaticEnergyBackend',

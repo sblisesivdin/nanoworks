@@ -93,9 +93,9 @@ class TestQEConvergenceBackend(unittest.TestCase):
     def test_unimplemented_backend_is_explicit(self):
         with self.assertRaisesRegex(
             NotImplementedError,
-            'not available yet for: GPAW',
+            'not available yet for: SIESTA',
         ):
-            load_convergence_backend('GPAW')
+            load_convergence_backend('SIESTA')
 
 
 if __name__ == '__main__':
