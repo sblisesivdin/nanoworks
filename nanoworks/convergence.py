@@ -345,6 +345,7 @@ def run_cutoff_sweep(
     parallel_cores: int = 1,
     tolerance_ev_per_atom: float = 0.001,
     consecutive_points: int = 2,
+    progress_callback=None,
 ) -> CutoffSweepResult:
     """Run an ordered cutoff sweep through an injected DFT backend."""
     cutoffs = tuple(float(value) for value in cutoff_values)
@@ -423,6 +424,16 @@ def run_cutoff_sweep(
                 metadata=dict(result.metadata),
             )
         )
+        if progress_callback is not None:
+            progress_callback({
+                'event': 'point',
+                'task': 'cutoff',
+                'index': index + 1,
+                'total': len(cutoffs),
+                'value': cutoff_ev,
+                'total_energy_ev': energy,
+                'energy_ev_per_atom': energy / atom_count,
+            })
 
     selection = select_converged_value(
         values=cutoffs,
@@ -525,6 +536,7 @@ def run_kpoint_sweep(
     gamma: bool = False,
     tolerance_ev_per_atom: float = 0.001,
     consecutive_points: int = 2,
+    progress_callback=None,
 ) -> KPointSweepResult:
     """Run an ordered density or explicit-mesh k-point sweep."""
     candidates = tuple(
@@ -608,6 +620,16 @@ def run_kpoint_sweep(
                 metadata=dict(result.metadata),
             )
         )
+        if progress_callback is not None:
+            progress_callback({
+                'event': 'point',
+                'task': 'kpoints',
+                'index': index + 1,
+                'total': len(candidates),
+                'value': value,
+                'total_energy_ev': energy,
+                'energy_ev_per_atom': energy / atom_count,
+            })
 
     selection = select_converged_value(
         values=[point.value for point in points],
@@ -666,6 +688,7 @@ def run_lattice_sweep(
     settings: Optional[Mapping[str, Any]] = None,
     parallel_cores: int = 1,
     axes: Optional[Sequence[bool]] = None,
+    progress_callback=None,
 ) -> LatticeSweepResult:
     """Scale selected cell axes and find a bracketed energy minimum."""
     scales = tuple(float(value) for value in lattice_scales)
@@ -756,6 +779,16 @@ def run_lattice_sweep(
             )
         )
         structures.append(scaled_atoms)
+        if progress_callback is not None:
+            progress_callback({
+                'event': 'point',
+                'task': 'lattice',
+                'index': index + 1,
+                'total': len(scales),
+                'value': scale,
+                'total_energy_ev': energy,
+                'energy_ev_per_atom': energy / atom_count,
+            })
 
     minimum_index = min(
         range(len(points)),

@@ -9,6 +9,45 @@ from nanoworks import cli
 
 class TestNanoworksCLI(unittest.TestCase):
 
+    def test_pseudopotential_report_explains_installed_sets(self):
+        results = {
+            'scalar': {
+                'family': 'pseudodojo',
+                'version': '0.5',
+                'xc': 'pbe',
+                'accuracy': 'standard',
+                'format': 'upf',
+                'table': 'nc-sr-05_pbe_standard',
+                'relativistic': 'scalar',
+                'count': 72,
+                'directory': Path('/pseudos/scalar'),
+                'manifest': Path('/pseudos/scalar/manifest.json'),
+                'skipped': False,
+            },
+            'full': {
+                'family': 'pseudodojo',
+                'version': '0.4',
+                'xc': 'pbe',
+                'accuracy': 'standard',
+                'format': 'upf',
+                'table': 'nc-fr-04_pbe_standard',
+                'relativistic': 'full',
+                'count': 70,
+                'directory': Path('/pseudos/full'),
+                'manifest': Path('/pseudos/full/manifest.json'),
+                'skipped': True,
+            },
+        }
+
+        rendered = cli.format_qe_pseudo_installation(results)
+
+        self.assertIn('PseudoDojo PBE norm-conserving UPF', rendered)
+        self.assertIn('Scalar relativistic:', rendered)
+        self.assertIn('Files: 72', rendered)
+        self.assertIn('Status: already present', rendered)
+        self.assertIn('available for SOC workflows', rendered)
+        self.assertIn('dftconverge --check', rendered)
+
     def test_package_folder_uses_installed_share_directory(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

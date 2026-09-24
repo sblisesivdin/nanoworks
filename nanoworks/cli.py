@@ -9,6 +9,57 @@ import nanoworks
 from nanoworks.pseudos import install_qe_pseudopotentials
 
 
+def format_qe_pseudo_installation(results):
+    """Render a concise user-facing pseudopotential installation report."""
+    scalar = results['scalar']
+    family_value = str(scalar.get('family', 'pseudodojo')).lower()
+    family = (
+        'PseudoDojo'
+        if family_value == 'pseudodojo'
+        else family_value.title()
+    )
+    xc = str(scalar.get('xc', 'pbe')).upper()
+    file_format = str(scalar.get('format', 'upf')).upper()
+    accuracy = str(scalar.get('accuracy', 'standard'))
+
+    lines = [
+        'Quantum ESPRESSO pseudopotentials are ready.',
+        'Library: {} {} norm-conserving {} sets'.format(
+            family,
+            xc,
+            file_format,
+        ),
+        'Accuracy profile: ' + accuracy,
+        'Installed sets:',
+    ]
+
+    labels = {
+        'scalar': 'Scalar relativistic',
+        'full': 'Fully relativistic',
+    }
+    for name in ('scalar', 'full'):
+        result = results[name]
+        status = 'already present' if result['skipped'] else 'installed'
+        lines.extend([
+            '  {}:'.format(labels[name]),
+            '    Status: {}'.format(status),
+            '    Version: {}'.format(result.get('version', 'unknown')),
+            '    Files: {}'.format(result.get('count', 'unknown')),
+            '    Table: {}'.format(result.get('table', 'unknown')),
+            '    Directory: {}'.format(result['directory']),
+            '    Manifest: {}'.format(result['manifest']),
+        ])
+
+    lines.extend([
+        'Default use:',
+        '  Scalar-relativistic set: standard Nanoworks QE calculations',
+        '  Fully-relativistic set: available for SOC workflows',
+        'Next: validate an input with dftsolve --check or '
+        'dftconverge --check.',
+    ])
+    return '\n'.join(lines)
+
+
 def _installed_version(distribution_name, optional=False):
     """Return an installed distribution version without importing it."""
     try:
@@ -131,36 +182,10 @@ def main():
         sys.exit(0)
     
     if args.install_qe_pseudos:
-        print(
-            "Installing Quantum ESPRESSO "
-            "pseudopotentials..."
-        )
+        print('Installing Quantum ESPRESSO pseudopotentials...')
 
         results = install_qe_pseudopotentials()
-
-        for name in (
-            'scalar',
-            'full',
-        ):
-            result = results[name]
-
-            if result['skipped']:
-                print(
-                    f"{name}: already installed at "
-                    f"{result['directory']}"
-                )
-            else:
-                print(
-                    f"{name}: installed "
-                    f"{result['count']} "
-                    "pseudopotentials in "
-                    f"{result['directory']}"
-                )
-
-            print(
-                f"{name} manifest: "
-                f"{result['manifest']}"
-            )
+        print(format_qe_pseudo_installation(results))
 
         sys.exit(0)
     

@@ -484,6 +484,85 @@ def _resolve_workdir(config, plan):
     return workdir
 
 
+def _emit_progress(progress_callback, event, task, **values):
+    """Send a structured progress event when reporting is enabled."""
+    if progress_callback is None:
+        return
+
+    progress_callback({
+        'event': event,
+        'task': task,
+        **values,
+    })
+
+
+def _format_progress_value(task, value):
+    """Format one convergence parameter for terminal progress."""
+    if task == 'cutoff':
+        return '{:g} eV'.format(value)
+    if task == 'kpoints':
+        if isinstance(value, tuple):
+            return 'x'.join(str(component) for component in value)
+        return '{:g} density'.format(value)
+    return 'scale {:g}'.format(value)
+
+
+def print_convergence_progress(event):
+    """Print one immediately flushed convergence progress event."""
+    task = event['task']
+    label = {
+        'cutoff': 'Cutoff',
+        'kpoints': 'K-point',
+        'lattice': 'Lattice',
+    }[task]
+
+    if event['event'] == 'start':
+        print(
+            '{} sweep started ({} points).'.format(
+                label,
+                event['total'],
+            ),
+            flush=True,
+        )
+        return
+
+    if event['event'] == 'point':
+        print(
+            '[{} {}/{}] {} | E = {:.12g} eV | '
+            'E/atom = {:.12g} eV'.format(
+                task,
+                event['index'],
+                event['total'],
+                _format_progress_value(task, event['value']),
+                event['total_energy_ev'],
+                event['energy_ev_per_atom'],
+            ),
+            flush=True,
+        )
+        return
+
+    selected = event.get('selected')
+    if selected is None:
+        detail = (
+            'minimum not bracketed'
+            if task == 'lattice'
+            else 'convergence not reached'
+        )
+        print(
+            '{} sweep complete: {}.'.format(label, detail),
+            flush=True,
+        )
+        return
+
+    print(
+        '{} sweep complete: selected {}.'.format(
+            label,
+            _format_progress_value(task, selected),
+        ),
+        flush=True,
+    )
+
+
 def execute_convergence_plan(
     config,
     plan,
@@ -492,6 +571,7 @@ def execute_convergence_plan(
     backend_loader=load_convergence_backend,
     pseudo_dir_getter=None,
     pseudo_resolver=None,
+    progress_callback=None,
 ):
     """Execute the implemented portion of a validated workflow plan."""
     validate_convergence_config(config, plan)
@@ -534,6 +614,12 @@ def execute_convergence_plan(
                 'Cutoff execution requires Convergence_cutoffs.'
             )
 
+        _emit_progress(
+            progress_callback,
+            'start',
+            'cutoff',
+            total=len(cutoff_values),
+        )
         cutoff_result = run_cutoff_sweep(
             backend=backend,
             atoms=atoms,
@@ -544,6 +630,17 @@ def execute_convergence_plan(
             parallel_cores=plan.parallel_cores,
             tolerance_ev_per_atom=tolerance,
             consecutive_points=consecutive_points,
+            progress_callback=progress_callback,
+        )
+        _emit_progress(
+            progress_callback,
+            'complete',
+            'cutoff',
+            selected=(
+                None
+                if cutoff_result.selection is None
+                else cutoff_result.selection.value
+            ),
         )
 
     has_downstream_task = any(
@@ -577,6 +674,12 @@ def execute_convergence_plan(
                 'K-point execution requires Convergence_kpoints.'
             )
 
+        _emit_progress(
+            progress_callback,
+            'start',
+            'kpoints',
+            total=len(kpoint_values),
+        )
         kpoint_result = run_kpoint_sweep(
             backend=backend,
             atoms=atoms,
@@ -588,6 +691,17 @@ def execute_convergence_plan(
             gamma=_build_kpoint_settings(config)['gamma'],
             tolerance_ev_per_atom=tolerance,
             consecutive_points=consecutive_points,
+            progress_callback=progress_callback,
+        )
+        _emit_progress(
+            progress_callback,
+            'complete',
+            'kpoints',
+            selected=(
+                None
+                if kpoint_result.selection is None
+                else kpoint_result.selection.value
+            ),
         )
 
     if 'lattice' in plan.tasks:
@@ -620,6 +734,12 @@ def execute_convergence_plan(
         else:
             lattice_kpoints = _build_kpoint_settings(config)
 
+        _emit_progress(
+            progress_callback,
+            'start',
+            'lattice',
+            total=len(lattice_scales),
+        )
         lattice_result = run_lattice_sweep(
             backend=backend,
             atoms=atoms,
@@ -630,6 +750,17 @@ def execute_convergence_plan(
             settings=settings,
             parallel_cores=plan.parallel_cores,
             axes=config.get('Convergence_lattice_axes'),
+            progress_callback=progress_callback,
+        )
+        _emit_progress(
+            progress_callback,
+            'complete',
+            'lattice',
+            selected=(
+                None
+                if lattice_result.selection is None
+                else lattice_result.selection.scale
+            ),
         )
 
     return ConvergenceRunResult(
@@ -933,8 +1064,17 @@ def main(argv=None):
             ):
                 restart_gpaw_with_mpi(plan.parallel_cores, args)
 
-            result = execute_convergence_plan(config, plan)
-            if _parallel_rank() == 0:
+            rank = _parallel_rank()
+            result = execute_convergence_plan(
+                config,
+                plan,
+                progress_callback=(
+                    print_convergence_progress
+                    if rank == 0
+                    else None
+                ),
+            )
+            if rank == 0:
                 artifacts = write_convergence_results(
                     config,
                     plan,

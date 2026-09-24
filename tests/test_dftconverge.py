@@ -253,6 +253,7 @@ class TestDFTConvergeCLI(unittest.TestCase):
         backend_loader = Mock(return_value=backend)
         pseudo_dir_getter = Mock(return_value=Path('/pseudos'))
         pseudo_resolver = Mock(return_value={'Si': 'Si.upf'})
+        progress_events = []
 
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -300,6 +301,7 @@ class TestDFTConvergeCLI(unittest.TestCase):
                 backend_loader=backend_loader,
                 pseudo_dir_getter=pseudo_dir_getter,
                 pseudo_resolver=pseudo_resolver,
+                progress_callback=progress_events.append,
             )
             artifacts = dftconverge.write_convergence_results(
                 config={},
@@ -351,6 +353,52 @@ class TestDFTConvergeCLI(unittest.TestCase):
         self.assertEqual(len(rows), 11)
         self.assertEqual(rows[-1]['task'], 'lattice')
         self.assertTrue(optimized_structure_exists)
+        self.assertEqual(
+            [event['event'] for event in progress_events],
+            (
+                ['start']
+                + ['point'] * 4
+                + ['complete']
+                + ['start']
+                + ['point'] * 4
+                + ['complete']
+                + ['start']
+                + ['point'] * 3
+                + ['complete']
+            ),
+        )
+        self.assertEqual(progress_events[5]['selected'], 500.0)
+        self.assertEqual(progress_events[11]['selected'], 4.0)
+        self.assertEqual(progress_events[-1]['selected'], 1.0)
+
+    def test_progress_printer_reports_each_completed_point(self):
+        output = io.StringIO()
+        with redirect_stdout(output):
+            dftconverge.print_convergence_progress({
+                'event': 'start',
+                'task': 'cutoff',
+                'total': 4,
+            })
+            dftconverge.print_convergence_progress({
+                'event': 'point',
+                'task': 'cutoff',
+                'index': 1,
+                'total': 4,
+                'value': 300.0,
+                'total_energy_ev': -230.24,
+                'energy_ev_per_atom': -115.12,
+            })
+            dftconverge.print_convergence_progress({
+                'event': 'complete',
+                'task': 'cutoff',
+                'selected': 400.0,
+            })
+
+        rendered = output.getvalue()
+        self.assertIn('Cutoff sweep started (4 points)', rendered)
+        self.assertIn('[cutoff 1/4] 300 eV', rendered)
+        self.assertIn('E/atom = -115.12 eV', rendered)
+        self.assertIn('selected 400 eV', rendered)
 
     def test_cutoff_execution_maps_gpaw_spin_configuration(self):
         atoms = Mock()

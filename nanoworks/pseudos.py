@@ -376,11 +376,20 @@ def _install_pseudodojo_set(
         manifest_path.exists()
         and not overwrite
     ):
+        with manifest_path.open('r', encoding='utf-8') as fd:
+            manifest = json.load(fd)
         return {
             'directory': target_dir,
             'manifest': manifest_path,
             'relativistic': relativistic,
             'skipped': True,
+            'family': manifest.get('family', 'pseudodojo'),
+            'version': manifest.get('version'),
+            'xc': manifest.get('xc'),
+            'accuracy': manifest.get('accuracy'),
+            'format': manifest.get('format'),
+            'table': manifest.get('table'),
+            'count': len(manifest.get('files', {})),
         }
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -501,6 +510,12 @@ def _install_pseudodojo_set(
         'manifest': manifest_path,
         'relativistic': relativistic,
         'skipped': False,
+        'family': manifest['family'],
+        'version': manifest['version'],
+        'xc': manifest['xc'],
+        'accuracy': manifest['accuracy'],
+        'format': manifest['format'],
+        'table': manifest['table'],
         'count': len(files),
     }
 
