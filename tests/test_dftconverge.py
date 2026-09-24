@@ -5,6 +5,8 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+from ase import Atoms
+
 from nanoworks import dftconverge
 from nanoworks.convergence import ConvergenceRunResult, StaticEnergyResult
 
@@ -50,14 +52,6 @@ class TestDFTConvergeCLI(unittest.TestCase):
         self.assertIn('no calculations executed', rendered)
 
     def test_cutoff_execution_maps_qe_configuration(self):
-        class FakeAtoms:
-
-            def __len__(self):
-                return 2
-
-            def get_chemical_symbols(self):
-                return ['Si', 'Si']
-
         class FakeBackend:
             name = 'QE'
 
@@ -65,9 +59,9 @@ class TestDFTConvergeCLI(unittest.TestCase):
                 self.calls = []
 
             def calculate_static_energy(self, atoms, **kwargs):
+                call_index = len(self.calls)
                 self.calls.append(kwargs)
-                density = kwargs['kpoint_settings']['density']
-                if density is None:
+                if call_index < 4:
                     energies = {
                         400.0: -20.0,
                         450.0: -20.02,
@@ -75,7 +69,8 @@ class TestDFTConvergeCLI(unittest.TestCase):
                         550.0: -20.0215,
                     }
                     energy = energies[kwargs['cutoff_ev']]
-                else:
+                elif call_index < 8:
+                    density = kwargs['kpoint_settings']['density']
                     energies = {
                         2.0: -20.0,
                         3.0: -20.02,
@@ -83,6 +78,14 @@ class TestDFTConvergeCLI(unittest.TestCase):
                         5.0: -20.0215,
                     }
                     energy = energies[density]
+                else:
+                    scale = round(atoms.cell.lengths()[0] / 5.0, 2)
+                    energies = {
+                        0.98: -20.0,
+                        1.00: -20.1,
+                        1.02: -20.05,
+                    }
+                    energy = energies[scale]
                 return StaticEnergyResult(
                     engine='QE',
                     total_energy_ev=energy,
@@ -102,7 +105,11 @@ class TestDFTConvergeCLI(unittest.TestCase):
             plan = dftconverge.build_convergence_plan(
                 config={
                     'Engine': 'QE',
-                    'Convergence_tasks': ['cutoff', 'kpoints'],
+                    'Convergence_tasks': [
+                        'cutoff',
+                        'kpoints',
+                        'lattice',
+                    ],
                 },
                 input_file=input_file,
                 geometry_file=geometry_file,
@@ -112,16 +119,26 @@ class TestDFTConvergeCLI(unittest.TestCase):
             result = dftconverge.execute_convergence_plan(
                 config={
                     'Engine': 'QE',
-                    'Convergence_tasks': ['cutoff', 'kpoints'],
+                    'Convergence_tasks': [
+                        'cutoff',
+                        'kpoints',
+                        'lattice',
+                    ],
                     'Convergence_cutoffs': [400, 450, 500, 550],
                     'Convergence_kpoints': [2.0, 3.0, 4.0, 5.0],
+                    'Convergence_lattice_scales': [0.98, 1.0, 1.02],
                     'Ground_kpts_x': 6,
                     'Ground_kpts_y': 6,
                     'Ground_kpts_z': 2,
                     'XC_calc': 'PBE',
                 },
                 plan=plan,
-                structure_reader=Mock(return_value=FakeAtoms()),
+                structure_reader=Mock(return_value=Atoms(
+                    'Si2',
+                    positions=[(0, 0, 0), (1, 1, 0)],
+                    cell=(5, 5, 12),
+                    pbc=(True, True, False),
+                )),
                 backend_loader=backend_loader,
                 pseudo_dir_getter=pseudo_dir_getter,
                 pseudo_resolver=pseudo_resolver,
@@ -133,7 +150,7 @@ class TestDFTConvergeCLI(unittest.TestCase):
             pseudo_dir=Path('/pseudos'),
             executable='pw.x',
         )
-        self.assertEqual(len(backend.calls), 8)
+        self.assertEqual(len(backend.calls), 11)
         self.assertEqual(
             backend.calls[0]['kpoint_settings']['size'],
             (6, 6, 2),
@@ -141,9 +158,14 @@ class TestDFTConvergeCLI(unittest.TestCase):
         self.assertEqual(backend.calls[0]['parallel_cores'], 6)
         self.assertEqual(result.cutoff.selection.value, 500.0)
         self.assertEqual(result.kpoints.selection.value, 4.0)
+        self.assertEqual(result.lattice.selection.scale, 1.0)
         self.assertTrue(all(
             call['cutoff_ev'] == 500.0
             for call in backend.calls[4:]
+        ))
+        self.assertTrue(all(
+            call['kpoint_settings']['density'] == 4.0
+            for call in backend.calls[8:]
         ))
 
     def test_cutoff_execution_maps_gpaw_spin_configuration(self):
@@ -193,8 +215,9 @@ class TestDFTConvergeCLI(unittest.TestCase):
         self.assertEqual(settings['magnetic_moments'], [2.5, 2.5])
         self.assertEqual(settings['xc_calc'], 'LDA')
 
-    def test_execution_rejects_unimplemented_task_before_backend(self):
-        backend_loader = Mock()
+    def test_lattice_only_requires_a_fixed_cutoff(self):
+        backend = Mock()
+        backend_loader = Mock(return_value=backend)
 
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -203,22 +226,32 @@ class TestDFTConvergeCLI(unittest.TestCase):
             input_file.write_text('', encoding='utf-8')
             geometry_file.write_text('', encoding='utf-8')
             plan = dftconverge.build_convergence_plan(
-                config={'Engine': 'QE'},
+                config={
+                    'Engine': 'GPAW',
+                    'Convergence_tasks': ['lattice'],
+                },
                 input_file=input_file,
                 geometry_file=geometry_file,
             )
 
             with self.assertRaisesRegex(
-                NotImplementedError,
-                'Lattice convergence',
+                ValueError,
+                'requires Cut_off_energy',
             ):
                 dftconverge.execute_convergence_plan(
-                    config={},
+                    config={
+                        'Convergence_lattice_scales': [0.98, 1.0, 1.02],
+                    },
                     plan=plan,
+                    structure_reader=Mock(return_value=Atoms(
+                        'Si',
+                        cell=(5, 5, 5),
+                        pbc=True,
+                    )),
                     backend_loader=backend_loader,
                 )
 
-        backend_loader.assert_not_called()
+        backend.calculate_static_energy.assert_not_called()
 
     def test_main_executes_cutoff_workflow(self):
         with tempfile.TemporaryDirectory() as temp_dir:

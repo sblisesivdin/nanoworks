@@ -10,6 +10,7 @@ from nanoworks.convergence import (
     build_convergence_plan,
     run_cutoff_sweep,
     run_kpoint_sweep,
+    run_lattice_sweep,
 )
 from nanoworks.convergence_backends import load_convergence_backend
 from nanoworks.engine import resolve_initial_magnetic_moments
@@ -197,11 +198,6 @@ def execute_convergence_plan(
     pseudo_resolver=None,
 ):
     """Execute the implemented portion of a validated workflow plan."""
-    if 'lattice' in plan.tasks:
-        raise NotImplementedError(
-            'Lattice convergence execution is not available yet.'
-        )
-
     if structure_reader is None:
         from ase.io import read
 
@@ -238,6 +234,7 @@ def execute_convergence_plan(
     )
     cutoff_result = None
     kpoint_result = None
+    lattice_result = None
 
     if 'cutoff' in plan.tasks:
         cutoff_values = config.get('Convergence_cutoffs')
@@ -258,6 +255,30 @@ def execute_convergence_plan(
             consecutive_points=consecutive_points,
         )
 
+    has_downstream_task = any(
+        task in plan.tasks
+        for task in ('kpoints', 'lattice')
+    )
+    if cutoff_result is not None:
+        if cutoff_result.selection is None:
+            if has_downstream_task:
+                raise RuntimeError(
+                    'Cutoff convergence was not reached; remaining '
+                    'tasks were not started.'
+                )
+            selected_cutoff_ev = None
+        else:
+            selected_cutoff_ev = cutoff_result.selection.value
+    elif has_downstream_task:
+        selected_cutoff_ev = config.get('Cut_off_energy')
+        if selected_cutoff_ev is None:
+            raise ValueError(
+                'K-point or lattice execution without a cutoff sweep '
+                'requires Cut_off_energy.'
+            )
+    else:
+        selected_cutoff_ev = None
+
     if 'kpoints' in plan.tasks:
         kpoint_values = config.get('Convergence_kpoints')
         if kpoint_values is None:
@@ -265,25 +286,11 @@ def execute_convergence_plan(
                 'K-point execution requires Convergence_kpoints.'
             )
 
-        if cutoff_result is not None:
-            if cutoff_result.selection is None:
-                raise RuntimeError(
-                    'Cutoff convergence was not reached; k-point '
-                    'execution was not started.'
-                )
-            cutoff_ev = cutoff_result.selection.value
-        else:
-            cutoff_ev = config.get('Cut_off_energy')
-            if cutoff_ev is None:
-                raise ValueError(
-                    'K-point-only execution requires Cut_off_energy.'
-                )
-
         kpoint_result = run_kpoint_sweep(
             backend=backend,
             atoms=atoms,
             kpoint_values=kpoint_values,
-            cutoff_ev=cutoff_ev,
+            cutoff_ev=selected_cutoff_ev,
             workdir=workdir / 'kpoints',
             settings=settings,
             parallel_cores=plan.parallel_cores,
@@ -292,9 +299,52 @@ def execute_convergence_plan(
             consecutive_points=consecutive_points,
         )
 
+    if 'lattice' in plan.tasks:
+        lattice_scales = config.get('Convergence_lattice_scales')
+        if lattice_scales is None:
+            raise ValueError(
+                'Lattice execution requires Convergence_lattice_scales.'
+            )
+
+        if kpoint_result is not None:
+            if kpoint_result.selection is None:
+                raise RuntimeError(
+                    'K-point convergence was not reached; lattice '
+                    'execution was not started.'
+                )
+
+            selected_kpoint = kpoint_result.selection.value
+            if isinstance(selected_kpoint, tuple):
+                lattice_kpoints = {
+                    'density': None,
+                    'size': selected_kpoint,
+                    'gamma': _build_kpoint_settings(config)['gamma'],
+                }
+            else:
+                lattice_kpoints = {
+                    'density': selected_kpoint,
+                    'size': (5, 5, 5),
+                    'gamma': _build_kpoint_settings(config)['gamma'],
+                }
+        else:
+            lattice_kpoints = _build_kpoint_settings(config)
+
+        lattice_result = run_lattice_sweep(
+            backend=backend,
+            atoms=atoms,
+            lattice_scales=lattice_scales,
+            cutoff_ev=selected_cutoff_ev,
+            kpoint_settings=lattice_kpoints,
+            workdir=workdir / 'lattice',
+            settings=settings,
+            parallel_cores=plan.parallel_cores,
+            axes=config.get('Convergence_lattice_axes'),
+        )
+
     return ConvergenceRunResult(
         cutoff=cutoff_result,
         kpoints=kpoint_result,
+        lattice=lattice_result,
     )
 
 
@@ -348,6 +398,28 @@ def format_convergence_result(plan, result):
             else:
                 selected = '{:g} density'.format(selected)
             lines.append('Selected k-points: ' + selected)
+
+    if result.lattice is not None:
+        lines.append('Lattice-scale points:')
+        lines.extend(
+            '  {0:g}: {1:.12g} eV ({2:.12g} eV/atom)'.format(
+                point.scale,
+                point.total_energy_ev,
+                point.energy_ev_per_atom,
+            )
+            for point in result.lattice.points
+        )
+        if result.lattice.selection is None:
+            lines.append(
+                'Selected lattice scale: none '
+                '(minimum not bracketed)'
+            )
+        else:
+            lines.append(
+                'Selected lattice scale: {0:g}'.format(
+                    result.lattice.selection.scale
+                )
+            )
 
     return '\n'.join(lines)
 

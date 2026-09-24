@@ -2,6 +2,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from ase import Atoms
+
 from nanoworks.convergence import (
     ORDERED_CONVERGENCE_TASKS,
     StaticEnergyResult,
@@ -9,6 +11,7 @@ from nanoworks.convergence import (
     normalize_convergence_tasks,
     run_cutoff_sweep,
     run_kpoint_sweep,
+    run_lattice_sweep,
     select_converged_value,
 )
 
@@ -295,6 +298,83 @@ class TestConvergenceCore(unittest.TestCase):
                 cutoff_ev=450,
                 workdir=Path('unused'),
             )
+
+    def test_lattice_sweep_scales_only_selected_periodic_axes(self):
+        class FakeBackend:
+            name = 'FAKE'
+
+            def __init__(self):
+                self.cells = []
+
+            def calculate_static_energy(self, atoms, **kwargs):
+                self.cells.append(atoms.cell.copy())
+                scale = round(atoms.cell.lengths()[0] / 4.0, 2)
+                energies = {
+                    0.98: -10.0,
+                    1.00: -10.1,
+                    1.02: -10.05,
+                }
+                return StaticEnergyResult(
+                    engine=self.name,
+                    total_energy_ev=energies[scale],
+                )
+
+        atoms = Atoms(
+            'Si2',
+            positions=[(0, 0, 0), (1, 1, 0)],
+            cell=(4, 4, 10),
+            pbc=(True, True, False),
+        )
+        backend = FakeBackend()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = run_lattice_sweep(
+                backend=backend,
+                atoms=atoms,
+                lattice_scales=[0.98, 1.0, 1.02],
+                cutoff_ev=500,
+                kpoint_settings={'size': (6, 6, 1)},
+                workdir=Path(temp_dir),
+            )
+
+        self.assertEqual(result.selection.scale, 1.0)
+        self.assertAlmostEqual(backend.cells[0].lengths()[0], 3.92)
+        self.assertAlmostEqual(backend.cells[0].lengths()[1], 3.92)
+        self.assertAlmostEqual(backend.cells[0].lengths()[2], 10.0)
+        self.assertAlmostEqual(
+            result.optimized_atoms.cell.lengths()[0],
+            4.0,
+        )
+        self.assertAlmostEqual(atoms.cell.lengths()[0], 4.0)
+
+    def test_lattice_sweep_rejects_unbracketed_minimum(self):
+        class FakeBackend:
+            name = 'FAKE'
+
+            def calculate_static_energy(self, atoms, **kwargs):
+                scale = round(atoms.cell.lengths()[0] / 4.0, 2)
+                return StaticEnergyResult(
+                    engine=self.name,
+                    total_energy_ev=-scale,
+                )
+
+        atoms = Atoms(
+            'Si',
+            cell=(4, 4, 4),
+            pbc=True,
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = run_lattice_sweep(
+                backend=FakeBackend(),
+                atoms=atoms,
+                lattice_scales=[0.98, 1.0, 1.02],
+                cutoff_ev=450,
+                kpoint_settings={'density': 3.0},
+                workdir=Path(temp_dir),
+            )
+
+        self.assertIsNone(result.selection)
+        self.assertIsNone(result.optimized_atoms)
 
 
 if __name__ == '__main__':

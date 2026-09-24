@@ -106,11 +106,42 @@ class KPointSweepResult:
 
 
 @dataclass(frozen=True)
+class LatticeSelection:
+    """Bracketed discrete minimum from a lattice-scale sweep."""
+
+    scale: float
+    index: int
+    total_energy_ev: float
+    energy_ev_per_atom: float
+
+
+@dataclass(frozen=True)
+class LatticeSweepPoint:
+    """One completed lattice-scale calculation."""
+
+    scale: float
+    cell: Tuple[Tuple[float, ...], ...]
+    total_energy_ev: float
+    energy_ev_per_atom: float
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class LatticeSweepResult:
+    """Completed lattice sweep and its bracketed discrete minimum."""
+
+    points: Tuple[LatticeSweepPoint, ...]
+    selection: Optional[LatticeSelection]
+    optimized_atoms: Optional[Any] = None
+
+
+@dataclass(frozen=True)
 class ConvergenceRunResult:
     """Results produced by an ordered convergence workflow."""
 
     cutoff: Optional[CutoffSweepResult] = None
     kpoints: Optional[KPointSweepResult] = None
+    lattice: Optional[LatticeSweepResult] = None
 
 
 def normalize_convergence_tasks(tasks=None):
@@ -589,4 +620,163 @@ def run_kpoint_sweep(
     return KPointSweepResult(
         points=tuple(points),
         selection=selection,
+    )
+
+
+def _normalize_lattice_axes(atoms, axes):
+    """Return three axis flags, defaulting to periodic directions."""
+    if axes is None:
+        try:
+            axes = tuple(bool(value) for value in atoms.get_pbc())
+        except AttributeError as exc:
+            raise TypeError(
+                'The convergence structure must provide periodic axes.'
+            ) from exc
+    else:
+        try:
+            axes = tuple(axes)
+        except TypeError as exc:
+            raise TypeError(
+                'Lattice axes must contain three boolean values.'
+            ) from exc
+
+    if len(axes) != 3 or any(
+        not isinstance(value, bool)
+        for value in axes
+    ):
+        raise TypeError(
+            'Lattice axes must contain three boolean values.'
+        )
+
+    if not any(axes):
+        raise ValueError(
+            'At least one periodic lattice axis must be selected.'
+        )
+
+    return axes
+
+
+def run_lattice_sweep(
+    backend: StaticEnergyBackend,
+    atoms: Any,
+    lattice_scales: Sequence[float],
+    cutoff_ev: float,
+    kpoint_settings: Mapping[str, Any],
+    workdir: Path,
+    settings: Optional[Mapping[str, Any]] = None,
+    parallel_cores: int = 1,
+    axes: Optional[Sequence[bool]] = None,
+) -> LatticeSweepResult:
+    """Scale selected cell axes and find a bracketed energy minimum."""
+    scales = tuple(float(value) for value in lattice_scales)
+    if len(scales) < 3:
+        raise ValueError(
+            'Lattice sweep requires at least three scale values.'
+        )
+
+    if any(
+        not math.isfinite(scale) or scale <= 0.0
+        for scale in scales
+    ):
+        raise ValueError(
+            'Lattice scales must be finite and greater than zero.'
+        )
+
+    if any(
+        current <= previous
+        for previous, current in zip(scales, scales[1:])
+    ):
+        raise ValueError(
+            'Lattice scales must be strictly increasing.'
+        )
+
+    cutoff_ev = float(cutoff_ev)
+    if not math.isfinite(cutoff_ev) or cutoff_ev <= 0.0:
+        raise ValueError(
+            'Cutoff value must be finite and greater than zero.'
+        )
+
+    try:
+        atom_count = len(atoms)
+    except TypeError as exc:
+        raise TypeError(
+            'The convergence structure must provide an atom count.'
+        ) from exc
+
+    if atom_count <= 0:
+        raise ValueError(
+            'The convergence structure must contain at least one atom.'
+        )
+
+    if parallel_cores <= 0:
+        raise ValueError('Parallel core count must be greater than zero.')
+
+    axes = _normalize_lattice_axes(atoms, axes)
+    settings = {} if settings is None else dict(settings)
+    kpoint_settings = dict(kpoint_settings)
+    workdir = Path(workdir)
+    workdir.mkdir(parents=True, exist_ok=True)
+    points = []
+    structures = []
+
+    for index, scale in enumerate(scales):
+        scaled_atoms = atoms.copy()
+        scaled_cell = scaled_atoms.cell.copy()
+        for axis, enabled in enumerate(axes):
+            if enabled:
+                scaled_cell[axis] = scaled_cell[axis] * scale
+
+        scaled_atoms.set_cell(scaled_cell, scale_atoms=True)
+        result = backend.calculate_static_energy(
+            scaled_atoms,
+            cutoff_ev=cutoff_ev,
+            kpoint_settings=kpoint_settings,
+            workdir=workdir / (
+                '{:03d}-scale-{}'.format(index, scale).replace('.', 'p')
+            ),
+            settings=settings,
+            parallel_cores=parallel_cores,
+        )
+        energy = float(result.total_energy_ev)
+        if not math.isfinite(energy):
+            raise RuntimeError(
+                'Static-energy backend returned a non-finite energy.'
+            )
+
+        points.append(
+            LatticeSweepPoint(
+                scale=scale,
+                cell=tuple(
+                    tuple(float(value) for value in vector)
+                    for vector in scaled_atoms.cell
+                ),
+                total_energy_ev=energy,
+                energy_ev_per_atom=energy / atom_count,
+                metadata=dict(result.metadata),
+            )
+        )
+        structures.append(scaled_atoms)
+
+    minimum_index = min(
+        range(len(points)),
+        key=lambda index: points[index].total_energy_ev,
+    )
+
+    if minimum_index in (0, len(points) - 1):
+        selection = None
+        optimized_atoms = None
+    else:
+        minimum = points[minimum_index]
+        selection = LatticeSelection(
+            scale=minimum.scale,
+            index=minimum_index,
+            total_energy_ev=minimum.total_energy_ev,
+            energy_ev_per_atom=minimum.energy_ev_per_atom,
+        )
+        optimized_atoms = structures[minimum_index]
+
+    return LatticeSweepResult(
+        points=tuple(points),
+        selection=selection,
+        optimized_atoms=optimized_atoms,
     )
