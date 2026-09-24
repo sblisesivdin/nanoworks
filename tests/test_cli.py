@@ -1,11 +1,33 @@
 import io
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from nanoworks import cli
 
 
 class TestNanoworksCLI(unittest.TestCase):
+
+    def test_package_folder_uses_installed_share_directory(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            package_dir = root / 'site-packages' / 'nanoworks'
+            package_dir.mkdir(parents=True)
+            shared_dir = (
+                root / 'venv' / 'share' / 'nanoworks' / 'optimizations'
+            )
+            shared_dir.mkdir(parents=True)
+
+            with patch.object(
+                cli.nanoworks,
+                '__file__',
+                str(package_dir / '__init__.py'),
+            ):
+                with patch.object(cli.sys, 'prefix', str(root / 'venv')):
+                    located = cli.find_package_folder('optimizations')
+
+            self.assertEqual(located, shared_dir.resolve())
 
     @patch('nanoworks.cli.find_package_folder', return_value=None)
     @patch('nanoworks.cli.metadata.version')
