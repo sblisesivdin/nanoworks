@@ -3,8 +3,10 @@ import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 from nanoworks import dftconverge
+from nanoworks.convergence import StaticEnergyResult
 
 
 class TestDFTConvergeCLI(unittest.TestCase):
@@ -47,22 +49,198 @@ class TestDFTConvergeCLI(unittest.TestCase):
         self.assertIn('Parallel processes: 4', rendered)
         self.assertIn('no calculations executed', rendered)
 
-    def test_execution_is_explicitly_unavailable(self):
-        errors = io.StringIO()
-        with redirect_stderr(errors):
-            with self.assertRaises(SystemExit) as raised:
-                dftconverge.main([
+    def test_cutoff_execution_maps_qe_configuration(self):
+        class FakeAtoms:
+
+            def __len__(self):
+                return 2
+
+            def get_chemical_symbols(self):
+                return ['Si', 'Si']
+
+        class FakeBackend:
+            name = 'QE'
+
+            def __init__(self):
+                self.calls = []
+
+            def calculate_static_energy(self, atoms, **kwargs):
+                self.calls.append(kwargs)
+                energies = {
+                    400.0: -20.0,
+                    450.0: -20.02,
+                    500.0: -20.021,
+                    550.0: -20.0215,
+                }
+                return StaticEnergyResult(
+                    engine='QE',
+                    total_energy_ev=energies[kwargs['cutoff_ev']],
+                )
+
+        backend = FakeBackend()
+        backend_loader = Mock(return_value=backend)
+        pseudo_dir_getter = Mock(return_value=Path('/pseudos'))
+        pseudo_resolver = Mock(return_value={'Si': 'Si.upf'})
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            input_file = root / 'convergence.py'
+            geometry_file = root / 'structure.cif'
+            input_file.write_text('', encoding='utf-8')
+            geometry_file.write_text('', encoding='utf-8')
+            plan = dftconverge.build_convergence_plan(
+                config={
+                    'Engine': 'QE',
+                    'Convergence_tasks': ['cutoff'],
+                },
+                input_file=input_file,
+                geometry_file=geometry_file,
+                parallel_cores=6,
+            )
+
+            result = dftconverge.execute_convergence_plan(
+                config={
+                    'Engine': 'QE',
+                    'Convergence_tasks': ['cutoff'],
+                    'Convergence_cutoffs': [400, 450, 500, 550],
+                    'Ground_kpts_x': 6,
+                    'Ground_kpts_y': 6,
+                    'Ground_kpts_z': 2,
+                    'XC_calc': 'PBE',
+                },
+                plan=plan,
+                structure_reader=Mock(return_value=FakeAtoms()),
+                backend_loader=backend_loader,
+                pseudo_dir_getter=pseudo_dir_getter,
+                pseudo_resolver=pseudo_resolver,
+            )
+
+        backend_loader.assert_called_once_with(
+            'QE',
+            pseudopotentials={'Si': 'Si.upf'},
+            pseudo_dir=Path('/pseudos'),
+            executable='pw.x',
+        )
+        self.assertEqual(len(backend.calls), 4)
+        self.assertEqual(
+            backend.calls[0]['kpoint_settings']['size'],
+            (6, 6, 2),
+        )
+        self.assertEqual(backend.calls[0]['parallel_cores'], 6)
+        self.assertEqual(result.selection.value, 500.0)
+
+    def test_cutoff_execution_maps_gpaw_spin_configuration(self):
+        atoms = Mock()
+        atoms.__len__ = Mock(return_value=2)
+        atoms.get_chemical_symbols.return_value = ['Fe', 'Fe']
+        backend = Mock()
+        backend.name = 'GPAW'
+        backend.calculate_static_energy.side_effect = [
+            StaticEnergyResult('GPAW', -20.0),
+            StaticEnergyResult('GPAW', -20.001),
+            StaticEnergyResult('GPAW', -20.0015),
+        ]
+        backend_loader = Mock(return_value=backend)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            input_file = root / 'convergence.py'
+            geometry_file = root / 'structure.cif'
+            input_file.write_text('', encoding='utf-8')
+            geometry_file.write_text('', encoding='utf-8')
+            plan = dftconverge.build_convergence_plan(
+                config={
+                    'Engine': 'GPAW',
+                    'Convergence_tasks': ['cutoff'],
+                },
+                input_file=input_file,
+                geometry_file=geometry_file,
+            )
+
+            dftconverge.execute_convergence_plan(
+                config={
+                    'Convergence_cutoffs': [300, 350, 400],
+                    'Spin_calc': True,
+                    'Magmom_per_atom': {'Fe': 2.5},
+                },
+                plan=plan,
+                structure_reader=Mock(return_value=atoms),
+                backend_loader=backend_loader,
+            )
+
+        backend_loader.assert_called_once_with('GPAW')
+        settings = (
+            backend.calculate_static_energy.call_args_list[0]
+            .kwargs['settings']
+        )
+        self.assertEqual(settings['magnetic_moments'], [2.5, 2.5])
+        self.assertEqual(settings['xc_calc'], 'LDA')
+
+    def test_execution_rejects_unimplemented_task_before_backend(self):
+        backend_loader = Mock()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            input_file = root / 'convergence.py'
+            geometry_file = root / 'structure.cif'
+            input_file.write_text('', encoding='utf-8')
+            geometry_file.write_text('', encoding='utf-8')
+            plan = dftconverge.build_convergence_plan(
+                config={'Engine': 'QE'},
+                input_file=input_file,
+                geometry_file=geometry_file,
+            )
+
+            with self.assertRaisesRegex(
+                NotImplementedError,
+                'currently supports only',
+            ):
+                dftconverge.execute_convergence_plan(
+                    config={},
+                    plan=plan,
+                    backend_loader=backend_loader,
+                )
+
+        backend_loader.assert_not_called()
+
+    def test_main_executes_cutoff_workflow(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            input_file = root / 'convergence.py'
+            geometry_file = root / 'structure.cif'
+            input_file.write_text(
+                "Engine = 'QE'\n"
+                "Convergence_tasks = ['cutoff']\n"
+                "Convergence_cutoffs = [400, 450, 500]\n",
+                encoding='utf-8',
+            )
+            geometry_file.write_text('', encoding='utf-8')
+            fake_result = Mock()
+            fake_result.points = (
+                Mock(
+                    cutoff_ev=400.0,
+                    total_energy_ev=-10.0,
+                    energy_ev_per_atom=-5.0,
+                ),
+            )
+            fake_result.selection = Mock(value=400.0)
+
+            output = io.StringIO()
+            with patch.object(
+                dftconverge,
+                'execute_convergence_plan',
+                return_value=fake_result,
+            ) as execute, redirect_stdout(output):
+                result = dftconverge.main([
                     '-i',
-                    'input.py',
+                    str(input_file),
                     '-g',
-                    'structure.cif',
+                    str(geometry_file),
                 ])
 
-        self.assertEqual(raised.exception.code, 2)
-        self.assertIn(
-            'calculation execution is not available yet',
-            errors.getvalue(),
-        )
+        self.assertEqual(result, 0)
+        execute.assert_called_once()
+        self.assertIn('Selected cutoff: 400 eV', output.getvalue())
 
 
 if __name__ == '__main__':
