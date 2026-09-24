@@ -10,7 +10,14 @@ from unittest.mock import ANY, Mock, patch
 from ase import Atoms
 
 from nanoworks import dftconverge
-from nanoworks.convergence import ConvergenceRunResult, StaticEnergyResult
+from nanoworks.convergence import (
+    ConvergenceRunResult,
+    ConvergenceSelection,
+    KPointSweepPoint,
+    KPointSweepResult,
+    LatticeSweepPoint,
+    StaticEnergyResult,
+)
 
 
 class TestDFTConvergeCLI(unittest.TestCase):
@@ -209,6 +216,33 @@ class TestDFTConvergeCLI(unittest.TestCase):
                     ])
 
         self.assertIn('does not enable SOC', errors.getvalue())
+
+    def test_check_rejects_non_boolean_plot_setting(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            input_file = root / 'convergence.py'
+            geometry_file = root / 'structure.cif'
+            input_file.write_text(
+                "Engine = 'GPAW'\n"
+                "Convergence_tasks = ['cutoff']\n"
+                "Convergence_cutoffs = [300, 400, 500]\n"
+                "Convergence_plot = 'yes'\n",
+                encoding='utf-8',
+            )
+            geometry_file.write_text('not parsed by check', encoding='utf-8')
+
+            errors = io.StringIO()
+            with redirect_stderr(errors):
+                with self.assertRaises(SystemExit):
+                    dftconverge.main([
+                        '--check',
+                        '-i',
+                        str(input_file),
+                        '-g',
+                        str(geometry_file),
+                    ])
+
+        self.assertIn('Convergence_plot must be a boolean', errors.getvalue())
 
     def test_packaged_convergence_examples_pass_check(self):
         example_root = (
@@ -421,6 +455,14 @@ class TestDFTConvergeCLI(unittest.TestCase):
             optimized_structure_exists = (
                 artifacts['optimized_structure'].is_file()
             )
+            plot_files_are_png = all(
+                artifacts[name].read_bytes().startswith(b'\x89PNG')
+                for name in (
+                    'cutoff_plot',
+                    'kpoint_plot',
+                    'lattice_plot',
+                )
+            )
 
         backend_loader.assert_called_once_with(
             'QE',
@@ -469,13 +511,28 @@ class TestDFTConvergeCLI(unittest.TestCase):
             {'density': 4.0},
         )
         self.assertEqual(summary['selected']['lattice_scale'], 1.0)
+        self.assertEqual(summary['lattice_fit']['model'], 'quadratic')
+        self.assertGreater(
+            summary['lattice_fit']['equilibrium_volume_angstrom3'],
+            0.0,
+        )
+        self.assertNotIn(
+            'coefficients',
+            summary['lattice_fit'],
+        )
         self.assertEqual(
             summary['sweeps']['kpoints'][0]['kpoint_settings'],
             {'density': 2.0, 'gamma': True},
         )
         self.assertEqual(len(rows), 11)
         self.assertEqual(rows[-1]['task'], 'lattice')
+        self.assertGreater(
+            float(rows[-1]['cell_volume_angstrom3']),
+            0.0,
+        )
+        self.assertEqual(rows[0]['cell_volume_angstrom3'], '')
         self.assertTrue(optimized_structure_exists)
+        self.assertTrue(plot_files_are_png)
         self.assertEqual(
             [event['event'] for event in progress_events],
             (
@@ -493,6 +550,96 @@ class TestDFTConvergeCLI(unittest.TestCase):
         self.assertEqual(progress_events[5]['selected'], 500.0)
         self.assertEqual(progress_events[11]['selected'], 4.0)
         self.assertEqual(progress_events[-1]['selected'], 1.0)
+
+    def test_mesh_convergence_plot_uses_categorical_axis(self):
+        points = tuple(
+            KPointSweepPoint(
+                value=mesh,
+                kpoint_settings={'size': mesh, 'gamma': True},
+                total_energy_ev=energy,
+                energy_ev_per_atom=energy / 2.0,
+            )
+            for mesh, energy in (
+                ((2, 2, 2), -20.0),
+                ((4, 4, 4), -20.02),
+                ((6, 6, 6), -20.021),
+            )
+        )
+        result = ConvergenceRunResult(
+            kpoints=KPointSweepResult(
+                points=points,
+                selection=ConvergenceSelection(
+                    value=(4, 4, 4),
+                    index=1,
+                    delta_ev_per_atom=0.01,
+                    stable_deltas_ev_per_atom=(0.01, 0.0005),
+                ),
+            )
+        )
+        plan = Mock(engine='QE')
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifacts = dftconverge.write_convergence_plots(
+                plan,
+                result,
+                Path(temp_dir),
+            )
+            rendered = artifacts['kpoint_plot'].read_bytes()
+
+        self.assertTrue(rendered.startswith(b'\x89PNG'))
+
+    def test_convergence_plots_can_be_disabled(self):
+        plot_writer = Mock()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            input_file = root / 'convergence.py'
+            geometry_file = root / 'structure.cif'
+            input_file.write_text('', encoding='utf-8')
+            geometry_file.write_text('', encoding='utf-8')
+            plan = dftconverge.build_convergence_plan(
+                config={
+                    'Engine': 'GPAW',
+                    'Convergence_tasks': ['cutoff'],
+                },
+                input_file=input_file,
+                geometry_file=geometry_file,
+            )
+            artifacts = dftconverge.write_convergence_results(
+                config={
+                    'Convergence_plot': False,
+                    'Convergence_workdir': str(root / 'results'),
+                },
+                plan=plan,
+                result=ConvergenceRunResult(),
+                plot_writer=plot_writer,
+            )
+
+        plot_writer.assert_not_called()
+        self.assertEqual(set(artifacts), {'summary', 'table'})
+
+    def test_energy_volume_fit_rejects_a_concave_curve(self):
+        points = tuple(
+            LatticeSweepPoint(
+                scale=side,
+                cell=(
+                    (side, 0.0, 0.0),
+                    (0.0, side, 0.0),
+                    (0.0, 0.0, side),
+                ),
+                total_energy_ev=energy,
+                energy_ev_per_atom=energy,
+            )
+            for side, energy in (
+                (1.0, -49.0),
+                (2.0, 0.0),
+                (3.0, -361.0),
+            )
+        )
+
+        self.assertIsNone(
+            dftconverge.fit_lattice_energy_volume(points)
+        )
 
     def test_progress_printer_reports_each_completed_point(self):
         output = io.StringIO()
@@ -628,7 +775,7 @@ class TestDFTConvergeCLI(unittest.TestCase):
                     energy_ev_per_atom=-5.0,
                 ),
             )
-            fake_result.selection = Mock(value=400.0)
+            fake_result.selection = Mock(value=400.0, index=0)
             fake_run_result = ConvergenceRunResult(cutoff=fake_result)
 
             output = io.StringIO()

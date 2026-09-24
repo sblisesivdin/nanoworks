@@ -12,7 +12,8 @@
 - Reusable JSON cluster profiles store Slurm resources and module names; explicit command-line settings override profile values.
 - Slurm dry-run scripts support QoS selection and loading site modules.
 - `dftconverge` runs ordered cutoff, k-point and lattice convergence workflows with GPAW or QE from one input.
-- Convergence runs report every completed point immediately and save JSON, CSV and optimized-CIF results.
+- Convergence runs report every completed point immediately and save JSON, CSV, optimized-CIF and PNG results.
+- Cutoff and k-point convergence plots use relative energies; lattice runs include a fitted energy-volume plot.
 - K-point density and explicit-mesh modes are mutually exclusive in convergence inputs and outputs.
 - QE convergence can select installed scalar- or fully relativistic PseudoDojo sets with `QE_pseudo_relativistic`.
 - The QE pseudo installer reports set type, version, file count, table, directory and manifest information.

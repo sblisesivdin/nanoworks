@@ -133,8 +133,26 @@ keywords such as ``Engine``, ``XC_calc``, ``Occupation``, ``Spin_calc``,
    Output directory, resolved relative to the input file. The default is
    ``<geometry>-convergence``.
 
+``Convergence_plot``
+   Write PNG convergence plots. Default: ``True``. Set it to ``False`` for
+   machine-readable results only.
+
 The lattice step is a static uniform scale scan of the selected cell axes;
 it does not relax internal atomic coordinates at every scale.
+
+Energy-volume fit
+-----------------
+
+The lattice sweep records the cell volume of every calculated structure and
+fits energy per atom as a quadratic function of volume. The fit is reported
+only when it is convex and its minimum lies inside the sampled volume range.
+The fitted minimum is an interpolation aid; the selected lattice scale and
+optimized CIF continue to use an actually calculated, bracketed point.
+
+For a 2D structure, use ``Convergence_lattice_axes = [True, True, False]``.
+The fixed vacuum length then makes cell volume proportional to in-plane area,
+so the energy-volume curve remains useful for locating the in-plane minimum.
+Nanoworks does not derive a three-dimensional bulk modulus from this fit.
 
 Quantum ESPRESSO pseudopotentials
 ---------------------------------
@@ -200,12 +218,25 @@ Outputs
 The work directory contains per-point GPAW or QE calculation folders plus:
 
 * ``convergence-results.json`` with the selected parameters and all points;
-* ``convergence-results.csv`` for plotting and spreadsheet use;
+* ``convergence-results.csv`` with energies and lattice-point cell volumes;
+* ``convergence-cutoff.png`` with energy relative to the last cutoff point;
+* ``convergence-kpoints.png`` with energy relative to the last k-point point;
+* ``convergence-lattice.png`` with calculated energy-volume points, the
+  quadratic fit, and its interpolated minimum when valid;
 * ``<geometry>-optimized.cif`` when a bracketed lattice minimum is found.
+
+Plot energies are in meV/atom. Cutoff and k-point plots mark the selected
+converged value. The energy-volume plot separately marks the selected
+calculated structure and the fitted minimum. Set ``Convergence_plot = False``
+to omit all three PNG files.
 
 The JSON representation stores exactly one k-point mode for each point:
 ``density`` for a density sweep or ``size`` for an explicit-mesh sweep. The
 inactive mode is omitted.
+
+For lattice runs, JSON includes ``volume_angstrom3`` for every sampled point
+and a ``lattice_fit`` object when the quadratic fit is valid. The fit object
+contains the fitted equilibrium volume and minimum energy per atom.
 
 Ready inputs for both engines are installed in
 ``~/.nanoworks/examples/Convergence``.

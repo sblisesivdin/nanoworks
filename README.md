@@ -213,8 +213,8 @@ dftconverge --check -p 4 -g structure.cif -i convergence.py
 dftconverge -p 4 -g structure.cif -i convergence.py
 ```
 
-The workflow prints every completed point and saves JSON, CSV, and optimized
-structure results. See the
+The workflow prints every completed point and saves JSON, CSV, optimized
+structure, cutoff, k-point, and fitted energy-volume results and figures. See the
 [convergence documentation](https://nanoworks.readthedocs.io/en/latest/dftconverge.html)
 for input keywords and examples.
 

@@ -16,3 +16,7 @@ PseudoDojo pseudopotentials. Install them first with
 
 The example uses a relaxed 10 meV/atom tolerance to keep the demonstration
 compact. Tighten `Convergence_energy_tolerance` for production work.
+
+The result directory contains JSON and CSV data, the optimized CIF, and PNG
+plots for cutoff, k-point, and energy-volume convergence. The energy-volume
+plot includes a quadratic fit when its minimum lies inside the sampled range.

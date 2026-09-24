@@ -172,7 +172,8 @@ dftconverge
 -----------
 
 Run engine-independent cutoff, k-point, and lattice-scale optimization with
-GPAW or Quantum ESPRESSO:
+GPAW or Quantum ESPRESSO. Completed workflows save numerical results and
+cutoff, k-point, and fitted energy-volume figures:
 
 .. code-block:: console
 

@@ -441,6 +441,9 @@ def validate_convergence_config(config, plan):
                 "QE_pseudo_relativistic must be 'scalar' or 'full'."
             )
 
+    if not isinstance(config.get('Convergence_plot', True), bool):
+        raise TypeError('Convergence_plot must be a boolean.')
+
     return config
 
 
@@ -875,6 +878,66 @@ def _kpoint_settings_json(settings):
     return rendered
 
 
+def _cell_volume(cell):
+    """Return the absolute volume of a three-vector cell."""
+    a, b, c = cell
+    return abs(float(
+        a[0] * (b[1] * c[2] - b[2] * c[1])
+        - a[1] * (b[0] * c[2] - b[2] * c[0])
+        + a[2] * (b[0] * c[1] - b[1] * c[0])
+    ))
+
+
+def fit_lattice_energy_volume(points):
+    """Fit a convex quadratic E(V) curve inside the sampled range."""
+    points = tuple(points)
+    if len(points) < 3:
+        return None
+
+    volumes = tuple(_cell_volume(point.cell) for point in points)
+    if len(set(volumes)) < 3:
+        return None
+
+    import numpy as np
+
+    coefficients = np.polyfit(
+        np.asarray(volumes, dtype=float),
+        np.asarray(
+            [point.energy_ev_per_atom for point in points],
+            dtype=float,
+        ),
+        2,
+    )
+    quadratic, linear, constant = (
+        float(value)
+        for value in coefficients
+    )
+    if not all(
+        math.isfinite(value)
+        for value in (quadratic, linear, constant)
+    ) or quadratic <= 0.0:
+        return None
+
+    equilibrium_volume = -linear / (2.0 * quadratic)
+    if not min(volumes) <= equilibrium_volume <= max(volumes):
+        return None
+
+    minimum_energy = (
+        quadratic * equilibrium_volume ** 2
+        + linear * equilibrium_volume
+        + constant
+    )
+    if not math.isfinite(minimum_energy):
+        return None
+
+    return {
+        'model': 'quadratic',
+        'equilibrium_volume_angstrom3': equilibrium_volume,
+        'minimum_energy_ev_per_atom': minimum_energy,
+        'coefficients': (quadratic, linear, constant),
+    }
+
+
 def _result_summary(plan, result):
     """Build the stable, engine-independent JSON result structure."""
     cutoff_selection = None
@@ -931,15 +994,26 @@ def _result_summary(plan, result):
         ]
 
     if result.lattice is not None:
+        lattice_fit = fit_lattice_energy_volume(result.lattice.points)
         summary['sweeps']['lattice'] = [
             {
                 'scale': point.scale,
                 'cell': [list(vector) for vector in point.cell],
+                'volume_angstrom3': _cell_volume(point.cell),
                 'total_energy_ev': point.total_energy_ev,
                 'energy_ev_per_atom': point.energy_ev_per_atom,
             }
             for point in result.lattice.points
         ]
+        summary['lattice_fit'] = (
+            None
+            if lattice_fit is None
+            else {
+                key: value
+                for key, value in lattice_fit.items()
+                if key != 'coefficients'
+            }
+        )
 
     return summary
 
@@ -981,9 +1055,235 @@ def _result_rows(result):
                 'task': 'lattice',
                 'parameter_type': 'lattice_scale',
                 'parameter_value': '{:g}'.format(point.scale),
+                'cell_volume_angstrom3': _cell_volume(point.cell),
                 'total_energy_ev': point.total_energy_ev,
                 'energy_ev_per_atom': point.energy_ev_per_atom,
             }
+
+
+def _save_convergence_plot(
+    output_file,
+    x_values,
+    energies_ev_per_atom,
+    *,
+    title,
+    x_label,
+    selected_index=None,
+    tick_labels=None,
+    reference='last',
+    fit_curve=None,
+    fit_minimum=None,
+):
+    """Write one headless relative-energy convergence plot."""
+    from matplotlib.backends.backend_agg import FigureCanvasAgg
+    from matplotlib.figure import Figure
+
+    x_values = tuple(x_values)
+    energies = tuple(float(value) for value in energies_ev_per_atom)
+    if not x_values or len(x_values) != len(energies):
+        raise ValueError(
+            'Convergence plot values and energies must be non-empty '
+            'sequences of equal length.'
+        )
+
+    if reference == 'minimum':
+        reference_energy = min(energies)
+        reference_label = 'minimum'
+    else:
+        reference_energy = energies[-1]
+        reference_label = 'last point'
+
+    relative_energies = tuple(
+        (energy - reference_energy) * 1000.0
+        for energy in energies
+    )
+
+    output_file = Path(output_file)
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+
+    figure = Figure(figsize=(7.2, 4.8))
+    FigureCanvasAgg(figure)
+    axes = figure.subplots()
+
+    try:
+        axes.plot(
+            x_values,
+            relative_energies,
+            color='tab:blue',
+            marker='o',
+            linewidth=1.5,
+        )
+        axes.axhline(
+            0.0,
+            color='0.35',
+            linewidth=0.8,
+            linestyle=':',
+        )
+
+        if fit_curve is not None:
+            fit_x, fit_energies = fit_curve
+            axes.plot(
+                fit_x,
+                [
+                    (float(energy) - reference_energy) * 1000.0
+                    for energy in fit_energies
+                ],
+                color='tab:orange',
+                linewidth=1.4,
+                label='Quadratic fit',
+            )
+
+        if selected_index is not None:
+            selected_x = x_values[selected_index]
+            selected_energy = relative_energies[selected_index]
+            axes.axvline(
+                selected_x,
+                color='tab:red',
+                linewidth=1.0,
+                linestyle='--',
+                label='Selected',
+            )
+            axes.scatter(
+                [selected_x],
+                [selected_energy],
+                color='tab:red',
+                edgecolor='white',
+                linewidth=0.7,
+                s=55,
+                zorder=3,
+            )
+
+        if fit_minimum is not None:
+            fit_volume, fit_energy = fit_minimum
+            axes.scatter(
+                [fit_volume],
+                [(float(fit_energy) - reference_energy) * 1000.0],
+                color='tab:orange',
+                marker='*',
+                edgecolor='black',
+                linewidth=0.5,
+                s=110,
+                label='Fit minimum',
+                zorder=4,
+            )
+
+        if selected_index is not None or fit_curve is not None:
+            axes.legend()
+
+        if tick_labels is not None:
+            axes.set_xticks(x_values)
+            axes.set_xticklabels(tick_labels)
+
+        axes.set_title(title)
+        axes.set_xlabel(x_label)
+        axes.set_ylabel(
+            'Energy - {} (meV/atom)'.format(reference_label)
+        )
+        axes.grid(True, alpha=0.25)
+        figure.tight_layout()
+        figure.savefig(
+            output_file,
+            dpi=300,
+            bbox_inches='tight',
+        )
+    finally:
+        figure.clear()
+
+    return output_file
+
+
+def write_convergence_plots(plan, result, workdir):
+    """Write one PNG relative-energy plot for every completed sweep."""
+    workdir = Path(workdir)
+    artifacts = {}
+
+    if result.cutoff is not None:
+        points = result.cutoff.points
+        artifacts['cutoff_plot'] = _save_convergence_plot(
+            workdir / 'convergence-cutoff.png',
+            [point.cutoff_ev for point in points],
+            [point.energy_ev_per_atom for point in points],
+            title=plan.engine + ' cutoff convergence',
+            x_label='Plane-wave cutoff (eV)',
+            selected_index=(
+                None
+                if result.cutoff.selection is None
+                else result.cutoff.selection.index
+            ),
+        )
+
+    if result.kpoints is not None:
+        points = result.kpoints.points
+        mesh_mode = bool(points) and isinstance(points[0].value, tuple)
+        if mesh_mode:
+            x_values = tuple(range(len(points)))
+            tick_labels = tuple(
+                'x'.join(str(value) for value in point.value)
+                for point in points
+            )
+            x_label = 'K-point mesh'
+        else:
+            x_values = tuple(point.value for point in points)
+            tick_labels = None
+            x_label = 'K-point density (points per angstrom)'
+
+        artifacts['kpoint_plot'] = _save_convergence_plot(
+            workdir / 'convergence-kpoints.png',
+            x_values,
+            [point.energy_ev_per_atom for point in points],
+            title=plan.engine + ' k-point convergence',
+            x_label=x_label,
+            selected_index=(
+                None
+                if result.kpoints.selection is None
+                else result.kpoints.selection.index
+            ),
+            tick_labels=tick_labels,
+        )
+
+    if result.lattice is not None:
+        points = result.lattice.points
+        volumes = tuple(_cell_volume(point.cell) for point in points)
+        fit = fit_lattice_energy_volume(points)
+        fit_curve = None
+        fit_minimum = None
+        if fit is not None:
+            import numpy as np
+
+            fit_volumes = np.linspace(
+                min(volumes),
+                max(volumes),
+                200,
+            )
+            quadratic, linear, constant = fit['coefficients']
+            fit_energies = (
+                quadratic * fit_volumes ** 2
+                + linear * fit_volumes
+                + constant
+            )
+            fit_curve = (fit_volumes, fit_energies)
+            fit_minimum = (
+                fit['equilibrium_volume_angstrom3'],
+                fit['minimum_energy_ev_per_atom'],
+            )
+
+        artifacts['lattice_plot'] = _save_convergence_plot(
+            workdir / 'convergence-lattice.png',
+            volumes,
+            [point.energy_ev_per_atom for point in points],
+            title=plan.engine + ' energy-volume convergence',
+            x_label='Cell volume (Angstrom^3)',
+            selected_index=(
+                None
+                if result.lattice.selection is None
+                else result.lattice.selection.index
+            ),
+            reference='minimum',
+            fit_curve=fit_curve,
+            fit_minimum=fit_minimum,
+        )
+
+    return artifacts
 
 
 def write_convergence_results(
@@ -992,6 +1292,7 @@ def write_convergence_results(
     result,
     *,
     structure_writer=None,
+    plot_writer=None,
 ):
     """Persist machine-readable results and the optimized structure."""
     workdir = _resolve_workdir(config, plan)
@@ -1012,6 +1313,7 @@ def write_convergence_results(
         'task',
         'parameter_type',
         'parameter_value',
+        'cell_volume_angstrom3',
         'total_energy_ev',
         'energy_ev_per_atom',
     )
@@ -1024,6 +1326,11 @@ def write_convergence_results(
         'summary': summary_file,
         'table': csv_file,
     }
+
+    if config.get('Convergence_plot', True):
+        if plot_writer is None:
+            plot_writer = write_convergence_plots
+        artifacts.update(plot_writer(plan, result, workdir))
 
     if (
         result.lattice is not None
@@ -1118,6 +1425,15 @@ def format_convergence_result(plan, result, artifacts=None):
             lines.append(
                 'Selected lattice scale: {0:g}'.format(
                     result.lattice.selection.scale
+                )
+            )
+        lattice_fit = fit_lattice_energy_volume(result.lattice.points)
+        if lattice_fit is not None:
+            lines.append(
+                'Quadratic E(V) fit minimum: '
+                '{0:.8g} Angstrom^3 ({1:.12g} eV/atom)'.format(
+                    lattice_fit['equilibrium_volume_angstrom3'],
+                    lattice_fit['minimum_energy_ev_per_atom'],
                 )
             )
 
