@@ -8,12 +8,17 @@ Quantum ESPRESSO:
 
    $ dftconverge --check -p 4 -g structure.cif -i convergence.py
    $ dftconverge -p 4 -g structure.cif -i convergence.py
+   $ dftconverge --plot-results results/convergence-results.json
 
 The ``--check`` form validates files, task settings, candidate ordering, and
 the requested engine without reading the structure or starting a DFT engine.
 For execution, ``-p N`` launches QE programs with ``N`` processes and
 automatically restarts the complete GPAW Python workflow under ``N`` MPI
 processes.
+
+The ``--plot-results`` form reads a completed run's JSON file and regenerates
+all available PNG plots in the same directory. It does not need the original
+input or geometry files and does not import or start GPAW or Quantum ESPRESSO.
 
 Workflow
 --------
@@ -229,6 +234,17 @@ Plot energies are in meV/atom. Cutoff and k-point plots mark the selected
 converged value. The energy-volume plot separately marks the selected
 calculated structure and the fitted minimum. Set ``Convergence_plot = False``
 to omit all three PNG files.
+
+Plots can later be created again, including for a run made with
+``Convergence_plot = False``, without repeating any DFT calculations:
+
+.. code-block:: console
+
+   $ dftconverge --plot-results \
+       Si-QE-convergence-results/convergence-results.json
+
+The command checks the result schema and writes only the plots represented by
+the stored sweeps. Existing plot files with the standard names are replaced.
 
 The JSON representation stores exactly one k-point mode for each point:
 ``density`` for a density sweep or ``size`` for an explicit-mesh sweep. The

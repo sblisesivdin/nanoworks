@@ -12,7 +12,16 @@ from pathlib import Path
 
 import nanoworks
 from nanoworks.convergence import (
+    ConvergencePlan,
     ConvergenceRunResult,
+    ConvergenceSelection,
+    CutoffSweepPoint,
+    CutoffSweepResult,
+    KPointSweepPoint,
+    KPointSweepResult,
+    LatticeSelection,
+    LatticeSweepPoint,
+    LatticeSweepResult,
     build_convergence_plan,
     run_cutoff_sweep,
     run_kpoint_sweep,
@@ -46,20 +55,18 @@ def create_parser():
     parser = argparse.ArgumentParser(
         prog='dftconverge',
         description=(
-            'Plan engine-independent cutoff, k-point, and lattice '
-            'convergence workflows.'
+            'Run engine-independent cutoff, k-point, and lattice '
+            'convergence workflows or regenerate their plots.'
         ),
     )
     parser.add_argument(
         '-i',
         '--input',
-        required=True,
         help='Python input containing convergence settings.',
     )
     parser.add_argument(
         '-g',
         '--geometry',
-        required=True,
         help='Input structure readable by ASE.',
     )
     parser.add_argument(
@@ -73,6 +80,14 @@ def create_parser():
         '--check',
         action='store_true',
         help='Validate and print the workflow without calculations.',
+    )
+    parser.add_argument(
+        '--plot-results',
+        metavar='JSON',
+        help=(
+            'Regenerate PNG plots from convergence-results.json without '
+            'running calculations.'
+        ),
     )
     parser.add_argument(
         '-v',
@@ -938,6 +953,189 @@ def fit_lattice_energy_volume(points):
     }
 
 
+def _stored_selection(points, selected_value, value_getter):
+    """Rebuild a plot selection from a value stored in result JSON."""
+    if selected_value is None:
+        return None
+
+    for index, point in enumerate(points):
+        value = value_getter(point)
+        if value == selected_value:
+            return ConvergenceSelection(
+                value=value,
+                index=index,
+                delta_ev_per_atom=0.0,
+                stable_deltas_ev_per_atom=(),
+            )
+
+    raise ValueError(
+        'Selected convergence value is not present in its stored sweep.'
+    )
+
+
+def load_convergence_results(summary_file):
+    """Load versioned result JSON for calculation-free plot generation."""
+    summary_file = Path(summary_file)
+    if not summary_file.is_file():
+        raise ValueError(
+            'Convergence result JSON does not exist: ' + str(summary_file)
+        )
+
+    try:
+        summary = json.loads(summary_file.read_text(encoding='utf-8'))
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            'Convergence result JSON is not valid: ' + str(exc)
+        ) from exc
+
+    if not isinstance(summary, dict):
+        raise ValueError('Convergence result JSON must contain an object.')
+    if summary.get('schema_version') != 1:
+        raise ValueError(
+            'Unsupported convergence result schema version: '
+            + repr(summary.get('schema_version'))
+        )
+
+    engine = summary.get('engine')
+    sweeps = summary.get('sweeps')
+    selected = summary.get('selected')
+    if not isinstance(engine, str) or not engine:
+        raise ValueError('Convergence result JSON has no valid engine.')
+    if not isinstance(sweeps, dict) or not sweeps:
+        raise ValueError('Convergence result JSON has no stored sweeps.')
+    if not isinstance(selected, dict):
+        raise ValueError('Convergence result JSON has no selected values.')
+
+    try:
+        cutoff_result = None
+        if 'cutoff' in sweeps:
+            cutoff_points = tuple(
+                CutoffSweepPoint(
+                    cutoff_ev=float(point['cutoff_ev']),
+                    total_energy_ev=float(point['total_energy_ev']),
+                    energy_ev_per_atom=float(point['energy_ev_per_atom']),
+                )
+                for point in sweeps['cutoff']
+            )
+            cutoff_result = CutoffSweepResult(
+                points=cutoff_points,
+                selection=_stored_selection(
+                    cutoff_points,
+                    selected.get('cutoff_ev'),
+                    lambda point: point.cutoff_ev,
+                ),
+            )
+
+        kpoint_result = None
+        if 'kpoints' in sweeps:
+            kpoint_points = []
+            for point in sweeps['kpoints']:
+                value = point['value']
+                if isinstance(value, list):
+                    value = tuple(int(component) for component in value)
+                settings = dict(point['kpoint_settings'])
+                if 'size' in settings:
+                    settings['size'] = tuple(settings['size'])
+                kpoint_points.append(KPointSweepPoint(
+                    value=value,
+                    kpoint_settings=settings,
+                    total_energy_ev=float(point['total_energy_ev']),
+                    energy_ev_per_atom=float(point['energy_ev_per_atom']),
+                ))
+            kpoint_points = tuple(kpoint_points)
+            selected_kpoints = selected.get('kpoints')
+            if selected_kpoints is None:
+                selected_kpoint_value = None
+            elif 'size' in selected_kpoints:
+                selected_kpoint_value = tuple(selected_kpoints['size'])
+            else:
+                selected_kpoint_value = selected_kpoints['density']
+            kpoint_result = KPointSweepResult(
+                points=kpoint_points,
+                selection=_stored_selection(
+                    kpoint_points,
+                    selected_kpoint_value,
+                    lambda point: point.value,
+                ),
+            )
+
+        lattice_result = None
+        if 'lattice' in sweeps:
+            lattice_points = tuple(
+                LatticeSweepPoint(
+                    scale=float(point['scale']),
+                    cell=tuple(
+                        tuple(float(component) for component in vector)
+                        for vector in point['cell']
+                    ),
+                    total_energy_ev=float(point['total_energy_ev']),
+                    energy_ev_per_atom=float(point['energy_ev_per_atom']),
+                )
+                for point in sweeps['lattice']
+            )
+            selected_scale = selected.get('lattice_scale')
+            lattice_selection = None
+            if selected_scale is not None:
+                selected_index = next(
+                    (
+                        index
+                        for index, point in enumerate(lattice_points)
+                        if point.scale == selected_scale
+                    ),
+                    None,
+                )
+                if selected_index is None:
+                    raise ValueError(
+                        'Selected lattice scale is not present in its '
+                        'stored sweep.'
+                    )
+                selected_point = lattice_points[selected_index]
+                lattice_selection = LatticeSelection(
+                    scale=selected_point.scale,
+                    index=selected_index,
+                    total_energy_ev=selected_point.total_energy_ev,
+                    energy_ev_per_atom=selected_point.energy_ev_per_atom,
+                )
+            lattice_result = LatticeSweepResult(
+                points=lattice_points,
+                selection=lattice_selection,
+            )
+    except (KeyError, TypeError, ValueError) as exc:
+        if isinstance(exc, ValueError) and str(exc).startswith('Selected '):
+            raise
+        raise ValueError(
+            'Convergence result JSON contains invalid sweep data: '
+            + str(exc)
+        ) from exc
+
+    result = ConvergenceRunResult(
+        cutoff=cutoff_result,
+        kpoints=kpoint_result,
+        lattice=lattice_result,
+    )
+    if all(value is None for value in (
+        result.cutoff,
+        result.kpoints,
+        result.lattice,
+    )):
+        raise ValueError(
+            'Convergence result JSON has no supported stored sweeps.'
+        )
+
+    tasks = tuple(
+        task
+        for task in ('cutoff', 'kpoints', 'lattice')
+        if task in sweeps
+    )
+    plan = ConvergencePlan(
+        engine=engine,
+        tasks=tasks,
+        input_file=Path(summary.get('input_file', '')),
+        geometry_file=Path(summary.get('geometry_file', '')),
+    )
+    return plan, result
+
+
 def _result_summary(plan, result):
     """Build the stable, engine-independent JSON result structure."""
     cutoff_selection = None
@@ -1447,53 +1645,100 @@ def format_convergence_result(plan, result, artifacts=None):
     return '\n'.join(lines)
 
 
+def format_plot_result(summary_file, plan, artifacts):
+    """Render a calculation-free plot regeneration result."""
+    lines = [
+        'Nanoworks dftconverge plots',
+        'Engine: ' + plan.engine,
+        'Source: ' + str(summary_file),
+        'Artifacts:',
+    ]
+    lines.extend(
+        '  {0}: {1}'.format(name, path)
+        for name, path in artifacts.items()
+    )
+    return '\n'.join(lines)
+
+
 def main(argv=None):
     """Validate or execute a convergence workflow plan."""
     parser = create_parser()
     args = parser.parse_args(argv)
 
     try:
-        config = load_convergence_input(args.input)
-        plan = build_convergence_plan(
-            config=config,
-            input_file=args.input,
-            geometry_file=args.geometry,
-            parallel_cores=args.parallel,
-        )
-        if args.check:
-            validate_convergence_config(config, plan)
-            rendered = format_plan(plan)
-        else:
-            if (
-                plan.engine == 'GPAW'
-                and plan.parallel_cores > 1
-                and os.environ.get(GPAW_MPI_ENV) != '1'
-            ):
-                restart_gpaw_with_mpi(plan.parallel_cores, args)
-
-            rank = _parallel_rank()
-            result = execute_convergence_plan(
-                config,
+        if args.plot_results is not None:
+            if args.input is not None or args.geometry is not None:
+                raise ValueError(
+                    '--plot-results cannot be combined with --input or '
+                    '--geometry.'
+                )
+            if args.check:
+                raise ValueError(
+                    '--plot-results cannot be combined with --check.'
+                )
+            if args.parallel != 1:
+                raise ValueError(
+                    '--parallel is not used with --plot-results.'
+                )
+            summary_file = Path(args.plot_results).resolve()
+            plan, result = load_convergence_results(summary_file)
+            artifacts = write_convergence_plots(
                 plan,
-                progress_callback=(
-                    print_convergence_progress
-                    if rank == 0
-                    else None
-                ),
+                result,
+                summary_file.parent,
             )
-            if rank == 0:
-                artifacts = write_convergence_results(
+            rendered = format_plot_result(
+                summary_file,
+                plan,
+                artifacts,
+            )
+        else:
+            if args.input is None or args.geometry is None:
+                raise ValueError(
+                    '--input and --geometry are required unless '
+                    '--plot-results is used.'
+                )
+            config = load_convergence_input(args.input)
+            plan = build_convergence_plan(
+                config=config,
+                input_file=args.input,
+                geometry_file=args.geometry,
+                parallel_cores=args.parallel,
+            )
+            if args.check:
+                validate_convergence_config(config, plan)
+                rendered = format_plan(plan)
+            else:
+                if (
+                    plan.engine == 'GPAW'
+                    and plan.parallel_cores > 1
+                    and os.environ.get(GPAW_MPI_ENV) != '1'
+                ):
+                    restart_gpaw_with_mpi(plan.parallel_cores, args)
+
+                rank = _parallel_rank()
+                result = execute_convergence_plan(
                     config,
                     plan,
-                    result,
+                    progress_callback=(
+                        print_convergence_progress
+                        if rank == 0
+                        else None
+                    ),
                 )
-                rendered = format_convergence_result(
-                    plan,
-                    result,
-                    artifacts=artifacts,
-                )
-            else:
-                rendered = None
+                if rank == 0:
+                    artifacts = write_convergence_results(
+                        config,
+                        plan,
+                        result,
+                    )
+                    rendered = format_convergence_result(
+                        plan,
+                        result,
+                        artifacts=artifacts,
+                    )
+                else:
+                    rendered = None
     except (
         NotImplementedError,
         OSError,

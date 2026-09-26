@@ -551,6 +551,123 @@ class TestDFTConvergeCLI(unittest.TestCase):
         self.assertEqual(progress_events[11]['selected'], 4.0)
         self.assertEqual(progress_events[-1]['selected'], 1.0)
 
+    def test_plot_results_regenerates_all_plots_without_calculations(self):
+        summary = {
+            'schema_version': 1,
+            'engine': 'QE',
+            'tasks': ['cutoff', 'kpoints', 'lattice'],
+            'input_file': '/old/convergence.py',
+            'geometry_file': '/old/Si.cif',
+            'selected': {
+                'cutoff_ev': 400.0,
+                'kpoints': {'density': 3.0},
+                'lattice_scale': 1.0,
+            },
+            'sweeps': {
+                'cutoff': [
+                    {
+                        'cutoff_ev': value,
+                        'total_energy_ev': energy * 2.0,
+                        'energy_ev_per_atom': energy,
+                    }
+                    for value, energy in (
+                        (300.0, -10.0),
+                        (400.0, -10.1),
+                        (500.0, -10.101),
+                    )
+                ],
+                'kpoints': [
+                    {
+                        'value': value,
+                        'kpoint_settings': {
+                            'density': value,
+                            'gamma': True,
+                        },
+                        'total_energy_ev': energy * 2.0,
+                        'energy_ev_per_atom': energy,
+                    }
+                    for value, energy in (
+                        (2.0, -10.0),
+                        (3.0, -10.1),
+                        (4.0, -10.101),
+                    )
+                ],
+                'lattice': [
+                    {
+                        'scale': side,
+                        'cell': [
+                            [side, 0.0, 0.0],
+                            [0.0, side, 0.0],
+                            [0.0, 0.0, side],
+                        ],
+                        'volume_angstrom3': side ** 3,
+                        'total_energy_ev': energy * 2.0,
+                        'energy_ev_per_atom': energy,
+                    }
+                    for side, energy in (
+                        (0.98, -10.0),
+                        (1.0, -10.1),
+                        (1.02, -10.0),
+                    )
+                ],
+            },
+        }
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            summary_file = Path(temp_dir) / 'convergence-results.json'
+            summary_file.write_text(
+                json.dumps(summary),
+                encoding='utf-8',
+            )
+            output = io.StringIO()
+            with patch.object(
+                dftconverge,
+                'execute_convergence_plan',
+            ) as execute, redirect_stdout(output):
+                result = dftconverge.main([
+                    '--plot-results',
+                    str(summary_file),
+                ])
+
+            plot_files = tuple(
+                Path(temp_dir) / name
+                for name in (
+                    'convergence-cutoff.png',
+                    'convergence-kpoints.png',
+                    'convergence-lattice.png',
+                )
+            )
+            self.assertTrue(all(
+                path.read_bytes().startswith(b'\x89PNG')
+                for path in plot_files
+            ))
+
+        self.assertEqual(result, 0)
+        execute.assert_not_called()
+        self.assertIn('Nanoworks dftconverge plots', output.getvalue())
+        self.assertIn('Engine: QE', output.getvalue())
+
+    def test_plot_results_rejects_unknown_schema(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            summary_file = Path(temp_dir) / 'convergence-results.json'
+            summary_file.write_text(
+                json.dumps({'schema_version': 99}),
+                encoding='utf-8',
+            )
+            errors = io.StringIO()
+            with redirect_stderr(errors):
+                with self.assertRaises(SystemExit) as raised:
+                    dftconverge.main([
+                        '--plot-results',
+                        str(summary_file),
+                    ])
+
+        self.assertEqual(raised.exception.code, 2)
+        self.assertIn(
+            'Unsupported convergence result schema version: 99',
+            errors.getvalue(),
+        )
+
     def test_mesh_convergence_plot_uses_categorical_axis(self):
         points = tuple(
             KPointSweepPoint(

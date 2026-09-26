@@ -14,6 +14,7 @@
 - `dftconverge` runs ordered cutoff, k-point and lattice convergence workflows with GPAW or QE from one input.
 - Convergence runs report every completed point immediately and save JSON, CSV, optimized-CIF and PNG results.
 - Cutoff and k-point convergence plots use relative energies; lattice runs include a fitted energy-volume plot.
+- Existing convergence JSON results can regenerate all plots without rerunning DFT.
 - K-point density and explicit-mesh modes are mutually exclusive in convergence inputs and outputs.
 - QE convergence can select installed scalar- or fully relativistic PseudoDojo sets with `QE_pseudo_relativistic`.
 - The QE pseudo installer reports set type, version, file count, table, directory and manifest information.
