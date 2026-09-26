@@ -5,6 +5,7 @@ from pathlib import Path
 
 from nanoworks.convergence import StaticEnergyResult
 from nanoworks.engine import load_engine_module
+from nanoworks.scf import resolve_qe_scf_settings
 
 
 class QEStaticEnergyBackend:
@@ -52,6 +53,13 @@ class QEStaticEnergyBackend:
         if kpoint_density is None and kpoint_size is None:
             kpoint_size = (5, 5, 5)
 
+        scf = resolve_qe_scf_settings(
+            accuracy=settings.get('scf_accuracy', 'normal'),
+            max_steps=settings.get('scf_max_steps'),
+            mixing=settings.get('scf_mixing'),
+            solver=settings.get('electronic_solver', 'default'),
+        )
+
         calculation = self.engine_module.run_scf(
             atoms=atoms,
             input_file=workdir / 'qe-scf.in',
@@ -73,6 +81,7 @@ class QEStaticEnergyBackend:
             exx_fraction=settings.get('exx_fraction'),
             omega=settings.get('omega'),
             occupation=settings.get('occupation'),
+            **scf,
             parallel_cores=parallel_cores,
             executable=self.executable,
             prefix=settings.get('prefix', 'nanoworks-converge'),

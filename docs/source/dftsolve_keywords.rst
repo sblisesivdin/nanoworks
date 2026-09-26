@@ -748,45 +748,76 @@ Electronic Calculations Keywords
 
     XC_backend = 'pw'
 
-.. describe:: Ground_convergence
+.. describe:: SCF_accuracy
 
-    :Type: ``python dictionary``
-    :Default:
+    :Type: ``string``
+    :Default: ``normal``
+    :Options: ``loose``, ``normal``, ``tight``, ``very-tight``
 
-    Convergence parameters for ground-state calculations. Use ``{}`` for defaults.
+    Engine-independent electronic convergence profile. Nanoworks translates
+    the selected accuracy intent to native GPAW convergence thresholds and
+    Quantum ESPRESSO ``conv_thr`` values. The profiles are portable intents,
+    not claims that the two engines use mathematically identical residuals.
 
-.. code-block:: python
+    The current adapters use these mappings:
 
-    Ground_convergence = {
-        'energy': 0.0005,       # eV / electron
-        'density': 1.0e-4,      # electrons / electron
-        'eigenstates': 4.0e-8,  # eV^2 / electron
-        'forces': np.inf,
-        'bands': None,
-        'maximum iterations': None
-    }
+    * ``loose``: QE ``conv_thr=1e-4`` Ry; GPAW energy/density/eigenstate
+      thresholds of ``1e-3``, ``1e-2`` and ``1e-4``.
+    * ``normal``: the native defaults of each engine (QE's default
+      ``conv_thr`` is used and GPAW receives an empty convergence dictionary).
+    * ``tight``: QE ``conv_thr=1e-8`` Ry; GPAW thresholds of ``1e-6``,
+      ``1e-5`` and ``1e-8``.
+    * ``very-tight``: QE ``conv_thr=1e-10`` Ry; GPAW thresholds of ``1e-8``,
+      ``1e-6`` and ``1e-10``.
 
-.. describe:: Band_convergence
-
-    :Type: ``python dictionary``
-    :Default: ``{'bands': 8}``
-
-    Convergence parameters for band calculations.
-
-.. code-block:: python
-
-    Band_convergence = {'bands': 8, 'eigenstates': 1.0e-8}
-
-.. describe:: DOS_convergence
-
-    :Type: ``python dictionary``
-    :Default: ``{}``
-
-    Convergence parameters for DOS calculations.
+    GPAW thresholds above are respectively energy, density and eigenstate
+    convergence values in GPAW's native definitions. The profile is used for
+    ground-state, DOS and band electronic steps and by ``dftconverge``.
 
 .. code-block:: python
 
-    DOS_convergence = {'maximum iterations': 100}
+    SCF_accuracy = 'tight'
+
+.. describe:: SCF_max_steps
+
+    :Type: ``int`` or ``None``
+    :Default: ``None``
+
+    Maximum number of electronic iterations. ``None`` retains the selected
+    engine's default. It maps to GPAW ``maxiter`` and QE
+    ``electron_maxstep``.
+
+.. code-block:: python
+
+    SCF_max_steps = 200
+
+.. describe:: SCF_mixing
+
+    :Type: ``float`` or ``None``
+    :Default: ``None``
+
+    Portable density-mixing strength in the interval ``(0, 1]``. ``None``
+    retains the engine default. A value maps to the GPAW mixer beta and QE
+    ``mixing_beta``.
+
+.. code-block:: python
+
+    SCF_mixing = 0.2
+
+.. describe:: Electronic_solver
+
+    :Type: ``string``
+    :Default: ``default``
+    :Options: ``default``, ``fast``, ``robust``
+
+    Intent-level eigensolver profile. ``fast`` selects GPAW RMM-DIIS and QE
+    Davidson; ``robust`` selects GPAW Davidson and QE conjugate gradients.
+    ``default`` retains each engine's normal choice, except where an existing
+    hybrid workflow requires a specific solver.
+
+.. code-block:: python
+
+    Electronic_solver = 'robust'
 
 .. describe:: Occupation
 
@@ -802,25 +833,6 @@ Electronic Calculations Keywords
 .. code-block:: python
 
     Occupation = {'name': 'marzari-vanderbilt', 'width': 0.2}
-
-.. describe:: Mixer_type
-
-    :Type: ``python import``
-    :Default: ``MixerSum(0.1,3,50)``
-
-    Density mixing options. See GPAW documentation on density mixing. Example values correspond to (beta, nmaxold, weight). If you have convergence problems try (0.02, 5, 100) or (0.05, 5, 50).
-
-.. code-block:: python
-
-    from gpaw import Mixer
-    # or
-    from gpaw import MixerSum
-    # or
-    from gpaw import MixerDif
-
-.. code-block:: python
-
-    Mixer_type = Mixer(0.02, 5, 100)
 
 .. describe:: DOS_npoints
 

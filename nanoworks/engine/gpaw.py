@@ -119,9 +119,11 @@ def build_ground_common_kwargs(
     convergence,
     occupations,
     nbands='200%',
+    maxiter=None,
+    eigensolver=None,
 ):
     """Build calculator arguments shared by GPAW ground-state modes."""
-    return {
+    kwargs = {
         'nbands': nbands,
         'mixer': mixer,
         'charge': charge,
@@ -130,6 +132,14 @@ def build_ground_common_kwargs(
         'convergence': convergence,
         'occupations': occupations,
     }
+
+    if maxiter is not None:
+        kwargs['maxiter'] = maxiter
+
+    if eigensolver is not None:
+        kwargs['eigensolver'] = eigensolver
+
+    return kwargs
 
 def create_regular_pw_ground_calc(
     cutoff,
@@ -146,6 +156,8 @@ def create_regular_pw_ground_calc(
     kpoint_size,
     gamma,
     nbands=None,
+    maxiter=None,
+    eigensolver=None,
 ):
     """Create a regular GPAW plane-wave ground-state calculator."""
     kwargs = build_ground_common_kwargs(
@@ -156,6 +168,8 @@ def create_regular_pw_ground_calc(
         convergence=convergence,
         occupations=occupations,
         nbands='200%' if nbands is None else nbands,
+        maxiter=maxiter,
+        eigensolver=eigensolver,
     )
 
     kwargs.update({
@@ -191,6 +205,8 @@ def create_hybrid_pw_ground_calc(
     kpoint_size,
     gamma,
     nbands=None,
+    maxiter=None,
+    eigensolver=None,
 ):
     """Create a hybrid GPAW plane-wave ground-state calculator."""
     kwargs = build_ground_common_kwargs(
@@ -201,6 +217,8 @@ def create_hybrid_pw_ground_calc(
         convergence=convergence,
         occupations=occupations,
         nbands='200%' if nbands is None else nbands,
+        maxiter=maxiter,
+        eigensolver=eigensolver,
     )
 
     kwargs.update({
@@ -218,13 +236,15 @@ def create_hybrid_pw_ground_calc(
             'band': 1,
             'kpt': 1,
         },
-        'eigensolver': Davidson(niter=1),
         'kpts': build_kpoint_spec(
             density=kpoint_density,
             size=kpoint_size,
             gamma=gamma,
         ),
     })
+
+    if eigensolver is None:
+        kwargs['eigensolver'] = Davidson(niter=1)
 
     return create_gpaw_calc(**kwargs)
 
@@ -244,6 +264,8 @@ def create_lcao_ground_calc(
     grid_size,
     basis='dzp',
     nbands=None,
+    maxiter=None,
+    eigensolver=None,
 ):
     """Create a GPAW LCAO ground-state calculator."""
     kwargs = build_ground_common_kwargs(
@@ -254,6 +276,8 @@ def create_lcao_ground_calc(
         convergence=convergence,
         occupations=occupations,
         nbands='200%' if nbands is None else nbands,
+        maxiter=maxiter,
+        eigensolver=eigensolver,
     )
 
     kwargs.update({
@@ -374,8 +398,13 @@ def resolve_elastic_settings(
 
 def create_default_mixer():
     """Create the default GPAW density mixer used by Nanoworks."""
+    return create_mixer(0.1)
+
+
+def create_mixer(beta):
+    """Create the GPAW density mixer for a portable mixing value."""
     return MixerSum(
-        beta=0.1,
+        beta=float(beta),
         nmaxold=3,
         weight=50,
     )

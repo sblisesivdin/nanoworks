@@ -1456,6 +1456,14 @@ CELL_PARAMETERS angstrom
             "Occupation = {'name': 'fermi-dirac'",
             config_text,
         )
+        self.assertIn(
+            "SCF_accuracy = 'tight'",
+            config_text,
+        )
+        self.assertIn(
+            'mapped to the nearest portable SCF_accuracy profile',
+            config_text,
+        )
 
     def test_parse_qe_hubbard_card(self):
         input_text = """

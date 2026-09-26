@@ -12,6 +12,7 @@ Description = f'''
 
 import sys
 import os, glob
+import ast
 import gc
 import importlib.util
 import json
@@ -241,6 +242,11 @@ from nanoworks.pseudos import (
     get_qe_pseudo_dir,
     resolve_qe_pseudopotentials,
 )
+from nanoworks.scf import (
+    resolve_gpaw_scf_settings,
+    resolve_qe_scf_settings,
+    validate_scf_settings,
+)
 from argparse import ArgumentParser, HelpFormatter
 from dataclasses import dataclass, field
 from typing import Optional, Dict, List, Any
@@ -342,9 +348,13 @@ class DFTConfig:
     XC_exx_fraction: Optional[float] = None
     XC_omega: Optional[float] = None
     XC_backend: str = 'pw'
-    Ground_convergence: Dict = field(default_factory=dict)
+    # Portable SCF controls. Backends translate these intent-level settings
+    # to their native convergence, mixing, iteration, and solver parameters.
+    SCF_accuracy: str = 'normal'
+    SCF_max_steps: Optional[int] = None
+    SCF_mixing: Optional[float] = None
+    Electronic_solver: str = 'default'
     Occupation: Dict = field(default_factory=lambda: {'name': 'fermi-dirac', 'width': 0.05})
-    Mixer_type: Any = None
     Spin_calc: bool = False
     Magmom_per_atom: Any = 1.0
     Magmom_single_atom: Optional[List] = None
@@ -353,7 +363,6 @@ class DFTConfig:
     # DOS parameters
     DOS_npoints: int = 501
     DOS_width: float = 0.1
-    DOS_convergence: Dict = field(default_factory=dict)
     DOS_num_of_bands: Optional[int] = None
     DOS_kpts_density: Optional[float] = None
     DOS_kpts_x: Optional[int] = None
@@ -369,7 +378,6 @@ class DFTConfig:
     Band_num_of_bands: Optional[int] = None
     Energy_max: float = 5
     Energy_min: float = -5
-    Band_convergence: Dict = field(default_factory=lambda: {'bands': 8})
     Projected_band_plot: bool = False
     Projections: List[Dict[str, Any]] = field(default_factory=list)
     
@@ -452,9 +460,16 @@ class DFTConfig:
                     value,
                 )
 
-        if self.Mixer_type is None and self.Engine == 'GPAW':
-            engine = load_engine_module(self.Engine)
-            self.Mixer_type = engine.create_default_mixer()
+        scf_settings = validate_scf_settings(
+            accuracy=self.SCF_accuracy,
+            max_steps=self.SCF_max_steps,
+            mixing=self.SCF_mixing,
+            solver=self.Electronic_solver,
+        )
+        self.SCF_accuracy = scf_settings['accuracy']
+        self.SCF_max_steps = scf_settings['max_steps']
+        self.SCF_mixing = scf_settings['mixing']
+        self.Electronic_solver = scf_settings['solver']
         if self.Phonon_supercell is None:
             self.Phonon_supercell = np.diag([2, 2, 2])
         if self.Opt_BSE_valence is None:
@@ -498,6 +513,36 @@ def struct_from_file(
     report_structure=True,
 ):
     """Load variables from parse function and return DFTConfig instance."""
+    input_path = Path(inputfile)
+    source_tree = ast.parse(
+        input_path.read_text(encoding='utf-8'),
+        filename=str(input_path),
+    )
+    assigned_names = set()
+
+    for node in source_tree.body:
+        if isinstance(node, ast.Assign):
+            targets = node.targets
+        elif isinstance(node, ast.AnnAssign):
+            targets = [node.target]
+        else:
+            continue
+
+        for target in targets:
+            if isinstance(target, ast.Name) and not target.id.startswith('_'):
+                assigned_names.add(target.id)
+
+    unknown_names = sorted(
+        assigned_names
+        - set(DFTConfig.__dataclass_fields__)
+    )
+
+    if unknown_names:
+        raise ValueError(
+            "Unknown dftsolve keyword(s): "
+            + ', '.join(unknown_names)
+        )
+
     # Works like from FILE import *
     sys.path.append(str(Path(inputfile).parent))
     inputf = __import__(Path(inputfile).stem, globals(), locals(), ['*'])
@@ -720,6 +765,29 @@ class dftsolve:
         # For backward compatibility, expose config attributes as instance attributes
         self.Engine = config.Engine
         self.engine = load_engine_module(self.Engine)
+        portable_scf = {
+            'accuracy': config.SCF_accuracy,
+            'max_steps': config.SCF_max_steps,
+            'mixing': config.SCF_mixing,
+            'solver': config.Electronic_solver,
+        }
+
+        if self.Engine == 'GPAW':
+            self.scf_settings = resolve_gpaw_scf_settings(
+                **portable_scf
+            )
+            mixer_beta = self.scf_settings['mixing']
+            self.scf_mixer = (
+                self.engine.create_default_mixer()
+                if mixer_beta is None
+                else self.engine.create_mixer(mixer_beta)
+            )
+        else:
+            self.scf_settings = resolve_qe_scf_settings(
+                **portable_scf
+            )
+            self.scf_mixer = None
+
         self.parallel_cores = int(
             parallel_cores
         )
@@ -765,17 +833,18 @@ class dftsolve:
         # the DOS and band methods can reference hybrid eigenvalues correctly
         # instead of hard-coding 0.0 eV.
         self.Ground_fermi_level = None
-        self.Ground_convergence = config.Ground_convergence
+        self.SCF_accuracy = config.SCF_accuracy
+        self.SCF_max_steps = config.SCF_max_steps
+        self.SCF_mixing = config.SCF_mixing
+        self.Electronic_solver = config.Electronic_solver
         self.Ground_num_of_bands = config.Ground_num_of_bands
         self.Occupation = config.Occupation
-        self.Mixer_type = config.Mixer_type
         self.Spin_calc = config.Spin_calc
         self.Magmom_per_atom = config.Magmom_per_atom
         self.Magmom_single_atom = config.Magmom_single_atom
         self.Total_charge = config.Total_charge
         self.DOS_npoints = config.DOS_npoints
         self.DOS_width = config.DOS_width
-        self.DOS_convergence = config.DOS_convergence
         self.DOS_kpts_density = config.DOS_kpts_density
         self.DOS_kpts_x = config.DOS_kpts_x
         self.DOS_kpts_y = config.DOS_kpts_y
@@ -791,7 +860,6 @@ class dftsolve:
         self.Band_num_of_bands = config.Band_num_of_bands
         self.Energy_max = config.Energy_max
         self.Energy_min = config.Energy_min
-        self.Band_convergence = config.Band_convergence
         self.Refine_grid = config.Refine_grid
         self.Phonon_PW_cutoff = config.Phonon_PW_cutoff
         self.Phonon_kpts_x = config.Phonon_kpts_x
@@ -831,6 +899,7 @@ class dftsolve:
         self.Opt_omega2 = config.Opt_omega2
         self.Opt_cut_of_energy = config.Opt_cut_of_energy
         self.Opt_nblocks = config.Opt_nblocks
+
         self.bulk_configuration = config.bulk_configuration
         
         from nanoworks.localization import Translator
@@ -845,6 +914,20 @@ class dftsolve:
             
         # translator function
         self._t = Translator(lang_code=current_lang).get
+
+    def _qe_scf_settings(self):
+        """Return QE settings, including for lightweight test instances."""
+        settings = getattr(self, 'scf_settings', None)
+
+        if settings is not None:
+            return settings
+
+        return resolve_qe_scf_settings(
+            accuracy=getattr(self, 'SCF_accuracy', 'normal'),
+            max_steps=getattr(self, 'SCF_max_steps', None),
+            mixing=getattr(self, 'SCF_mixing', None),
+            solver=getattr(self, 'Electronic_solver', 'default'),
+        )
 
     def _load_existing_final_structure(self):
         """Load a saved final structure for subsequent calculations."""
@@ -1115,6 +1198,7 @@ class dftsolve:
                     exx_fraction=self.XC_exx_fraction,
                     omega=self.XC_omega,
                     occupation=self.Occupation,
+                    **self._qe_scf_settings(),
                     parallel_cores=self.parallel_cores,
                     executable='pw.x',
                     prefix='nanoworks',
@@ -1188,6 +1272,7 @@ class dftsolve:
                     exx_fraction=self.XC_exx_fraction,
                     omega=self.XC_omega,
                     occupation=self.Occupation,
+                    **self._qe_scf_settings(),
                     parallel_cores=self.parallel_cores,
                     executable='pw.x',
                     prefix='nanoworks',
@@ -1291,11 +1376,13 @@ class dftsolve:
                         exx_fraction=self.XC_exx_fraction,
                         omega=self.XC_omega,
                         backend=self.XC_backend,
-                        mixer=self.Mixer_type,
+                        mixer=self.scf_mixer,
                         charge=self.Total_charge,
                         spinpol=self.Spin_calc,
                         txt=self.struct+f'-GROUND-{self.Engine}-Log-SCF.txt',
-                        convergence=self.Ground_convergence,
+                        convergence=self.scf_settings['convergence'],
+                        maxiter=self.scf_settings['maxiter'],
+                        eigensolver=self.scf_settings['eigensolver'],
                         occupations=self.Occupation,
                         kpoint_density=self.Ground_kpts_density,
                         kpoint_size=(
@@ -1319,11 +1406,13 @@ class dftsolve:
                         xc=actual_xc,
                         setups=resolved_setups,
                         parallel={'domain': world.size},
-                        mixer=self.Mixer_type,
+                        mixer=self.scf_mixer,
                         charge=self.Total_charge,
                         spinpol=self.Spin_calc,
                         txt=self.struct+f'-GROUND-{self.Engine}-Log-SCF.txt',
-                        convergence=self.Ground_convergence,
+                        convergence=self.scf_settings['convergence'],
+                        maxiter=self.scf_settings['maxiter'],
+                        eigensolver=self.scf_settings['eigensolver'],
                         occupations=self.Occupation,
                         kpoint_density=self.Ground_kpts_density,
                         kpoint_size=(
@@ -1428,11 +1517,13 @@ class dftsolve:
                 calc = self.engine.create_lcao_ground_calc(
                     setups=self.Setup_params,
                     parallel={'domain': world.size},
-                    mixer=self.Mixer_type,
+                    mixer=self.scf_mixer,
                     charge=self.Total_charge,
                     spinpol=self.Spin_calc,
                     txt=self.struct+f'-GROUND-{self.Engine}-Log-SCF.txt',
-                    convergence=self.Ground_convergence,
+                    convergence=self.scf_settings['convergence'],
+                    maxiter=self.scf_settings['maxiter'],
+                    eigensolver=self.scf_settings['eigensolver'],
                     occupations=self.Occupation,
                     kpoint_density=self.Ground_kpts_density,
                     kpoint_size=(
@@ -1586,11 +1677,11 @@ class dftsolve:
                 kpoint_density=elastic_kpoint_density,
                 kpoint_size=elastic_kpoint_size,
                 gamma=elastic_gamma,
-                mixer=self.config.Mixer_type,
+                mixer=self.scf_mixer,
                 txt=self.struct
                     + '-ELASTIC-GPAW-Log-Elastic-deformations.txt',
                 charge=self.config.Total_charge,
-                convergence=self.config.Ground_convergence,
+                convergence=self.scf_settings['convergence'],
                 occupations=self.config.Occupation,
                 hybrid=hybrid,
             )
@@ -1874,7 +1965,7 @@ class dftsolve:
             filename=self.struct+'-GROUND-GPAW-Result-State.gpw',
             hybrid=hybrid,
             txt=self.struct+f'-DOS-{self.Engine}-Log-DOS.txt',
-            convergence=self.DOS_convergence,
+            convergence=self.scf_settings['convergence'],
             occupations=dos_occupation,
             kpoint_density=dos_kpoint_density,
             kpoint_size=dos_kpoint_size,
@@ -2402,6 +2493,7 @@ class dftsolve:
                     exx_fraction=self.XC_exx_fraction,
                     omega=self.XC_omega,
                     occupation=dos_occupation,
+                    **self._qe_scf_settings(),
                     parallel_cores=self.parallel_cores,
                     executable='pw.x',
                     prefix='nanoworks',
@@ -2544,6 +2636,7 @@ class dftsolve:
                     exx_fraction=self.XC_exx_fraction,
                     omega=self.XC_omega,
                     occupation=dos_occupation,
+                    **self._qe_scf_settings(),
                     emin=self.Energy_min,
                     emax=self.Energy_max,
                     delta_e=delta_e,
@@ -3200,6 +3293,7 @@ class dftsolve:
                         exx_fraction=self.XC_exx_fraction,
                         omega=self.XC_omega,
                         occupation=self.Occupation,
+                        **self._qe_scf_settings(),
                         parallel_cores=self.parallel_cores,
                         scf_executable='pw.x',
                         bands_executable='bands.x',
@@ -3253,6 +3347,7 @@ class dftsolve:
                     exx_fraction=self.XC_exx_fraction,
                     omega=self.XC_omega,
                     occupation=self.Occupation,
+                    **self._qe_scf_settings(),
                     parallel_cores=self.parallel_cores,
                     executable='pw.x',
                     prefix='nanoworks',
@@ -3942,7 +4037,7 @@ class dftsolve:
             npoints=self.Band_npoints,
             txt=self.struct+f'-BAND-{self.Engine}-Log-Bands.txt',
             occupations=self.Occupation,
-            convergence=self.Band_convergence,
+            convergence=self.scf_settings['convergence'],
             nbands=self.Band_num_of_bands,
         )
 
@@ -5195,6 +5290,7 @@ class dftsolve:
                 'name': 'fermi-dirac',
                 'width': self.Opt_FD_smearing,
             },
+            **self._qe_scf_settings(),
             nosym=True,
             parallel_cores=self.parallel_cores,
             executable='pw.x',
@@ -6776,6 +6872,12 @@ def prepare_qe_dry_run(
         if config.Ground_gamma is None
         else config.Ground_gamma
     )
+    scf_settings = resolve_qe_scf_settings(
+        accuracy=config.SCF_accuracy,
+        max_steps=config.SCF_max_steps,
+        mixing=config.SCF_mixing,
+        solver=config.Electronic_solver,
+    )
     common_pw = {
         'atoms': atoms,
         'pseudopotentials': pseudopotentials,
@@ -6790,6 +6892,7 @@ def prepare_qe_dry_run(
         'prefix': 'nanoworks',
         'pseudo_dir': pseudo_dir,
         'outdir': ground_state_dir,
+        **scf_settings,
     }
 
     if config.Ground_calc:

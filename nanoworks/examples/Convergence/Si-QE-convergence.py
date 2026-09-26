@@ -3,6 +3,7 @@
 Engine = 'QE'
 XC_calc = 'PBE'
 Occupation = {'name': 'fermi-dirac', 'width': 0.05}
+SCF_accuracy = 'normal'
 
 Convergence_tasks = ['cutoff', 'kpoints', 'lattice']
 Convergence_cutoffs = [300, 400, 500, 600]

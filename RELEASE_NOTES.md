@@ -2,6 +2,10 @@
 
 ### Development Version
 
+- Engine-independent `SCF_accuracy`, `SCF_max_steps`, `SCF_mixing` and `Electronic_solver` settings replace GPAW-specific convergence and mixer keywords.
+- GPAW and QE translate the same SCF intent to their native convergence, iteration, mixing and eigensolver controls.
+- Removed or misspelled `dftsolve` keywords now fail clearly instead of being silently ignored.
+- `qeconverter` and `vaspconverter` map native electronic thresholds to portable SCF accuracy profiles.
 - Native Quantum ESPRESSO support covers PBE ground-state, fixed-cell and variable-cell geometry optimization, DFT+U, spin-resolved DOS/PDOS, band, projected-band and pseudo-valence density workflows.
 - Native QE RPA optical calculations use a uniform-grid NSCF calculation followed by `epsilon.x`, and produce direction-resolved dielectric, refractive-index, absorption and reflectivity data and figures.
 - Native QE DFPT phonons use `ph.x`, `q2r.x` and `matdyn.x`.

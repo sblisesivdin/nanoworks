@@ -32,9 +32,6 @@ DOS_npoints = 101
 DOS_width = 0.3
 Band_path = 'GXWKL'
 Band_npoints = 8
-Band_convergence = {
-    'bands': 8,
-}
 Refine_grid = 2
 
 # Optical response.  These deliberately small values test the workflow;

@@ -52,13 +52,11 @@ Setup_params = {}            # Can be used like {'N': ':p,6.0'}, for none use {}
 
 XC_calc = 'LDA'         # Exchange-Correlation, choose one: LDA, PBE, GLLBSCM, HSE06, HSE03, revPBE, RPBE, PBE0, EXX, B3LYP
 
-Ground_convergence = {}   # Convergence items for ground state calculations
-Band_convergence = {'bands':8,}   # Convergence items for band calculations
+SCF_accuracy = 'normal'  # Portable across GPAW and QE
 Occupation = {'name': 'fermi-dirac', 'width': 0.05}  # Refer to GPAW docs: https://wiki.fysik.dtu.dk/gpaw/documentation/basic.html#occupation-numbers
 
 DOS_npoints = 501        # Number of points
 DOS_width = 0.1          # Width of Gaussian smearing.  Use 0.0 for linear tetrahedron interpolation
-DOS_convergence = {}  # Convergence items for DOS calculations
 
 Spin_calc = False        # Spin polarized calculation?
 Magmom_per_atom = 1.0    # Magnetic moment per atom

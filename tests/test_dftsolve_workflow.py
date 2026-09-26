@@ -31,11 +31,32 @@ with patch.object(
         run_calculation_stages,
         run_gpaw_stage_processes,
         should_split_gpaw_optical,
+        struct_from_file,
         write_qe_slurm_script,
     )
 
 
 class TestDFTSolveWorkflow(unittest.TestCase):
+
+    def test_input_rejects_unknown_or_removed_keywords(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            input_file = Path(tmpdir) / 'invalid_input.py'
+            input_file.write_text(
+                "Engine = 'QE'\n"
+                "Ground_convergence = {'energy': 1e-8}\n",
+                encoding='utf-8',
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                'Unknown dftsolve keyword.*Ground_convergence',
+            ):
+                struct_from_file(
+                    input_file,
+                    None,
+                    create_output=False,
+                    report_structure=False,
+                )
 
     def test_required_qe_executables_follow_selected_stages(self):
         config = DFTConfig(
@@ -441,6 +462,10 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 Phonon_calc=True,
                 Phonon_path='GXG',
                 Optical_calc=True,
+                SCF_accuracy='tight',
+                SCF_max_steps=180,
+                SCF_mixing=0.25,
+                Electronic_solver='robust',
                 bulk_configuration=Atoms(
                     'Si2',
                     scaled_positions=[
@@ -554,12 +579,14 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 stored_plan['jobs'],
                 plan['jobs'],
             )
-            self.assertIn(
-                "calculation = 'scf'",
-                Path(
-                    plan['jobs'][0]['input_file']
-                ).read_text(encoding='utf-8'),
-            )
+            ground_input = Path(
+                plan['jobs'][0]['input_file']
+            ).read_text(encoding='utf-8')
+            self.assertIn("calculation = 'scf'", ground_input)
+            self.assertIn('conv_thr = 1e-08', ground_input)
+            self.assertIn('mixing_beta = 0.25', ground_input)
+            self.assertIn('electron_maxstep = 180', ground_input)
+            self.assertIn("diagonalization = 'cg'", ground_input)
 
             slurm_script = write_qe_slurm_script(
                 plan,
@@ -1891,8 +1918,9 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         self.assertTrue(
             config.Fix_symmetry
         )
-        self.assertIsNone(
-            config.Mixer_type
+        self.assertEqual(
+            config.SCF_accuracy,
+            'normal',
         )
         self.assertIsNone(
             config.Phonon_PW_cutoff
@@ -1922,7 +1950,10 @@ class TestDFTSolveWorkflow(unittest.TestCase):
     def test_gpaw_engine_specific_defaults(self):
         config = DFTConfig(
             Engine='GPAW',
-            Mixer_type='custom-mixer',
+            SCF_accuracy='tight',
+            SCF_mixing=0.2,
+            SCF_max_steps=180,
+            Electronic_solver='robust',
         )
 
         self.assertEqual(
@@ -1935,10 +1966,10 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         self.assertFalse(
             config.Fix_symmetry
         )
-        self.assertEqual(
-            config.Mixer_type,
-            'custom-mixer',
-        )
+        self.assertEqual(config.SCF_accuracy, 'tight')
+        self.assertEqual(config.SCF_mixing, 0.2)
+        self.assertEqual(config.SCF_max_steps, 180)
+        self.assertEqual(config.Electronic_solver, 'robust')
         self.assertEqual(
             config.Phonon_PW_cutoff,
             400,

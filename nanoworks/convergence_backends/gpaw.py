@@ -5,6 +5,7 @@ from pathlib import Path
 
 from nanoworks.convergence import StaticEnergyResult
 from nanoworks.engine import load_engine_module
+from nanoworks.scf import resolve_gpaw_scf_settings
 
 
 class GPAWStaticEnergyBackend:
@@ -55,9 +56,17 @@ class GPAWStaticEnergyBackend:
             settings.get('setup_params'),
         )
 
-        mixer = settings.get('mixer')
-        if mixer is None:
-            mixer = engine.create_default_mixer()
+        scf = resolve_gpaw_scf_settings(
+            accuracy=settings.get('scf_accuracy', 'normal'),
+            max_steps=settings.get('scf_max_steps'),
+            mixing=settings.get('scf_mixing'),
+            solver=settings.get('electronic_solver', 'default'),
+        )
+        mixer = (
+            engine.create_default_mixer()
+            if scf['mixing'] is None
+            else engine.create_mixer(scf['mixing'])
+        )
 
         kpoint_density = kpoint_settings.get('density')
         kpoint_size = kpoint_settings.get('size')
@@ -70,12 +79,14 @@ class GPAWStaticEnergyBackend:
             'charge': settings.get('total_charge', 0.0),
             'spinpol': spinpol,
             'txt': str(workdir / 'gpaw-scf.txt'),
-            'convergence': settings.get('convergence', {}),
+            'convergence': scf['convergence'],
             'occupations': settings.get('occupation'),
             'kpoint_density': kpoint_density,
             'kpoint_size': kpoint_size,
             'gamma': bool(kpoint_settings.get('gamma', False)),
             'nbands': settings.get('nbands'),
+            'maxiter': scf['maxiter'],
+            'eigensolver': scf['eigensolver'],
         }
 
         if engine.is_hybrid(actual_xc):

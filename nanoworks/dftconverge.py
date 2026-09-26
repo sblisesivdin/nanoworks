@@ -514,8 +514,13 @@ def _build_static_energy_settings(config, atoms, engine):
             'Occupation',
             {'name': 'fermi-dirac', 'width': 0.05},
         ),
-        'convergence': config.get('Ground_convergence', {}),
-        'mixer': config.get('Mixer_type'),
+        'scf_accuracy': config.get('SCF_accuracy', 'normal'),
+        'scf_max_steps': config.get('SCF_max_steps'),
+        'scf_mixing': config.get('SCF_mixing'),
+        'electronic_solver': config.get(
+            'Electronic_solver',
+            'default',
+        ),
     }
 
 

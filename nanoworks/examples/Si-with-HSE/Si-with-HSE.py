@@ -45,13 +45,11 @@ XC_backend = 'pw'       # Backend for hybrid evaluation (plane-wave)
 # Otherwise HSE calculations are much more slower than standard PBE calculations (Sometimes few thousand times slower).
 # Please use proper convergence values and always use HPC for your HSE calculations :)
 
-Ground_convergence = {'energy':1e-1, 'eigenstates':1e-1, 'density':1e-1}   # Convergence items for ground state calculations
-Band_convergence = {'bands':8, 'eigenstates':1e-1, 'density':1e-1}   # Convergence items for band calculations
+SCF_accuracy = 'loose'  # Portable choices: loose, normal, tight, very-tight
 Occupation = {'name': 'marzari-vanderbilt', 'width': 0.2}  # Refer to GPAW docs: https://wiki.fysik.dtu.dk/gpaw/documentation/basic.html#occupation-numbers
 
 DOS_npoints = 301        # Number of points
 DOS_width = 0.2          # Width of Gaussian smearing.  Use 0.0 for linear tetrahedron interpolation
-DOS_convergence = {}  # Convergence items for DOS calculations
 
 Spin_calc = False        # Spin polarized calculation?
 Magmom_per_atom = 1.0    # Magnetic moment per atom

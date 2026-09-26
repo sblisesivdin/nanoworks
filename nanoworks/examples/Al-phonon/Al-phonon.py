@@ -41,8 +41,7 @@ Total_charge = 0.0       # Total charge. Normally 0.0 for a neutral system.
 
 XC_calc = 'PBE'         # Exchange-Correlation, choose one: LDA, PBE, GLLBSCM, HSE06, HSE03, revPBE, RPBE, PBE0, EXX, B3LYP
 
-Ground_convergence = {}   # Convergence items for ground state calculations
-Band_convergence = {'bands':8}   # Convergence items for band calculations
+SCF_accuracy = 'normal'  # Portable across GPAW and QE
 Occupation = {'name': 'fermi-dirac', 'width': 0.05}  # Refer to GPAW docs: https://wiki.fysik.dtu.dk/gpaw/documentation/basic.html#occupation-numbers
 
 #PHONON

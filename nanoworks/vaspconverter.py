@@ -280,11 +280,22 @@ def build_config_lines(
         lines.append(f"Magmom_per_atom = {magmom:.4f}")
 
     if incar.ediff is not None:
-        lines.append(f"Ground_convergence = {{'energy': {incar.ediff}}}")
+        if incar.ediff <= 1.0e-8:
+            accuracy = 'very-tight'
+        elif incar.ediff <= 1.0e-6:
+            accuracy = 'tight'
+        elif incar.ediff <= 1.0e-4:
+            accuracy = 'normal'
+        else:
+            accuracy = 'loose'
+
+        lines.append(f"SCF_accuracy = {accuracy!r}")
+        lines.append(
+            "# NOTICE: VASP EDIFF was mapped to the nearest portable "
+            "SCF_accuracy profile."
+        )
 
     lines.extend([
-        "MPI_cores = 4",
-        "Localisation = 'en_UK'",
         "",
         f"# Geometry file to use with dftsolve.py: {geom_filename}",
     ])

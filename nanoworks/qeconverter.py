@@ -22,6 +22,7 @@ from typing import Dict, List, Optional
 import logging
 import nanoworks
 from nanoworks.pseudos import read_upf_z_valence
+from nanoworks.scf import qe_conv_thr_to_accuracy
 from typing import Union
 from ase.io import read, write
 from ase.units import Bohr
@@ -2039,12 +2040,18 @@ def build_config_lines(
     )
 
     if settings.conv_thr is not None:
-        energy_conv = settings.conv_thr * RY_TO_EV
-        lines.append(f"Ground_convergence = {{'energy': {energy_conv}}}")
+        accuracy = qe_conv_thr_to_accuracy(
+            settings.conv_thr
+        )
+        lines.append(
+            f"SCF_accuracy = {accuracy!r}"
+        )
+        lines.append(
+            "# NOTICE: QE conv_thr was mapped to the nearest portable "
+            "SCF_accuracy profile."
+        )
 
     lines.extend([
-        "MPI_cores = 4",
-        "Localisation = 'en_UK'",
         "",
         f"# Geometry file to use with dftsolve: {geom_filename}",
     ])
