@@ -211,12 +211,14 @@ convergence with GPAW or Quantum ESPRESSO:
 ```bash
 dftconverge --check -p 4 -g structure.cif -i convergence.py
 dftconverge -p 4 -g structure.cif -i convergence.py
+dftconverge --plot-results results/convergence-results.json
 ```
 
 The workflow prints every completed point and saves JSON, CSV, optimized
 structure, cutoff, k-point, and fitted energy-volume results and figures. See the
 [convergence documentation](https://nanoworks.readthedocs.io/en/latest/dftconverge.html)
-for input keywords and examples.
+for input keywords and examples. The `--plot-results` form recreates the
+figures from saved JSON without rerunning GPAW or Quantum ESPRESSO.
 
 ## Examples
 

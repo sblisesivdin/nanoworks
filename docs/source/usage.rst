@@ -179,7 +179,9 @@ cutoff, k-point, and fitted energy-volume figures:
 
    $ dftconverge --check -p 4 -g structure.cif -i convergence.py
    $ dftconverge -p 4 -g structure.cif -i convergence.py
+   $ dftconverge --plot-results results/convergence-results.json
 
+The last form regenerates figures from saved JSON without running GPAW or QE.
 See :doc:`dftconverge` for input keywords, task dependencies, and outputs.
 
 
