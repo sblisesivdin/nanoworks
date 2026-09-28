@@ -22,6 +22,35 @@ from nanoworks.convergence import (
 
 class TestDFTConvergeCLI(unittest.TestCase):
 
+    def test_static_settings_translate_portable_occupations(self):
+        atoms = Atoms('Si', positions=[[0.0, 0.0, 0.0]])
+
+        gpaw = dftconverge._build_static_energy_settings(
+            {
+                'Occupation_scheme': 'fixed',
+                'Smearing_width': None,
+            },
+            atoms,
+            'GPAW',
+        )
+        qe = dftconverge._build_static_energy_settings(
+            {
+                'Occupation_scheme': 'marzari-vanderbilt',
+                'Smearing_width': 0.2,
+            },
+            atoms,
+            'QE',
+        )
+
+        self.assertEqual(
+            gpaw['occupation'],
+            {'name': 'fixed-uniform'},
+        )
+        self.assertEqual(
+            qe['occupation'],
+            {'name': 'marzari-vanderbilt', 'width': 0.2},
+        )
+
     def test_check_prints_ordered_plan(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

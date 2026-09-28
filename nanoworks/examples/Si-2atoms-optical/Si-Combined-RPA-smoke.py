@@ -22,10 +22,8 @@ Ground_kpts_y = 2
 Ground_kpts_z = 2
 Gamma = True
 XC_calc = 'PBE'
-Occupation = {
-    'name': 'fermi-dirac',
-    'width': 0.05,
-}
+Occupation_scheme = 'fermi-dirac'
+Smearing_width = 0.05
 
 # DOS, band structure, and density
 DOS_npoints = 101

@@ -29,6 +29,7 @@ from nanoworks.convergence import (
 )
 from nanoworks.convergence_backends import load_convergence_backend
 from nanoworks.engine import resolve_initial_magnetic_moments
+from nanoworks.occupations import resolve_engine_occupation
 
 
 GPAW_MPI_ENV = 'NANOWORKS_DFTCONVERGE_MPI'
@@ -360,6 +361,12 @@ def _validate_ground_kpoint_settings(config):
 
 def validate_convergence_config(config, plan):
     """Validate execution settings without reading atoms or DFT engines."""
+    if 'Occupation' in config:
+        raise ValueError(
+            'Occupation is no longer supported; use Occupation_scheme '
+            'and Smearing_width.'
+        )
+
     legacy_pseudo_keys = sorted(
         key for key in config
         if key.startswith('QE_pseudo_') or key == 'QE_pseudopotentials'
@@ -529,9 +536,10 @@ def _build_static_energy_settings(config, atoms, engine):
         'exx_fraction': config.get('XC_exx_fraction'),
         'omega': config.get('XC_omega'),
         'xc_backend': config.get('XC_backend', 'pw'),
-        'occupation': config.get(
-            'Occupation',
-            {'name': 'fermi-dirac', 'width': 0.05},
+        'occupation': resolve_engine_occupation(
+            engine,
+            scheme=config.get('Occupation_scheme', 'fermi-dirac'),
+            width=config.get('Smearing_width', 0.05),
         ),
         'scf_accuracy': config.get('SCF_accuracy', 'normal'),
         'scf_max_steps': config.get('SCF_max_steps'),

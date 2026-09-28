@@ -773,9 +773,9 @@ def _normalize_qe_smearing(
         ) from exc
 
 
-def _build_occupation_line(
+def _build_occupation_lines(
     settings: QEInputSettings,
-) -> str:
+) -> List[str]:
     """Build a Nanoworks occupation setting from QE input."""
     occupation = (
         'fixed'
@@ -784,7 +784,7 @@ def _build_occupation_line(
     )
 
     if occupation == 'fixed':
-        return "Occupation = 'fixed'"
+        return ["Occupation_scheme = 'fixed'"]
 
     tetrahedra = {
         'tetrahedra',
@@ -793,9 +793,12 @@ def _build_occupation_line(
     }
 
     if occupation in tetrahedra:
-        return (
-            f"Occupation = '{occupation}'"
-        )
+        return [
+            "Occupation_scheme = 'fixed'",
+            "# NOTICE: QE tetrahedron occupations have no portable",
+            "# ground-state equivalent; mapped to fixed occupations.",
+            f"# Source QE occupations value: {occupation}",
+        ]
 
     if occupation != 'smearing':
         raise ValueError(
@@ -818,12 +821,10 @@ def _build_occupation_line(
         * RY_TO_EV
     )
 
-    return (
-        "Occupation = {"
-        f"'name': '{smearing}', "
-        f"'width': {width_ev:.12g}"
-        "}"
-    )
+    return [
+        f"Occupation_scheme = '{smearing}'",
+        f"Smearing_width = {width_ev:.12g}",
+    ]
 
 def _build_kpoint_lines(
     settings: QEInputSettings,
@@ -2008,8 +2009,8 @@ def build_config_lines(
 
     lines.append(f"XC_calc = '{xc}'")
 
-    lines.append(
-        _build_occupation_line(
+    lines.extend(
+        _build_occupation_lines(
             settings
         )
     )

@@ -60,6 +60,44 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                     report_structure=False,
                 )
 
+    def test_input_rejects_removed_occupation_dictionary(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            input_file = Path(tmpdir) / 'invalid_input.py'
+            input_file.write_text(
+                "Occupation = {'name': 'fermi-dirac', 'width': 0.05}\n",
+                encoding='utf-8',
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                'Unknown dftsolve keyword.*Occupation',
+            ):
+                struct_from_file(
+                    input_file,
+                    None,
+                    create_output=False,
+                    report_structure=False,
+                )
+
+    def test_config_normalizes_portable_occupation_settings(self):
+        config = DFTConfig(
+            Occupation_scheme='cold',
+            Smearing_width=0.2,
+        )
+
+        self.assertEqual(
+            config.Occupation_scheme,
+            'marzari-vanderbilt',
+        )
+        self.assertEqual(config.Smearing_width, 0.2)
+
+        fixed = DFTConfig(
+            Occupation_scheme='fixed',
+            Smearing_width=0.5,
+        )
+        self.assertEqual(fixed.Occupation_scheme, 'fixed')
+        self.assertIsNone(fixed.Smearing_width)
+
     def test_required_qe_executables_follow_selected_stages(self):
         config = DFTConfig(
             Engine='QE',

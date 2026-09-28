@@ -2,7 +2,8 @@
 
 Engine = 'GPAW'
 XC_calc = 'PBE'
-Occupation = {'name': 'fermi-dirac', 'width': 0.05}
+Occupation_scheme = 'fermi-dirac'
+Smearing_width = 0.05
 SCF_accuracy = 'normal'
 
 Convergence_tasks = ['cutoff', 'kpoints', 'lattice']

@@ -23,10 +23,8 @@ Ground_kpts_y = 2
 Ground_kpts_z = 2
 Ground_num_of_bands = 8
 Gamma = True
-Occupation = {
-    'name': 'fermi-dirac',
-    'width': 0.05,
-}
+Occupation_scheme = 'fermi-dirac'
+Smearing_width = 0.05
 
 # DOS, band structure, and density
 DOS_kpts_x = 2

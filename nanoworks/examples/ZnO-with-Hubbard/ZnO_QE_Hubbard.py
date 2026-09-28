@@ -56,10 +56,8 @@ Gamma = True
 
 Ground_num_of_bands = 40
 
-Occupation = {
-    'name': 'fermi-dirac',
-    'width': 0.05,
-}
+Occupation_scheme = 'fermi-dirac'
+Smearing_width = 0.05
 
 # DFT+U
 Setup_params = {

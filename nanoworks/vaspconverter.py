@@ -273,7 +273,10 @@ def build_config_lines(
 
     if incar.sigma is not None:
         width = max(incar.sigma, 1e-3)
-        lines.append(f"Occupation = {{'name': 'fermi-dirac', 'width': {width:.4f}}}")
+        lines.extend([
+            "Occupation_scheme = 'fermi-dirac'",
+            f"Smearing_width = {width:.4f}",
+        ])
 
     lines.append(f"Spin_calc = {spin_calc}")
     if magmom is not None:

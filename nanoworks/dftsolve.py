@@ -243,6 +243,10 @@ from nanoworks.pseudos import (
     get_qe_pseudo_dir,
     resolve_qe_pseudopotentials,
 )
+from nanoworks.occupations import (
+    resolve_engine_occupation,
+    validate_occupation_settings,
+)
 from nanoworks.scf import (
     resolve_gpaw_scf_settings,
     resolve_qe_scf_settings,
@@ -354,7 +358,8 @@ class DFTConfig:
     SCF_max_steps: Optional[int] = None
     SCF_mixing: Optional[float] = None
     Electronic_solver: str = 'default'
-    Occupation: Dict = field(default_factory=lambda: {'name': 'fermi-dirac', 'width': 0.05})
+    Occupation_scheme: str = 'fermi-dirac'
+    Smearing_width: Optional[float] = 0.05
     # Engine-neutral pseudopotential intent. Backends that do not use
     # external pseudopotential files may ignore these settings.
     Pseudo_family: str = 'pseudodojo'
@@ -478,6 +483,12 @@ class DFTConfig:
         self.SCF_max_steps = scf_settings['max_steps']
         self.SCF_mixing = scf_settings['mixing']
         self.Electronic_solver = scf_settings['solver']
+        occupation_settings = validate_occupation_settings(
+            scheme=self.Occupation_scheme,
+            width=self.Smearing_width,
+        )
+        self.Occupation_scheme = occupation_settings['scheme']
+        self.Smearing_width = occupation_settings['width']
         geometry_optimizer = str(
             self.Geometry_optimizer
         ).strip().lower().replace('_', '-')
@@ -970,7 +981,13 @@ class dftsolve:
         self.SCF_mixing = config.SCF_mixing
         self.Electronic_solver = config.Electronic_solver
         self.Ground_num_of_bands = config.Ground_num_of_bands
-        self.Occupation = config.Occupation
+        self.Occupation_scheme = config.Occupation_scheme
+        self.Smearing_width = config.Smearing_width
+        self.Occupation = resolve_engine_occupation(
+            config.Engine,
+            scheme=config.Occupation_scheme,
+            width=config.Smearing_width,
+        )
         self.Pseudo_family = config.Pseudo_family
         self.Pseudo_xc = config.Pseudo_xc
         self.Pseudo_relativistic = config.Pseudo_relativistic
@@ -1858,7 +1875,7 @@ class dftsolve:
                     + '-ELASTIC-GPAW-Log-Elastic-deformations.txt',
                 charge=self.config.Total_charge,
                 convergence=self.scf_settings['convergence'],
-                occupations=self.config.Occupation,
+                occupations=self.Occupation,
                 hybrid=hybrid,
             )
         
@@ -7047,6 +7064,11 @@ def prepare_qe_dry_run(
         'outdir': ground_state_dir,
         **scf_settings,
     }
+    portable_occupation = resolve_engine_occupation(
+        'QE',
+        scheme=config.Occupation_scheme,
+        width=config.Smearing_width,
+    )
 
     if config.Ground_calc:
         ground_mesh = engine.resolve_qe_kpoint_size(
@@ -7059,7 +7081,7 @@ def prepare_qe_dry_run(
             ),
         )
         ground_occupation = engine.resolve_qe_occupation(
-            config.Occupation
+            portable_occupation
         )
         ground_kwargs = {
             **common_pw,
@@ -7134,7 +7156,7 @@ def prepare_qe_dry_run(
         )
         dos_occupation = resolve_stage_occupation(
             config.DOS_occupation,
-            config.Occupation,
+            portable_occupation,
         )
         qe_dos_occupation = engine.resolve_qe_occupation(
             dos_occupation
@@ -7249,7 +7271,7 @@ def prepare_qe_dry_run(
             npoints=config.Band_npoints,
         )
         band_occupation = engine.resolve_qe_occupation(
-            config.Occupation
+            portable_occupation
         )
 
         if hybrid:

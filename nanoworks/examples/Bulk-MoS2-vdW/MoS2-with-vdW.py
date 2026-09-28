@@ -36,4 +36,5 @@ Band_path = 'GMKG'	    # Brillouin zone high symmetry points
 XC_calc = 'PBE'         # Exchange-Correlation, choose one: LDA, PBE, GLLBSCM, HSE06, HSE03, revPBE, RPBE, PBE0, EXX, B3LYP
 
 SCF_accuracy = 'normal'  # Portable across GPAW and QE
-Occupation = {'name': 'fermi-dirac', 'width': 0.05}  # Refer to GPAW docs: https://wiki.fysik.dtu.dk/gpaw/documentation/basic.html#occupation-numbers
+Occupation_scheme = 'fermi-dirac'
+Smearing_width = 0.05

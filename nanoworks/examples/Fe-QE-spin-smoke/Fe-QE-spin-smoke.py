@@ -34,10 +34,8 @@ Ground_kpts_y = 4
 Ground_kpts_z = 4
 Ground_num_of_bands = 16
 Gamma = True
-Occupation = {
-    'name': 'fermi-dirac',
-    'width': 0.10,
-}
+Occupation_scheme = 'fermi-dirac'
+Smearing_width = 0.10
 
 # Collinear ferromagnetic initialization in Bohr magnetons per Fe atom.
 Spin_calc = True

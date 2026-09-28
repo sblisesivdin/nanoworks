@@ -897,20 +897,36 @@ backend interpret the settings it supports.
 
     Electronic_solver = 'robust'
 
-.. describe:: Occupation
+.. describe:: Occupation_scheme
 
-    :Type: ``python dictionary``
-    :Default: ``{'name': 'fermi-dirac', 'width': 0.05}``
-        
-    Smearing of the occupation numbers. Options:
+    :Type: ``string``
+    :Default: ``fermi-dirac``
+    :Options: ``fixed``, ``fermi-dirac``, ``methfessel-paxton``, ``marzari-vanderbilt``
+
+    Engine-neutral ground-state occupation scheme. Nanoworks translates
+    ``fixed`` to GPAW's ``fixed-uniform`` calculator and QE's ``fixed``
+    occupations. The three smearing schemes are mapped to each backend's
+    native representation.
 
 .. code-block:: python
 
-    Occupation = {'name': 'fermi-dirac', 'width': 0.05}
+    Occupation_scheme = 'marzari-vanderbilt'
+
+.. describe:: Smearing_width
+
+    :Type: ``float`` or ``None``
+    :Default: ``0.05``
+    :Unit: eV
+
+    Positive smearing width used by the selected non-fixed occupation
+    scheme. It is normalized to ``None`` and ignored when
+    ``Occupation_scheme = 'fixed'``. The former backend-shaped
+    ``Occupation`` dictionary is no longer accepted.
 
 .. code-block:: python
 
-    Occupation = {'name': 'marzari-vanderbilt', 'width': 0.2}
+    Occupation_scheme = 'fermi-dirac'
+    Smearing_width = 0.05
 
 .. describe:: DOS_npoints
 
@@ -1008,7 +1024,8 @@ backend interpret the settings it supports.
     Selects the occupation scheme used when preparing the DOS
     calculation.
 
-    When omitted, GPAW inherits the ground-state ``Occupation`` setting.
+    When omitted, GPAW inherits the ground-state ``Occupation_scheme`` and
+    ``Smearing_width`` settings.
     QE uses ``'tetrahedra'``, which is the general default for the
     current native QE DOS workflow.
 

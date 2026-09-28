@@ -44,7 +44,8 @@ XC_backend = 'pw'       # Backend for hybrid evaluation (plane-wave)
 # Please use proper convergence values and always use HPC for your HSE calculations :)
 
 SCF_accuracy = 'loose'  # Portable choices: loose, normal, tight, very-tight
-Occupation = {'name': 'marzari-vanderbilt', 'width': 0.2}  # Refer to GPAW docs: https://wiki.fysik.dtu.dk/gpaw/documentation/basic.html#occupation-numbers
+Occupation_scheme = 'marzari-vanderbilt'
+Smearing_width = 0.2
 
 DOS_npoints = 301        # Number of points
 DOS_width = 0.2          # Width of Gaussian smearing.  Use 0.0 for linear tetrahedron interpolation

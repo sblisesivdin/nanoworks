@@ -192,11 +192,11 @@ K_POINTS automatic
             text,
         )
         self.assertIn(
-            (
-                "Occupation = {"
-                "'name': 'methfessel-paxton', "
-                "'width': 0.13605693009}"
-            ),
+            "Occupation_scheme = 'methfessel-paxton'",
+            text,
+        )
+        self.assertIn(
+            "Smearing_width = 0.13605693009",
             text,
         )
         self.assertIn(
@@ -384,11 +384,11 @@ CELL_PARAMETERS angstrom
         )
 
         self.assertIn(
-            "Occupation = 'fixed'",
+            "Occupation_scheme = 'fixed'",
             text,
         )
 
-    def test_build_config_lines_preserves_tetrahedra(self):
+    def test_build_config_lines_maps_tetrahedra_to_portable_fixed(self):
         settings = QEInputSettings(
             calculation='scf',
             occupations='tetrahedra_opt',
@@ -409,7 +409,15 @@ CELL_PARAMETERS angstrom
         )
 
         self.assertIn(
-            "Occupation = 'tetrahedra_opt'",
+            "Occupation_scheme = 'fixed'",
+            text,
+        )
+        self.assertIn(
+            'tetrahedron occupations have no portable',
+            text,
+        )
+        self.assertIn(
+            'Source QE occupations value: tetrahedra_opt',
             text,
         )
 
@@ -1457,7 +1465,11 @@ CELL_PARAMETERS angstrom
             config_text,
         )
         self.assertIn(
-            "Occupation = {'name': 'fermi-dirac'",
+            "Occupation_scheme = 'fermi-dirac'",
+            config_text,
+        )
+        self.assertIn(
+            'Smearing_width = ',
             config_text,
         )
         self.assertIn(
