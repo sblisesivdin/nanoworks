@@ -155,7 +155,7 @@ class TestDFTConvergeCLI(unittest.TestCase):
                 "Engine = 'QE'\n"
                 "Convergence_tasks = ['cutoff']\n"
                 "Convergence_cutoffs = [300, 400, 500]\n"
-                "QE_pseudo_relativistic = 'full'\n",
+                "Pseudo_relativistic = 'full'\n",
                 encoding='utf-8',
             )
             self.assertEqual(
@@ -173,7 +173,7 @@ class TestDFTConvergeCLI(unittest.TestCase):
                 "Engine = 'QE'\n"
                 "Convergence_tasks = ['cutoff']\n"
                 "Convergence_cutoffs = [300, 400, 500]\n"
-                "QE_pseudo_relativistic = 'invalid'\n",
+                "Pseudo_relativistic = 'invalid'\n",
                 encoding='utf-8',
             )
             errors = io.StringIO()
@@ -189,6 +189,36 @@ class TestDFTConvergeCLI(unittest.TestCase):
 
         self.assertIn("must be 'scalar' or 'full'", errors.getvalue())
 
+    def test_check_rejects_engine_prefixed_pseudo_keyword(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            input_file = root / 'convergence.py'
+            geometry_file = root / 'structure.cif'
+            input_file.write_text(
+                "Engine = 'QE'\n"
+                "Convergence_tasks = ['cutoff']\n"
+                "Convergence_cutoffs = [300, 400, 500]\n"
+                "QE_pseudo_relativistic = 'full'\n",
+                encoding='utf-8',
+            )
+            geometry_file.write_text('not parsed by check', encoding='utf-8')
+
+            errors = io.StringIO()
+            with redirect_stderr(errors):
+                with self.assertRaises(SystemExit):
+                    dftconverge.main([
+                        '--check',
+                        '-i',
+                        str(input_file),
+                        '-g',
+                        str(geometry_file),
+                    ])
+
+        self.assertIn(
+            'Engine-prefixed pseudopotential keywords',
+            errors.getvalue(),
+        )
+
     def test_check_rejects_soc_instead_of_silently_ignoring_it(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -198,7 +228,7 @@ class TestDFTConvergeCLI(unittest.TestCase):
                 "Engine = 'QE'\n"
                 "Convergence_tasks = ['cutoff']\n"
                 "Convergence_cutoffs = [300, 400, 500]\n"
-                "QE_pseudo_relativistic = 'full'\n"
+                "Pseudo_relativistic = 'full'\n"
                 "SOC_calc = True\n",
                 encoding='utf-8',
             )
@@ -425,7 +455,7 @@ class TestDFTConvergeCLI(unittest.TestCase):
                     'Ground_kpts_y': 6,
                     'Ground_kpts_z': 2,
                     'XC_calc': 'PBE',
-                    'QE_pseudo_relativistic': 'FULL',
+                    'Pseudo_relativistic': 'FULL',
                 },
                 plan=plan,
                 structure_reader=Mock(return_value=Atoms(

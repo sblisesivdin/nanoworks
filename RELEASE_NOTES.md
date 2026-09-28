@@ -4,6 +4,11 @@
 
 - Engine-independent `SCF_accuracy`, `SCF_max_steps`, `SCF_mixing` and `Electronic_solver` settings replace GPAW-specific convergence and mixer keywords.
 - GPAW and QE translate the same SCF intent to their native convergence, iteration, mixing and eigensolver controls.
+- Engine-neutral `Pseudo_family`, `Pseudo_xc`, `Pseudo_relativistic`, `Pseudo_accuracy`, `Pseudo_dir`, and `Pseudopotentials` settings configure QE resources without `QE_*` workflow keywords.
+- `dftsolve` now honors scalar- or fully-relativistic pseudopotential selection consistently across every native QE stage and dry run.
+- Portable `Geometry_optimizer`, `Geometry_force_tolerance`, `Geometry_max_step`, and `Geometry_max_steps` replace the old ASE-oriented optimization keywords.
+- Geometry step limits are enforced by both GPAW/ASE and QE (`nstep`).
+- `Hydrostatic_pressure` is consistently interpreted in GPa; GPAW converts it to ASE's internal pressure unit and QE converts it to kbar.
 - Removed or misspelled `dftsolve` keywords now fail clearly instead of being silently ignored.
 - `qeconverter` and `vaspconverter` map native electronic thresholds to portable SCF accuracy profiles.
 - Native Quantum ESPRESSO support covers PBE ground-state, fixed-cell and variable-cell geometry optimization, DFT+U, spin-resolved DOS/PDOS, band, projected-band and pseudo-valence density workflows.
@@ -20,7 +25,7 @@
 - Cutoff and k-point convergence plots use relative energies; lattice runs include a fitted energy-volume plot.
 - Existing convergence JSON results can regenerate all plots without rerunning DFT.
 - K-point density and explicit-mesh modes are mutually exclusive in convergence inputs and outputs.
-- QE convergence can select installed scalar- or fully relativistic PseudoDojo sets with `QE_pseudo_relativistic`.
+- QE convergence can select installed scalar- or fully relativistic PseudoDojo sets with `Pseudo_relativistic`.
 - The QE pseudo installer reports set type, version, file count, table, directory and manifest information.
 - Native QE `HSE06`, `HSE03` and `PBE0` support ground-state, DOS/PDOS, band, projected-band and density calculations.
 - QE hybrid DOS/PDOS uses a dedicated hybrid SCF followed by `dos.x` and `projwfc.x`; a separate hybrid NSCF calculation is not used.

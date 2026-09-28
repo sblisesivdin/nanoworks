@@ -49,8 +49,13 @@ The main driver for DFT calculations using GPAW or Quantum ESPRESSO. GPAW runs t
 
 Portable SCF controls (`SCF_accuracy`, `SCF_max_steps`, `SCF_mixing`, and
 `Electronic_solver`) describe calculation intent once and are translated to
-native GPAW or QE settings. Removed or misspelled input keywords are rejected
-instead of being silently ignored.
+native GPAW or QE settings. Portable `Pseudo_*` settings likewise select
+pseudopotential resources without engine-prefixed workflow keywords; QE can
+use the installed scalar- or fully-relativistic PseudoDojo set. Removed or
+misspelled input keywords are rejected instead of being silently ignored.
+Geometry optimization uses the shared `Geometry_optimizer`,
+`Geometry_force_tolerance`, `Geometry_max_step`, and `Geometry_max_steps`
+controls with backend-specific translation.
 
 Combined GPAW inputs run their electronic stages first and automatically start
 the memory-intensive optical stage in a fresh process. The user still supplies

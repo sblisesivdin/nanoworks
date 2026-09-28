@@ -48,6 +48,7 @@ class QEInputSettings:
     total_charge: Optional[float] = None
     nbands: Optional[int] = None
     forc_conv_thr: Optional[float] = None
+    nstep: Optional[int] = None
     ion_dynamics: Optional[str] = None
     trust_radius_max: Optional[float] = None
     cell_dynamics: Optional[str] = None
@@ -1087,7 +1088,7 @@ def _build_relaxation_lines(
         )
 
     lines.append(
-        "Optimizer = 'LBFGS'"
+        "Geometry_optimizer = 'lbfgs'"
     )
 
     if settings.forc_conv_thr is not None:
@@ -1098,7 +1099,7 @@ def _build_relaxation_lines(
         )
 
         lines.append(
-            "Max_F_tolerance = "
+            "Geometry_force_tolerance = "
             f"{max_force_ev_angstrom:.12g}"
         )
 
@@ -1109,8 +1110,13 @@ def _build_relaxation_lines(
         )
 
         lines.append(
-            "Max_step = "
+            "Geometry_max_step = "
             f"{max_step_angstrom:.12g}"
+        )
+
+    if settings.nstep is not None:
+        lines.append(
+            f'Geometry_max_steps = {settings.nstep}'
         )
 
     fix_symmetry = (
@@ -1862,6 +1868,19 @@ def parse_qe_input(
                     logger.warning(
                         "Unable to parse forc_conv_thr "
                         "from value %r; leaving default",
+                        value_clean,
+                    )
+
+            elif key_lower == 'nstep':
+                try:
+                    parsed_nstep = _parse_qe_float(value_clean)
+                    settings.nstep = int(parsed_nstep)
+                    if settings.nstep != parsed_nstep:
+                        raise ValueError
+                except ValueError:
+                    logger.warning(
+                        "Unable to parse nstep from value %r; "
+                        "leaving default",
                         value_clean,
                     )
 

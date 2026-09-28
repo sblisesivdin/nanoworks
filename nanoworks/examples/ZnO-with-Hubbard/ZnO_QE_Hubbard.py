@@ -26,9 +26,10 @@ Optical_calc = False
 SOC_calc = False
 
 # Geometry optimization
-Optimizer = 'LBFGS'
-Max_F_tolerance = 0.05
-Max_step = 0.1
+Geometry_optimizer = 'LBFGS'
+Geometry_force_tolerance = 0.05
+Geometry_max_step = 0.1
+Geometry_max_steps = 100
 
 # Using all cell components with symmetry is safe for the
 # non-orthogonal hexagonal cell if Geo_optim is enabled.

@@ -297,66 +297,64 @@ or:
 Geometric Optimization Keywords
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. describe:: Optimizer
+.. describe:: Geometry_optimizer
 
     :Type: ``str``
-    :Default: ``QuasiNewton``
-    :Options: ``LBFGS``, ``FIRE``, ``QuasiNewton``
+    :Default: ``default``
+    :Options: ``default``, ``quasi-newton``, ``lbfgs``, ``fire``, ``gpmin``
     
-    Energy-minimization algorithm for geometry optimization. GPAW supports
-    ``LBFGS``, ``FIRE``, and ``QuasiNewton``. The QE backend maps
-    ``LBFGS``, ``BFGS``, and ``QuasiNewton`` to QE's BFGS ionic
-    optimizer; ``FIRE`` is not supported by QE.
+    Engine-neutral geometry-optimizer selection. ``default`` and
+    ``quasi-newton`` use ASE QuasiNewton with GPAW and BFGS with QE.
+    ``lbfgs`` uses ASE LBFGS with GPAW and QE BFGS. GPAW additionally
+    supports ``fire`` and ``gpmin``; QE rejects those profiles during
+    validation instead of silently changing the requested algorithm.
 
 .. code-block:: python
 
-    Optimizer = 'QuasiNewton'
+    Geometry_optimizer = 'default'
 
-.. describe:: Max_F_tolerance
+.. describe:: Geometry_force_tolerance
 
     :Type: ``float``
     :Default: ``0.05``
     :Unit: eV/Å
 
-    Maximum force tolerance in BFGS-style geometry optimization.
+    Maximum force tolerance for geometry optimization. Nanoworks passes the
+    value to ASE/GPAW as ``fmax`` and converts it to QE ``forc_conv_thr``.
 
 .. code-block:: python
 
-    Max_F_tolerance = 0.05  # eV/Å
+    Geometry_force_tolerance = 0.05  # eV/Å
 
-.. describe:: Max_step
+.. describe:: Geometry_max_step
 
     :Type: ``float``
     :Default: ``0.1``
     :Unit: Å
     
-    Maximum allowed movement for a single atom.
+    Maximum allowed atomic displacement per ionic step. Nanoworks passes the
+    value to ASE optimizers and converts it to QE's BFGS trust radius.
 
 .. code-block:: python
 
-    Max_step = 0.1  # Ang
+    Geometry_max_step = 0.1  # Ang
 
-.. describe:: Alpha
+.. describe:: Geometry_max_steps
 
-    :Type: ``float``
-    :Default: ``60.0``
+    :Type: ``int``
+    :Default: ``100``
 
-    Initial guess for the Hessian (curvature of the energy surface).
-
-.. code-block:: python
-
-    Alpha = 60.0
-
-.. describe:: Damping
-
-    :Type: ``float``
-    :Default: ``1.0``
-
-    Calculated step is multiplied by this number before updating positions.
+    Maximum number of ionic optimization steps. Nanoworks supplies this as
+    ASE's ``steps`` limit for GPAW and QE's ``nstep`` control value.
 
 .. code-block:: python
 
-    Damping = 1.0
+    Geometry_max_steps = 100
+
+The former ``Optimizer``, ``Max_F_tolerance``, ``Max_step``, ``Alpha``, and
+``Damping`` input keywords are no longer accepted. The first three are
+replaced by the portable ``Geometry_*`` names. Backend-specific LBFGS Hessian
+and damping parameters were removed from the shared workflow interface.
 
 .. describe:: Fix_symmetry
 
@@ -404,8 +402,10 @@ Geometric Optimization Keywords
 
     External hydrostatic pressure used during variable-cell optimization.
     A non-zero value requires at least one enabled ``Relax_cell``
-    component. Nanoworks converts this value to the pressure unit expected
-    by the active engine.
+    component. Positive values represent compression and negative values
+    represent tension. Nanoworks converts GPa to ASE's eV/Å³ unit for GPAW
+    and to kbar for QE; the same numeric input therefore expresses the same
+    physical pressure with either engine.
 
 .. code-block:: python
 
@@ -747,6 +747,84 @@ Electronic Calculations Keywords
 .. code-block:: python
 
     XC_backend = 'pw'
+
+.. describe:: Pseudo_family
+
+    :Type: ``string``
+    :Default: ``pseudodojo``
+
+    Engine-neutral pseudopotential-library intent. The QE backend currently
+    resolves the managed PseudoDojo library. GPAW uses its own PAW setup
+    mechanism and does not read external UPF files.
+
+.. code-block:: python
+
+    Pseudo_family = 'pseudodojo'
+
+.. describe:: Pseudo_xc
+
+    :Type: ``string``
+    :Default: ``pbe``
+
+    Exchange-correlation family of the selected pseudopotential set. This is
+    checked independently from ``XC_calc``. The managed QE library currently
+    provides PBE pseudopotentials, including for supported hybrid workflows.
+
+.. code-block:: python
+
+    Pseudo_xc = 'pbe'
+
+.. describe:: Pseudo_relativistic
+
+    :Type: ``string``
+    :Default: ``scalar``
+    :Options: ``scalar``, ``full``
+
+    Selects scalar- or fully-relativistic pseudopotential resources. For QE,
+    both managed PseudoDojo sets are installed by
+    ``nanoworks --install-qe-pseudos``. Selecting ``full`` alone does not
+    enable spin-orbit coupling; ``SOC_calc`` controls that physical workflow,
+    and native QE SOC is not supported yet.
+
+.. code-block:: python
+
+    Pseudo_relativistic = 'full'
+
+.. describe:: Pseudo_accuracy
+
+    :Type: ``string``
+    :Default: ``standard``
+
+    Accuracy/table variant within the pseudopotential library. The managed QE
+    installation currently supplies the ``standard`` PseudoDojo table.
+
+.. describe:: Pseudo_dir
+
+    :Type: path-like string or ``None``
+    :Default: ``None``
+
+    Optional directory containing manually managed pseudopotential files.
+    When omitted, the selected managed library directory is used.
+
+.. describe:: Pseudopotentials
+
+    :Type: ``dict`` or ``None``
+    :Default: ``None``
+
+    Optional element-to-filename mapping for manually managed
+    pseudopotentials. Provide it together with ``Pseudo_dir``. When omitted,
+    Nanoworks resolves filenames from the selected managed manifest.
+
+.. code-block:: python
+
+    Pseudo_dir = '/path/to/upf-files'
+    Pseudopotentials = {
+        'Si': 'Si.upf',
+    }
+
+The pseudopotential keywords deliberately have no engine prefix. A shared
+workflow can therefore express the physical/resource intent once and let each
+backend interpret the settings it supports.
 
 .. describe:: SCF_accuracy
 

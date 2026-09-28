@@ -1660,6 +1660,7 @@ def resolve_qe_relaxation_settings(
     max_force,
     max_step,
     relax_cell,
+    max_steps=100,
     hydrostatic_pressure=0.0,
     fix_symmetry=False,
     atoms=None,
@@ -1672,7 +1673,9 @@ def resolve_qe_relaxation_settings(
     )
 
     optimizer_mappings = {
+        'default': 'bfgs',
         'quasinewton': 'bfgs',
+        'quasi-newton': 'bfgs',
         'lbfgs': 'bfgs',
         'bfgs': 'bfgs',
     }
@@ -1684,7 +1687,7 @@ def resolve_qe_relaxation_settings(
     except KeyError:
         raise NotImplementedError(
             "QE geometry optimization currently supports "
-            "QuasiNewton and LBFGS only."
+            "default, quasi-newton, and lbfgs only."
         )
 
     max_force = float(
@@ -1703,6 +1706,16 @@ def resolve_qe_relaxation_settings(
     if max_step <= 0.0:
         raise ValueError(
             "QE geometry maximum step must be greater than zero."
+        )
+
+    if isinstance(max_steps, bool):
+        raise TypeError(
+            'QE geometry maximum steps must be a positive integer.'
+        )
+    normalized_max_steps = int(max_steps)
+    if normalized_max_steps != max_steps or normalized_max_steps <= 0:
+        raise ValueError(
+            'QE geometry maximum steps must be a positive integer.'
         )
 
     hydrostatic_pressure = float(
@@ -1764,6 +1777,7 @@ def resolve_qe_relaxation_settings(
                 max_force
                 * Bohr
             ),
+            'nstep': normalized_max_steps,
         },
         'system': {
             'nosym': not bool(
@@ -2864,6 +2878,7 @@ def render_relax_input(
     max_force,
     max_step,
     relax_cell,
+    max_steps=100,
     hydrostatic_pressure=0.0,
     fix_symmetry=False,
     gamma=False,
@@ -2893,6 +2908,7 @@ def render_relax_input(
         max_force=max_force,
         max_step=max_step,
         relax_cell=relax_cell,
+        max_steps=max_steps,
         hydrostatic_pressure=hydrostatic_pressure,
         fix_symmetry=fix_symmetry,
         atoms=atoms,
@@ -7724,6 +7740,7 @@ def run_relax(
     max_force,
     max_step,
     relax_cell,
+    max_steps=100,
     hydrostatic_pressure=0.0,
     fix_symmetry=False,
     kpoint_density=None,
@@ -7780,6 +7797,7 @@ def run_relax(
         max_force=max_force,
         max_step=max_step,
         relax_cell=relax_cell,
+        max_steps=max_steps,
         hydrostatic_pressure=hydrostatic_pressure,
         fix_symmetry=fix_symmetry,
         atoms=atoms,

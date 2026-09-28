@@ -9,6 +9,7 @@ from unittest.mock import Mock, patch
 
 from ase import Atoms
 from ase.io import write
+from ase.units import GPa
 
 with patch.object(
     sys,
@@ -18,6 +19,7 @@ with patch.object(
     from nanoworks.dftsolve import (
         DFTConfig,
         GPAW_STAGE_GROUP_ENV,
+        ase_scalar_pressure_from_gpa,
         build_gpaw_process_command,
         check_dft_configuration,
         dftsolve as DFTSolver,
@@ -90,6 +92,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             Engine='QE',
             Ground_calc=True,
             Optical_calc=True,
+            Pseudo_relativistic='FULL',
             bulk_configuration=Atoms(
                 'Si2',
                 cell=[5.4, 5.4, 5.4],
@@ -105,13 +108,13 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             patch(
                 'nanoworks.dftsolve.get_qe_pseudo_dir',
                 return_value=Path('/pseudos'),
-            ),
+            ) as pseudo_dir,
             patch(
                 'nanoworks.dftsolve.resolve_qe_pseudopotentials',
                 return_value={
                     'Si': 'Si.upf',
                 },
-            ),
+            ) as pseudo_resolver,
         ):
             report = check_dft_configuration(
                 config,
@@ -125,6 +128,19 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         self.assertEqual(
             report['errors'],
             [],
+        )
+        pseudo_dir.assert_called_once_with(
+            family='pseudodojo',
+            xc='pbe',
+            relativistic='full',
+            accuracy='standard',
+        )
+        pseudo_resolver.assert_called_once_with(
+            config.bulk_configuration,
+            family='pseudodojo',
+            xc='pbe',
+            relativistic='full',
+            accuracy='standard',
         )
         self.assertIn(
             '[OK] executable:epsilon.x: /usr/bin/epsilon.x',
@@ -1922,6 +1938,12 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             config.SCF_accuracy,
             'normal',
         )
+        self.assertEqual(config.Pseudo_family, 'pseudodojo')
+        self.assertEqual(config.Pseudo_xc, 'pbe')
+        self.assertEqual(config.Pseudo_relativistic, 'scalar')
+        self.assertEqual(config.Pseudo_accuracy, 'standard')
+        self.assertIsNone(config.Pseudo_dir)
+        self.assertIsNone(config.Pseudopotentials)
         self.assertIsNone(
             config.Phonon_PW_cutoff
         )
@@ -1946,6 +1968,56 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             ),
             (0.0, 20.0, 1001),
         )
+
+    def test_pseudopotential_settings_are_validated(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            "Pseudo_relativistic must be 'scalar' or 'full'",
+        ):
+            DFTConfig(Pseudo_relativistic='invalid')
+
+        with self.assertRaisesRegex(
+            TypeError,
+            'symbol-to-filename mapping',
+        ):
+            DFTConfig(Pseudopotentials=['Si.upf'])
+
+    def test_geometry_settings_are_portable_and_validated(self):
+        config = DFTConfig(
+            Geometry_optimizer='BFGS',
+            Geometry_force_tolerance=0.02,
+            Geometry_max_step=0.15,
+            Geometry_max_steps=75,
+        )
+
+        self.assertEqual(config.Geometry_optimizer, 'quasi-newton')
+        self.assertEqual(config.Geometry_force_tolerance, 0.02)
+        self.assertEqual(config.Geometry_max_step, 0.15)
+        self.assertEqual(config.Geometry_max_steps, 75)
+
+        with self.assertRaisesRegex(
+            ValueError,
+            'Geometry_max_steps must be a positive integer',
+        ):
+            DFTConfig(Geometry_max_steps=1.5)
+
+    def test_hydrostatic_pressure_uses_portable_gpa_units(self):
+        config = DFTConfig(
+            Relax_cell=[True, True, True, False, False, False],
+            Hydrostatic_pressure=-2.0,
+        )
+
+        self.assertEqual(config.Hydrostatic_pressure, -2.0)
+        self.assertAlmostEqual(
+            ase_scalar_pressure_from_gpa(2.0),
+            2.0 * GPa,
+        )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            'requires at least one enabled Relax_cell',
+        ):
+            DFTConfig(Hydrostatic_pressure=1.0)
 
     def test_gpaw_engine_specific_defaults(self):
         config = DFTConfig(

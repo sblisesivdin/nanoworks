@@ -169,17 +169,19 @@ relativistic PseudoDojo PBE sets:
 
    $ nanoworks --install-qe-pseudos
 
-QE convergence calculations use the scalar-relativistic set by default. Set
-``QE_pseudo_relativistic`` explicitly to choose the other installed set:
+QE convergence calculations use the scalar-relativistic set by default. The
+pseudopotential keywords are engine-neutral so the same input vocabulary can
+be interpreted by current and future backends. Set ``Pseudo_relativistic``
+explicitly to choose the other installed set:
 
 .. code-block:: python
 
-   QE_pseudo_family = 'pseudodojo'
-   QE_pseudo_xc = 'pbe'
-   QE_pseudo_relativistic = 'full'
-   QE_pseudo_accuracy = 'standard'
+   Pseudo_family = 'pseudodojo'
+   Pseudo_xc = 'pbe'
+   Pseudo_relativistic = 'full'
+   Pseudo_accuracy = 'standard'
 
-The supported values for ``QE_pseudo_relativistic`` are ``'scalar'`` and
+The supported values for ``Pseudo_relativistic`` are ``'scalar'`` and
 ``'full'``. With the standard installation they resolve to:
 
 .. code-block:: text
@@ -196,16 +198,22 @@ element-to-file mapping:
 
 .. code-block:: python
 
-   QE_pseudo_dir = '/path/to/upf-files'
-   QE_pseudopotentials = {
+   Pseudo_dir = '/path/to/upf-files'
+   Pseudopotentials = {
        'Si': 'Si.upf',
    }
+
+``Engine_executable`` can override the executable used by a convergence
+backend; for QE its default is ``pw.x``. The former ``QE_pseudo_*``,
+``QE_pseudopotentials``, and ``QE_executable`` names are intentionally not
+accepted.
 
 Validation and progress
 -----------------------
 
 Use ``--check`` before a long calculation. It validates task dependencies,
-candidate ordering, k-point mode exclusivity, QE relativistic mode, and the
+candidate ordering, k-point mode exclusivity, pseudopotential relativistic
+mode, and the
 basic numeric settings without starting GPAW or QE:
 
 .. code-block:: console

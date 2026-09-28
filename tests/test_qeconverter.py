@@ -418,6 +418,7 @@ CELL_PARAMETERS angstrom
 &CONTROL
   calculation = 'vc-relax',
   forc_conv_thr = 1.0D-3,
+  nstep = 75,
 /
 &SYSTEM
   nosym = .false.,
@@ -458,6 +459,7 @@ K_POINTS automatic
             settings.forc_conv_thr,
             1.0e-3,
         )
+        self.assertEqual(settings.nstep, 75)
         self.assertEqual(
             settings.ion_dynamics,
             'bfgs',
@@ -506,6 +508,7 @@ K_POINTS automatic
         settings = QEInputSettings(
             calculation='vc-relax',
             forc_conv_thr=1.0e-3,
+            nstep=75,
             ion_dynamics='bfgs',
             trust_radius_max=0.2,
             cell_dynamics='bfgs',
@@ -533,9 +536,10 @@ K_POINTS automatic
             text,
         )
         self.assertIn(
-            "Optimizer = 'LBFGS'",
+            "Geometry_optimizer = 'lbfgs'",
             text,
         )
+        self.assertIn('Geometry_max_steps = 75', text)
         self.assertIn(
             (
                 "Relax_cell = [True, True, True, "
@@ -556,7 +560,7 @@ K_POINTS automatic
             line
             for line in text.splitlines()
             if line.startswith(
-                'Max_F_tolerance ='
+                'Geometry_force_tolerance ='
             )
         )
 
@@ -576,7 +580,7 @@ K_POINTS automatic
             line
             for line in text.splitlines()
             if line.startswith(
-                'Max_step ='
+                'Geometry_max_step ='
             )
         )
 

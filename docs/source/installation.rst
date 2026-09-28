@@ -139,9 +139,11 @@ UPF pseudopotential sets under:
 
    ~/.nanoworks/pseudos/qe/pseudodojo/pbe/
 
-The currently supported native QE workflows use the scalar-relativistic
-PBE pseudopotentials. Fully-relativistic pseudopotentials are installed
-for future spin-orbit-coupling support.
+Native QE workflows use the scalar-relativistic PBE set by default. Set
+``Pseudo_relativistic = 'full'`` in a ``dftsolve`` or ``dftconverge`` input
+to select the fully-relativistic set consistently. This resource selection
+does not itself enable spin-orbit coupling; native QE SOC workflows are not
+supported yet.
 
 Quantum ESPRESSO 7.2 is the initially validated version.
 

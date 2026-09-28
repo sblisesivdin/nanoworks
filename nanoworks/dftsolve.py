@@ -16,6 +16,7 @@ import ast
 import gc
 import importlib.util
 import json
+import math
 import shlex
 import shutil
 import subprocess
@@ -312,11 +313,10 @@ class DFTConfig:
     vdW_calc: str = 'None'
     
     # Geometry optimization parameters
-    Optimizer: str = 'QuasiNewton'
-    Max_F_tolerance: float = 0.05
-    Max_step: float = 0.1
-    Alpha: float = 60.0
-    Damping: float = 1.0
+    Geometry_optimizer: str = 'default'
+    Geometry_force_tolerance: float = 0.05
+    Geometry_max_step: float = 0.1
+    Geometry_max_steps: int = 100
     Fix_symmetry: bool = None
     Relax_cell: List[bool] = field(default_factory=lambda: [False, False, False, False, False, False])
     Hydrostatic_pressure: float = 0.0
@@ -355,6 +355,14 @@ class DFTConfig:
     SCF_mixing: Optional[float] = None
     Electronic_solver: str = 'default'
     Occupation: Dict = field(default_factory=lambda: {'name': 'fermi-dirac', 'width': 0.05})
+    # Engine-neutral pseudopotential intent. Backends that do not use
+    # external pseudopotential files may ignore these settings.
+    Pseudo_family: str = 'pseudodojo'
+    Pseudo_xc: str = 'pbe'
+    Pseudo_relativistic: str = 'scalar'
+    Pseudo_accuracy: str = 'standard'
+    Pseudo_dir: Optional[str] = None
+    Pseudopotentials: Optional[Dict[str, str]] = None
     Spin_calc: bool = False
     Magmom_per_atom: Any = 1.0
     Magmom_single_atom: Optional[List] = None
@@ -470,6 +478,98 @@ class DFTConfig:
         self.SCF_max_steps = scf_settings['max_steps']
         self.SCF_mixing = scf_settings['mixing']
         self.Electronic_solver = scf_settings['solver']
+        geometry_optimizer = str(
+            self.Geometry_optimizer
+        ).strip().lower().replace('_', '-')
+        geometry_optimizer_aliases = {
+            'default': 'default',
+            'quasinewton': 'quasi-newton',
+            'quasi-newton': 'quasi-newton',
+            'bfgs': 'quasi-newton',
+            'lbfgs': 'lbfgs',
+            'fire': 'fire',
+            'gpmin': 'gpmin',
+        }
+        try:
+            self.Geometry_optimizer = geometry_optimizer_aliases[
+                geometry_optimizer
+            ]
+        except KeyError:
+            raise ValueError(
+                'Geometry_optimizer must be one of: default, '
+                'quasi-newton, lbfgs, fire, gpmin.'
+            )
+
+        self.Geometry_force_tolerance = float(
+            self.Geometry_force_tolerance
+        )
+        self.Geometry_max_step = float(self.Geometry_max_step)
+        geometry_max_steps = self.Geometry_max_steps
+        if isinstance(geometry_max_steps, bool):
+            raise TypeError(
+                'Geometry_max_steps must be a positive integer.'
+            )
+        self.Geometry_max_steps = int(geometry_max_steps)
+        if self.Geometry_force_tolerance <= 0.0:
+            raise ValueError(
+                'Geometry_force_tolerance must be greater than zero.'
+            )
+        if self.Geometry_max_step <= 0.0:
+            raise ValueError(
+                'Geometry_max_step must be greater than zero.'
+            )
+        if (
+            self.Geometry_max_steps != geometry_max_steps
+            or self.Geometry_max_steps <= 0
+        ):
+            raise ValueError(
+                'Geometry_max_steps must be a positive integer.'
+            )
+        try:
+            relax_cell = tuple(self.Relax_cell)
+        except TypeError as exc:
+            raise TypeError(
+                'Relax_cell must contain exactly six booleans.'
+            ) from exc
+        if (
+            len(relax_cell) != 6
+            or any(not isinstance(value, bool) for value in relax_cell)
+        ):
+            raise ValueError(
+                'Relax_cell must contain exactly six booleans.'
+            )
+        self.Relax_cell = list(relax_cell)
+        self.Hydrostatic_pressure = float(self.Hydrostatic_pressure)
+        if not math.isfinite(self.Hydrostatic_pressure):
+            raise ValueError('Hydrostatic_pressure must be finite.')
+        if self.Hydrostatic_pressure != 0.0 and not any(self.Relax_cell):
+            raise ValueError(
+                'Hydrostatic_pressure requires at least one enabled '
+                'Relax_cell component.'
+            )
+        self.Pseudo_family = str(self.Pseudo_family).strip().lower()
+        self.Pseudo_xc = str(self.Pseudo_xc).strip().lower()
+        self.Pseudo_relativistic = str(
+            self.Pseudo_relativistic
+        ).strip().lower()
+        self.Pseudo_accuracy = str(self.Pseudo_accuracy).strip().lower()
+
+        for name in ('Pseudo_family', 'Pseudo_xc', 'Pseudo_accuracy'):
+            if not getattr(self, name):
+                raise ValueError(f'{name} cannot be empty.')
+
+        if self.Pseudo_relativistic not in ('scalar', 'full'):
+            raise ValueError(
+                "Pseudo_relativistic must be 'scalar' or 'full'."
+            )
+
+        if (
+            self.Pseudopotentials is not None
+            and not isinstance(self.Pseudopotentials, dict)
+        ):
+            raise TypeError(
+                'Pseudopotentials must be a symbol-to-filename mapping.'
+            )
         if self.Phonon_supercell is None:
             self.Phonon_supercell = np.diag([2, 2, 2])
         if self.Opt_BSE_valence is None:
@@ -500,6 +600,36 @@ class DFTConfig:
         
         # Replace the user's raw list with the safely formatted list
         self.Projections = sanitized_projections
+
+
+def resolve_qe_pseudo_configuration(config, atoms):
+    """Translate portable pseudopotential settings to QE resources."""
+    options = {
+        'family': config.Pseudo_family,
+        'xc': config.Pseudo_xc,
+        'relativistic': config.Pseudo_relativistic,
+        'accuracy': config.Pseudo_accuracy,
+    }
+    pseudo_dir = config.Pseudo_dir
+    if pseudo_dir is None:
+        pseudo_dir = get_qe_pseudo_dir(**options)
+
+    pseudopotentials = config.Pseudopotentials
+    if pseudopotentials is None:
+        pseudopotentials = resolve_qe_pseudopotentials(
+            atoms,
+            **options,
+        )
+
+    return pseudo_dir, pseudopotentials
+
+
+def ase_scalar_pressure_from_gpa(pressure_gpa):
+    """Convert the portable GPa pressure to ASE's eV/Angstrom^3 unit."""
+    pressure_gpa = float(pressure_gpa)
+    if not math.isfinite(pressure_gpa):
+        raise ValueError('Hydrostatic_pressure must be finite.')
+    return pressure_gpa * GPa
 
 class RawFormatter(HelpFormatter):
     """To print Description variable with argparse"""
@@ -600,7 +730,7 @@ def struct_from_auto(
     config.XC_calc = 'PBE'
     config.Cut_off_energy = 450
     config.Gamma = True
-    config.Optimizer = 'LBFGS' 
+    config.Geometry_optimizer = 'lbfgs'
     
     # ---------------------------------------------------------
     # 1. Magnetism Detection
@@ -681,7 +811,10 @@ def struct_from_auto(
             f.write(f"XC_backend = '{getattr(config, 'XC_backend', 'pw')}'\n")
             f.write(f"Cut_off_energy = {config.Cut_off_energy}\n")
             f.write(f"Gamma = {config.Gamma}\n")
-            f.write(f"Optimizer = '{config.Optimizer}'\n")
+            f.write(
+                "Geometry_optimizer = "
+                f"'{config.Geometry_optimizer}'\n"
+            )
             f.write(f"Spin_calc = {config.Spin_calc}\n")
             if config.Spin_calc:
                 f.write(f"Magmom_per_atom = {config.Magmom_per_atom}\n")
@@ -801,11 +934,10 @@ class dftsolve:
         self.Optical_calc = config.Optical_calc
         self.SOC_calc = config.SOC_calc
         self.vdW_calc = config.vdW_calc
-        self.Optimizer = config.Optimizer
-        self.Max_F_tolerance = config.Max_F_tolerance
-        self.Max_step = config.Max_step
-        self.Alpha = config.Alpha
-        self.Damping = config.Damping
+        self.Geometry_optimizer = config.Geometry_optimizer
+        self.Geometry_force_tolerance = config.Geometry_force_tolerance
+        self.Geometry_max_step = config.Geometry_max_step
+        self.Geometry_max_steps = config.Geometry_max_steps
         self.Fix_symmetry = config.Fix_symmetry
         self.Relax_cell = config.Relax_cell
         self.Hydrostatic_pressure = config.Hydrostatic_pressure
@@ -839,6 +971,12 @@ class dftsolve:
         self.Electronic_solver = config.Electronic_solver
         self.Ground_num_of_bands = config.Ground_num_of_bands
         self.Occupation = config.Occupation
+        self.Pseudo_family = config.Pseudo_family
+        self.Pseudo_xc = config.Pseudo_xc
+        self.Pseudo_relativistic = config.Pseudo_relativistic
+        self.Pseudo_accuracy = config.Pseudo_accuracy
+        self.Pseudo_dir = config.Pseudo_dir
+        self.Pseudopotentials = config.Pseudopotentials
         self.Spin_calc = config.Spin_calc
         self.Magmom_per_atom = config.Magmom_per_atom
         self.Magmom_single_atom = config.Magmom_single_atom
@@ -927,6 +1065,67 @@ class dftsolve:
             max_steps=getattr(self, 'SCF_max_steps', None),
             mixing=getattr(self, 'SCF_mixing', None),
             solver=getattr(self, 'Electronic_solver', 'default'),
+        )
+
+    def _qe_pseudo_configuration(self):
+        """Resolve the portable pseudopotential settings for QE."""
+        options = {
+            'family': getattr(self, 'Pseudo_family', 'pseudodojo'),
+            'xc': getattr(self, 'Pseudo_xc', 'pbe'),
+            'relativistic': getattr(
+                self,
+                'Pseudo_relativistic',
+                'scalar',
+            ),
+            'accuracy': getattr(self, 'Pseudo_accuracy', 'standard'),
+        }
+        pseudo_dir = getattr(self, 'Pseudo_dir', None)
+        if pseudo_dir is None:
+            pseudo_dir = get_qe_pseudo_dir(**options)
+
+        pseudopotentials = getattr(self, 'Pseudopotentials', None)
+        if pseudopotentials is None:
+            pseudopotentials = resolve_qe_pseudopotentials(
+                self.bulk_configuration,
+                **options,
+            )
+
+        return pseudo_dir, pseudopotentials
+
+    def _create_gpaw_geometry_optimizer(self, target):
+        """Create the ASE optimizer selected by the portable profile."""
+        trajectory = (
+            self.struct
+            + '-GROUND-GPAW-Result-Trajectory.traj'
+        )
+        common = {
+            'trajectory': trajectory,
+        }
+
+        if self.Geometry_optimizer == 'fire':
+            from ase.optimize.fire import FIRE
+            return FIRE(
+                target,
+                maxstep=self.Geometry_max_step,
+                **common,
+            )
+
+        if self.Geometry_optimizer == 'lbfgs':
+            from ase.optimize.lbfgs import LBFGS
+            return LBFGS(
+                target,
+                maxstep=self.Geometry_max_step,
+                **common,
+            )
+
+        if self.Geometry_optimizer == 'gpmin':
+            from ase.optimize import GPMin
+            return GPMin(target, **common)
+
+        return QuasiNewton(
+            target,
+            maxstep=self.Geometry_max_step,
+            **common,
         )
 
     def _load_existing_final_structure(self):
@@ -1037,7 +1236,7 @@ class dftsolve:
         try:
             self.engine.validate_qe_xc(
                 self.XC_calc,
-                pseudo_xc='pbe',
+                pseudo_xc=getattr(self, 'Pseudo_xc', 'pbe'),
                 allow_hybrid=True,
             )
         except ValueError as exc:
@@ -1096,16 +1295,9 @@ class dftsolve:
 
             return
 
-        pseudo_dir = get_qe_pseudo_dir(
-            relativistic='scalar',
-        )
-
         try:
-            pseudopotentials = (
-                resolve_qe_pseudopotentials(
-                    self.bulk_configuration,
-                    relativistic='scalar',
-                )
+            pseudo_dir, pseudopotentials = (
+                self._qe_pseudo_configuration()
             )
         except (FileNotFoundError, RuntimeError) as exc:
             parprint(
@@ -1174,9 +1366,10 @@ class dftsolve:
                     pseudopotentials=pseudopotentials,
                     pseudo_dir=pseudo_dir,
                     cutoff_ev=self.Cut_off_energy,
-                    optimizer=self.Optimizer,
-                    max_force=self.Max_F_tolerance,
-                    max_step=self.Max_step,
+                    optimizer=self.Geometry_optimizer,
+                    max_force=self.Geometry_force_tolerance,
+                    max_step=self.Geometry_max_step,
+                    max_steps=self.Geometry_max_steps,
                     relax_cell=self.Relax_cell,
                     hydrostatic_pressure=(
                         self.Hydrostatic_pressure
@@ -1435,36 +1628,31 @@ class dftsolve:
                 self.bulk_configuration.calc = calc
                 if self.Geo_optim == True:
                     if True in self.Relax_cell:
-                        if self.Hydrostatic_pressure > 0.0:
-                            uf = FrechetCellFilter(self.bulk_configuration, mask=self.Relax_cell, hydrostatic_strain=True, scalar_pressure=self.Hydrostatic_pressure)
+                        if self.Hydrostatic_pressure != 0.0:
+                            uf = FrechetCellFilter(
+                                self.bulk_configuration,
+                                mask=self.Relax_cell,
+                                hydrostatic_strain=True,
+                                scalar_pressure=(
+                                    ase_scalar_pressure_from_gpa(
+                                        self.Hydrostatic_pressure
+                                    )
+                                ),
+                            )
                         else:
-                            uf = FrechetCellFilter(self.bulk_configuration, mask=self.Relax_cell)
-                        # Optimizer Selection
-                        if self.Optimizer == 'FIRE':
-                            from ase.optimize.fire import FIRE
-                            relax = FIRE(uf, maxstep=self.Max_step, trajectory=self.struct+'-GROUND-GPAW-Result-Trajectory.traj')
-                        elif  self.Optimizer == 'LBFGS':
-                            from ase.optimize.lbfgs import LBFGS
-                            relax = LBFGS(uf, maxstep=self.Max_step, alpha=self.Alpha, damping=self.Damping, trajectory=self.struct+'-GROUND-GPAW-Result-Trajectory.traj')
-                        elif  self.Optimizer == 'GPMin':
-                            from ase.optimize import GPMin
-                            relax = GPMin(uf, trajectory=self.struct+'-GROUND-GPAW-Result-Trajectory.traj')
-                        else:
-                            relax = QuasiNewton(uf, maxstep=self.Max_step, trajectory=self.struct+'-GROUND-GPAW-Result-Trajectory.traj')
+                            uf = FrechetCellFilter(
+                                self.bulk_configuration,
+                                mask=self.Relax_cell,
+                            )
+                        relax = self._create_gpaw_geometry_optimizer(uf)
                     else:
-                        # Optimizer Selection
-                        if self.Optimizer == 'FIRE':
-                            from ase.optimize.fire import FIRE
-                            relax = FIRE(self.bulk_configuration, maxstep=self.Max_step, trajectory=self.struct+'-GROUND-GPAW-Result-Trajectory.traj')
-                        elif  self.Optimizer == 'LBFGS':
-                            from ase.optimize.lbfgs import LBFGS
-                            relax = LBFGS(self.bulk_configuration, maxstep=self.Max_step, alpha=self.Alpha, damping=self.Damping, trajectory=self.struct+'-GROUND-GPAW-Result-Trajectory.traj')
-                        elif  self.Optimizer == 'GPMin':
-                            from ase.optimize import GPMin
-                            relax = GPMin(self.bulk_configuration, trajectory=self.struct+'-GROUND-GPAW-Result-Trajectory.traj')
-                        else:
-                            relax = QuasiNewton(self.bulk_configuration, maxstep=self.Max_step, trajectory=self.struct+'-GROUND-GPAW-Result-Trajectory.traj')
-                    relax.run(fmax=self.Max_F_tolerance)  # Consider tighter fmax!
+                        relax = self._create_gpaw_geometry_optimizer(
+                            self.bulk_configuration
+                        )
+                    relax.run(
+                        fmax=self.Geometry_force_tolerance,
+                        steps=self.Geometry_max_steps,
+                    )
 
                 else:
                     self.bulk_configuration.set_calculator(calc)
@@ -1554,31 +1742,19 @@ class dftsolve:
                 self.bulk_configuration.calc = calc
                 if self.Geo_optim == True:
                     if True in self.Relax_cell:
-                        #uf = FrechetCellFilter(self.bulk_configuration, mask=self.Relax_cell)
-                        #relax = LBFGS(uf, maxstep=self.Max_step, alpha=self.Alpha, damping=self.Damping, trajectory=self.struct+'-GROUND-GPAW-Result-Trajectory.traj')
                         parprint('\033[91mERROR:\033[0mModifying supercell and atom positions with a filter (Relax_cell keyword) is not implemented in LCAO mode.')
                         sys.exit(1)
                     else:
-                        # Optimizer Selection
-                        if self.Optimizer == 'FIRE':
-                            from ase.optimize.fire import FIRE
-                            relax = FIRE(self.bulk_configuration, maxstep=self.Max_step, trajectory=self.struct+'-GROUND-GPAW-Result-Trajectory.traj')
-                        elif self.Optimizer == 'LBFGS':
-                            from ase.optimize.lbfgs import LBFGS
-                            relax = LBFGS(self.bulk_configuration, maxstep=self.Max_step, alpha=self.Alpha, damping=self.Damping, trajectory=self.struct+'-GROUND-GPAW-Result-Trajectory.traj')
-                        elif self.Optimizer == 'GPMin':
-                            from ase.optimize import GPMin
-                            relax = GPMin(self.bulk_configuration, trajectory=self.struct+'-GROUND-GPAW-Result-Trajectory.traj')
-                        else:
-                            relax = QuasiNewton(self.bulk_configuration, maxstep=self.Max_step, trajectory=self.struct+'-GROUND-GPAW-Result-Trajectory.traj')
-                    relax.run(fmax=self.Max_F_tolerance)  # Consider tighter fmax!
+                        relax = self._create_gpaw_geometry_optimizer(
+                            self.bulk_configuration
+                        )
+                    relax.run(
+                        fmax=self.Geometry_force_tolerance,
+                        steps=self.Geometry_max_steps,
+                    )
                 else:
                     self.bulk_configuration.set_calculator(calc)
                     self.bulk_configuration.get_potential_energy()
-                #relax = LBFGS(self.bulk_configuration, maxstep=self.Max_step, alpha=self.Alpha, damping=self.Damping, trajectory=self.struct+'-GROUND-GPAW-Result-Trajectory.traj')
-                #relax.run(fmax=self.Max_F_tolerance)  # Consider much tighter fmax!
-                #self.bulk_configuration.get_potential_energy()
-                
                 calc.write(self.struct+'-GROUND-GPAW-Result-State.gpw', mode="all")
 
                 # Writes final configuration as CIF file
@@ -2342,7 +2518,7 @@ class dftsolve:
         try:
             validated_xc = self.engine.validate_qe_xc(
                 self.XC_calc,
-                pseudo_xc='pbe',
+                pseudo_xc=getattr(self, 'Pseudo_xc', 'pbe'),
                 allow_hybrid=True,
             )
         except ValueError as exc:
@@ -2385,16 +2561,9 @@ class dftsolve:
             else ground_state_dir
         )
 
-        pseudo_dir = get_qe_pseudo_dir(
-            relativistic='scalar',
-        )
-
         try:
-            pseudopotentials = (
-                resolve_qe_pseudopotentials(
-                    self.bulk_configuration,
-                    relativistic='scalar',
-                )
+            pseudo_dir, pseudopotentials = (
+                self._qe_pseudo_configuration()
             )
         except (FileNotFoundError, RuntimeError) as exc:
             parprint(
@@ -3116,7 +3285,7 @@ class dftsolve:
         try:
             validated_xc = self.engine.validate_qe_xc(
                 self.XC_calc,
-                pseudo_xc='pbe',
+                pseudo_xc=getattr(self, 'Pseudo_xc', 'pbe'),
                 allow_hybrid=True,
             )
         except ValueError as exc:
@@ -3159,16 +3328,9 @@ class dftsolve:
             else ground_state_dir
         )
 
-        pseudo_dir = get_qe_pseudo_dir(
-            relativistic='scalar',
-        )
-
         try:
-            pseudopotentials = (
-                resolve_qe_pseudopotentials(
-                    self.bulk_configuration,
-                    relativistic='scalar',
-                )
+            pseudo_dir, pseudopotentials = (
+                self._qe_pseudo_configuration()
             )
         except (FileNotFoundError, RuntimeError) as exc:
             parprint(
@@ -4396,7 +4558,7 @@ class dftsolve:
         """Generate QE pseudo-valence electron-density Cube files."""
         self.engine.validate_qe_xc(
             self.XC_calc,
-            pseudo_xc='pbe',
+            pseudo_xc=getattr(self, 'Pseudo_xc', 'pbe'),
             allow_hybrid=True,
         )
 
@@ -4699,7 +4861,7 @@ class dftsolve:
 
         self.engine.validate_qe_xc(
             self.XC_calc,
-            pseudo_xc='pbe',
+            pseudo_xc=getattr(self, 'Pseudo_xc', 'pbe'),
         )
 
         state_dir = Path(
@@ -5202,7 +5364,7 @@ class dftsolve:
 
         self.engine.validate_qe_xc(
             self.XC_calc,
-            pseudo_xc='pbe',
+            pseudo_xc=getattr(self, 'Pseudo_xc', 'pbe'),
         )
 
         state_dir = Path(
@@ -5220,12 +5382,7 @@ class dftsolve:
                 "calculation before running optics."
             )
 
-        pseudo_dir = get_qe_pseudo_dir(
-            relativistic='scalar',
-        )
-        pseudopotentials = resolve_qe_pseudopotentials(
-            self.bulk_configuration,
-            relativistic='scalar',
+        pseudo_dir, pseudopotentials = self._qe_pseudo_configuration(
         )
         ground_gamma = (
             self.Gamma
@@ -6498,12 +6655,11 @@ def check_dft_configuration(
 
         if pseudo_required and config.bulk_configuration is not None:
             try:
-                pseudo_dir = get_qe_pseudo_dir(
-                    relativistic='scalar',
-                )
-                pseudopotentials = resolve_qe_pseudopotentials(
-                    config.bulk_configuration,
-                    relativistic='scalar',
+                pseudo_dir, pseudopotentials = (
+                    resolve_qe_pseudo_configuration(
+                        config,
+                        config.bulk_configuration,
+                    )
                 )
             except Exception as exc:
                 add(
@@ -6711,7 +6867,7 @@ def prepare_qe_dry_run(
     engine = load_engine_module('QE')
     validated_xc = engine.validate_qe_xc(
         config.XC_calc,
-        pseudo_xc='pbe',
+        pseudo_xc=config.Pseudo_xc,
         allow_hybrid=True,
     )
     hybrid = str(validated_xc).strip().lower() in {
@@ -6852,12 +7008,9 @@ def prepare_qe_dry_run(
     ))
 
     if needs_pw_input:
-        pseudo_dir = get_qe_pseudo_dir(
-            relativistic='scalar',
-        )
-        pseudopotentials = resolve_qe_pseudopotentials(
+        pseudo_dir, pseudopotentials = resolve_qe_pseudo_configuration(
+            config,
             atoms,
-            relativistic='scalar',
         )
 
         if config.Spin_calc:
@@ -6922,9 +7075,10 @@ def prepare_qe_dry_run(
             variable_cell = True in config.Relax_cell
             label = 'VC-RELAX' if variable_cell else 'RELAX'
             input_text = engine.render_relax_input(
-                optimizer=config.Optimizer,
-                max_force=config.Max_F_tolerance,
-                max_step=config.Max_step,
+                optimizer=config.Geometry_optimizer,
+                max_force=config.Geometry_force_tolerance,
+                max_step=config.Geometry_max_step,
+                max_steps=config.Geometry_max_steps,
                 relax_cell=config.Relax_cell,
                 hydrostatic_pressure=config.Hydrostatic_pressure,
                 fix_symmetry=config.Fix_symmetry,

@@ -360,6 +360,25 @@ def _validate_ground_kpoint_settings(config):
 
 def validate_convergence_config(config, plan):
     """Validate execution settings without reading atoms or DFT engines."""
+    legacy_pseudo_keys = sorted(
+        key for key in config
+        if key.startswith('QE_pseudo_') or key == 'QE_pseudopotentials'
+    )
+    if legacy_pseudo_keys:
+        raise ValueError(
+            'Engine-prefixed pseudopotential keywords are no longer '
+            'supported. Use Pseudo_family, Pseudo_xc, '
+            'Pseudo_relativistic, Pseudo_accuracy, Pseudo_dir, and '
+            'Pseudopotentials. Found: '
+            + ', '.join(legacy_pseudo_keys)
+        )
+
+    if 'QE_executable' in config:
+        raise ValueError(
+            'QE_executable is no longer supported; use '
+            'Engine_executable.'
+        )
+
     consecutive = config.get('Convergence_consecutive_points', 2)
     if isinstance(consecutive, bool):
         raise TypeError(
@@ -449,11 +468,11 @@ def validate_convergence_config(config, plan):
 
     if plan.engine == 'QE':
         relativistic = str(
-            config.get('QE_pseudo_relativistic', 'scalar')
+            config.get('Pseudo_relativistic', 'scalar')
         ).strip().lower()
         if relativistic not in ('scalar', 'full'):
             raise ValueError(
-                "QE_pseudo_relativistic must be 'scalar' or 'full'."
+                "Pseudo_relativistic must be 'scalar' or 'full'."
             )
 
     if not isinstance(config.get('Convergence_plot', True), bool):
@@ -506,7 +525,7 @@ def _build_static_energy_settings(config, atoms, engine):
         'magnetic_moments': magnetic_moments,
         'setup_params': config.get('Setup_params', {}),
         'xc_calc': config.get('XC_calc', default_xc),
-        'pseudo_xc': config.get('QE_pseudo_xc', 'pbe'),
+        'pseudo_xc': config.get('Pseudo_xc', 'pbe'),
         'exx_fraction': config.get('XC_exx_fraction'),
         'omega': config.get('XC_omega'),
         'xc_backend': config.get('XC_backend', 'pw'),
@@ -548,21 +567,21 @@ def _build_backend(
 
     pseudo_options = {
         'family': str(
-            config.get('QE_pseudo_family', 'pseudodojo')
+            config.get('Pseudo_family', 'pseudodojo')
         ).strip().lower(),
-        'xc': str(config.get('QE_pseudo_xc', 'pbe')).strip().lower(),
+        'xc': str(config.get('Pseudo_xc', 'pbe')).strip().lower(),
         'relativistic': str(
-            config.get('QE_pseudo_relativistic', 'scalar')
+            config.get('Pseudo_relativistic', 'scalar')
         ).strip().lower(),
         'accuracy': str(
-            config.get('QE_pseudo_accuracy', 'standard')
+            config.get('Pseudo_accuracy', 'standard')
         ).strip().lower(),
     }
-    pseudo_dir = config.get('QE_pseudo_dir')
+    pseudo_dir = config.get('Pseudo_dir')
     if pseudo_dir is None:
         pseudo_dir = pseudo_dir_getter(**pseudo_options)
 
-    pseudopotentials = config.get('QE_pseudopotentials')
+    pseudopotentials = config.get('Pseudopotentials')
     if pseudopotentials is None:
         pseudopotentials = pseudo_resolver(atoms, **pseudo_options)
 
@@ -570,7 +589,7 @@ def _build_backend(
         'QE',
         pseudopotentials=pseudopotentials,
         pseudo_dir=pseudo_dir,
-        executable=config.get('QE_executable', 'pw.x'),
+        executable=config.get('Engine_executable', 'pw.x'),
     )
 
 

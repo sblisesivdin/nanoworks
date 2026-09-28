@@ -902,6 +902,7 @@ class TestQEEngine(unittest.TestCase):
             optimizer='LBFGS',
             max_force=0.05,
             max_step=0.2,
+            max_steps=75,
             relax_cell=[
                 False,
                 False,
@@ -938,6 +939,7 @@ class TestQEEngine(unittest.TestCase):
                 * Bohr
             ),
         )
+        self.assertEqual(settings['control']['nstep'], 75)
 
         self.assertAlmostEqual(
             settings['ions']['trust_radius_max'],
@@ -988,7 +990,7 @@ class TestQEEngine(unittest.TestCase):
     def test_qe_relaxation_rejects_unsupported_optimizer(self):
         with self.assertRaisesRegex(
             NotImplementedError,
-            'QuasiNewton and LBFGS',
+            'default, quasi-newton, and lbfgs',
         ):
             resolve_qe_relaxation_settings(
                 optimizer='FIRE',
@@ -2196,6 +2198,7 @@ class TestQEEngine(unittest.TestCase):
             optimizer='LBFGS',
             max_force=0.05,
             max_step=0.20,
+            max_steps=75,
             relax_cell=[
                 False,
                 False,
@@ -2219,6 +2222,7 @@ class TestQEEngine(unittest.TestCase):
             'forc_conv_thr =',
             text,
         )
+        self.assertIn('nstep = 75', text)
         self.assertIn(
             'nosym = .true.',
             text,

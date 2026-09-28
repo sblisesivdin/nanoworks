@@ -25,4 +25,4 @@ Ground_gamma = True
 # 'scalar' is the default. Use 'full' to select the installed fully
 # relativistic PseudoDojo set. This selects pseudopotentials; it does not
 # enable an SOC calculation.
-QE_pseudo_relativistic = 'scalar'
+Pseudo_relativistic = 'scalar'
