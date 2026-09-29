@@ -71,7 +71,7 @@ DOS_kpts_y = 7
 DOS_kpts_z = 7
 DOS_gamma = True
 DOS_num_of_bands = 40
-DOS_occupation = 'tetrahedra'
+DOS_integration = 'tetrahedron'
 DOS_npoints = 501
 
 # Band structure

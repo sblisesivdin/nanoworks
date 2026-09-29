@@ -943,15 +943,16 @@ backend interpret the settings it supports.
 
     :Type: ``float``
     :Default: ``0.1``
+    :Unit: eV
 
-    Width of Gaussian smearing in GPAW DOS calculations. Use ``0.0`` for
-    linear tetrahedron interpolation. QE DOS and PDOS calculations use
-    ``DOS_occupation`` and currently accept tetrahedron schemes instead of
-    this Gaussian-width setting.
+    Gaussian broadening used when ``DOS_integration = 'smearing'``.
+    The same eV value is used by GPAW and converted to Rydberg for QE
+    ``dos.x`` and ``projwfc.x``. It must be greater than zero for
+    smearing and is normalized to ``0.0`` for tetrahedron integration.
 
 .. code-block:: python
 
-    DOS_width = 0.0  # Using tetrahedron interpolation
+    DOS_width = 0.1
 
 .. describe:: DOS_num_of_bands
 
@@ -1016,44 +1017,28 @@ backend interpret the settings it supports.
 
     DOS_gamma = True
 
-.. describe:: DOS_occupation
+.. describe:: DOS_integration
 
-    :Type: ``python dictionary``, ``string`` or ``None``
-    :Default: backend-specific
+    :Type: ``string``
+    :Default: ``smearing``
+    :Options: ``smearing``, ``tetrahedron``
 
-    Selects the occupation scheme used when preparing the DOS
-    calculation.
+    Engine-neutral Brillouin-zone integration method for DOS and PDOS.
+    ``smearing`` uses Gaussian broadening with ``DOS_width`` in both
+    engines. ``tetrahedron`` selects GPAW's linear tetrahedron DOS
+    evaluation and QE's Blöchl tetrahedron method; QE automatically uses
+    tetrahedron occupations for the DOS electronic stage.
 
-    When omitted, GPAW inherits the ground-state ``Occupation_scheme`` and
-    ``Smearing_width`` settings.
-    QE uses ``'tetrahedra'``, which is the general default for the
-    current native QE DOS workflow.
+    Ground-state electronic occupations remain controlled independently by
+    ``Occupation_scheme`` and ``Smearing_width``. The former backend-shaped
+    ``DOS_occupation`` setting is no longer accepted.
 
-    GPAW calculations may use an occupation dictionary or occupation
-    object:
-
-.. code-block:: python
-
-    DOS_occupation = {
-        'name': 'fermi-dirac',
-        'width': 0.02,
-    }
-
-    QE accepts the tetrahedron occupation strings:
+    GPAW SOC DOS currently uses explicit Gaussian broadening and therefore
+    requires ``DOS_integration = 'smearing'``.
 
 .. code-block:: python
 
-    DOS_occupation = 'tetrahedra'
-
-    Accepted QE aliases are ``tetrahedra``, ``tetrahedra_lin``,
-    ``tetrahedra-lin``, ``tetrahedra_opt`` and
-    ``tetrahedra-opt``. An explicit value overrides the backend
-    default.
-
-.. warning::
-
-    The QE tetrahedron strings are backend-specific. Do not reuse a QE
-    ``DOS_occupation`` string in a GPAW calculation input.
+    DOS_integration = 'tetrahedron'
 
 .. note::
 

@@ -98,6 +98,18 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         self.assertEqual(fixed.Occupation_scheme, 'fixed')
         self.assertIsNone(fixed.Smearing_width)
 
+    def test_gpaw_soc_dos_rejects_tetrahedron_integration(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            'GPAW SOC DOS.*smearing',
+        ):
+            DFTConfig(
+                Engine='GPAW',
+                DOS_calc=True,
+                SOC_calc=True,
+                DOS_integration='tetrahedron',
+            )
+
     def test_required_qe_executables_follow_selected_stages(self):
         config = DFTConfig(
             Engine='QE',
@@ -641,6 +653,22 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             self.assertIn('mixing_beta = 0.25', ground_input)
             self.assertIn('electron_maxstep = 180', ground_input)
             self.assertIn("diagonalization = 'cg'", ground_input)
+
+            jobs = {
+                job['id']: job
+                for job in plan['jobs']
+            }
+            dos_input = Path(
+                jobs['dos-total']['input_file']
+            ).read_text(encoding='utf-8')
+            pdos_input = Path(
+                jobs['dos-projected']['input_file']
+            ).read_text(encoding='utf-8')
+            self.assertIn("bz_sum = 'smearing'", dos_input)
+            self.assertIn('degauss = ', dos_input)
+            self.assertIn('ngauss = 0', dos_input)
+            self.assertIn('degauss = ', pdos_input)
+            self.assertIn('ngauss = 0', pdos_input)
 
             slurm_script = write_qe_slurm_script(
                 plan,
@@ -1965,10 +1993,8 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             config.XC_calc,
             'PBE',
         )
-        self.assertEqual(
-            config.DOS_occupation,
-            'tetrahedra',
-        )
+        self.assertEqual(config.DOS_integration, 'smearing')
+        self.assertEqual(config.DOS_width, 0.1)
         self.assertTrue(
             config.Fix_symmetry
         )
@@ -2070,9 +2096,8 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             config.XC_calc,
             'LDA',
         )
-        self.assertIsNone(
-            config.DOS_occupation
-        )
+        self.assertEqual(config.DOS_integration, 'smearing')
+        self.assertEqual(config.DOS_width, 0.1)
         self.assertFalse(
             config.Fix_symmetry
         )
@@ -2098,15 +2123,11 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         )
 
     def test_explicit_values_override_engine_defaults(self):
-        occupation = {
-            'name': 'fermi-dirac',
-            'width': 0.02,
-        }
-
         config = DFTConfig(
             Engine='QE',
             XC_calc='LDA',
-            DOS_occupation=occupation,
+            DOS_integration='tetrahedra',
+            DOS_width=0.2,
             Fix_symmetry=False,
             Phonon_PW_cutoff=500,
             Phonon_kpts_x=4,
@@ -2121,10 +2142,8 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             config.XC_calc,
             'LDA',
         )
-        self.assertIs(
-            config.DOS_occupation,
-            occupation,
-        )
+        self.assertEqual(config.DOS_integration, 'tetrahedron')
+        self.assertEqual(config.DOS_width, 0.0)
         self.assertFalse(
             config.Fix_symmetry
         )
@@ -2740,7 +2759,8 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         solver.DOS_kpts_y = 4
         solver.DOS_kpts_z = 4
         solver.DOS_gamma = None
-        solver.DOS_occupation = 'tetrahedra'
+        solver.DOS_integration = 'tetrahedron'
+        solver.DOS_width = 0.0
         solver.Occupation = None
         solver.Spin_calc = False
         solver.bulk_configuration = Atoms(
@@ -2767,6 +2787,9 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 return_value={
                     'occupations': 'tetrahedra',
                 }
+            ),
+            ev_to_rydberg=Mock(
+                side_effect=lambda value: value / 13.605693122994
             ),
             run_nscf=Mock(
                 side_effect=RuntimeError(
@@ -2824,6 +2847,9 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         self.assertTrue(
             hybrid_call['relative_to_fermi']
         )
+        self.assertEqual(hybrid_call['bz_sum'], 'tetrahedra')
+        self.assertIsNone(hybrid_call['degauss'])
+        self.assertIsNone(hybrid_call['ngauss'])
 
     def test_qe_bandcalc_dispatches_hybrid_projected_bands(self):
         solver = object.__new__(

@@ -5,6 +5,7 @@
 - Engine-independent `SCF_accuracy`, `SCF_max_steps`, `SCF_mixing` and `Electronic_solver` settings replace GPAW-specific convergence and mixer keywords.
 - GPAW and QE translate the same SCF intent to their native convergence, iteration, mixing and eigensolver controls.
 - Engine-neutral `Occupation_scheme` and `Smearing_width` replace the GPAW-shaped `Occupation` dictionary for ground-state occupations and smearing.
+- `DOS_integration` and `DOS_width` provide the same smearing or tetrahedron DOS intent to GPAW and QE; the backend-specific `DOS_occupation` setting is removed.
 - Engine-neutral `Pseudo_family`, `Pseudo_xc`, `Pseudo_relativistic`, `Pseudo_accuracy`, `Pseudo_dir`, and `Pseudopotentials` settings configure QE resources without `QE_*` workflow keywords.
 - `dftsolve` now honors scalar- or fully-relativistic pseudopotential selection consistently across every native QE stage and dry run.
 - Portable `Geometry_optimizer`, `Geometry_force_tolerance`, `Geometry_max_step`, and `Geometry_max_steps` replace the old ASE-oriented optimization keywords.
@@ -36,7 +37,6 @@
 - Stage-specific k-point and band-count keywords are supported for ground-state, DOS, optical, elastic and band workflows.
 - Combined GPAW inputs automatically run the memory-intensive optical stage in a fresh process after the other requested stages release their memory.
 - GPAW optical-state preparation keeps the full-diagonalization domain communicator serial while allowing automatic k-point and band distribution across the remaining MPI ranks.
-- `DOS_occupation` selects the QE tetrahedron scheme. `DOS_width` remains the GPAW DOS width setting.
 - `Projected_band_plot` and `Projections` support orbital-projected (fat) bands with GPAW and QE.
 - `qeconverter` converts common QE inputs and accepts `--xc HSE06`, `--xc HSE03` and `--xc PBE0` overrides.
 - Quantum ESPRESSO 7.2 is the initially validated QE version. PseudoDojo PBE pseudopotentials can be installed with `nanoworks --install-qe-pseudos`.

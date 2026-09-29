@@ -48,7 +48,7 @@ DOS_kpts_y = 4
 DOS_kpts_z = 4
 DOS_gamma = True
 DOS_num_of_bands = 16
-DOS_occupation = 'tetrahedra'
+DOS_integration = 'tetrahedron'
 DOS_npoints = 101
 
 # Spin-resolved bands and Fe orbital-projected fat bands.

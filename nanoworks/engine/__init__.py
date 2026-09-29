@@ -229,14 +229,6 @@ def resolve_stage_kpoint_settings(
     return ground_density, tuple(ground_size), gamma
 
 
-def resolve_stage_occupation(stage_occupation, ground_occupation):
-    """Resolve a stage-specific occupation scheme."""
-    if stage_occupation is None:
-        return ground_occupation
-
-    return stage_occupation
-
-
 _CALCULATION_STAGE_FLAGS = (
     ('elastic', 'Elastic_calc'),
     ('dos', 'DOS_calc'),

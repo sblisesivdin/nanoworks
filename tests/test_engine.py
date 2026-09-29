@@ -5,7 +5,6 @@ from ase import Atoms
 from nanoworks.engine import (
     normalize_engine_name,
     resolve_stage_kpoint_settings,
-    resolve_stage_occupation,
     resolve_calculation_stages,
     load_engine_module,
     resolve_initial_magnetic_moments,
@@ -52,26 +51,6 @@ class TestEngine(unittest.TestCase):
         self.assertEqual(size, (16, 16, 8))
         self.assertFalse(gamma)
     
-    def test_stage_occupation_falls_back_to_ground(self):
-        ground = {
-            'name': 'fermi-dirac',
-            'width': 0.05,
-        }
-
-        self.assertIs(
-            resolve_stage_occupation(None, ground),
-            ground,
-        )
-
-        dos = {
-            'name': 'tetrahedron-method',
-        }
-
-        self.assertIs(
-            resolve_stage_occupation(dos, ground),
-            dos,
-        )
-
     def test_calculation_stages_always_include_ground_first(self):
         config = type(
             'Config',

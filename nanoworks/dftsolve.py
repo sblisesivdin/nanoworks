@@ -236,8 +236,11 @@ from nanoworks.engine import (
     resolve_calculation_stages,
     resolve_initial_magnetic_moments,
     resolve_stage_kpoint_settings,
-    resolve_stage_occupation,
     load_engine_module,
+)
+from nanoworks.dos import (
+    resolve_dos_settings,
+    validate_dos_settings,
 )
 from nanoworks.pseudos import (
     get_qe_pseudo_dir,
@@ -278,7 +281,6 @@ DFT_ENGINE_DEFAULTS = {
     'GPAW': {
         'XC_calc': 'LDA',
         'Opt_calc_type': 'BSE',
-        'DOS_occupation': None,
         'Fix_symmetry': False,
         'Phonon_PW_cutoff': 400,
         'Phonon_kpts_x': 3,
@@ -288,7 +290,6 @@ DFT_ENGINE_DEFAULTS = {
     'QE': {
         'XC_calc': 'PBE',
         'Opt_calc_type': 'RPA',
-        'DOS_occupation': 'tetrahedra',
         'Fix_symmetry': True,
         'Phonon_PW_cutoff': None,
         'Phonon_kpts_x': None,
@@ -376,13 +377,13 @@ class DFTConfig:
     # DOS parameters
     DOS_npoints: int = 501
     DOS_width: float = 0.1
+    DOS_integration: str = 'smearing'
     DOS_num_of_bands: Optional[int] = None
     DOS_kpts_density: Optional[float] = None
     DOS_kpts_x: Optional[int] = None
     DOS_kpts_y: Optional[int] = None
     DOS_kpts_z: Optional[int] = None
     DOS_gamma: Optional[bool] = None
-    DOS_occupation: Any = None
     
     # Band structure parameters
     Gamma: bool = True
@@ -489,6 +490,22 @@ class DFTConfig:
         )
         self.Occupation_scheme = occupation_settings['scheme']
         self.Smearing_width = occupation_settings['width']
+        dos_settings = validate_dos_settings(
+            integration=self.DOS_integration,
+            width=self.DOS_width,
+        )
+        self.DOS_integration = dos_settings['integration']
+        self.DOS_width = dos_settings['width_ev']
+        if (
+            self.Engine == 'GPAW'
+            and self.SOC_calc
+            and self.DOS_calc
+            and self.DOS_integration == 'tetrahedron'
+        ):
+            raise ValueError(
+                'GPAW SOC DOS currently requires '
+                "DOS_integration = 'smearing'."
+            )
         geometry_optimizer = str(
             self.Geometry_optimizer
         ).strip().lower().replace('_', '-')
@@ -1000,12 +1017,12 @@ class dftsolve:
         self.Total_charge = config.Total_charge
         self.DOS_npoints = config.DOS_npoints
         self.DOS_width = config.DOS_width
+        self.DOS_integration = config.DOS_integration
         self.DOS_kpts_density = config.DOS_kpts_density
         self.DOS_kpts_x = config.DOS_kpts_x
         self.DOS_kpts_y = config.DOS_kpts_y
         self.DOS_kpts_z = config.DOS_kpts_z
         self.DOS_gamma = config.DOS_gamma
-        self.DOS_occupation = config.DOS_occupation
         self.DOS_num_of_bands = config.DOS_num_of_bands
         self.Gamma = config.Gamma
         self.Band_path = config.Band_path
@@ -2149,10 +2166,13 @@ class dftsolve:
             )
         )
 
-        dos_occupation = resolve_stage_occupation(
-            self.DOS_occupation,
+        dos_settings = resolve_dos_settings(
+            self.Engine,
+            self.DOS_integration,
+            self.DOS_width,
             self.Occupation,
         )
+        dos_occupation = dos_settings['electronic_occupation']
 
         calc = self.engine.prepare_dos_calc(
             filename=self.struct+'-GROUND-GPAW-Result-State.gpw',
@@ -2615,10 +2635,13 @@ class dftsolve:
             ground_gamma=ground_gamma,
         )
 
-        dos_occupation = resolve_stage_occupation(
-            self.DOS_occupation,
+        dos_settings = resolve_dos_settings(
+            self.Engine,
+            self.DOS_integration,
+            self.DOS_width,
             self.Occupation,
         )
+        dos_occupation = dos_settings['electronic_occupation']
 
         magnetic_moments = None
 
@@ -2770,25 +2793,13 @@ class dftsolve:
             + '-DOS-QE-Result-Raw-PDOS'
         )
 
-        qe_dos_occupation = (
-            self.engine.resolve_qe_occupation(
-                dos_occupation
-            )
+        bz_sum = dos_settings['bz_sum']
+        degauss = (
+            self.engine.ev_to_rydberg(dos_settings['degauss_ev'])
+            if dos_settings['degauss_ev'] is not None
+            else None
         )
-
-        bz_sum = qe_dos_occupation[
-            'occupations'
-        ]
-
-        if bz_sum not in {
-            'tetrahedra',
-            'tetrahedra_lin',
-            'tetrahedra_opt',
-        }:
-            raise NotImplementedError(
-                "Quantum ESPRESSO DOS currently supports "
-                "tetrahedra occupations only in Nanoworks."
-            )
+        ngauss = dos_settings['ngauss']
 
         if hybrid:
             parprint(
@@ -2827,6 +2838,8 @@ class dftsolve:
                     emax=self.Energy_max,
                     delta_e=delta_e,
                     bz_sum=bz_sum,
+                    degauss=degauss,
+                    ngauss=ngauss,
                     parallel_cores=self.parallel_cores,
                     relative_to_fermi=True,
                     scf_executable='pw.x',
@@ -2874,6 +2887,8 @@ class dftsolve:
                     emax=dos_emax_absolute,
                     delta_e=delta_e,
                     bz_sum=bz_sum,
+                    degauss=degauss,
+                    ngauss=ngauss,
                     parallel_cores=self.parallel_cores,
                     executable='dos.x',
                     prefix='nanoworks',
@@ -3110,6 +3125,8 @@ class dftsolve:
                     emin=dos_emin_absolute,
                     emax=dos_emax_absolute,
                     delta_e=delta_e,
+                    degauss=degauss,
+                    ngauss=ngauss,
                     parallel_cores=self.parallel_cores,
                     executable='projwfc.x',
                     prefix='nanoworks',
@@ -6603,8 +6620,15 @@ def check_dft_configuration(
 
         if config.DOS_calc:
             try:
-                dos_occupation = engine.resolve_qe_occupation(
-                    config.DOS_occupation
+                resolve_dos_settings(
+                    'QE',
+                    config.DOS_integration,
+                    config.DOS_width,
+                    resolve_engine_occupation(
+                        'QE',
+                        scheme=config.Occupation_scheme,
+                        width=config.Smearing_width,
+                    ),
                 )
             except Exception as exc:
                 add(
@@ -6612,17 +6636,6 @@ def check_dft_configuration(
                     'dos-occupation',
                     str(exc),
                 )
-            else:
-                if dos_occupation['occupations'] not in {
-                    'tetrahedra',
-                    'tetrahedra_lin',
-                    'tetrahedra_opt',
-                }:
-                    add(
-                        'error',
-                        'dos-occupation',
-                        'QE DOS requires a tetrahedron occupation.',
-                    )
 
         if check_executables:
             for executable in required_dft_executables(config):
@@ -7154,12 +7167,20 @@ def prepare_qe_dry_run(
             density=dos_density,
             size=dos_size,
         )
-        dos_occupation = resolve_stage_occupation(
-            config.DOS_occupation,
+        dos_settings = resolve_dos_settings(
+            'QE',
+            config.DOS_integration,
+            config.DOS_width,
             portable_occupation,
         )
+        dos_occupation = dos_settings['electronic_occupation']
         qe_dos_occupation = engine.resolve_qe_occupation(
             dos_occupation
+        )
+        degauss = (
+            engine.ev_to_rydberg(dos_settings['degauss_ev'])
+            if dos_settings['degauss_ev'] is not None
+            else None
         )
         delta_e = (
             float(config.Energy_max)
@@ -7240,8 +7261,10 @@ def prepare_qe_dry_run(
                 prefix='nanoworks',
                 outdir=dos_state_dir,
                 fildos=Path(str(struct) + '-DOS-QE-Result-Raw-DOS.dat'),
-                bz_sum=qe_dos_occupation['occupations'],
+                bz_sum=dos_settings['bz_sum'],
                 delta_e=delta_e,
+                degauss=degauss,
+                ngauss=dos_settings['ngauss'],
             ),
             depends_on=[dos_electronic_job],
         )
@@ -7256,6 +7279,8 @@ def prepare_qe_dry_run(
                 outdir=dos_state_dir,
                 filpdos=Path(str(struct) + '-DOS-QE-Result-Raw-PDOS'),
                 delta_e=delta_e,
+                degauss=degauss,
+                ngauss=dos_settings['ngauss'],
             ),
             depends_on=[dos_electronic_job],
         )

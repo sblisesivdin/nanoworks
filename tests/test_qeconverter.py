@@ -420,6 +420,10 @@ CELL_PARAMETERS angstrom
             'Source QE occupations value: tetrahedra_opt',
             text,
         )
+        self.assertIn(
+            "DOS_integration = 'tetrahedron'",
+            text,
+        )
 
     def test_parse_qe_input_reads_relaxation_settings(self):
         input_text = """

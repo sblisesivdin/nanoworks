@@ -48,7 +48,7 @@ Occupation_scheme = 'marzari-vanderbilt'
 Smearing_width = 0.2
 
 DOS_npoints = 301        # Number of points
-DOS_width = 0.2          # Width of Gaussian smearing.  Use 0.0 for linear tetrahedron interpolation
+DOS_width = 0.2          # Gaussian DOS broadening in eV
 
 Spin_calc = False        # Spin polarized calculation?
 Magmom_per_atom = 1.0    # Magnetic moment per atom

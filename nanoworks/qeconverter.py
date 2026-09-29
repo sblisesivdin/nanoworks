@@ -795,6 +795,7 @@ def _build_occupation_lines(
     if occupation in tetrahedra:
         return [
             "Occupation_scheme = 'fixed'",
+            "DOS_integration = 'tetrahedron'",
             "# NOTICE: QE tetrahedron occupations have no portable",
             "# ground-state equivalent; mapped to fixed occupations.",
             f"# Source QE occupations value: {occupation}",
@@ -824,6 +825,8 @@ def _build_occupation_lines(
     return [
         f"Occupation_scheme = '{smearing}'",
         f"Smearing_width = {width_ev:.12g}",
+        "DOS_integration = 'smearing'",
+        f"DOS_width = {width_ev:.12g}",
     ]
 
 def _build_kpoint_lines(
