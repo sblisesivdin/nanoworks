@@ -2,6 +2,7 @@
 
 from gpaw import GPAW, PW, MixerSum, FermiDirac
 from gpaw.eigensolvers import Davidson
+from nanoworks.hubbard import resolve_gpaw_hubbard
 
 HYBRID_XC = ('HSE06', 'HSE03', 'B3LYP', 'PBE0', 'EXX')
 
@@ -55,13 +56,9 @@ def load_gpaw_calc(filename, hybrid=False, **kwargs):
 
     return GPAW(filename, **kwargs)
 
-def resolve_xc_and_setups(xc_input, user_setups=None):
+def resolve_xc_and_setups(xc_input, hubbard_u=None):
     """Resolve GPAW XC and setup specifications."""
-
-    if user_setups is None:
-        setups = {}
-    else:
-        setups = dict(user_setups)
+    setups = resolve_gpaw_hubbard(hubbard_u)
 
     is_libxc = False
 
@@ -363,7 +360,7 @@ def create_phonon_calc(
 
 def resolve_elastic_settings(
     xc_calc,
-    setups,
+    hubbard_u,
     world_size,
     exx_fraction=None,
     omega=None,
@@ -372,7 +369,7 @@ def resolve_elastic_settings(
     """Resolve XC, setups, parallel settings, and hybrid state for elasticity."""
     actual_xc, resolved_setups, _ = resolve_xc_and_setups(
         xc_calc,
-        setups,
+        hubbard_u,
     )
 
     hybrid = is_hybrid(xc_calc)

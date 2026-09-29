@@ -530,7 +530,7 @@ def _build_static_energy_settings(config, atoms, engine):
         'nbands': config.get('Ground_num_of_bands'),
         'spinpol': spinpol,
         'magnetic_moments': magnetic_moments,
-        'setup_params': config.get('Setup_params', {}),
+        'hubbard_u': config.get('Hubbard_U', {}),
         'xc_calc': config.get('XC_calc', default_xc),
         'pseudo_xc': config.get('Pseudo_xc', 'pbe'),
         'exx_fraction': config.get('XC_exx_fraction'),

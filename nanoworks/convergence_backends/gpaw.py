@@ -53,7 +53,7 @@ class GPAWStaticEnergyBackend:
         xc_calc = settings.get('xc_calc', 'PBE')
         actual_xc, setups, _ = engine.resolve_xc_and_setups(
             xc_calc,
-            settings.get('setup_params'),
+            settings.get('hubbard_u'),
         )
 
         scf = resolve_gpaw_scf_settings(

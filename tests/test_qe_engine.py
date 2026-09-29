@@ -3706,7 +3706,7 @@ class TestQEEngine(unittest.TestCase):
                 total_charge=0.0,
                 nbands=24,
                 spinpol=False,
-                setup_params=None,
+                hubbard_u=None,
                 xc_calc='HSE03',
                 exx_fraction=0.28,
                 omega=0.15,
@@ -6689,9 +6689,9 @@ class TestQEEngine(unittest.TestCase):
             )
 
             settings = resolve_qe_hubbard(
-                setup_params={
-                    'O': ':p,7.0',
-                    'Zn': ':d,10.0',
+                hubbard_u={
+                    'O-2p': 7.0,
+                    'Zn-3d': 10.0,
                 },
                 pseudopotentials={
                     'O': 'O.upf',
@@ -6753,7 +6753,7 @@ class TestQEEngine(unittest.TestCase):
             text,
         )
 
-    def test_resolve_qe_hubbard_rejects_ambiguous_orbital(self):
+    def test_resolve_qe_hubbard_rejects_missing_manifold(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             pseudo_dir = Path(
                 tmpdir
@@ -6776,11 +6776,11 @@ class TestQEEngine(unittest.TestCase):
 
             with self.assertRaisesRegex(
                 ValueError,
-                'matches multiple pseudopotential manifolds',
+                'was not found in pseudopotential',
             ):
                 resolve_qe_hubbard(
-                    setup_params={
-                        'X': ':p,6.0',
+                    hubbard_u={
+                        'X-4p': 6.0,
                     },
                     pseudopotentials={
                         'X': 'X.upf',
@@ -6841,8 +6841,8 @@ class TestQEEngine(unittest.TestCase):
                     2.0,
                     -2.0,
                 ],
-                setup_params={
-                    'Fe': ':d,4.0',
+                hubbard_u={
+                    'Fe-3d': 4.0,
                 },
             )
 
@@ -6867,15 +6867,15 @@ class TestQEEngine(unittest.TestCase):
             text,
         )
 
-    def test_pw_input_wrappers_forward_setup_params(self):
+    def test_pw_input_wrappers_forward_hubbard_u(self):
         atoms = bulk(
             'Si',
             'diamond',
             a=5.43,
         )
 
-        setup_params = {
-            'Si': ':p,4.0',
+        hubbard_u = {
+            'Si-3p': 4.0,
         }
 
         common = {
@@ -6884,7 +6884,7 @@ class TestQEEngine(unittest.TestCase):
                 'Si': 'Si.upf',
             },
             'cutoff_ev': 400.0,
-            'setup_params': setup_params,
+            'hubbard_u': hubbard_u,
         }
 
         with patch(
@@ -6898,9 +6898,9 @@ class TestQEEngine(unittest.TestCase):
 
             self.assertEqual(
                 render.call_args.kwargs[
-                    'setup_params'
+                    'hubbard_u'
                 ],
-                setup_params,
+                hubbard_u,
             )
 
             render_nscf_input(
@@ -6910,9 +6910,9 @@ class TestQEEngine(unittest.TestCase):
 
             self.assertEqual(
                 render.call_args.kwargs[
-                    'setup_params'
+                    'hubbard_u'
                 ],
-                setup_params,
+                hubbard_u,
             )
 
             render_relax_input(
@@ -6933,9 +6933,9 @@ class TestQEEngine(unittest.TestCase):
 
             self.assertEqual(
                 render.call_args.kwargs[
-                    'setup_params'
+                    'hubbard_u'
                 ],
-                setup_params,
+                hubbard_u,
             )
 
             render_bands_input(
@@ -6953,9 +6953,9 @@ class TestQEEngine(unittest.TestCase):
 
             self.assertEqual(
                 render.call_args.kwargs[
-                    'setup_params'
+                    'hubbard_u'
                 ],
-                setup_params,
+                hubbard_u,
             )
 
     def test_run_scf_writes_hubbard_card(self):
@@ -7025,8 +7025,8 @@ class TestQEEngine(unittest.TestCase):
                     },
                     pseudo_dir=tmpdir,
                     cutoff_ev=400.0,
-                    setup_params={
-                        'Si': ':p,4.0',
+                    hubbard_u={
+                        'Si-3p': 4.0,
                     },
                 )
 

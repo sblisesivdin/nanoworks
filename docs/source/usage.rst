@@ -269,7 +269,7 @@ exchange-correlation functional in the generated QE input. The resulting
 input can use the native QE hybrid electronic workflows described above.
 
 QE 7.2 ``HUBBARD`` cards containing on-site ``U`` terms are converted
-to the common Nanoworks ``Setup_params`` syntax. For example:
+to the common Nanoworks ``Hubbard_U`` syntax. For example:
 
 .. code-block:: text
 
@@ -281,9 +281,9 @@ is converted to:
 
 .. code-block:: python
 
-   Setup_params = {
-       'O': ':2p,7',
-       'Zn': ':3d,10',
+   Hubbard_U = {
+       'O-2p': 7.0,
+       'Zn-3d': 10.0,
    }
 
 Split magnetic species such as ``Fe1`` and ``Fe2`` are merged into the

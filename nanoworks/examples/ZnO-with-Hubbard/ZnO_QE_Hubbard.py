@@ -60,9 +60,9 @@ Occupation_scheme = 'fermi-dirac'
 Smearing_width = 0.05
 
 # DFT+U
-Setup_params = {
-    'O': ':p,7.0',
-    'Zn': ':d,10.0',
+Hubbard_U = {
+    'O-2p': 7.0,
+    'Zn-3d': 10.0,
 }
 
 # DOS

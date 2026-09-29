@@ -372,7 +372,7 @@ def _qe_species_label_to_element(
 def _build_hubbard_lines(
     settings: QEInputSettings,
 ) -> List[str]:
-    """Convert parsed QE Hubbard terms to Setup_params."""
+    """Convert parsed QE Hubbard terms to Hubbard_U."""
     if (
         settings.hubbard_projector is None
         and not settings.hubbard_terms
@@ -432,48 +432,50 @@ def _build_hubbard_lines(
             )
             continue
 
-        specification = (
-            ':'
-            + term['manifold']
-            + ','
-            + f"{term['value_ev']:.12g}"
-        )
-
         terms_by_element.setdefault(
             element,
             [],
         ).append({
             'species_label': species_label,
-            'specification': specification,
+            'manifold': term['manifold'],
+            'value_ev': float(term['value_ev']),
         })
 
-    setup_params = {}
+    hubbard_u = {}
 
     for element, terms in terms_by_element.items():
-        specifications = list(
+        corrections = list(
             dict.fromkeys(
-                term['specification']
+                (
+                    term['manifold'],
+                    term['value_ev'],
+                )
                 for term in terms
             )
         )
 
-        selected = specifications[0]
+        selected = corrections[0]
 
-        if len(specifications) > 1:
+        if len(corrections) > 1:
             notices.append(
                 "Multiple QE Hubbard corrections were found "
                 f"for element {element}: "
                 + ', '.join(
-                    specifications
+                    f'{element}-{manifold}={value_ev:.12g}'
+                    for manifold, value_ev in corrections
                 )
-                + f". Nanoworks keeps {selected!r}; review "
-                "Setup_params manually."
+                + ". Nanoworks keeps "
+                f'{element}-{selected[0]}={selected[1]:.12g}; review '
+                "Hubbard_U manually."
             )
 
         corrected_species = {
             term['species_label']
             for term in terms
-            if term['specification'] == selected
+            if (
+                term['manifold'],
+                term['value_ev'],
+            ) == selected
         }
 
         known_species = species_by_element.get(
@@ -488,14 +490,14 @@ def _build_hubbard_lines(
             notices.append(
                 "The source QE Hubbard correction applies "
                 f"to only part of the {element} species "
-                "labels. Nanoworks Setup_params applies the "
+                "labels. Nanoworks Hubbard_U applies the "
                 "selected correction to every species of "
                 f"{element}; review the generated input."
             )
 
-        setup_params[
-            element
-        ] = selected
+        hubbard_u[
+            f'{element}-{selected[0]}'
+        ] = selected[1]
 
     lines = [
         "# NOTICE: "
@@ -506,15 +508,15 @@ def _build_hubbard_lines(
     formatted = (
         '{'
         + ', '.join(
-            f"{element!r}: {specification!r}"
-            for element, specification
-            in setup_params.items()
+            f"{manifold!r}: {value_ev:.12g}"
+            for manifold, value_ev
+            in hubbard_u.items()
         )
         + '}'
     )
 
     lines.append(
-        "Setup_params = "
+        "Hubbard_U = "
         + formatted
     )
 

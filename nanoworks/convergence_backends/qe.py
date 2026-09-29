@@ -75,7 +75,7 @@ class QEStaticEnergyBackend:
             nbands=settings.get('nbands'),
             spinpol=bool(settings.get('spinpol', False)),
             magnetic_moments=settings.get('magnetic_moments'),
-            setup_params=settings.get('setup_params'),
+            hubbard_u=settings.get('hubbard_u'),
             xc_calc=settings.get('xc_calc', 'PBE'),
             pseudo_xc=settings.get('pseudo_xc', 'pbe'),
             exx_fraction=settings.get('exx_fraction'),

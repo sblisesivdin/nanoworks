@@ -119,7 +119,7 @@ class TestGPAWEngine(unittest.TestCase):
     def test_libxc_prefix_is_resolved(self):
         xc, setups, is_libxc = resolve_xc_and_setups(
             'libxc:GGA_X_PBE+GGA_C_PBE',
-            {'Cu': ':d,6.0'},
+            {'Cu-3d': 6.0},
         )
 
         self.assertEqual(xc, 'GGA_X_PBE+GGA_C_PBE')
@@ -652,7 +652,7 @@ class TestGPAWEngine(unittest.TestCase):
     def test_resolve_regular_elastic_settings(self):
         xc, setups, parallel, hybrid = resolve_elastic_settings(
             xc_calc='PBE',
-            setups={'N': ':p,6.0'},
+            hubbard_u={'N-2p': 6.0},
             world_size=8,
         )
 
@@ -671,7 +671,7 @@ class TestGPAWEngine(unittest.TestCase):
 
         xc, setups, parallel, hybrid = resolve_elastic_settings(
             xc_calc='HSE06',
-            setups={'Ga': 'default'},
+            hubbard_u={},
             world_size=16,
             exx_fraction=0.30,
             omega=0.12,
@@ -679,7 +679,7 @@ class TestGPAWEngine(unittest.TestCase):
         )
 
         self.assertIs(xc, hybrid_xc)
-        self.assertEqual(setups, {'Ga': 'default'})
+        self.assertEqual(setups, {})
         self.assertEqual(
             parallel,
             {

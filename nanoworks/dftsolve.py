@@ -255,6 +255,7 @@ from nanoworks.scf import (
     resolve_qe_scf_settings,
     validate_scf_settings,
 )
+from nanoworks.hubbard import normalize_hubbard_u
 from argparse import ArgumentParser, HelpFormatter
 from dataclasses import dataclass, field
 from typing import Optional, Dict, List, Any
@@ -345,7 +346,7 @@ class DFTConfig:
     Ground_gpts_x: int = 8
     Ground_gpts_y: int = 8
     Ground_gpts_z: int = 8
-    Setup_params: Dict = field(default_factory=dict)
+    Hubbard_U: Dict = field(default_factory=dict)
     XC_calc: Any = None
     # Optional hybrid (HSE06/HSE03/PBE0/B3LYP/EXX) tuning. When left as None,
     # GPAW's documented defaults for each functional are used (e.g. HSE06 uses
@@ -496,6 +497,7 @@ class DFTConfig:
         )
         self.DOS_integration = dos_settings['integration']
         self.DOS_width = dos_settings['width_ev']
+        self.Hubbard_U = normalize_hubbard_u(self.Hubbard_U)
         if (
             self.Engine == 'GPAW'
             and self.SOC_calc
@@ -984,7 +986,7 @@ class dftsolve:
         self.Ground_gpts_x = config.Ground_gpts_x
         self.Ground_gpts_y = config.Ground_gpts_y
         self.Ground_gpts_z = config.Ground_gpts_z
-        self.Setup_params = config.Setup_params
+        self.Hubbard_U = config.Hubbard_U
         self.XC_calc = config.XC_calc
         self.XC_exx_fraction = getattr(config, 'XC_exx_fraction', None)
         self.XC_omega = getattr(config, 'XC_omega', None)
@@ -1420,7 +1422,7 @@ class dftsolve:
                     nbands=self.Ground_num_of_bands,
                     spinpol=self.Spin_calc,
                     magnetic_moments=magnetic_moments,
-                    setup_params=self.Setup_params,
+                    hubbard_u=self.Hubbard_U,
                     xc_calc=self.XC_calc,
                     exx_fraction=self.XC_exx_fraction,
                     omega=self.XC_omega,
@@ -1494,7 +1496,7 @@ class dftsolve:
                     nbands=self.Ground_num_of_bands,
                     spinpol=self.Spin_calc,
                     magnetic_moments=magnetic_moments,
-                    setup_params=self.Setup_params,
+                    hubbard_u=self.Hubbard_U,
                     xc_calc=self.XC_calc,
                     exx_fraction=self.XC_exx_fraction,
                     omega=self.XC_omega,
@@ -1543,7 +1545,7 @@ class dftsolve:
         # -------------------------------------------------------------
         
         # Resolve XC functional string and PAW setups
-        actual_xc, resolved_setups, is_libxc = self.engine.resolve_xc_and_setups(self.XC_calc, self.Setup_params)
+        actual_xc, resolved_setups, is_libxc = self.engine.resolve_xc_and_setups(self.XC_calc, self.Hubbard_U)
         
         ground_gamma = (
             self.Gamma
@@ -1737,7 +1739,7 @@ class dftsolve:
                     )
 
                 calc = self.engine.create_lcao_ground_calc(
-                    setups=self.Setup_params,
+                    setups=resolved_setups,
                     parallel={'domain': world.size},
                     mixer=self.scf_mixer,
                     charge=self.Total_charge,
@@ -1829,7 +1831,7 @@ class dftsolve:
         elastic_xc, resolved_setups, elastic_parallel, hybrid = (
             self.engine.resolve_elastic_settings(
                 xc_calc=self.XC_calc,
-                setups=self.Setup_params,
+                hubbard_u=self.Hubbard_U,
                 world_size=world.size,
                 exx_fraction=self.XC_exx_fraction,
                 omega=self.XC_omega,
@@ -2697,7 +2699,7 @@ class dftsolve:
                     nbands=self.DOS_num_of_bands,
                     spinpol=self.Spin_calc,
                     magnetic_moments=magnetic_moments,
-                    setup_params=self.Setup_params,
+                    hubbard_u=self.Hubbard_U,
                     xc_calc=self.XC_calc,
                     exx_fraction=self.XC_exx_fraction,
                     omega=self.XC_omega,
@@ -2828,7 +2830,7 @@ class dftsolve:
                     nbands=self.DOS_num_of_bands,
                     spinpol=self.Spin_calc,
                     magnetic_moments=magnetic_moments,
-                    setup_params=self.Setup_params,
+                    hubbard_u=self.Hubbard_U,
                     xc_calc=self.XC_calc,
                     exx_fraction=self.XC_exx_fraction,
                     omega=self.XC_omega,
@@ -3484,7 +3486,7 @@ class dftsolve:
                         nbands=self.Band_num_of_bands,
                         spinpol=self.Spin_calc,
                         magnetic_moments=magnetic_moments,
-                        setup_params=self.Setup_params,
+                        hubbard_u=self.Hubbard_U,
                         xc_calc=self.XC_calc,
                         exx_fraction=self.XC_exx_fraction,
                         omega=self.XC_omega,
@@ -3538,7 +3540,7 @@ class dftsolve:
                     nbands=self.Band_num_of_bands,
                     spinpol=self.Spin_calc,
                     magnetic_moments=magnetic_moments,
-                    setup_params=self.Setup_params,
+                    hubbard_u=self.Hubbard_U,
                     xc_calc=self.XC_calc,
                     exx_fraction=self.XC_exx_fraction,
                     omega=self.XC_omega,
@@ -5473,7 +5475,7 @@ class dftsolve:
             nbands=self.Opt_num_of_bands,
             spinpol=self.Spin_calc,
             magnetic_moments=magnetic_moments,
-            setup_params=self.Setup_params,
+            hubbard_u=self.Hubbard_U,
             xc_calc=self.XC_calc,
             exx_fraction=self.XC_exx_fraction,
             omega=self.XC_omega,
@@ -7068,7 +7070,7 @@ def prepare_qe_dry_run(
         'total_charge': config.Total_charge,
         'spinpol': config.Spin_calc,
         'magnetic_moments': magnetic_moments,
-        'setup_params': config.Setup_params,
+        'hubbard_u': config.Hubbard_U,
         'xc_calc': config.XC_calc,
         'exx_fraction': config.XC_exx_fraction,
         'omega': config.XC_omega,

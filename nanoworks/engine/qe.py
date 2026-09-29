@@ -15,6 +15,7 @@ from nanoworks.pseudos import (
     read_upf_atomic_manifolds,
     read_upf_z_valence,
 )
+from nanoworks.hubbard import normalize_hubbard_u
 
 QE_REFERENCE_VERSION = (7, 2)
 
@@ -1065,82 +1066,34 @@ def validate_qe_xc(
     return settings['name'].lower()
 
 def resolve_qe_hubbard(
-    setup_params,
+    hubbard_u,
     pseudopotentials,
     pseudo_dir,
 ):
-    """Translate Nanoworks Setup_params to QE Hubbard settings."""
-    if not setup_params:
+    """Translate Nanoworks Hubbard_U to QE Hubbard settings."""
+    hubbard_u = normalize_hubbard_u(hubbard_u)
+
+    if not hubbard_u:
         return None
 
-    if not isinstance(
-        setup_params,
-        dict,
-    ):
-        raise TypeError(
-            "QE Setup_params must be a dictionary."
-        )
-
     parameters = []
-    notices = []
+    corrected_elements = set()
 
-    for symbol, specification in setup_params.items():
+    for full_manifold, value_ev in hubbard_u.items():
+        symbol, manifold = full_manifold.split('-', 1)
+
+        if symbol in corrected_elements:
+            raise ValueError(
+                'QE supports one Hubbard_U correction per element: '
+                f'{symbol}'
+            )
+
+        corrected_elements.add(symbol)
+
         if symbol not in pseudopotentials:
             raise ValueError(
                 "QE Hubbard parameters refer to an element "
                 f"without a pseudopotential: {symbol}"
-            )
-
-        if not isinstance(
-            specification,
-            str,
-        ):
-            raise TypeError(
-                "QE Hubbard setup specifications must be strings."
-            )
-
-        fields = [
-            field.strip()
-            for field in specification.lstrip(':').split(',')
-        ]
-
-        if len(fields) not in {
-            2,
-            3,
-        }:
-            raise ValueError(
-                "QE Hubbard setup must use "
-                "':orbital,U' or ':orbital,U,flag': "
-                f"{symbol}={specification!r}"
-            )
-
-        orbital = fields[0].lower()
-
-        orbital_match = re.fullmatch(
-            r'(\d+)?([spdfg])',
-            orbital,
-        )
-
-        if orbital_match is None:
-            raise ValueError(
-                "Unsupported QE Hubbard orbital specification: "
-                f"{symbol}={orbital!r}"
-            )
-
-        try:
-            value_ev = float(
-                fields[1]
-            )
-        except ValueError:
-            raise ValueError(
-                "QE Hubbard U must be a numeric value: "
-                f"{symbol}={fields[1]!r}"
-            )
-
-        if value_ev <= 0.0:
-            raise ValueError(
-                "QE Hubbard U must be greater than zero: "
-                f"{symbol}={value_ev}"
             )
 
         pseudo_file = Path(
@@ -1167,67 +1120,14 @@ def resolve_qe_hubbard(
             )
         )
 
-        principal_number = (
-            orbital_match.group(1)
-        )
-
-        angular_orbital = (
-            orbital_match.group(2)
-        )
-
-        if principal_number is not None:
-            manifold = (
-                principal_number
-                + angular_orbital
-            )
-
-            if manifold not in available_manifolds:
-                raise ValueError(
-                    f"QE Hubbard manifold {symbol}-{manifold} "
-                    "was not found in pseudopotential "
-                    f"'{pseudo_file}'. Available manifolds: "
-                    + ", ".join(
-                        available_manifolds
-                    )
+        if manifold not in available_manifolds:
+            raise ValueError(
+                f"QE Hubbard manifold {symbol}-{manifold} "
+                "was not found in pseudopotential "
+                f"'{pseudo_file}'. Available manifolds: "
+                + ", ".join(
+                    available_manifolds
                 )
-
-        else:
-            candidates = [
-                manifold
-                for manifold in available_manifolds
-                if manifold.endswith(
-                    angular_orbital
-                )
-            ]
-
-            if not candidates:
-                raise ValueError(
-                    f"QE Hubbard orbital {symbol}-{angular_orbital} "
-                    "was not found in pseudopotential "
-                    f"'{pseudo_file}'. Available manifolds: "
-                    + ", ".join(
-                        available_manifolds
-                    )
-                )
-
-            if len(candidates) > 1:
-                raise ValueError(
-                    f"QE Hubbard orbital {symbol}-{angular_orbital} "
-                    "matches multiple pseudopotential manifolds: "
-                    + ", ".join(
-                        candidates
-                    )
-                    + ". Specify the principal quantum number "
-                    "explicitly."
-                )
-
-            manifold = candidates[0]
-
-        if len(fields) == 3:
-            notices.append(
-                "The GPAW-specific Hubbard normalization flag "
-                f"for {symbol}-{manifold} cannot be represented "
-                "exactly in QE; ortho-atomic projectors are used."
             )
 
         parameters.append({
@@ -1239,7 +1139,7 @@ def resolve_qe_hubbard(
     return {
         'projector': 'ortho-atomic',
         'parameters': parameters,
-        'notices': notices,
+        'notices': [],
     }
 
 
@@ -2376,7 +2276,7 @@ def render_pw_input(
     nbands=None,
     spinpol=False,
     magnetic_moments=None,
-    setup_params=None,
+    hubbard_u=None,
     xc_calc='PBE',
     pseudo_xc='pbe',
     exx_fraction=None,
@@ -2559,7 +2459,7 @@ def render_pw_input(
             )
 
     hubbard_settings = resolve_qe_hubbard(
-        setup_params=setup_params,
+        hubbard_u=hubbard_u,
         pseudopotentials=pseudopotentials,
         pseudo_dir=pseudo_dir,
     )
@@ -2765,7 +2665,7 @@ def render_scf_input(
     nbands=None,
     spinpol=False,
     magnetic_moments=None,
-    setup_params=None,
+    hubbard_u=None,
     xc_calc='PBE',
     pseudo_xc='pbe',
     exx_fraction=None,
@@ -2794,7 +2694,7 @@ def render_scf_input(
         nbands=nbands,
         spinpol=spinpol,
         magnetic_moments=magnetic_moments,
-        setup_params=setup_params,
+        hubbard_u=hubbard_u,
         xc_calc=xc_calc,
         pseudo_xc=pseudo_xc,
         exx_fraction=exx_fraction,
@@ -2822,7 +2722,7 @@ def render_nscf_input(
     nbands=None,
     spinpol=False,
     magnetic_moments=None,
-    setup_params=None,
+    hubbard_u=None,
     xc_calc='PBE',
     pseudo_xc='pbe',
     exx_fraction=None,
@@ -2851,7 +2751,7 @@ def render_nscf_input(
         nbands=nbands,
         spinpol=spinpol,
         magnetic_moments=magnetic_moments,
-        setup_params=setup_params,
+        hubbard_u=hubbard_u,
         xc_calc=xc_calc,
         pseudo_xc=pseudo_xc,
         exx_fraction=exx_fraction,
@@ -2886,7 +2786,7 @@ def render_relax_input(
     nbands=None,
     spinpol=False,
     magnetic_moments=None,
-    setup_params=None,
+    hubbard_u=None,
     xc_calc='PBE',
     pseudo_xc='pbe',
     exx_fraction=None,
@@ -2925,7 +2825,7 @@ def render_relax_input(
         nbands=nbands,
         spinpol=spinpol,
         magnetic_moments=magnetic_moments,
-        setup_params=setup_params,
+        hubbard_u=hubbard_u,
         xc_calc=xc_calc,
         pseudo_xc=pseudo_xc,
         exx_fraction=exx_fraction,
@@ -2952,7 +2852,7 @@ def render_bands_input(
     nbands=None,
     spinpol=False,
     magnetic_moments=None,
-    setup_params=None,
+    hubbard_u=None,
     xc_calc='PBE',
     pseudo_xc='pbe',
     exx_fraction=None,
@@ -2980,7 +2880,7 @@ def render_bands_input(
         nbands=nbands,
         spinpol=spinpol,
         magnetic_moments=magnetic_moments,
-        setup_params=setup_params,
+        hubbard_u=hubbard_u,
         xc_calc=xc_calc,
         pseudo_xc=pseudo_xc,
         exx_fraction=exx_fraction,
@@ -7605,7 +7505,7 @@ def run_scf(
     nbands=None,
     spinpol=False,
     magnetic_moments=None,
-    setup_params=None,
+    hubbard_u=None,
     xc_calc='PBE',
     pseudo_xc='pbe',
     exx_fraction=None,
@@ -7660,7 +7560,7 @@ def run_scf(
         nbands=nbands,
         spinpol=spinpol,
         magnetic_moments=magnetic_moments,
-        setup_params=setup_params,
+        hubbard_u=hubbard_u,
         xc_calc=xc_calc,
         pseudo_xc=pseudo_xc,
         exx_fraction=exx_fraction,
@@ -7750,7 +7650,7 @@ def run_relax(
     nbands=None,
     spinpol=False,
     magnetic_moments=None,
-    setup_params=None,
+    hubbard_u=None,
     xc_calc='PBE',
     pseudo_xc='pbe',
     exx_fraction=None,
@@ -7814,7 +7714,7 @@ def run_relax(
         nbands=nbands,
         spinpol=spinpol,
         magnetic_moments=magnetic_moments,
-        setup_params=setup_params,
+        hubbard_u=hubbard_u,
         xc_calc=xc_calc,
         pseudo_xc=pseudo_xc,
         exx_fraction=exx_fraction,
@@ -7926,7 +7826,7 @@ def run_nscf(
     nbands=None,
     spinpol=False,
     magnetic_moments=None,
-    setup_params=None,
+    hubbard_u=None,
     xc_calc='PBE',
     pseudo_xc='pbe',
     exx_fraction=None,
@@ -7985,7 +7885,7 @@ def run_nscf(
         nbands=nbands,
         spinpol=spinpol,
         magnetic_moments=magnetic_moments,
-        setup_params=setup_params,
+        hubbard_u=hubbard_u,
         xc_calc=xc_calc,
         pseudo_xc=pseudo_xc,
         exx_fraction=exx_fraction,
@@ -8066,7 +7966,7 @@ def run_bands(
     nbands=None,
     spinpol=False,
     magnetic_moments=None,
-    setup_params=None,
+    hubbard_u=None,
     xc_calc='PBE',
     pseudo_xc='pbe',
     exx_fraction=None,
@@ -8123,7 +8023,7 @@ def run_bands(
         nbands=nbands,
         spinpol=spinpol,
         magnetic_moments=magnetic_moments,
-        setup_params=setup_params,
+        hubbard_u=hubbard_u,
         xc_calc=xc_calc,
         pseudo_xc=pseudo_xc,
         exx_fraction=exx_fraction,
@@ -8448,7 +8348,7 @@ def run_hybrid_bands(
     nbands=None,
     spinpol=False,
     magnetic_moments=None,
-    setup_params=None,
+    hubbard_u=None,
     xc_calc='HSE06',
     pseudo_xc='pbe',
     exx_fraction=None,
@@ -8505,7 +8405,7 @@ def run_hybrid_bands(
         nbands=nbands,
         spinpol=spinpol,
         magnetic_moments=magnetic_moments,
-        setup_params=setup_params,
+        hubbard_u=hubbard_u,
         xc_calc=xc_calc,
         pseudo_xc=pseudo_xc,
         exx_fraction=exx_fraction,
@@ -8697,7 +8597,7 @@ def run_hybrid_dos(
     nbands=None,
     spinpol=False,
     magnetic_moments=None,
-    setup_params=None,
+    hubbard_u=None,
     xc_calc='HSE06',
     pseudo_xc='pbe',
     exx_fraction=None,
@@ -8748,7 +8648,7 @@ def run_hybrid_dos(
         nbands=nbands,
         spinpol=spinpol,
         magnetic_moments=magnetic_moments,
-        setup_params=setup_params,
+        hubbard_u=hubbard_u,
         xc_calc=xc_calc,
         pseudo_xc=pseudo_xc,
         exx_fraction=exx_fraction,

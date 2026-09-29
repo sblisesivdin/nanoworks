@@ -615,48 +615,32 @@ Electronic Calculations Keywords
     sets the number of bands in the hybrid SCF calculation before
     ``bands.x`` is run.
 
-.. describe:: Setup_params
+.. describe:: Hubbard_U
 
     :Type: ``python dictionary``
     :Default: ``{}``
 
     Defines element-resolved Hubbard-U corrections. The same Nanoworks
-    syntax is used by GPAW and Quantum ESPRESSO.
+    syntax is used by GPAW and Quantum ESPRESSO. Keys identify an
+    explicit atomic manifold and values give the on-site correction in eV.
 
 .. code-block:: python
 
-    Setup_params = {
-        'O': ':p,7.0',
-        'Zn': ':d,10.0',
+    Hubbard_U = {
+        'O-2p': 7.0,
+        'Zn-3d': 10.0,
     }
 
-    The value after the orbital is the on-site Hubbard-U energy in eV.
-
-    GPAW receives its established setup specification. For QE,
-    Nanoworks reads the atomic-wavefunction manifolds from the selected
-    UPF pseudopotential. An abbreviated orbital such as ``p`` or ``d``
-    is therefore converted to the corresponding QE manifold, such as
-    ``O-2p`` or ``Zn-3d``.
-
-    The principal quantum number may also be specified explicitly:
-
-.. code-block:: python
-
-    Setup_params = {
-        'O': ':2p,7.0',
-        'Zn': ':3d,10.0',
-    }
+    Nanoworks converts this portable form to GPAW setup strings such as
+    ``':p,7.0'`` and to QE manifolds such as ``O-2p``. The principal
+    quantum number is required so that the QE mapping is unambiguous.
+    The requested manifold is checked against the selected UPF file.
 
     QE 7.2 inputs use an ``HUBBARD (ortho-atomic)`` card. The correction
     is propagated consistently to ground-state, geometry-optimization,
     DOS NSCF, and band calculations. If magnetic moments cause one
     element to be represented by multiple internal QE species, the
     correction is applied to each corresponding species.
-
-    A legacy GPAW specification containing a third normalization field
-    is accepted by the QE backend, but it cannot be represented exactly.
-    Nanoworks uses ``ortho-atomic`` projectors and writes a ``NOTICE``
-    comment into the generated QE input.
 
 .. note::
 

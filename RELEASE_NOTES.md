@@ -6,6 +6,7 @@
 - GPAW and QE translate the same SCF intent to their native convergence, iteration, mixing and eigensolver controls.
 - Engine-neutral `Occupation_scheme` and `Smearing_width` replace the GPAW-shaped `Occupation` dictionary for ground-state occupations and smearing.
 - `DOS_integration` and `DOS_width` provide the same smearing or tetrahedron DOS intent to GPAW and QE; tetrahedron is the default and the backend-specific `DOS_occupation` setting is removed.
+- Engine-neutral `Hubbard_U = {'Element-nl': energy_ev}` replaces GPAW-shaped `Setup_params` and is translated to native GPAW and QE forms.
 - Engine-neutral `Pseudo_family`, `Pseudo_xc`, `Pseudo_relativistic`, `Pseudo_accuracy`, `Pseudo_dir`, and `Pseudopotentials` settings configure QE resources without `QE_*` workflow keywords.
 - `dftsolve` now honors scalar- or fully-relativistic pseudopotential selection consistently across every native QE stage and dry run.
 - Portable `Geometry_optimizer`, `Geometry_force_tolerance`, `Geometry_max_step`, and `Geometry_max_steps` replace the old ASE-oriented optimization keywords.

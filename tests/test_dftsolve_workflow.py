@@ -79,6 +79,45 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                     report_structure=False,
                 )
 
+    def test_input_rejects_removed_setup_params_keyword(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            input_file = Path(tmpdir) / 'invalid_input.py'
+            input_file.write_text(
+                "Setup_params = {'O': ':p,7.0'}\n",
+                encoding='utf-8',
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                'Unknown dftsolve keyword.*Setup_params',
+            ):
+                struct_from_file(
+                    input_file,
+                    None,
+                    create_output=False,
+                    report_structure=False,
+                )
+
+    def test_config_normalizes_portable_hubbard_u(self):
+        config = DFTConfig(
+            Hubbard_U={
+                ' O-02p ': '7',
+                'Zn-3d': 10,
+            },
+        )
+
+        self.assertEqual(
+            config.Hubbard_U,
+            {
+                'O-2p': 7.0,
+                'Zn-3d': 10.0,
+            },
+        )
+
+    def test_config_rejects_implicit_hubbard_orbital(self):
+        with self.assertRaisesRegex(ValueError, 'explicit'):
+            DFTConfig(Hubbard_U={'O-p': 7.0})
+
     def test_config_normalizes_portable_occupation_settings(self):
         config = DFTConfig(
             Occupation_scheme='cold',
@@ -1482,7 +1521,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             solver.Cut_off_energy = 500.0
             solver.Total_charge = 0.0
             solver.Opt_num_of_bands = 16
-            solver.Setup_params = None
+            solver.Hubbard_U = None
             solver.XC_exx_fraction = None
             solver.XC_omega = None
             solver.Opt_FD_smearing = 0.05
@@ -2559,7 +2598,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         solver.Ground_kpts_z = 2
         solver.Total_charge = 0.0
         solver.Ground_num_of_bands = None
-        solver.Setup_params = None
+        solver.Hubbard_U = None
         solver.Occupation = None
         solver.parallel_cores = 1
         solver.config = SimpleNamespace(
@@ -2775,7 +2814,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         solver.DOS_npoints = 161
         solver.Energy_min = -8.0
         solver.Energy_max = 8.0
-        solver.Setup_params = None
+        solver.Hubbard_U = None
         solver.parallel_cores = 1
         solver.engine = SimpleNamespace(
             validate_qe_xc=Mock(
@@ -2881,7 +2920,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         solver.Cut_off_energy = 500.0
         solver.Total_charge = 0.0
         solver.Band_num_of_bands = 16
-        solver.Setup_params = None
+        solver.Hubbard_U = None
         solver.Occupation = None
         solver.parallel_cores = 1
         band_path = {

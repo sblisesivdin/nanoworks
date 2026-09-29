@@ -37,7 +37,7 @@ Ground_kpts_z = 5				# kpoints in z direction
 Gamma = True
 Band_path = 'ALMGAHKG'	    # Brillouin zone high symmetry points
 Band_npoints = 40		# Number of points between high symmetry points
-Setup_params = {'O': ':p,7.0','Zn': ':d,10.0'}  # Can be used like {'N': ':p,6.0,0'}, for none use {}
+Hubbard_U = {'O-2p': 7.0, 'Zn-3d': 10.0}  # Can be used like {'N-2p': 6.0}, for none use {}
 
 XC_calc = 'PBE'         # Exchange-Correlation, choose one: LDA, PBE, GLLBSCM, HSE06, HSE03, revPBE, RPBE, PBE0, EXX, B3LYP
 

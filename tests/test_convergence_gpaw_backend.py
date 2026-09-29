@@ -35,7 +35,7 @@ class TestGPAWConvergenceBackend(unittest.TestCase):
         engine = Mock()
         engine.resolve_xc_and_setups.return_value = (
             'PBE',
-            {'O': ':p,7.0'},
+            {'O-2p': 7.0},
             False,
         )
         engine.create_default_mixer.return_value = 'default-mixer'
@@ -60,7 +60,7 @@ class TestGPAWConvergenceBackend(unittest.TestCase):
                 workdir=Path(temp_dir),
                 settings={
                     'xc_calc': 'PBE',
-                    'setup_params': {'O': ':p,7.0'},
+                    'hubbard_u': {'O-2p': 7.0},
                     'spinpol': True,
                     'magnetic_moments': [2.0, -2.0],
                 },

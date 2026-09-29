@@ -13,13 +13,13 @@ All inputs construct Wurtzite ZnO with ASE's `bulk()` function.
 The common Nanoworks Hubbard syntax is:
 
 ```python
-Setup_params = {
-    'O': ':p,7.0',
-    'Zn': ':d,10.0',
+Hubbard_U = {
+    'O-2p': 7.0,
+    'Zn-3d': 10.0,
 }
 ```
 
-For QE, Nanoworks resolves these orbitals from the installed UPF files and writes:
+For QE, Nanoworks validates these manifolds against the installed UPF files and writes:
 
 ```text
 HUBBARD (ortho-atomic)

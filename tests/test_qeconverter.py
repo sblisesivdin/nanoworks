@@ -1623,8 +1623,8 @@ CELL_PARAMETERS angstrom
 
         self.assertIn(
             (
-                "Setup_params = "
-                "{'O': ':2p,7', 'Zn': ':3d,10'}"
+                "Hubbard_U = "
+                "{'O-2p': 7, 'Zn-3d': 10}"
             ),
             text,
         )
@@ -1661,7 +1661,7 @@ CELL_PARAMETERS angstrom
         )
 
         self.assertIn(
-            "Setup_params = {'Fe': ':3d,4'}",
+            "Hubbard_U = {'Fe-3d': 4}",
             text,
         )
         self.assertNotIn(
@@ -1692,7 +1692,7 @@ CELL_PARAMETERS angstrom
         )
 
         self.assertIn(
-            "Setup_params = {'Fe': ':3d,4'}",
+            "Hubbard_U = {'Fe-3d': 4}",
             text,
         )
         self.assertIn(
@@ -1704,7 +1704,7 @@ CELL_PARAMETERS angstrom
             text,
         )
 
-    def test_build_config_lines_emits_setup_params(self):
+    def test_build_config_lines_emits_hubbard_u(self):
         settings = QEInputSettings(
             calculation='scf',
             hubbard_projector='ortho-atomic',
@@ -1735,7 +1735,7 @@ CELL_PARAMETERS angstrom
         )
 
         self.assertIn(
-            "Setup_params = {'O': ':2p,7'}",
+            "Hubbard_U = {'O-2p': 7}",
             text,
         )
 
