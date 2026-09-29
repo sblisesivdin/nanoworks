@@ -27,6 +27,7 @@ Smearing_width = 0.05
 
 # DOS, band structure, and density
 DOS_npoints = 101
+DOS_integration = 'smearing'
 DOS_width = 0.3
 Band_path = 'GXWKL'
 Band_npoints = 8

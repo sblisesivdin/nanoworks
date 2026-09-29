@@ -528,6 +528,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 Phonon_calc=True,
                 Phonon_path='GXG',
                 Optical_calc=True,
+                DOS_integration='smearing',
                 SCF_accuracy='tight',
                 SCF_max_steps=180,
                 SCF_mixing=0.25,
@@ -1993,8 +1994,8 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             config.XC_calc,
             'PBE',
         )
-        self.assertEqual(config.DOS_integration, 'smearing')
-        self.assertEqual(config.DOS_width, 0.1)
+        self.assertEqual(config.DOS_integration, 'tetrahedron')
+        self.assertEqual(config.DOS_width, 0.0)
         self.assertTrue(
             config.Fix_symmetry
         )
@@ -2096,8 +2097,8 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             config.XC_calc,
             'LDA',
         )
-        self.assertEqual(config.DOS_integration, 'smearing')
-        self.assertEqual(config.DOS_width, 0.1)
+        self.assertEqual(config.DOS_integration, 'tetrahedron')
+        self.assertEqual(config.DOS_width, 0.0)
         self.assertFalse(
             config.Fix_symmetry
         )

@@ -42,6 +42,7 @@ Occupation_scheme = 'fermi-dirac'
 Smearing_width = 0.05
 
 DOS_npoints = 501        # Number of points
+DOS_integration = 'smearing'
 DOS_width = 0.3          # Gaussian DOS broadening in eV
 
 Spin_calc = False        # Spin polarized calculation?

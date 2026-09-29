@@ -1020,14 +1020,16 @@ backend interpret the settings it supports.
 .. describe:: DOS_integration
 
     :Type: ``string``
-    :Default: ``smearing``
+    :Default: ``tetrahedron``
     :Options: ``smearing``, ``tetrahedron``
 
     Engine-neutral Brillouin-zone integration method for DOS and PDOS.
     ``smearing`` uses Gaussian broadening with ``DOS_width`` in both
     engines. ``tetrahedron`` selects GPAW's linear tetrahedron DOS
     evaluation and QE's Blöchl tetrahedron method; QE automatically uses
-    tetrahedron occupations for the DOS electronic stage.
+    tetrahedron occupations for the DOS electronic stage. Tetrahedron is
+    the default because it generally gives cleaner DOS curves on a dense,
+    uniform k-point mesh.
 
     Ground-state electronic occupations remain controlled independently by
     ``Occupation_scheme`` and ``Smearing_width``. The former backend-shaped

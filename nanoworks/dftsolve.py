@@ -377,7 +377,7 @@ class DFTConfig:
     # DOS parameters
     DOS_npoints: int = 501
     DOS_width: float = 0.1
-    DOS_integration: str = 'smearing'
+    DOS_integration: str = 'tetrahedron'
     DOS_num_of_bands: Optional[int] = None
     DOS_kpts_density: Optional[float] = None
     DOS_kpts_x: Optional[int] = None

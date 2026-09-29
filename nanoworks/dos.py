@@ -16,7 +16,7 @@ _ALIASES = {
 }
 
 
-def validate_dos_settings(integration='smearing', width=0.1):
+def validate_dos_settings(integration='tetrahedron', width=0.1):
     """Normalize portable DOS integration settings."""
     key = str(integration).strip().lower()
     try:

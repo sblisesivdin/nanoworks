@@ -48,6 +48,7 @@ Occupation_scheme = 'marzari-vanderbilt'
 Smearing_width = 0.2
 
 DOS_npoints = 301        # Number of points
+DOS_integration = 'smearing'
 DOS_width = 0.2          # Gaussian DOS broadening in eV
 
 Spin_calc = False        # Spin polarized calculation?
