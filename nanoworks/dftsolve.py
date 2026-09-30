@@ -257,6 +257,7 @@ from nanoworks.scf import (
 )
 from nanoworks.hubbard import normalize_hubbard_u
 from nanoworks.cutoffs import validate_cutoff_settings
+from nanoworks.hybrids import validate_exx_kpoint_density
 from argparse import ArgumentParser, HelpFormatter
 from dataclasses import dataclass, field
 from typing import Optional, Dict, List, Any
@@ -356,6 +357,7 @@ class DFTConfig:
     XC_exx_fraction: Optional[float] = None
     XC_omega: Optional[float] = None
     XC_backend: str = 'pw'
+    EXX_kpoint_density: Optional[float] = None
     # Portable SCF controls. Backends translate these intent-level settings
     # to their native convergence, mixing, iteration, and solver parameters.
     SCF_accuracy: str = 'normal'
@@ -506,6 +508,26 @@ class DFTConfig:
         )
         self.Wavefunction_cutoff = cutoff_settings['wavefunction_ev']
         self.Density_cutoff_ratio = cutoff_settings['density_ratio']
+        self.EXX_kpoint_density = validate_exx_kpoint_density(
+            self.EXX_kpoint_density
+        )
+        if self.EXX_kpoint_density is not None:
+            hybrid_name = (
+                str(self.XC_calc)
+                .strip()
+                .upper()
+                .replace('-', '')
+            )
+            if self.Engine != 'QE':
+                raise NotImplementedError(
+                    'EXX_kpoint_density is currently supported by '
+                    'the QE backend only.'
+                )
+            if hybrid_name not in {'HSE', 'HSE06', 'HSE03', 'PBE0'}:
+                raise ValueError(
+                    'EXX_kpoint_density requires XC_calc to be '
+                    'HSE06, HSE03, or PBE0 for QE.'
+                )
         if (
             self.Engine == 'GPAW'
             and self.SOC_calc
@@ -847,6 +869,7 @@ def struct_from_auto(
             f.write(f"XC_exx_fraction = {getattr(config, 'XC_exx_fraction', None)}\n")
             f.write(f"XC_omega = {getattr(config, 'XC_omega', None)}\n")
             f.write(f"XC_backend = '{getattr(config, 'XC_backend', 'pw')}'\n")
+            f.write(f"EXX_kpoint_density = {config.EXX_kpoint_density}\n")
             f.write(f"Wavefunction_cutoff = {config.Wavefunction_cutoff}\n")
             f.write(f"Density_cutoff_ratio = {config.Density_cutoff_ratio}\n")
             f.write(f"Gamma = {config.Gamma}\n")
@@ -1001,6 +1024,7 @@ class dftsolve:
         self.XC_exx_fraction = getattr(config, 'XC_exx_fraction', None)
         self.XC_omega = getattr(config, 'XC_omega', None)
         self.XC_backend = getattr(config, 'XC_backend', 'pw')
+        self.EXX_kpoint_density = config.EXX_kpoint_density
         # Fermi level (eV) of the converged ground state. Stored here so that
         # the DOS and band methods can reference hybrid eigenvalues correctly
         # instead of hard-coding 0.0 eV.
@@ -1413,6 +1437,7 @@ class dftsolve:
                     pseudo_dir=pseudo_dir,
                     cutoff_ev=self.Wavefunction_cutoff,
                     density_cutoff_ratio=self.Density_cutoff_ratio,
+                    exx_kpoint_density=self.EXX_kpoint_density,
                     optimizer=self.Geometry_optimizer,
                     max_force=self.Geometry_force_tolerance,
                     max_step=self.Geometry_max_step,
@@ -1497,6 +1522,7 @@ class dftsolve:
                     pseudo_dir=pseudo_dir,
                     cutoff_ev=self.Wavefunction_cutoff,
                     density_cutoff_ratio=self.Density_cutoff_ratio,
+                    exx_kpoint_density=self.EXX_kpoint_density,
                     kpoint_density=self.Ground_kpts_density,
                     kpoint_size=(
                         self.Ground_kpts_x,
@@ -2705,6 +2731,7 @@ class dftsolve:
                     pseudo_dir=pseudo_dir,
                     cutoff_ev=self.Wavefunction_cutoff,
                     density_cutoff_ratio=self.Density_cutoff_ratio,
+                    exx_kpoint_density=self.EXX_kpoint_density,
                     kpoint_density=dos_kpoint_density,
                     kpoint_size=dos_kpoint_size,
                     gamma=dos_gamma,
@@ -2837,6 +2864,7 @@ class dftsolve:
                     pseudo_dir=pseudo_dir,
                     cutoff_ev=self.Wavefunction_cutoff,
                     density_cutoff_ratio=self.Density_cutoff_ratio,
+                    exx_kpoint_density=self.EXX_kpoint_density,
                     kpoint_density=dos_kpoint_density,
                     kpoint_size=dos_kpoint_size,
                     gamma=dos_gamma,
@@ -3493,6 +3521,7 @@ class dftsolve:
                         pseudo_dir=pseudo_dir,
                         cutoff_ev=self.Wavefunction_cutoff,
                         density_cutoff_ratio=self.Density_cutoff_ratio,
+                        exx_kpoint_density=self.EXX_kpoint_density,
                         band_path=band_path,
                         qpoint_grid=band_mesh,
                         kpoint_size=band_mesh,
@@ -3551,6 +3580,7 @@ class dftsolve:
                     pseudo_dir=pseudo_dir,
                     cutoff_ev=self.Wavefunction_cutoff,
                     density_cutoff_ratio=self.Density_cutoff_ratio,
+                    exx_kpoint_density=self.EXX_kpoint_density,
                     band_path=band_path,
                     total_charge=self.Total_charge,
                     nbands=self.Band_num_of_bands,
@@ -5485,6 +5515,7 @@ class dftsolve:
             pseudo_dir=pseudo_dir,
             cutoff_ev=self.Wavefunction_cutoff,
             density_cutoff_ratio=self.Density_cutoff_ratio,
+            exx_kpoint_density=self.EXX_kpoint_density,
             kpoint_density=optical_kpoint_density,
             kpoint_size=optical_kpoint_size,
             gamma=optical_gamma,
@@ -7092,6 +7123,7 @@ def prepare_qe_dry_run(
         'xc_calc': config.XC_calc,
         'exx_fraction': config.XC_exx_fraction,
         'omega': config.XC_omega,
+        'exx_kpoint_density': config.EXX_kpoint_density,
         'prefix': 'nanoworks',
         'pseudo_dir': pseudo_dir,
         'outdir': ground_state_dir,
@@ -7335,10 +7367,18 @@ def prepare_qe_dry_run(
                     config.Ground_kpts_z,
                 ),
             )
+            exx_qpoint_grid = band_mesh
+            if config.EXX_kpoint_density is not None:
+                exx_qpoint_grid = (
+                    engine.resolve_qe_exx_qpoint_grid(
+                        atoms,
+                        config.EXX_kpoint_density,
+                    )
+                )
             additional_kpoints = (
                 engine.build_qe_exx_additional_kpoints(
                     band_path=band_path,
-                    qpoint_grid=band_mesh,
+                    qpoint_grid=exx_qpoint_grid,
                 )
             )
             helper_indices = list(

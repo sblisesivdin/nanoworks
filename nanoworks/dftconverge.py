@@ -31,6 +31,7 @@ from nanoworks.convergence_backends import load_convergence_backend
 from nanoworks.engine import resolve_initial_magnetic_moments
 from nanoworks.occupations import resolve_engine_occupation
 from nanoworks.cutoffs import validate_cutoff_settings
+from nanoworks.hybrids import validate_exx_kpoint_density
 
 
 GPAW_MPI_ENV = 'NANOWORKS_DFTCONVERGE_MPI'
@@ -412,6 +413,27 @@ def validate_convergence_config(config, plan):
             'Convergence_energy_tolerance must be finite and positive.'
         )
 
+    exx_kpoint_density = validate_exx_kpoint_density(
+        config.get('EXX_kpoint_density')
+    )
+    if exx_kpoint_density is not None:
+        if plan.engine != 'QE':
+            raise NotImplementedError(
+                'EXX_kpoint_density is currently supported by '
+                'the QE backend only.'
+            )
+        xc_name = (
+            str(config.get('XC_calc', 'PBE'))
+            .strip()
+            .upper()
+            .replace('-', '')
+        )
+        if xc_name not in {'HSE', 'HSE06', 'HSE03', 'PBE0'}:
+            raise ValueError(
+                'EXX_kpoint_density requires XC_calc to be '
+                'HSE06, HSE03, or PBE0 for QE.'
+            )
+
     minimum_count = normalized_consecutive + 1
     if 'cutoff' in plan.tasks:
         cutoff_values = _positive_float_values(
@@ -552,6 +574,9 @@ def _build_static_energy_settings(config, atoms, engine):
         'pseudo_xc': config.get('Pseudo_xc', 'pbe'),
         'exx_fraction': config.get('XC_exx_fraction'),
         'omega': config.get('XC_omega'),
+        'exx_kpoint_density': validate_exx_kpoint_density(
+            config.get('EXX_kpoint_density')
+        ),
         'xc_backend': config.get('XC_backend', 'pw'),
         'occupation': resolve_engine_occupation(
             engine,

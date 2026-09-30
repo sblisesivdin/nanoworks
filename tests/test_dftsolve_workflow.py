@@ -132,6 +132,32 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         ):
             DFTConfig(Density_cutoff_ratio=0.5)
 
+    def test_config_validates_exx_kpoint_density_capability(self):
+        config = DFTConfig(
+            Engine='QE',
+            XC_calc='HSE06',
+            EXX_kpoint_density='2.5',
+        )
+
+        self.assertEqual(config.EXX_kpoint_density, 2.5)
+
+        with self.assertRaisesRegex(ValueError, 'requires XC_calc'):
+            DFTConfig(
+                Engine='QE',
+                XC_calc='PBE',
+                EXX_kpoint_density=2.5,
+            )
+
+        with self.assertRaisesRegex(
+            NotImplementedError,
+            'QE backend only',
+        ):
+            DFTConfig(
+                Engine='GPAW',
+                XC_calc='HSE06',
+                EXX_kpoint_density=2.5,
+            )
+
     def test_config_normalizes_portable_hubbard_u(self):
         config = DFTConfig(
             Hubbard_U={
@@ -1554,6 +1580,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             solver.Spin_calc = False
             solver.Wavefunction_cutoff = 500.0
             solver.Density_cutoff_ratio = 4.0
+            solver.EXX_kpoint_density = None
             solver.Total_charge = 0.0
             solver.Opt_num_of_bands = 16
             solver.Hubbard_U = None
@@ -2628,6 +2655,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         )
         solver.Wavefunction_cutoff = 500.0
         solver.Density_cutoff_ratio = 4.0
+        solver.EXX_kpoint_density = None
         solver.Ground_kpts_density = None
         solver.Ground_kpts_x = 2
         solver.Ground_kpts_y = 2
@@ -2846,6 +2874,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         )
         solver.Wavefunction_cutoff = 500.0
         solver.Density_cutoff_ratio = 4.0
+        solver.EXX_kpoint_density = None
         solver.Total_charge = 0.0
         solver.DOS_num_of_bands = 16
         solver.DOS_npoints = 161
@@ -2956,6 +2985,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         solver.Band_npoints = 5
         solver.Wavefunction_cutoff = 500.0
         solver.Density_cutoff_ratio = 4.0
+        solver.EXX_kpoint_density = None
         solver.Total_charge = 0.0
         solver.Band_num_of_bands = 16
         solver.Hubbard_U = None

@@ -748,6 +748,24 @@ Electronic Calculations Keywords
 
     XC_backend = 'pw'
 
+.. describe:: EXX_kpoint_density
+
+    :Type: ``float`` or ``None``
+    :Default: ``None``
+    :Unit: points per Å^-1
+
+    Exact-exchange q-point sampling density for QE ``HSE06``, ``HSE03``,
+    and ``PBE0`` calculations. Nanoworks converts the density to QE's
+    ``nqx1/nqx2/nqx3`` Fock-operator mesh. When ``None``, QE retains its
+    native default and uses the electronic k-point mesh size. Hybrid band
+    calculations use the same resolved q-grid for their required k+q helper
+    points. GPAW does not currently expose this portable control and rejects
+    an explicit value.
+
+.. code-block:: python
+
+    EXX_kpoint_density = 2.5
+
 .. describe:: Pseudo_family
 
     :Type: ``string``

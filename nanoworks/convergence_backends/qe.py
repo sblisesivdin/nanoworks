@@ -84,6 +84,9 @@ class QEStaticEnergyBackend:
             pseudo_xc=settings.get('pseudo_xc', 'pbe'),
             exx_fraction=settings.get('exx_fraction'),
             omega=settings.get('omega'),
+            exx_kpoint_density=settings.get(
+                'exx_kpoint_density'
+            ),
             occupation=settings.get('occupation'),
             **scf,
             parallel_cores=parallel_cores,

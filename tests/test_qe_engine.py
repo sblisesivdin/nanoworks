@@ -53,6 +53,7 @@ from nanoworks.engine.qe import (
     parse_pw_bands_output,
     parse_bands_x_output,
     resolve_qe_kpoint_size,
+    resolve_qe_exx_qpoint_grid,
     resolve_qe_occupation,
     validate_qe_version,
     resolve_qe_xc_settings,
@@ -1251,6 +1252,45 @@ class TestQEEngine(unittest.TestCase):
             'ADDITIONAL_K_POINTS crystal',
             text,
         )
+
+    def test_exx_kpoint_density_controls_hybrid_qpoint_grid(self):
+        atoms = bulk(
+            'Si',
+            'diamond',
+            a=5.43,
+        )
+        density = 2.5
+        grid = resolve_qe_exx_qpoint_grid(atoms, density)
+
+        text = render_scf_input(
+            atoms=atoms,
+            pseudopotentials={'Si': 'Si.upf'},
+            cutoff_ev=400.0,
+            kpoint_size=(2, 2, 2),
+            xc_calc='HSE06',
+            occupations='fixed',
+            exx_kpoint_density=density,
+        )
+
+        for axis, value in enumerate(grid, start=1):
+            self.assertIn(f'nqx{axis} = {value}', text)
+
+    def test_exx_kpoint_density_requires_hybrid_functional(self):
+        atoms = bulk('Si', 'diamond', a=5.43)
+
+        with self.assertRaisesRegex(
+            ValueError,
+            'requires a QE hybrid functional',
+        ):
+            render_scf_input(
+                atoms=atoms,
+                pseudopotentials={'Si': 'Si.upf'},
+                cutoff_ev=400.0,
+                kpoint_size=(2, 2, 2),
+                xc_calc='PBE',
+                occupations='fixed',
+                exx_kpoint_density=2.5,
+            )
 
     def test_render_additional_kpoints_requires_hybrid(self):
         atoms = bulk(
