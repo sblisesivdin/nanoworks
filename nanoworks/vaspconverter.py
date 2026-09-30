@@ -255,7 +255,8 @@ def build_config_lines(
         "Density_calc = False",
         "Optical_calc = False",
         "",
-        f"Cut_off_energy = {incar.encut if incar.encut else 340.0:.1f}",
+        f"Wavefunction_cutoff = {incar.encut if incar.encut else 340.0:.1f}",
+        "Density_cutoff_ratio = 4.0",
     ]
 
     if kpoints.mesh:

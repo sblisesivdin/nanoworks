@@ -30,6 +30,7 @@ from nanoworks.convergence import (
 from nanoworks.convergence_backends import load_convergence_backend
 from nanoworks.engine import resolve_initial_magnetic_moments
 from nanoworks.occupations import resolve_engine_occupation
+from nanoworks.cutoffs import validate_cutoff_settings
 
 
 GPAW_MPI_ENV = 'NANOWORKS_DFTCONVERGE_MPI'
@@ -219,6 +220,7 @@ def _positive_float_values(config, key, minimum_count):
         for previous, current in zip(values, values[1:])
     ):
         raise ValueError(key + ' values must be strictly increasing.')
+    return values
 
 
 def _validate_kpoint_values(config, minimum_count):
@@ -412,10 +414,17 @@ def validate_convergence_config(config, plan):
 
     minimum_count = normalized_consecutive + 1
     if 'cutoff' in plan.tasks:
-        _positive_float_values(
+        cutoff_values = _positive_float_values(
             config,
             'Convergence_cutoffs',
             minimum_count,
+        )
+        validate_cutoff_settings(
+            wavefunction_cutoff=cutoff_values[0],
+            density_cutoff_ratio=config.get(
+                'Density_cutoff_ratio',
+                4.0,
+            ),
         )
     if 'kpoints' in plan.tasks:
         _validate_kpoint_values(config, minimum_count)
@@ -447,15 +456,19 @@ def validate_convergence_config(config, plan):
     if 'cutoff' not in plan.tasks and any(
         task in plan.tasks for task in ('kpoints', 'lattice')
     ):
-        cutoff = config.get('Cut_off_energy')
+        cutoff = config.get('Wavefunction_cutoff')
         if cutoff is None:
             raise ValueError(
                 'K-point or lattice execution without a cutoff sweep '
-                'requires Cut_off_energy.'
+                'requires Wavefunction_cutoff.'
             )
-        cutoff = float(cutoff)
-        if not math.isfinite(cutoff) or cutoff <= 0.0:
-            raise ValueError('Cut_off_energy must be finite and positive.')
+        validate_cutoff_settings(
+            wavefunction_cutoff=cutoff,
+            density_cutoff_ratio=config.get(
+                'Density_cutoff_ratio',
+                4.0,
+            ),
+        )
 
     uses_ground_kpoints = (
         'cutoff' in plan.tasks
@@ -531,6 +544,10 @@ def _build_static_energy_settings(config, atoms, engine):
         'spinpol': spinpol,
         'magnetic_moments': magnetic_moments,
         'hubbard_u': config.get('Hubbard_U', {}),
+        'density_cutoff_ratio': config.get(
+            'Density_cutoff_ratio',
+            4.0,
+        ),
         'xc_calc': config.get('XC_calc', default_xc),
         'pseudo_xc': config.get('Pseudo_xc', 'pbe'),
         'exx_fraction': config.get('XC_exx_fraction'),
@@ -789,11 +806,11 @@ def execute_convergence_plan(
         else:
             selected_cutoff_ev = cutoff_result.selection.value
     elif has_downstream_task:
-        selected_cutoff_ev = config.get('Cut_off_energy')
+        selected_cutoff_ev = config.get('Wavefunction_cutoff')
         if selected_cutoff_ev is None:
             raise ValueError(
                 'K-point or lattice execution without a cutoff sweep '
-                'requires Cut_off_energy.'
+                'requires Wavefunction_cutoff.'
             )
     else:
         selected_cutoff_ev = None

@@ -17,7 +17,7 @@ SOC_calc = False
 
 # Ground state
 XC_calc = 'PBE'
-Cut_off_energy = 340
+Wavefunction_cutoff = 340
 Ground_kpts_x = 2
 Ground_kpts_y = 2
 Ground_kpts_z = 2

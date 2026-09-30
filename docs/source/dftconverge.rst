@@ -45,7 +45,7 @@ Each stage supplies the fixed parameters needed by the next stage:
   density or mesh.
 
 When a preceding task is omitted, supply its fixed value explicitly. For
-example, a k-point-only run requires ``Cut_off_energy``. A lattice run without
+example, a k-point-only run requires ``Wavefunction_cutoff``. A lattice run without
 a k-point sweep uses the ground-state k-point setting.
 
 K-point modes
@@ -89,8 +89,10 @@ Input keywords
 --------------
 
 The input is a Python file and reuses normal ``dftsolve`` ground-state
-keywords such as ``Engine``, ``XC_calc``, ``Occupation``, ``Spin_calc``,
-``Ground_kpts_*``, and ``Cut_off_energy``.
+keywords such as ``Engine``, ``XC_calc``, ``Occupation_scheme``,
+``Spin_calc``, ``Ground_kpts_*``, ``Wavefunction_cutoff``, and
+``Density_cutoff_ratio``. For QE, the density cutoff defaults to four times
+each fixed or swept wavefunction cutoff.
 
 ``Convergence_tasks``
    Any subset of ``cutoff``, ``kpoints``, and ``lattice``. The default is all

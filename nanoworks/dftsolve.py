@@ -256,6 +256,7 @@ from nanoworks.scf import (
     validate_scf_settings,
 )
 from nanoworks.hubbard import normalize_hubbard_u
+from nanoworks.cutoffs import validate_cutoff_settings
 from argparse import ArgumentParser, HelpFormatter
 from dataclasses import dataclass, field
 from typing import Optional, Dict, List, Any
@@ -335,7 +336,8 @@ class DFTConfig:
     Elastic_gamma: Optional[bool] = None
     
     # Ground state parameters
-    Cut_off_energy: float = 340
+    Wavefunction_cutoff: float = 340
+    Density_cutoff_ratio: float = 4.0
     Ground_num_of_bands: Optional[int] = None
     Ground_gamma: Optional[bool] = None
     Ground_kpts_density: Optional[float] = None
@@ -498,6 +500,12 @@ class DFTConfig:
         self.DOS_integration = dos_settings['integration']
         self.DOS_width = dos_settings['width_ev']
         self.Hubbard_U = normalize_hubbard_u(self.Hubbard_U)
+        cutoff_settings = validate_cutoff_settings(
+            wavefunction_cutoff=self.Wavefunction_cutoff,
+            density_cutoff_ratio=self.Density_cutoff_ratio,
+        )
+        self.Wavefunction_cutoff = cutoff_settings['wavefunction_ev']
+        self.Density_cutoff_ratio = cutoff_settings['density_ratio']
         if (
             self.Engine == 'GPAW'
             and self.SOC_calc
@@ -758,7 +766,7 @@ def struct_from_auto(
     config.Mode = 'PW'
     config.Ground_calc = True
     config.XC_calc = 'PBE'
-    config.Cut_off_energy = 450
+    config.Wavefunction_cutoff = 450
     config.Gamma = True
     config.Geometry_optimizer = 'lbfgs'
     
@@ -839,7 +847,8 @@ def struct_from_auto(
             f.write(f"XC_exx_fraction = {getattr(config, 'XC_exx_fraction', None)}\n")
             f.write(f"XC_omega = {getattr(config, 'XC_omega', None)}\n")
             f.write(f"XC_backend = '{getattr(config, 'XC_backend', 'pw')}'\n")
-            f.write(f"Cut_off_energy = {config.Cut_off_energy}\n")
+            f.write(f"Wavefunction_cutoff = {config.Wavefunction_cutoff}\n")
+            f.write(f"Density_cutoff_ratio = {config.Density_cutoff_ratio}\n")
             f.write(f"Gamma = {config.Gamma}\n")
             f.write(
                 "Geometry_optimizer = "
@@ -976,7 +985,8 @@ class dftsolve:
         self.Elastic_kpts_y = config.Elastic_kpts_y
         self.Elastic_kpts_z = config.Elastic_kpts_z
         self.Elastic_gamma = config.Elastic_gamma
-        self.Cut_off_energy = config.Cut_off_energy
+        self.Wavefunction_cutoff = config.Wavefunction_cutoff
+        self.Density_cutoff_ratio = config.Density_cutoff_ratio
         self.Ground_gamma = config.Ground_gamma
         self.Ground_kpts_density = config.Ground_kpts_density
         self.Ground_kpts_x = config.Ground_kpts_x
@@ -1401,7 +1411,8 @@ class dftsolve:
                     state_dir=state_dir,
                     pseudopotentials=pseudopotentials,
                     pseudo_dir=pseudo_dir,
-                    cutoff_ev=self.Cut_off_energy,
+                    cutoff_ev=self.Wavefunction_cutoff,
+                    density_cutoff_ratio=self.Density_cutoff_ratio,
                     optimizer=self.Geometry_optimizer,
                     max_force=self.Geometry_force_tolerance,
                     max_step=self.Geometry_max_step,
@@ -1484,7 +1495,8 @@ class dftsolve:
                     state_dir=state_dir,
                     pseudopotentials=pseudopotentials,
                     pseudo_dir=pseudo_dir,
-                    cutoff_ev=self.Cut_off_energy,
+                    cutoff_ev=self.Wavefunction_cutoff,
+                    density_cutoff_ratio=self.Density_cutoff_ratio,
                     kpoint_density=self.Ground_kpts_density,
                     kpoint_size=(
                         self.Ground_kpts_x,
@@ -1600,7 +1612,7 @@ class dftsolve:
                 if self.engine.is_hybrid(actual_xc):
                     parprint('Starting Hybrid XC calculations...')
                     calc = self.engine.create_hybrid_pw_ground_calc(
-                        cutoff=self.Cut_off_energy,
+                        cutoff=self.Wavefunction_cutoff,
                         xc_calc=self.XC_calc,
                         exx_fraction=self.XC_exx_fraction,
                         omega=self.XC_omega,
@@ -1631,7 +1643,7 @@ class dftsolve:
                         )
 
                     calc = self.engine.create_regular_pw_ground_calc(
-                        cutoff=self.Cut_off_energy,
+                        cutoff=self.Wavefunction_cutoff,
                         xc=actual_xc,
                         setups=resolved_setups,
                         parallel={'domain': world.size},
@@ -1881,7 +1893,7 @@ class dftsolve:
 
         def make_elastic_calc():
             return self.engine.create_elastic_calc(
-                cutoff=self.config.Cut_off_energy,
+                cutoff=self.config.Wavefunction_cutoff,
                 xc=elastic_xc,
                 setups=resolved_setups,
                 parallel=elastic_parallel,
@@ -2691,7 +2703,8 @@ class dftsolve:
                     state_dir=state_dir,
                     pseudopotentials=pseudopotentials,
                     pseudo_dir=pseudo_dir,
-                    cutoff_ev=self.Cut_off_energy,
+                    cutoff_ev=self.Wavefunction_cutoff,
+                    density_cutoff_ratio=self.Density_cutoff_ratio,
                     kpoint_density=dos_kpoint_density,
                     kpoint_size=dos_kpoint_size,
                     gamma=dos_gamma,
@@ -2822,7 +2835,8 @@ class dftsolve:
                     state_dir=state_dir,
                     pseudopotentials=pseudopotentials,
                     pseudo_dir=pseudo_dir,
-                    cutoff_ev=self.Cut_off_energy,
+                    cutoff_ev=self.Wavefunction_cutoff,
+                    density_cutoff_ratio=self.Density_cutoff_ratio,
                     kpoint_density=dos_kpoint_density,
                     kpoint_size=dos_kpoint_size,
                     gamma=dos_gamma,
@@ -3477,7 +3491,8 @@ class dftsolve:
                         band_file=band_data_file,
                         pseudopotentials=pseudopotentials,
                         pseudo_dir=pseudo_dir,
-                        cutoff_ev=self.Cut_off_energy,
+                        cutoff_ev=self.Wavefunction_cutoff,
+                        density_cutoff_ratio=self.Density_cutoff_ratio,
                         band_path=band_path,
                         qpoint_grid=band_mesh,
                         kpoint_size=band_mesh,
@@ -3534,7 +3549,8 @@ class dftsolve:
                     state_dir=state_dir,
                     pseudopotentials=pseudopotentials,
                     pseudo_dir=pseudo_dir,
-                    cutoff_ev=self.Cut_off_energy,
+                    cutoff_ev=self.Wavefunction_cutoff,
+                    density_cutoff_ratio=self.Density_cutoff_ratio,
                     band_path=band_path,
                     total_charge=self.Total_charge,
                     nbands=self.Band_num_of_bands,
@@ -5467,7 +5483,8 @@ class dftsolve:
             state_dir=state_dir,
             pseudopotentials=pseudopotentials,
             pseudo_dir=pseudo_dir,
-            cutoff_ev=self.Cut_off_energy,
+            cutoff_ev=self.Wavefunction_cutoff,
+            density_cutoff_ratio=self.Density_cutoff_ratio,
             kpoint_density=optical_kpoint_density,
             kpoint_size=optical_kpoint_size,
             gamma=optical_gamma,
@@ -6507,17 +6524,17 @@ def check_dft_configuration(
             + ' atom(s)',
         )
 
-    if config.Cut_off_energy <= 0:
+    if config.Wavefunction_cutoff <= 0:
         add(
             'error',
             'cutoff',
-            'Cut_off_energy must be positive.',
+            'Wavefunction_cutoff must be positive.',
         )
     else:
         add(
             'ok',
             'cutoff',
-            f'{config.Cut_off_energy:g} eV',
+            f'{config.Wavefunction_cutoff:g} eV',
         )
 
     if config.Energy_max <= config.Energy_min:
@@ -7066,7 +7083,8 @@ def prepare_qe_dry_run(
     common_pw = {
         'atoms': atoms,
         'pseudopotentials': pseudopotentials,
-        'cutoff_ev': config.Cut_off_energy,
+        'cutoff_ev': config.Wavefunction_cutoff,
+        'density_cutoff_ratio': config.Density_cutoff_ratio,
         'total_charge': config.Total_charge,
         'spinpol': config.Spin_calc,
         'magnetic_moments': magnetic_moments,

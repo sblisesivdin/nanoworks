@@ -47,7 +47,7 @@ Hydrostatic_pressure = 0.0
 
 # Ground state
 XC_calc = 'PBE'
-Cut_off_energy = 800
+Wavefunction_cutoff = 800
 
 Ground_kpts_x = 5
 Ground_kpts_y = 5

@@ -28,7 +28,7 @@ SOC_calc = False
 # Ground state. These deliberately small settings are suitable only for
 # checking the workflow, not for converged scientific results.
 XC_calc = 'PBE'
-Cut_off_energy = 500
+Wavefunction_cutoff = 500
 Ground_kpts_x = 4
 Ground_kpts_y = 4
 Ground_kpts_z = 4

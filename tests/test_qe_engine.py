@@ -495,11 +495,27 @@ class TestQEEngine(unittest.TestCase):
             settings['ecutwfc'],
             340 / 13.605693122994,
         )
+        self.assertAlmostEqual(
+            settings['ecutrho'],
+            (4.0 * 340) / 13.605693122994,
+        )
 
         self.assertNotIn('tot_charge', settings)
         self.assertNotIn('nbnd', settings)
         self.assertNotIn('nspin', settings)
-        self.assertNotIn('ecutrho', settings)
+
+    def test_system_settings_uses_density_cutoff_ratio(self):
+        settings = build_system_settings(
+            cutoff_ev=400,
+            density_cutoff_ratio=8.0,
+            nat=2,
+            ntyp=1,
+        )
+
+        self.assertAlmostEqual(
+            settings['ecutrho'],
+            (8.0 * 400) / 13.605693122994,
+        )
 
     def test_system_settings_optional_values(self):
         settings = build_system_settings(

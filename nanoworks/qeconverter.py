@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 class QEInputSettings:
     calculation: Optional[str] = None
     ecutwfc: Optional[float] = None
+    ecutrho: Optional[float] = None
     occupations: Optional[str] = None
     smearing: Optional[str] = None
     degauss: Optional[float] = None
@@ -1750,6 +1751,18 @@ def parse_qe_input(
                         value_clean,
                     )
 
+            elif key_lower == 'ecutrho':
+                try:
+                    settings.ecutrho = _parse_qe_float(
+                        value_clean
+                    )
+                except ValueError:
+                    logger.warning(
+                        "Unable to parse ecutrho "
+                        "from value %r; leaving default",
+                        value_clean,
+                    )
+
             elif key_lower == 'occupations':
                 settings.occupations = (
                     value_clean.lower()
@@ -2002,9 +2015,23 @@ def build_config_lines(
         )
 
     if settings.ecutwfc is not None:
-        lines.append(f"Cut_off_energy = {settings.ecutwfc * RY_TO_EV:.1f}")
+        lines.append(f"Wavefunction_cutoff = {settings.ecutwfc * RY_TO_EV:.1f}")
     else:
-        lines.append("Cut_off_energy = 340.0")
+        lines.append("Wavefunction_cutoff = 340.0")
+
+    density_cutoff_ratio = 4.0
+    if (
+        settings.ecutwfc is not None
+        and settings.ecutrho is not None
+        and settings.ecutwfc > 0.0
+    ):
+        density_cutoff_ratio = (
+            settings.ecutrho / settings.ecutwfc
+        )
+    lines.append(
+        "Density_cutoff_ratio = "
+        f"{density_cutoff_ratio:.6g}"
+    )
 
     lines.extend(
         _build_kpoint_lines(

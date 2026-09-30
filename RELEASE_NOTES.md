@@ -2,6 +2,7 @@
 
 ### Development Version
 
+- Portable `Wavefunction_cutoff` replaces `Cut_off_energy`; `Density_cutoff_ratio` controls QE `ecutrho` and defaults to four times the wavefunction cutoff.
 - Engine-independent `SCF_accuracy`, `SCF_max_steps`, `SCF_mixing` and `Electronic_solver` settings replace GPAW-specific convergence and mixer keywords.
 - GPAW and QE translate the same SCF intent to their native convergence, iteration, mixing and eigensolver controls.
 - Engine-neutral `Occupation_scheme` and `Smearing_width` replace the GPAW-shaped `Occupation` dictionary for ground-state occupations and smearing.

@@ -68,6 +68,10 @@ class QEStaticEnergyBackend:
             pseudopotentials=self.pseudopotentials,
             pseudo_dir=self.pseudo_dir,
             cutoff_ev=float(cutoff_ev),
+            density_cutoff_ratio=settings.get(
+                'density_cutoff_ratio',
+                4.0,
+            ),
             kpoint_density=kpoint_density,
             kpoint_size=kpoint_size,
             gamma=bool(kpoint_settings.get('gamma', False)),

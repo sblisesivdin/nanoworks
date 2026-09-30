@@ -23,7 +23,7 @@ Relax_cell = [True, True, True, False, False, False]
 Hydrostatic_pressure=0.0 #GPa
 
 # ELECTRONIC
-Cut_off_energy = 700 	# eV
+Wavefunction_cutoff = 700 	# eV
 #Ground_kpts_density = 2.5     # pts per Å^-1  If the user prefers to use this, kpts_x,y,z will not be used automatically.
 Ground_kpts_x = 21 			    # kpoints in x direction
 Ground_kpts_y = 21				# kpoints in y direction

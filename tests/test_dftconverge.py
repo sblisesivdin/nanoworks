@@ -126,7 +126,7 @@ class TestDFTConvergeCLI(unittest.TestCase):
             input_file.write_text(
                 "Engine = 'QE'\n"
                 "Convergence_tasks = ['kpoints']\n"
-                "Cut_off_energy = 500\n"
+                "Wavefunction_cutoff = 500\n"
                 "Convergence_kpoints = [2.0, (4, 4, 4), 5.0]\n",
                 encoding='utf-8',
             )
@@ -914,7 +914,7 @@ class TestDFTConvergeCLI(unittest.TestCase):
 
             with self.assertRaisesRegex(
                 ValueError,
-                'requires Cut_off_energy',
+                'requires Wavefunction_cutoff',
             ):
                 dftconverge.execute_convergence_plan(
                     config={

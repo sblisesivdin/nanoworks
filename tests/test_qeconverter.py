@@ -33,6 +33,7 @@ class TestQEConverter(unittest.TestCase):
   nat = 2,
   ntyp = 1,
   ecutwfc = 30.0,
+  ecutrho = 240.0,
   tot_charge = -1.0,
   nbnd = 24,
   occupations = 'smearing',
@@ -71,6 +72,10 @@ K_POINTS automatic
         self.assertAlmostEqual(
             settings.ecutwfc,
             30.0,
+        )
+        self.assertAlmostEqual(
+            settings.ecutrho,
+            240.0,
         )
         self.assertEqual(
             settings.occupations,
@@ -117,6 +122,7 @@ K_POINTS automatic
         settings = QEInputSettings(
             calculation='scf',
             ecutwfc=30.0,
+            ecutrho=240.0,
             occupations='smearing',
             smearing='mp',
             degauss=0.01,
@@ -168,7 +174,11 @@ K_POINTS automatic
             text,
         )
         self.assertIn(
-            "Cut_off_energy = 408.2",
+            "Wavefunction_cutoff = 408.2",
+            text,
+        )
+        self.assertIn(
+            "Density_cutoff_ratio = 8",
             text,
         )
         self.assertIn(

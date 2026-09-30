@@ -16,7 +16,7 @@ Phonon_calc = False
 Optical_calc = True
 
 # Ground state
-Cut_off_energy = 340
+Wavefunction_cutoff = 340
 Ground_kpts_x = 2
 Ground_kpts_y = 2
 Ground_kpts_z = 2

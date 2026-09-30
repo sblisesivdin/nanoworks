@@ -16,6 +16,7 @@ from nanoworks.pseudos import (
     read_upf_z_valence,
 )
 from nanoworks.hubbard import normalize_hubbard_u
+from nanoworks.cutoffs import validate_cutoff_settings
 
 QE_REFERENCE_VERSION = (7, 2)
 
@@ -78,13 +79,23 @@ def build_system_settings(
     exx_fraction=None,
     omega=None,
     exx_qpoint_grid=None,
+    density_cutoff_ratio=4.0,
 ):
     """Build the basic QE &SYSTEM namelist settings."""
+    cutoff_settings = validate_cutoff_settings(
+        wavefunction_cutoff=cutoff_ev,
+        density_cutoff_ratio=density_cutoff_ratio,
+    )
     settings = {
         'ibrav': 0,
         'nat': int(nat),
         'ntyp': int(ntyp),
-        'ecutwfc': ev_to_rydberg(cutoff_ev),
+        'ecutwfc': ev_to_rydberg(
+            cutoff_settings['wavefunction_ev']
+        ),
+        'ecutrho': ev_to_rydberg(
+            cutoff_settings['density_ev']
+        ),
     }
 
     xc_settings = None
@@ -2295,6 +2306,7 @@ def render_pw_input(
     band_path=None,
     exx_additional_kpoints=None,
     relaxation_settings=None,
+    density_cutoff_ratio=4.0,
 ):
     """Render a complete QE pw.x input."""
 
@@ -2488,6 +2500,7 @@ def render_pw_input(
         exx_fraction=exx_fraction,
         omega=omega,
         exx_qpoint_grid=exx_qpoint_grid,
+        density_cutoff_ratio=density_cutoff_ratio,
     )
     
     system.update(
@@ -2681,6 +2694,7 @@ def render_scf_input(
     electron_maxstep=None,
     diagonalization=None,
     exx_additional_kpoints=None,
+    density_cutoff_ratio=4.0,
 ):
     """Render a complete QE pw.x SCF input."""
     return render_pw_input(
@@ -2688,6 +2702,7 @@ def render_scf_input(
         atoms=atoms,
         pseudopotentials=pseudopotentials,
         cutoff_ev=cutoff_ev,
+        density_cutoff_ratio=density_cutoff_ratio,
         kpoint_size=kpoint_size,
         gamma=gamma,
         total_charge=total_charge,
@@ -2738,6 +2753,7 @@ def render_nscf_input(
     electron_maxstep=None,
     diagonalization=None,
     nosym=False,
+    density_cutoff_ratio=4.0,
 ):
     """Render a complete QE pw.x NSCF input."""
     return render_pw_input(
@@ -2745,6 +2761,7 @@ def render_nscf_input(
         atoms=atoms,
         pseudopotentials=pseudopotentials,
         cutoff_ev=cutoff_ev,
+        density_cutoff_ratio=density_cutoff_ratio,
         kpoint_size=kpoint_size,
         gamma=gamma,
         total_charge=total_charge,
@@ -2801,6 +2818,7 @@ def render_relax_input(
     mixing_beta=None,
     electron_maxstep=None,
     diagonalization=None,
+    density_cutoff_ratio=4.0,
 ):
     """Render a complete QE pw.x relaxation input."""
     relaxation_settings = resolve_qe_relaxation_settings(
@@ -2819,6 +2837,7 @@ def render_relax_input(
         atoms=atoms,
         pseudopotentials=pseudopotentials,
         cutoff_ev=cutoff_ev,
+        density_cutoff_ratio=density_cutoff_ratio,
         kpoint_size=kpoint_size,
         gamma=gamma,
         total_charge=total_charge,
@@ -2867,6 +2886,7 @@ def render_bands_input(
     mixing_beta=None,
     electron_maxstep=None,
     diagonalization=None,
+    density_cutoff_ratio=4.0,
 ):
     """Render a complete QE pw.x bands input."""
     return render_pw_input(
@@ -2874,6 +2894,7 @@ def render_bands_input(
         atoms=atoms,
         pseudopotentials=pseudopotentials,
         cutoff_ev=cutoff_ev,
+        density_cutoff_ratio=density_cutoff_ratio,
         kpoint_size=None,
         gamma=False,
         total_charge=total_charge,
@@ -7519,6 +7540,7 @@ def run_scf(
     executable='pw.x',
     prefix='nanoworks',
     exx_additional_kpoints=None,
+    density_cutoff_ratio=4.0,
 ):
     """Render, execute, and parse one QE pw.x SCF calculation."""
     input_file = Path(
@@ -7554,6 +7576,7 @@ def run_scf(
         atoms=atoms,
         pseudopotentials=pseudopotentials,
         cutoff_ev=cutoff_ev,
+        density_cutoff_ratio=density_cutoff_ratio,
         kpoint_size=mesh,
         gamma=gamma,
         total_charge=total_charge,
@@ -7663,6 +7686,7 @@ def run_relax(
     parallel_cores=1,
     executable='pw.x',
     prefix='nanoworks',
+    density_cutoff_ratio=4.0,
 ):
     """Render, execute, and parse one QE geometry optimization."""
     input_file = Path(
@@ -7708,6 +7732,7 @@ def run_relax(
         atoms=atoms,
         pseudopotentials=pseudopotentials,
         cutoff_ev=cutoff_ev,
+        density_cutoff_ratio=density_cutoff_ratio,
         kpoint_size=mesh,
         gamma=gamma,
         total_charge=total_charge,
@@ -7840,6 +7865,7 @@ def run_nscf(
     parallel_cores=1,
     executable='pw.x',
     prefix='nanoworks',
+    density_cutoff_ratio=4.0,
 ):
     """Render, execute, and parse one QE pw.x NSCF calculation."""
     input_file = Path(
@@ -7879,6 +7905,7 @@ def run_nscf(
         atoms=atoms,
         pseudopotentials=pseudopotentials,
         cutoff_ev=cutoff_ev,
+        density_cutoff_ratio=density_cutoff_ratio,
         kpoint_size=mesh,
         gamma=gamma,
         total_charge=total_charge,
@@ -7985,6 +8012,7 @@ def run_bands(
     projection_output_file=None,
     projection_prefix=None,
     projection_executable='projwfc.x',
+    density_cutoff_ratio=4.0,
 ):
     """Render, execute, and parse one QE pw.x bands calculation."""
     input_file = Path(
@@ -8018,6 +8046,7 @@ def run_bands(
         atoms=atoms,
         pseudopotentials=pseudopotentials,
         cutoff_ev=cutoff_ev,
+        density_cutoff_ratio=density_cutoff_ratio,
         band_path=band_path,
         total_charge=total_charge,
         nbands=nbands,
@@ -8369,6 +8398,7 @@ def run_hybrid_bands(
     projection_output_file=None,
     projection_prefix=None,
     projection_executable='projwfc.x',
+    density_cutoff_ratio=4.0,
 ):
     """Run a QE hybrid SCF followed by bands.x post-processing."""
     xc_settings = resolve_qe_xc_settings(
@@ -8398,6 +8428,7 @@ def run_hybrid_bands(
         pseudopotentials=pseudopotentials,
         pseudo_dir=pseudo_dir,
         cutoff_ev=cutoff_ev,
+        density_cutoff_ratio=density_cutoff_ratio,
         kpoint_density=kpoint_density,
         kpoint_size=kpoint_size,
         gamma=gamma,
@@ -8619,6 +8650,7 @@ def run_hybrid_dos(
     dos_executable='dos.x',
     projwfc_executable='projwfc.x',
     prefix='nanoworks',
+    density_cutoff_ratio=4.0,
 ):
     """Run a QE hybrid SCF followed by DOS and PDOS post-processing."""
     xc_settings = resolve_qe_xc_settings(
@@ -8641,6 +8673,7 @@ def run_hybrid_dos(
         pseudopotentials=pseudopotentials,
         pseudo_dir=pseudo_dir,
         cutoff_ev=cutoff_ev,
+        density_cutoff_ratio=density_cutoff_ratio,
         kpoint_density=kpoint_density,
         kpoint_size=kpoint_size,
         gamma=gamma,

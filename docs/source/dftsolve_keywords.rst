@@ -463,17 +463,33 @@ Elastic Calculation Keywords
 Electronic Calculations Keywords
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. describe:: Cut_off_energy
+.. describe:: Wavefunction_cutoff
 
     :Type: ``integer``
     :Default: ``340``
     :Unit: eV
 
-    Plane wave cut-off energy value. Used in PW mode.
+    Engine-neutral wavefunction plane-wave cutoff. GPAW uses this value as
+    its PW cutoff; QE converts it from eV to Ry for ``ecutwfc``.
 
 .. code-block:: python
 
-    Cut_off_energy = 500  # eV
+    Wavefunction_cutoff = 500  # eV
+
+.. describe:: Density_cutoff_ratio
+
+    :Type: ``float``
+    :Default: ``4.0``
+
+    Charge-density cutoff divided by ``Wavefunction_cutoff``. QE writes
+    ``ecutrho = Density_cutoff_ratio * Wavefunction_cutoff``. A value of
+    ``4.0`` is QE's default for norm-conserving pseudopotentials; higher
+    ratios are commonly needed for ultrasoft pseudopotentials. GPAW has no
+    separate charge-density cutoff and ignores this setting.
+
+.. code-block:: python
+
+    Density_cutoff_ratio = 8.0
 
 .. describe:: Ground_kpts_density
 

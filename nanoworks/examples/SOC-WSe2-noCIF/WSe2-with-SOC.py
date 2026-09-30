@@ -29,7 +29,7 @@ Relax_cell=[True, True, True, False, False, False]
 Hydrostatic_pressure=0.0 #GPa
 
 # ELECTRONIC
-Cut_off_energy = 400 	# eV
+Wavefunction_cutoff = 400 	# eV
 Ground_kpts_x = 9 	        # kpoints in x direction
 Ground_kpts_y = 9	 	# kpoints in y direction
 Ground_kpts_z = 1		# kpoints in z direction
