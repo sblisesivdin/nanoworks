@@ -150,10 +150,19 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 Electrostatic_normal_axis='x',
             )
 
-        with self.assertRaisesRegex(NotImplementedError, 'GPAW backend'):
+        gpaw = DFTConfig(
+            Engine='GPAW',
+            Electrostatic_boundary='isolated-2d',
+            Electrostatic_normal_axis='y',
+            Dipole_correction=True,
+        )
+        self.assertEqual(gpaw.Electrostatic_normal_axis, 'y')
+        self.assertTrue(gpaw.Dipole_correction)
+
+        with self.assertRaisesRegex(ValueError, 'requires'):
             DFTConfig(
                 Engine='GPAW',
-                Electrostatic_boundary='isolated-2d',
+                Dipole_correction=True,
             )
 
     def test_config_normalizes_portable_hybrid_settings(self):

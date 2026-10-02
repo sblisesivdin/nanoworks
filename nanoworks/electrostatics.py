@@ -89,3 +89,35 @@ def resolve_qe_electrostatic_settings(**settings):
     return {
         'assume_isolated': '2D',
     }
+
+
+def resolve_gpaw_electrostatic_settings(**settings):
+    """Translate portable electrostatic intent to GPAW settings."""
+    resolved = validate_electrostatic_settings(**settings)
+
+    if resolved['boundary'] == 'periodic':
+        if resolved['dipole_correction']:
+            raise ValueError(
+                "GPAW Dipole_correction requires "
+                "Electrostatic_boundary = 'isolated-2d'."
+            )
+        return {
+            'periodic_axes': None,
+            'poissonsolver': None,
+        }
+
+    poisson_solver = None
+    if resolved['dipole_correction']:
+        dipole_planes = {
+            'x': 'yz',
+            'y': 'xz',
+            'z': 'xy',
+        }
+        poisson_solver = {
+            'dipolelayer': dipole_planes[resolved['normal_axis']],
+        }
+
+    return {
+        'periodic_axes': resolved['periodic_axes'],
+        'poissonsolver': poisson_solver,
+    }

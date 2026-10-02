@@ -258,6 +258,7 @@ from nanoworks.scf import (
 from nanoworks.hubbard import normalize_hubbard_u
 from nanoworks.cutoffs import validate_cutoff_settings
 from nanoworks.electrostatics import (
+    resolve_gpaw_electrostatic_settings,
     resolve_qe_electrostatic_settings,
     validate_electrostatic_settings,
 )
@@ -536,13 +537,11 @@ class DFTConfig:
                 normal_axis=self.Electrostatic_normal_axis,
                 dipole_correction=self.Dipole_correction,
             )
-        elif (
-            self.Electrostatic_boundary != 'periodic'
-            or self.Dipole_correction
-        ):
-            raise NotImplementedError(
-                'The GPAW backend does not yet implement non-default '
-                'electrostatic settings.'
+        else:
+            resolve_gpaw_electrostatic_settings(
+                boundary=self.Electrostatic_boundary,
+                normal_axis=self.Electrostatic_normal_axis,
+                dipole_correction=self.Dipole_correction,
             )
         hybrid_settings = resolve_hybrid_settings(
             self.XC_calc,
@@ -1693,6 +1692,12 @@ class dftsolve:
         
         # Resolve XC functional string and PAW setups
         actual_xc, resolved_setups, is_libxc = self.engine.resolve_xc_and_setups(self.XC_calc, self.Hubbard_U)
+        gpaw_electrostatics = self.engine.apply_electrostatic_settings(
+            self.bulk_configuration,
+            boundary=self.Electrostatic_boundary,
+            normal_axis=self.Electrostatic_normal_axis,
+            dipole_correction=self.Dipole_correction,
+        )
         
         ground_gamma = (
             self.Gamma
@@ -1768,6 +1773,7 @@ class dftsolve:
                         ),
                         gamma=ground_gamma,
                         nbands=self.Ground_num_of_bands,
+                        **gpaw_electrostatics,
                     )
                 else:
                     parprint(f'Starting calculations with {actual_xc}...')
@@ -1798,6 +1804,7 @@ class dftsolve:
                         ),
                         gamma=ground_gamma,
                         nbands=self.Ground_num_of_bands,
+                        **gpaw_electrostatics,
                     )
                 # Wrapping for vdW
                 if hasattr(self.config, 'vdW_calc') and self.config.vdW_calc.upper() == 'D3':
@@ -1910,6 +1917,7 @@ class dftsolve:
                         self.Ground_gpts_y,
                         self.Ground_gpts_z,
                     ),
+                    **gpaw_electrostatics,
                 )
 
                 # Wrapping for vdW
@@ -1985,6 +1993,12 @@ class dftsolve:
                 backend=self.XC_backend,
             )
         )
+        gpaw_electrostatics = self.engine.apply_electrostatic_settings(
+            self.bulk_configuration,
+            boundary=self.Electrostatic_boundary,
+            normal_axis=self.Electrostatic_normal_axis,
+            dipole_correction=self.Dipole_correction,
+        )
         
         ground_gamma = (
             self.Gamma
@@ -2043,6 +2057,7 @@ class dftsolve:
                 convergence=self.scf_settings['convergence'],
                 occupations=self.Occupation,
                 hybrid=hybrid,
+                **gpaw_electrostatics,
             )
         
         # Load the optimized (reference) structure
@@ -5331,6 +5346,12 @@ class dftsolve:
 
         time51 = time.time()
         parprint("Starting phonon calculations.")
+        gpaw_electrostatics = self.engine.apply_electrostatic_settings(
+            self.bulk_configuration,
+            boundary=self.Electrostatic_boundary,
+            normal_axis=self.Electrostatic_normal_axis,
+            dipole_correction=self.Dipole_correction,
+        )
 
         if self.engine.is_hybrid(self.XC_calc):
             parprint("\033[93mWARNING:\033[0m Phonon calculations use finite-difference forces; hybrid ("+self.XC_calc+") forces are expensive and unreliable in plane-wave GPAW.")
@@ -5358,6 +5379,7 @@ class dftsolve:
                 self.Phonon_kpts_z,
             ),
             txt=self.struct+'-PHONON-GPAW-Log-Calculation.txt',
+            **gpaw_electrostatics,
         )
 
         self.bulk_configuration.calc = calc

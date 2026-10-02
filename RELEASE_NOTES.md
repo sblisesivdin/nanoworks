@@ -6,6 +6,7 @@
 - `EXX_kpoint_density` optionally controls the QE exact-exchange q-grid while preserving QE's native default when omitted.
 - `EXX_cutoff` optionally controls QE `ecutfock` in eV and must exceed the wavefunction cutoff.
 - Portable electrostatic settings propagate through all QE `pw.x` stages; `Electrostatic_boundary='isolated-2d'` with a z normal writes `assume_isolated='2D'`, while unsupported axes and dipole corrections fail explicitly.
+- GPAW maps `isolated-2d` to non-periodic boundary conditions along the selected normal axis and optionally enables its native dipole-layer Poisson correction.
 - Hybrid functional aliases, exact-exchange controls, and backend support are normalized and validated by one engine-neutral resolver.
 - Hybrid stage capabilities are validated before execution; unsupported GPAW and QE hybrid workflows now fail consistently.
 - Engine-independent `SCF_accuracy`, `SCF_max_steps`, `SCF_mixing` and `Electronic_solver` settings replace GPAW-specific convergence and mixer keywords.
