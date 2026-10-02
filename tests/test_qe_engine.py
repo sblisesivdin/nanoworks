@@ -357,34 +357,38 @@ class TestQEEngine(unittest.TestCase):
                     'xc_calc': 'PBE',
                     'exx_fraction': 0.25,
                 },
-                'only be used with',
+                ValueError,
+                'require a hybrid XC_calc',
             ),
             (
                 {
                     'xc_calc': 'HSE06',
                     'exx_fraction': 0.0,
                 },
-                '0 < XC_exx_fraction',
+                ValueError,
+                'XC_exx_fraction must be finite',
             ),
             (
                 {
                     'xc_calc': 'PBE0',
                     'omega': 0.11,
                 },
+                ValueError,
                 'only valid for screened HSE',
             ),
             (
                 {
                     'xc_calc': 'B3LYP',
                 },
-                'supports PBE, HSE06, HSE03, and PBE0',
+                NotImplementedError,
+                'QE does not support hybrid functional B3LYP',
             ),
         )
 
-        for request, message in invalid_requests:
+        for request, error, message in invalid_requests:
             with self.subTest(request=request):
                 with self.assertRaisesRegex(
-                    ValueError,
+                    error,
                     message,
                 ):
                     resolve_qe_xc_settings(

@@ -678,6 +678,11 @@ Electronic Calculations Keywords
     Explicit user values take precedence and are subsequently validated by
     the selected backend.
 
+    Hybrid names and common aliases are normalized before backend setup;
+    for example, ``HSE``, ``HSE-06``, and ``HSE_06`` select ``HSE06``,
+    while ``PBE-0`` selects ``PBE0``. Unsupported backend/functional
+    combinations fail during configuration validation.
+
     For GPAW, ``Relax_cell`` must contain only ``False`` values with
     GLLBSC, HSE03, and HSE06.
 
@@ -712,7 +717,8 @@ Electronic Calculations Keywords
     Exact-exchange (Hartree-Fock) fraction for hybrid functionals. When
     ``None``, the selected backend uses the functional default (normally
     0.25 for HSE06, HSE03, and PBE0). The keyword is available for both
-    GPAW and the native QE hybrid electronic workflows.
+    GPAW and the native QE hybrid electronic workflows. Explicit values
+    must satisfy ``0 < XC_exx_fraction <= 1``.
 
 .. code-block:: python
 
@@ -726,8 +732,9 @@ Electronic Calculations Keywords
 
     Screening parameter (range separation) for screened hybrid
     functionals such as HSE06 and HSE03. When ``None``, the selected
-    backend uses the functional default. QE accepts this keyword for HSE
-    workflows and rejects it for PBE0.
+    backend uses the functional default. Explicit values must be finite
+    and positive. Both backends reject this keyword for full-range hybrids
+    such as PBE0.
 
 .. code-block:: python
 

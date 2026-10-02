@@ -132,6 +132,31 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         ):
             DFTConfig(Density_cutoff_ratio=0.5)
 
+    def test_config_normalizes_portable_hybrid_settings(self):
+        config = DFTConfig(
+            Engine='QE',
+            XC_calc='HSE-06',
+            XC_exx_fraction='0.30',
+            XC_omega='0.12',
+        )
+
+        self.assertEqual(config.XC_calc, 'HSE06')
+        self.assertEqual(config.XC_exx_fraction, 0.30)
+        self.assertEqual(config.XC_omega, 0.12)
+
+        with self.assertRaisesRegex(
+            NotImplementedError,
+            'QE does not support hybrid functional B3LYP',
+        ):
+            DFTConfig(Engine='QE', XC_calc='B3LYP')
+
+        with self.assertRaisesRegex(ValueError, 'screened HSE'):
+            DFTConfig(
+                Engine='GPAW',
+                XC_calc='PBE0',
+                XC_omega=0.11,
+            )
+
     def test_config_validates_exx_kpoint_density_capability(self):
         config = DFTConfig(
             Engine='QE',

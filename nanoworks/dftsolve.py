@@ -258,6 +258,7 @@ from nanoworks.scf import (
 from nanoworks.hubbard import normalize_hubbard_u
 from nanoworks.cutoffs import validate_cutoff_settings
 from nanoworks.hybrids import (
+    resolve_hybrid_settings,
     validate_exx_cutoff,
     validate_exx_kpoint_density,
 )
@@ -512,6 +513,20 @@ class DFTConfig:
         )
         self.Wavefunction_cutoff = cutoff_settings['wavefunction_ev']
         self.Density_cutoff_ratio = cutoff_settings['density_ratio']
+        hybrid_settings = resolve_hybrid_settings(
+            self.XC_calc,
+            exx_fraction=self.XC_exx_fraction,
+            omega=self.XC_omega,
+            engine=self.Engine,
+        )
+        if hybrid_settings is not None:
+            if isinstance(self.XC_calc, dict):
+                self.XC_calc = dict(self.XC_calc)
+                self.XC_calc['name'] = hybrid_settings['name']
+            else:
+                self.XC_calc = hybrid_settings['name']
+            self.XC_exx_fraction = hybrid_settings['exx_fraction']
+            self.XC_omega = hybrid_settings['omega']
         self.EXX_kpoint_density = validate_exx_kpoint_density(
             self.EXX_kpoint_density
         )
@@ -526,18 +541,12 @@ class DFTConfig:
         for control_name, control_value in explicit_exx_controls:
             if control_value is None:
                 continue
-            hybrid_name = (
-                str(self.XC_calc)
-                .strip()
-                .upper()
-                .replace('-', '')
-            )
             if self.Engine != 'QE':
                 raise NotImplementedError(
                     f'{control_name} is currently supported by the '
                     'QE backend only.'
                 )
-            if hybrid_name not in {'HSE', 'HSE06', 'HSE03', 'PBE0'}:
+            if hybrid_settings is None:
                 raise ValueError(
                     f'{control_name} requires XC_calc to be '
                     'HSE06, HSE03, or PBE0 for QE.'

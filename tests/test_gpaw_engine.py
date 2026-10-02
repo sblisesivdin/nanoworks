@@ -41,6 +41,7 @@ class TestGPAWEngine(unittest.TestCase):
 
     def test_hybrid_string_is_detected(self):
         self.assertTrue(is_hybrid('HSE06'))
+        self.assertTrue(is_hybrid('HSE-06'))
         self.assertTrue(is_hybrid('pbe0'))
 
     def test_hybrid_dictionary_is_detected(self):
@@ -100,9 +101,9 @@ class TestGPAWEngine(unittest.TestCase):
 
     def test_hybrid_xc_includes_optional_parameters(self):
         xc = build_hybrid_xc(
-            'HSE06',
-            exx_fraction=0.30,
-            omega=0.15,
+            'HSE-06',
+            exx_fraction='0.30',
+            omega='0.15',
             backend='pw',
         )
 
@@ -115,6 +116,10 @@ class TestGPAWEngine(unittest.TestCase):
                 'omega': 0.15,
             },
         )
+
+    def test_hybrid_xc_rejects_incompatible_controls(self):
+        with self.assertRaisesRegex(ValueError, 'screened HSE'):
+            build_hybrid_xc('PBE0', omega=0.11)
 
     def test_libxc_prefix_is_resolved(self):
         xc, setups, is_libxc = resolve_xc_and_setups(

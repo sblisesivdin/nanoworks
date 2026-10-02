@@ -18,6 +18,7 @@ from nanoworks.pseudos import (
 from nanoworks.hubbard import normalize_hubbard_u
 from nanoworks.cutoffs import validate_cutoff_settings
 from nanoworks.hybrids import (
+    resolve_hybrid_settings,
     validate_exx_cutoff,
     validate_exx_kpoint_density,
 )
@@ -935,85 +936,10 @@ def resolve_qe_xc_settings(
     omega=None,
 ):
     """Resolve Nanoworks XC names to QE input_dft hybrid settings."""
-    xc = str(
-        xc_calc
-    ).strip().lower().replace(
-        '_',
-        '-',
-    )
+    xc = str(xc_calc).strip().lower().replace('_', '').replace('-', '')
     pseudo_xc = str(
         pseudo_xc
     ).strip().lower()
-
-    aliases = {
-        'pbe': {
-            'name': 'PBE',
-            'input_dft': 'PBE',
-            'hybrid': False,
-            'exx_fraction': None,
-            'screening_parameter': None,
-        },
-        'hse': {
-            'name': 'HSE06',
-            'input_dft': 'HSE',
-            'hybrid': True,
-            'exx_fraction': 0.25,
-            'screening_parameter': 0.106,
-        },
-        'hse06': {
-            'name': 'HSE06',
-            'input_dft': 'HSE',
-            'hybrid': True,
-            'exx_fraction': 0.25,
-            'screening_parameter': 0.106,
-        },
-        'hse-06': {
-            'name': 'HSE06',
-            'input_dft': 'HSE',
-            'hybrid': True,
-            'exx_fraction': 0.25,
-            'screening_parameter': 0.106,
-        },
-        'hse03': {
-            'name': 'HSE03',
-            'input_dft': 'HSE',
-            'hybrid': True,
-            'exx_fraction': 0.25,
-            'screening_parameter': 0.15,
-        },
-        'hse-03': {
-            'name': 'HSE03',
-            'input_dft': 'HSE',
-            'hybrid': True,
-            'exx_fraction': 0.25,
-            'screening_parameter': 0.15,
-        },
-        'pbe0': {
-            'name': 'PBE0',
-            'input_dft': 'PBE0',
-            'hybrid': True,
-            'exx_fraction': 0.25,
-            'screening_parameter': None,
-        },
-        'pbe-0': {
-            'name': 'PBE0',
-            'input_dft': 'PBE0',
-            'hybrid': True,
-            'exx_fraction': 0.25,
-            'screening_parameter': None,
-        },
-    }
-
-    try:
-        settings = dict(
-            aliases[xc]
-        )
-    except KeyError:
-        raise ValueError(
-            "The current Nanoworks QE backend supports PBE, "
-            "HSE06, HSE03, and PBE0. "
-            f"Requested XC: {xc_calc}"
-        )
 
     if pseudo_xc != 'pbe':
         raise ValueError(
@@ -1021,69 +947,42 @@ def resolve_qe_xc_settings(
             f"PBE pseudopotentials, not '{pseudo_xc}'."
         )
 
-    if not settings['hybrid']:
-        if exx_fraction is not None or omega is not None:
+    hybrid = resolve_hybrid_settings(
+        xc_calc,
+        exx_fraction=exx_fraction,
+        omega=omega,
+        engine='QE',
+    )
+    if hybrid is None:
+        if xc != 'pbe':
             raise ValueError(
-                "XC_exx_fraction and XC_omega can only be used "
-                "with a QE hybrid functional."
+                "The current Nanoworks QE backend supports PBE, "
+                "HSE06, HSE03, and PBE0. "
+                f"Requested XC: {xc_calc}"
             )
-
-        settings['pseudo_xc'] = pseudo_xc
-        return settings
-
-    if exx_fraction is not None:
-        if isinstance(exx_fraction, bool):
-            raise TypeError(
-                "QE exact-exchange fraction must be a real number."
-            )
-
-        try:
-            exx_fraction = float(
-                exx_fraction
-            )
-        except (TypeError, ValueError) as exc:
-            raise TypeError(
-                "QE exact-exchange fraction must be a real number."
-            ) from exc
-
-        if (
-            not math.isfinite(exx_fraction)
-            or exx_fraction <= 0.0
-            or exx_fraction > 1.0
-        ):
-            raise ValueError(
-                "QE exact-exchange fraction must satisfy "
-                "0 < XC_exx_fraction <= 1."
-            )
-
-        settings['exx_fraction'] = exx_fraction
-
-    if omega is not None:
-        if settings['name'] == 'PBE0':
-            raise ValueError(
-                "XC_omega is only valid for screened HSE functionals."
-            )
-
-        if isinstance(omega, bool):
-            raise TypeError(
-                "QE HSE screening parameter must be a real number."
-            )
-
-        try:
-            omega = float(
-                omega
-            )
-        except (TypeError, ValueError) as exc:
-            raise TypeError(
-                "QE HSE screening parameter must be a real number."
-            ) from exc
-
-        if not math.isfinite(omega) or omega <= 0.0:
-            raise ValueError(
-                "QE HSE screening parameter must be positive."
-            )
-
-        settings['screening_parameter'] = omega
+        settings = {
+            'name': 'PBE',
+            'input_dft': 'PBE',
+            'hybrid': False,
+            'exx_fraction': None,
+            'screening_parameter': None,
+        }
+    else:
+        fraction = hybrid['exx_fraction']
+        if fraction is None:
+            fraction = hybrid['default_exx_fraction']
+        screening = hybrid['omega']
+        if screening is None:
+            screening = hybrid['default_omega']
+        settings = {
+            'name': hybrid['name'],
+            'input_dft': (
+                'HSE' if hybrid['screened'] else hybrid['name']
+            ),
+            'hybrid': True,
+            'exx_fraction': fraction,
+            'screening_parameter': screening,
+        }
 
     settings['pseudo_xc'] = pseudo_xc
     return settings

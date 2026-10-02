@@ -3,24 +3,15 @@
 from gpaw import GPAW, PW, MixerSum, FermiDirac
 from gpaw.eigensolvers import Davidson
 from nanoworks.hubbard import resolve_gpaw_hubbard
-
-HYBRID_XC = ('HSE06', 'HSE03', 'B3LYP', 'PBE0', 'EXX')
-
-
-def _get_xc_name(xc):
-    """Extract the functional name from a GPAW XC specification."""
-    if isinstance(xc, dict):
-        xc = xc.get('name', xc.get('xc'))
-
-    if xc is None:
-        return ''
-
-    return str(xc).strip().upper()
+from nanoworks.hybrids import (
+    is_hybrid_functional,
+    resolve_hybrid_settings,
+)
 
 
 def is_hybrid(xc_calc):
     """Return whether the requested XC functional uses the hybrid workflow."""
-    return _get_xc_name(xc_calc) in HYBRID_XC
+    return is_hybrid_functional(xc_calc)
 
 def build_hybrid_xc(
     xc_calc,
@@ -29,16 +20,25 @@ def build_hybrid_xc(
     backend='pw',
 ):
     """Build the GPAW dictionary specification for a hybrid functional."""
+    settings = resolve_hybrid_settings(
+        xc_calc,
+        exx_fraction=exx_fraction,
+        omega=omega,
+        engine='GPAW',
+    )
+    if settings is None:
+        raise ValueError('build_hybrid_xc requires a hybrid XC functional.')
+
     xc = {
-        'name': str(xc_calc).upper(),
+        'name': settings['name'],
         'backend': backend,
     }
 
-    if exx_fraction is not None:
-        xc['fraction'] = exx_fraction
+    if settings['exx_fraction'] is not None:
+        xc['fraction'] = settings['exx_fraction']
 
-    if omega is not None:
-        xc['omega'] = omega
+    if settings['omega'] is not None:
+        xc['omega'] = settings['omega']
 
     return xc
 

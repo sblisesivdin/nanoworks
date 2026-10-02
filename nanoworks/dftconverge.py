@@ -32,6 +32,7 @@ from nanoworks.engine import resolve_initial_magnetic_moments
 from nanoworks.occupations import resolve_engine_occupation
 from nanoworks.cutoffs import validate_cutoff_settings
 from nanoworks.hybrids import (
+    resolve_hybrid_settings,
     validate_exx_cutoff,
     validate_exx_kpoint_density,
 )
@@ -416,6 +417,14 @@ def validate_convergence_config(config, plan):
             'Convergence_energy_tolerance must be finite and positive.'
         )
 
+    default_xc = 'PBE' if plan.engine == 'QE' else 'LDA'
+    hybrid_settings = resolve_hybrid_settings(
+        config.get('XC_calc', default_xc),
+        exx_fraction=config.get('XC_exx_fraction'),
+        omega=config.get('XC_omega'),
+        engine=plan.engine,
+    )
+
     explicit_exx_controls = (
         (
             'EXX_kpoint_density',
@@ -433,13 +442,7 @@ def validate_convergence_config(config, plan):
                 f'{control_name} is currently supported by the '
                 'QE backend only.'
             )
-        xc_name = (
-            str(config.get('XC_calc', 'PBE'))
-            .strip()
-            .upper()
-            .replace('-', '')
-        )
-        if xc_name not in {'HSE', 'HSE06', 'HSE03', 'PBE0'}:
+        if hybrid_settings is None:
             raise ValueError(
                 f'{control_name} requires XC_calc to be '
                 'HSE06, HSE03, or PBE0 for QE.'
@@ -583,6 +586,19 @@ def _build_static_energy_settings(config, atoms, engine):
         )
 
     default_xc = 'PBE' if engine == 'QE' else 'LDA'
+    xc_calc = config.get('XC_calc', default_xc)
+    hybrid_settings = resolve_hybrid_settings(
+        xc_calc,
+        exx_fraction=config.get('XC_exx_fraction'),
+        omega=config.get('XC_omega'),
+        engine=engine,
+    )
+    if hybrid_settings is not None:
+        if isinstance(xc_calc, dict):
+            xc_calc = dict(xc_calc)
+            xc_calc['name'] = hybrid_settings['name']
+        else:
+            xc_calc = hybrid_settings['name']
 
     return {
         'total_charge': config.get('Total_charge', 0.0),
@@ -594,10 +610,16 @@ def _build_static_energy_settings(config, atoms, engine):
             'Density_cutoff_ratio',
             4.0,
         ),
-        'xc_calc': config.get('XC_calc', default_xc),
+        'xc_calc': xc_calc,
         'pseudo_xc': config.get('Pseudo_xc', 'pbe'),
-        'exx_fraction': config.get('XC_exx_fraction'),
-        'omega': config.get('XC_omega'),
+        'exx_fraction': (
+            None if hybrid_settings is None
+            else hybrid_settings['exx_fraction']
+        ),
+        'omega': (
+            None if hybrid_settings is None
+            else hybrid_settings['omega']
+        ),
         'exx_kpoint_density': validate_exx_kpoint_density(
             config.get('EXX_kpoint_density')
         ),
