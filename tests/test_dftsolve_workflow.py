@@ -132,6 +132,30 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         ):
             DFTConfig(Density_cutoff_ratio=0.5)
 
+    def test_config_normalizes_and_validates_electrostatic_settings(self):
+        config = DFTConfig(
+            Engine='QE',
+            Electrostatic_boundary='2D',
+            Electrostatic_normal_axis='Z',
+        )
+
+        self.assertEqual(config.Electrostatic_boundary, 'isolated-2d')
+        self.assertEqual(config.Electrostatic_normal_axis, 'z')
+        self.assertFalse(config.Dipole_correction)
+
+        with self.assertRaisesRegex(NotImplementedError, 'supports only'):
+            DFTConfig(
+                Engine='QE',
+                Electrostatic_boundary='isolated-2d',
+                Electrostatic_normal_axis='x',
+            )
+
+        with self.assertRaisesRegex(NotImplementedError, 'GPAW backend'):
+            DFTConfig(
+                Engine='GPAW',
+                Electrostatic_boundary='isolated-2d',
+            )
+
     def test_config_normalizes_portable_hybrid_settings(self):
         config = DFTConfig(
             Engine='QE',
@@ -764,6 +788,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 SCF_max_steps=180,
                 SCF_mixing=0.25,
                 Electronic_solver='robust',
+                Electrostatic_boundary='isolated-2d',
                 bulk_configuration=Atoms(
                     'Si2',
                     scaled_positions=[
@@ -885,6 +910,14 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             self.assertIn('mixing_beta = 0.25', ground_input)
             self.assertIn('electron_maxstep = 180', ground_input)
             self.assertIn("diagonalization = 'cg'", ground_input)
+            pw_inputs = [
+                Path(job['input_file']).read_text(encoding='utf-8')
+                for job in plan['jobs']
+                if job['executable'] == 'pw.x'
+            ]
+            self.assertTrue(pw_inputs)
+            for input_text in pw_inputs:
+                self.assertIn("assume_isolated = '2D'", input_text)
 
             jobs = {
                 job['id']: job

@@ -491,6 +491,47 @@ Electronic Calculations Keywords
 
     Density_cutoff_ratio = 8.0
 
+.. describe:: Electrostatic_boundary
+
+    :Type: ``string``
+    :Default: ``'periodic'``
+
+    Electrostatic boundary intent. ``'periodic'`` preserves ordinary
+    three-dimensional periodic electrostatics. With the QE backend,
+    ``'isolated-2d'`` enables Coulomb isolation normal to a periodic plane
+    by writing ``assume_isolated = '2D'`` to every relevant ``pw.x`` input.
+
+.. code-block:: python
+
+    Electrostatic_boundary = 'isolated-2d'
+
+.. describe:: Electrostatic_normal_axis
+
+    :Type: ``string``
+    :Default: ``'z'``
+
+    Axis normal to the periodic plane for ``'isolated-2d'`` electrostatics.
+    QE currently supports only ``'z'``; requesting ``'x'`` or ``'y'`` fails
+    explicitly instead of rotating or approximating the calculation.
+
+.. code-block:: python
+
+    Electrostatic_normal_axis = 'z'
+
+.. describe:: Dipole_correction
+
+    :Type: ``boolean``
+    :Default: ``False``
+
+    Separate intent for a dipole correction. This is not treated as
+    equivalent to two-dimensional Coulomb isolation. It is currently
+    rejected explicitly because the portable model does not yet include
+    QE's required field-position and transition-region controls.
+
+.. code-block:: python
+
+    Dipole_correction = False
+
 .. describe:: Ground_kpts_density
 
     :Type: ``float``

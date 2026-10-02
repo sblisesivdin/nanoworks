@@ -257,6 +257,10 @@ from nanoworks.scf import (
 )
 from nanoworks.hubbard import normalize_hubbard_u
 from nanoworks.cutoffs import validate_cutoff_settings
+from nanoworks.electrostatics import (
+    resolve_qe_electrostatic_settings,
+    validate_electrostatic_settings,
+)
 from nanoworks.hybrids import (
     get_unsupported_hybrid_stages,
     resolve_hybrid_settings,
@@ -345,6 +349,9 @@ class DFTConfig:
     # Ground state parameters
     Wavefunction_cutoff: float = 340
     Density_cutoff_ratio: float = 4.0
+    Electrostatic_boundary: str = 'periodic'
+    Electrostatic_normal_axis: str = 'z'
+    Dipole_correction: bool = False
     Ground_num_of_bands: Optional[int] = None
     Ground_gamma: Optional[bool] = None
     Ground_kpts_density: Optional[float] = None
@@ -515,6 +522,28 @@ class DFTConfig:
         )
         self.Wavefunction_cutoff = cutoff_settings['wavefunction_ev']
         self.Density_cutoff_ratio = cutoff_settings['density_ratio']
+        electrostatic_settings = validate_electrostatic_settings(
+            boundary=self.Electrostatic_boundary,
+            normal_axis=self.Electrostatic_normal_axis,
+            dipole_correction=self.Dipole_correction,
+        )
+        self.Electrostatic_boundary = electrostatic_settings['boundary']
+        self.Electrostatic_normal_axis = electrostatic_settings['normal_axis']
+        self.Dipole_correction = electrostatic_settings['dipole_correction']
+        if self.Engine == 'QE':
+            resolve_qe_electrostatic_settings(
+                boundary=self.Electrostatic_boundary,
+                normal_axis=self.Electrostatic_normal_axis,
+                dipole_correction=self.Dipole_correction,
+            )
+        elif (
+            self.Electrostatic_boundary != 'periodic'
+            or self.Dipole_correction
+        ):
+            raise NotImplementedError(
+                'The GPAW backend does not yet implement non-default '
+                'electrostatic settings.'
+            )
         hybrid_settings = resolve_hybrid_settings(
             self.XC_calc,
             exx_fraction=self.XC_exx_fraction,
@@ -1062,6 +1091,9 @@ class dftsolve:
         self.Elastic_gamma = config.Elastic_gamma
         self.Wavefunction_cutoff = config.Wavefunction_cutoff
         self.Density_cutoff_ratio = config.Density_cutoff_ratio
+        self.Electrostatic_boundary = config.Electrostatic_boundary
+        self.Electrostatic_normal_axis = config.Electrostatic_normal_axis
+        self.Dipole_correction = config.Dipole_correction
         self.Ground_gamma = config.Ground_gamma
         self.Ground_kpts_density = config.Ground_kpts_density
         self.Ground_kpts_x = config.Ground_kpts_x
@@ -1189,6 +1221,26 @@ class dftsolve:
             mixing=getattr(self, 'SCF_mixing', None),
             solver=getattr(self, 'Electronic_solver', 'default'),
         )
+
+    def _qe_electrostatic_settings(self):
+        """Return portable electrostatic arguments for QE workflows."""
+        return {
+            'electrostatic_boundary': getattr(
+                self,
+                'Electrostatic_boundary',
+                'periodic',
+            ),
+            'electrostatic_normal_axis': getattr(
+                self,
+                'Electrostatic_normal_axis',
+                'z',
+            ),
+            'dipole_correction': getattr(
+                self,
+                'Dipole_correction',
+                False,
+            ),
+        }
 
     def _qe_pseudo_configuration(self):
         """Resolve the portable pseudopotential settings for QE."""
@@ -1518,6 +1570,7 @@ class dftsolve:
                     omega=self.XC_omega,
                     occupation=self.Occupation,
                     **self._qe_scf_settings(),
+                    **self._qe_electrostatic_settings(),
                     parallel_cores=self.parallel_cores,
                     executable='pw.x',
                     prefix='nanoworks',
@@ -1595,6 +1648,7 @@ class dftsolve:
                     omega=self.XC_omega,
                     occupation=self.Occupation,
                     **self._qe_scf_settings(),
+                    **self._qe_electrostatic_settings(),
                     parallel_cores=self.parallel_cores,
                     executable='pw.x',
                     prefix='nanoworks',
@@ -2801,6 +2855,7 @@ class dftsolve:
                     omega=self.XC_omega,
                     occupation=dos_occupation,
                     **self._qe_scf_settings(),
+                    **self._qe_electrostatic_settings(),
                     parallel_cores=self.parallel_cores,
                     executable='pw.x',
                     prefix='nanoworks',
@@ -2935,6 +2990,7 @@ class dftsolve:
                     omega=self.XC_omega,
                     occupation=dos_occupation,
                     **self._qe_scf_settings(),
+                    **self._qe_electrostatic_settings(),
                     emin=self.Energy_min,
                     emax=self.Energy_max,
                     delta_e=delta_e,
@@ -3594,6 +3650,7 @@ class dftsolve:
                         omega=self.XC_omega,
                         occupation=self.Occupation,
                         **self._qe_scf_settings(),
+                        **self._qe_electrostatic_settings(),
                         parallel_cores=self.parallel_cores,
                         scf_executable='pw.x',
                         bands_executable='bands.x',
@@ -3651,6 +3708,7 @@ class dftsolve:
                     omega=self.XC_omega,
                     occupation=self.Occupation,
                     **self._qe_scf_settings(),
+                    **self._qe_electrostatic_settings(),
                     parallel_cores=self.parallel_cores,
                     executable='pw.x',
                     prefix='nanoworks',
@@ -5592,6 +5650,7 @@ class dftsolve:
                 'width': self.Opt_FD_smearing,
             },
             **self._qe_scf_settings(),
+            **self._qe_electrostatic_settings(),
             nosym=True,
             parallel_cores=self.parallel_cores,
             executable='pw.x',
@@ -7184,6 +7243,9 @@ def prepare_qe_dry_run(
         'pseudopotentials': pseudopotentials,
         'cutoff_ev': config.Wavefunction_cutoff,
         'density_cutoff_ratio': config.Density_cutoff_ratio,
+        'electrostatic_boundary': config.Electrostatic_boundary,
+        'electrostatic_normal_axis': config.Electrostatic_normal_axis,
+        'dipole_correction': config.Dipole_correction,
         'total_charge': config.Total_charge,
         'spinpol': config.Spin_calc,
         'magnetic_moments': magnetic_moments,

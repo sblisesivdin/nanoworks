@@ -2249,6 +2249,9 @@ def render_pw_input(
     density_cutoff_ratio=4.0,
     exx_kpoint_density=None,
     exx_cutoff_ev=None,
+    electrostatic_boundary='periodic',
+    electrostatic_normal_axis='z',
+    dipole_correction=False,
 ):
     """Render a complete QE pw.x input."""
 
@@ -2463,6 +2466,9 @@ def render_pw_input(
         exx_qpoint_grid=exx_qpoint_grid,
         density_cutoff_ratio=density_cutoff_ratio,
         exx_cutoff_ev=exx_cutoff_ev,
+        electrostatic_boundary=electrostatic_boundary,
+        electrostatic_normal_axis=electrostatic_normal_axis,
+        dipole_correction=dipole_correction,
     )
     
     system.update(
@@ -2659,6 +2665,9 @@ def render_scf_input(
     density_cutoff_ratio=4.0,
     exx_kpoint_density=None,
     exx_cutoff_ev=None,
+    electrostatic_boundary='periodic',
+    electrostatic_normal_axis='z',
+    dipole_correction=False,
 ):
     """Render a complete QE pw.x SCF input."""
     return render_pw_input(
@@ -2669,6 +2678,9 @@ def render_scf_input(
         density_cutoff_ratio=density_cutoff_ratio,
         exx_kpoint_density=exx_kpoint_density,
         exx_cutoff_ev=exx_cutoff_ev,
+        electrostatic_boundary=electrostatic_boundary,
+        electrostatic_normal_axis=electrostatic_normal_axis,
+        dipole_correction=dipole_correction,
         kpoint_size=kpoint_size,
         gamma=gamma,
         total_charge=total_charge,
@@ -2722,6 +2734,9 @@ def render_nscf_input(
     density_cutoff_ratio=4.0,
     exx_kpoint_density=None,
     exx_cutoff_ev=None,
+    electrostatic_boundary='periodic',
+    electrostatic_normal_axis='z',
+    dipole_correction=False,
 ):
     """Render a complete QE pw.x NSCF input."""
     return render_pw_input(
@@ -2732,6 +2747,9 @@ def render_nscf_input(
         density_cutoff_ratio=density_cutoff_ratio,
         exx_kpoint_density=exx_kpoint_density,
         exx_cutoff_ev=exx_cutoff_ev,
+        electrostatic_boundary=electrostatic_boundary,
+        electrostatic_normal_axis=electrostatic_normal_axis,
+        dipole_correction=dipole_correction,
         kpoint_size=kpoint_size,
         gamma=gamma,
         total_charge=total_charge,
@@ -2791,6 +2809,9 @@ def render_relax_input(
     density_cutoff_ratio=4.0,
     exx_kpoint_density=None,
     exx_cutoff_ev=None,
+    electrostatic_boundary='periodic',
+    electrostatic_normal_axis='z',
+    dipole_correction=False,
 ):
     """Render a complete QE pw.x relaxation input."""
     relaxation_settings = resolve_qe_relaxation_settings(
@@ -2812,6 +2833,9 @@ def render_relax_input(
         density_cutoff_ratio=density_cutoff_ratio,
         exx_kpoint_density=exx_kpoint_density,
         exx_cutoff_ev=exx_cutoff_ev,
+        electrostatic_boundary=electrostatic_boundary,
+        electrostatic_normal_axis=electrostatic_normal_axis,
+        dipole_correction=dipole_correction,
         kpoint_size=kpoint_size,
         gamma=gamma,
         total_charge=total_charge,
@@ -2863,6 +2887,9 @@ def render_bands_input(
     density_cutoff_ratio=4.0,
     exx_kpoint_density=None,
     exx_cutoff_ev=None,
+    electrostatic_boundary='periodic',
+    electrostatic_normal_axis='z',
+    dipole_correction=False,
 ):
     """Render a complete QE pw.x bands input."""
     return render_pw_input(
@@ -2873,6 +2900,9 @@ def render_bands_input(
         density_cutoff_ratio=density_cutoff_ratio,
         exx_kpoint_density=exx_kpoint_density,
         exx_cutoff_ev=exx_cutoff_ev,
+        electrostatic_boundary=electrostatic_boundary,
+        electrostatic_normal_axis=electrostatic_normal_axis,
+        dipole_correction=dipole_correction,
         kpoint_size=None,
         gamma=False,
         total_charge=total_charge,
@@ -7521,6 +7551,9 @@ def run_scf(
     density_cutoff_ratio=4.0,
     exx_kpoint_density=None,
     exx_cutoff_ev=None,
+    electrostatic_boundary='periodic',
+    electrostatic_normal_axis='z',
+    dipole_correction=False,
 ):
     """Render, execute, and parse one QE pw.x SCF calculation."""
     input_file = Path(
@@ -7559,6 +7592,9 @@ def run_scf(
         density_cutoff_ratio=density_cutoff_ratio,
         exx_kpoint_density=exx_kpoint_density,
         exx_cutoff_ev=exx_cutoff_ev,
+        electrostatic_boundary=electrostatic_boundary,
+        electrostatic_normal_axis=electrostatic_normal_axis,
+        dipole_correction=dipole_correction,
         kpoint_size=mesh,
         gamma=gamma,
         total_charge=total_charge,
@@ -7671,6 +7707,9 @@ def run_relax(
     density_cutoff_ratio=4.0,
     exx_kpoint_density=None,
     exx_cutoff_ev=None,
+    electrostatic_boundary='periodic',
+    electrostatic_normal_axis='z',
+    dipole_correction=False,
 ):
     """Render, execute, and parse one QE geometry optimization."""
     input_file = Path(
@@ -7719,6 +7758,9 @@ def run_relax(
         density_cutoff_ratio=density_cutoff_ratio,
         exx_kpoint_density=exx_kpoint_density,
         exx_cutoff_ev=exx_cutoff_ev,
+        electrostatic_boundary=electrostatic_boundary,
+        electrostatic_normal_axis=electrostatic_normal_axis,
+        dipole_correction=dipole_correction,
         kpoint_size=mesh,
         gamma=gamma,
         total_charge=total_charge,
@@ -7854,6 +7896,9 @@ def run_nscf(
     density_cutoff_ratio=4.0,
     exx_kpoint_density=None,
     exx_cutoff_ev=None,
+    electrostatic_boundary='periodic',
+    electrostatic_normal_axis='z',
+    dipole_correction=False,
 ):
     """Render, execute, and parse one QE pw.x NSCF calculation."""
     input_file = Path(
@@ -7896,6 +7941,9 @@ def run_nscf(
         density_cutoff_ratio=density_cutoff_ratio,
         exx_kpoint_density=exx_kpoint_density,
         exx_cutoff_ev=exx_cutoff_ev,
+        electrostatic_boundary=electrostatic_boundary,
+        electrostatic_normal_axis=electrostatic_normal_axis,
+        dipole_correction=dipole_correction,
         kpoint_size=mesh,
         gamma=gamma,
         total_charge=total_charge,
@@ -8005,6 +8053,9 @@ def run_bands(
     density_cutoff_ratio=4.0,
     exx_kpoint_density=None,
     exx_cutoff_ev=None,
+    electrostatic_boundary='periodic',
+    electrostatic_normal_axis='z',
+    dipole_correction=False,
 ):
     """Render, execute, and parse one QE pw.x bands calculation."""
     input_file = Path(
@@ -8041,6 +8092,9 @@ def run_bands(
         density_cutoff_ratio=density_cutoff_ratio,
         exx_kpoint_density=exx_kpoint_density,
         exx_cutoff_ev=exx_cutoff_ev,
+        electrostatic_boundary=electrostatic_boundary,
+        electrostatic_normal_axis=electrostatic_normal_axis,
+        dipole_correction=dipole_correction,
         band_path=band_path,
         total_charge=total_charge,
         nbands=nbands,
@@ -8395,6 +8449,9 @@ def run_hybrid_bands(
     density_cutoff_ratio=4.0,
     exx_kpoint_density=None,
     exx_cutoff_ev=None,
+    electrostatic_boundary='periodic',
+    electrostatic_normal_axis='z',
+    dipole_correction=False,
 ):
     """Run a QE hybrid SCF followed by bands.x post-processing."""
     xc_settings = resolve_qe_xc_settings(
@@ -8433,6 +8490,9 @@ def run_hybrid_bands(
         density_cutoff_ratio=density_cutoff_ratio,
         exx_kpoint_density=exx_kpoint_density,
         exx_cutoff_ev=exx_cutoff_ev,
+        electrostatic_boundary=electrostatic_boundary,
+        electrostatic_normal_axis=electrostatic_normal_axis,
+        dipole_correction=dipole_correction,
         kpoint_density=kpoint_density,
         kpoint_size=kpoint_size,
         gamma=gamma,
@@ -8657,6 +8717,9 @@ def run_hybrid_dos(
     density_cutoff_ratio=4.0,
     exx_kpoint_density=None,
     exx_cutoff_ev=None,
+    electrostatic_boundary='periodic',
+    electrostatic_normal_axis='z',
+    dipole_correction=False,
 ):
     """Run a QE hybrid SCF followed by DOS and PDOS post-processing."""
     xc_settings = resolve_qe_xc_settings(
@@ -8682,6 +8745,9 @@ def run_hybrid_dos(
         density_cutoff_ratio=density_cutoff_ratio,
         exx_kpoint_density=exx_kpoint_density,
         exx_cutoff_ev=exx_cutoff_ev,
+        electrostatic_boundary=electrostatic_boundary,
+        electrostatic_normal_axis=electrostatic_normal_axis,
+        dipole_correction=dipole_correction,
         kpoint_density=kpoint_density,
         kpoint_size=kpoint_size,
         gamma=gamma,
