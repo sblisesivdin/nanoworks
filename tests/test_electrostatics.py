@@ -1,6 +1,9 @@
 import unittest
 
-from nanoworks.electrostatics import validate_electrostatic_settings
+from nanoworks.electrostatics import (
+    resolve_qe_electrostatic_settings,
+    validate_electrostatic_settings,
+)
 
 
 class TestElectrostaticSettings(unittest.TestCase):
@@ -42,6 +45,34 @@ class TestElectrostaticSettings(unittest.TestCase):
             with self.subTest(settings=settings):
                 with self.assertRaises(error):
                     validate_electrostatic_settings(**settings)
+
+    def test_qe_isolated_2d_settings_are_resolved(self):
+        self.assertEqual(
+            resolve_qe_electrostatic_settings(
+                boundary='isolated-2d',
+                normal_axis='z',
+            ),
+            {'assume_isolated': '2D'},
+        )
+        self.assertEqual(resolve_qe_electrostatic_settings(), {})
+
+    def test_qe_rejects_unsupported_electrostatic_controls(self):
+        with self.assertRaisesRegex(
+            NotImplementedError,
+            "supports only Electrostatic_normal_axis = 'z'",
+        ):
+            resolve_qe_electrostatic_settings(
+                boundary='isolated-2d',
+                normal_axis='x',
+            )
+
+        with self.assertRaisesRegex(
+            NotImplementedError,
+            'not mapped to QE dipfield',
+        ):
+            resolve_qe_electrostatic_settings(
+                dipole_correction=True,
+            )
 
 
 if __name__ == '__main__':

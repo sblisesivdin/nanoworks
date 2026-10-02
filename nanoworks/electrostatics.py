@@ -64,3 +64,28 @@ def validate_electrostatic_settings(
         'dipole_correction': dipole_correction,
         'periodic_axes': tuple(periodic_axes),
     }
+
+
+def resolve_qe_electrostatic_settings(**settings):
+    """Translate portable electrostatic intent to QE ``&SYSTEM`` values."""
+    resolved = validate_electrostatic_settings(**settings)
+
+    if resolved['dipole_correction']:
+        raise NotImplementedError(
+            'Dipole_correction is not mapped to QE dipfield because '
+            'the required field position and transition-region controls '
+            'are not represented by the portable settings yet.'
+        )
+
+    if resolved['boundary'] == 'periodic':
+        return {}
+
+    if resolved['normal_axis'] != 'z':
+        raise NotImplementedError(
+            "QE isolated-2d electrostatics supports only "
+            "Electrostatic_normal_axis = 'z'."
+        )
+
+    return {
+        'assume_isolated': '2D',
+    }

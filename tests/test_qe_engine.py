@@ -522,6 +522,41 @@ class TestQEEngine(unittest.TestCase):
             (8.0 * 400) / 13.605693122994,
         )
 
+    def test_system_settings_adds_2d_coulomb_isolation(self):
+        settings = build_system_settings(
+            cutoff_ev=400,
+            nat=2,
+            ntyp=1,
+            electrostatic_boundary='isolated-2d',
+            electrostatic_normal_axis='z',
+        )
+
+        self.assertEqual(settings['assume_isolated'], '2D')
+
+    def test_system_settings_rejects_unsupported_2d_axis_and_dipole(self):
+        invalid = (
+            (
+                {
+                    'electrostatic_boundary': 'isolated-2d',
+                    'electrostatic_normal_axis': 'y',
+                },
+                "supports only Electrostatic_normal_axis = 'z'",
+            ),
+            (
+                {'dipole_correction': True},
+                'not mapped to QE dipfield',
+            ),
+        )
+        for request, message in invalid:
+            with self.subTest(request=request):
+                with self.assertRaisesRegex(NotImplementedError, message):
+                    build_system_settings(
+                        cutoff_ev=400,
+                        nat=2,
+                        ntyp=1,
+                        **request,
+                    )
+
     def test_system_settings_uses_exact_exchange_cutoff(self):
         settings = build_system_settings(
             cutoff_ev=400,

@@ -17,6 +17,7 @@ from nanoworks.pseudos import (
 )
 from nanoworks.hubbard import normalize_hubbard_u
 from nanoworks.cutoffs import validate_cutoff_settings
+from nanoworks.electrostatics import resolve_qe_electrostatic_settings
 from nanoworks.hybrids import (
     resolve_hybrid_settings,
     validate_exx_cutoff,
@@ -86,6 +87,9 @@ def build_system_settings(
     exx_qpoint_grid=None,
     density_cutoff_ratio=4.0,
     exx_cutoff_ev=None,
+    electrostatic_boundary='periodic',
+    electrostatic_normal_axis='z',
+    dipole_correction=False,
 ):
     """Build the basic QE &SYSTEM namelist settings."""
     cutoff_settings = validate_cutoff_settings(
@@ -103,6 +107,11 @@ def build_system_settings(
             cutoff_settings['density_ev']
         ),
     }
+    settings.update(resolve_qe_electrostatic_settings(
+        boundary=electrostatic_boundary,
+        normal_axis=electrostatic_normal_axis,
+        dipole_correction=dipole_correction,
+    ))
 
     xc_settings = None
 
