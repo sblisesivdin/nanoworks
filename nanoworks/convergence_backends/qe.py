@@ -87,6 +87,7 @@ class QEStaticEnergyBackend:
             exx_kpoint_density=settings.get(
                 'exx_kpoint_density'
             ),
+            exx_cutoff_ev=settings.get('exx_cutoff_ev'),
             occupation=settings.get('occupation'),
             **scf,
             parallel_cores=parallel_cores,

@@ -158,6 +158,38 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 EXX_kpoint_density=2.5,
             )
 
+    def test_config_validates_exx_cutoff_capability(self):
+        config = DFTConfig(
+            Engine='QE',
+            XC_calc='HSE06',
+            Wavefunction_cutoff=400,
+            EXX_cutoff='800',
+        )
+
+        self.assertEqual(config.EXX_cutoff, 800.0)
+
+        with self.assertRaisesRegex(
+            ValueError,
+            'greater than Wavefunction_cutoff',
+        ):
+            DFTConfig(
+                Engine='QE',
+                XC_calc='HSE06',
+                Wavefunction_cutoff=400,
+                EXX_cutoff=400,
+            )
+
+        with self.assertRaisesRegex(
+            NotImplementedError,
+            'QE backend only',
+        ):
+            DFTConfig(
+                Engine='GPAW',
+                XC_calc='HSE06',
+                Wavefunction_cutoff=400,
+                EXX_cutoff=800,
+            )
+
     def test_config_normalizes_portable_hubbard_u(self):
         config = DFTConfig(
             Hubbard_U={
@@ -1581,6 +1613,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             solver.Wavefunction_cutoff = 500.0
             solver.Density_cutoff_ratio = 4.0
             solver.EXX_kpoint_density = None
+            solver.EXX_cutoff = None
             solver.Total_charge = 0.0
             solver.Opt_num_of_bands = 16
             solver.Hubbard_U = None
@@ -2656,6 +2689,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         solver.Wavefunction_cutoff = 500.0
         solver.Density_cutoff_ratio = 4.0
         solver.EXX_kpoint_density = None
+        solver.EXX_cutoff = None
         solver.Ground_kpts_density = None
         solver.Ground_kpts_x = 2
         solver.Ground_kpts_y = 2
@@ -2875,6 +2909,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         solver.Wavefunction_cutoff = 500.0
         solver.Density_cutoff_ratio = 4.0
         solver.EXX_kpoint_density = None
+        solver.EXX_cutoff = None
         solver.Total_charge = 0.0
         solver.DOS_num_of_bands = 16
         solver.DOS_npoints = 161
@@ -2986,6 +3021,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         solver.Wavefunction_cutoff = 500.0
         solver.Density_cutoff_ratio = 4.0
         solver.EXX_kpoint_density = None
+        solver.EXX_cutoff = None
         solver.Total_charge = 0.0
         solver.Band_num_of_bands = 16
         solver.Hubbard_U = None

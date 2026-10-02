@@ -766,6 +766,27 @@ Electronic Calculations Keywords
 
     EXX_kpoint_density = 2.5
 
+.. describe:: EXX_cutoff
+
+    :Type: ``float`` or ``None``
+    :Default: ``None``
+    :Unit: eV
+
+    Plane-wave cutoff for the exact-exchange operator. For QE ``HSE06``,
+    ``HSE03``, and ``PBE0`` calculations, Nanoworks converts this value to
+    Ry and writes ``ecutfock``. It must be greater than
+    ``Wavefunction_cutoff``. When ``None``, QE retains its native default,
+    which is the charge-density cutoff. Lowering this cutoff can accelerate
+    exact exchange at the cost of accuracy and therefore requires convergence
+    testing. GPAW does not currently expose this portable control and rejects
+    an explicit value. QE does not implement a reduced ``ecutfock`` for
+    ultrasoft or PAW pseudopotentials or for stress calculations; the managed
+    PseudoDojo path uses norm-conserving pseudopotentials.
+
+.. code-block:: python
+
+    EXX_cutoff = 800  # eV
+
 .. describe:: Pseudo_family
 
     :Type: ``string``

@@ -26,3 +26,30 @@ def validate_exx_kpoint_density(value):
         )
 
     return value
+
+
+def validate_exx_cutoff(value, wavefunction_cutoff):
+    """Validate an optional exact-exchange cutoff in eV."""
+    if value is None:
+        return None
+
+    if isinstance(value, bool):
+        raise TypeError('EXX_cutoff must be a numeric value in eV.')
+
+    try:
+        value = float(value)
+    except (TypeError, ValueError) as exc:
+        raise TypeError(
+            'EXX_cutoff must be a numeric value in eV.'
+        ) from exc
+
+    if not math.isfinite(value):
+        raise ValueError('EXX_cutoff must be finite.')
+
+    wavefunction_cutoff = float(wavefunction_cutoff)
+    if value <= wavefunction_cutoff:
+        raise ValueError(
+            'EXX_cutoff must be greater than Wavefunction_cutoff.'
+        )
+
+    return value

@@ -518,6 +518,44 @@ class TestQEEngine(unittest.TestCase):
             (8.0 * 400) / 13.605693122994,
         )
 
+    def test_system_settings_uses_exact_exchange_cutoff(self):
+        settings = build_system_settings(
+            cutoff_ev=400,
+            exx_cutoff_ev=800,
+            xc_calc='HSE06',
+            nat=2,
+            ntyp=1,
+        )
+
+        self.assertAlmostEqual(
+            settings['ecutfock'],
+            800 / 13.605693122994,
+        )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            'greater than Wavefunction_cutoff',
+        ):
+            build_system_settings(
+                cutoff_ev=400,
+                exx_cutoff_ev=400,
+                xc_calc='HSE06',
+                nat=2,
+                ntyp=1,
+            )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            'requires a QE hybrid functional',
+        ):
+            build_system_settings(
+                cutoff_ev=400,
+                exx_cutoff_ev=800,
+                xc_calc='PBE',
+                nat=2,
+                ntyp=1,
+            )
+
     def test_system_settings_optional_values(self):
         settings = build_system_settings(
             cutoff_ev=400,

@@ -31,7 +31,10 @@ from nanoworks.convergence_backends import load_convergence_backend
 from nanoworks.engine import resolve_initial_magnetic_moments
 from nanoworks.occupations import resolve_engine_occupation
 from nanoworks.cutoffs import validate_cutoff_settings
-from nanoworks.hybrids import validate_exx_kpoint_density
+from nanoworks.hybrids import (
+    validate_exx_cutoff,
+    validate_exx_kpoint_density,
+)
 
 
 GPAW_MPI_ENV = 'NANOWORKS_DFTCONVERGE_MPI'
@@ -413,14 +416,22 @@ def validate_convergence_config(config, plan):
             'Convergence_energy_tolerance must be finite and positive.'
         )
 
-    exx_kpoint_density = validate_exx_kpoint_density(
-        config.get('EXX_kpoint_density')
+    explicit_exx_controls = (
+        (
+            'EXX_kpoint_density',
+            validate_exx_kpoint_density(
+                config.get('EXX_kpoint_density')
+            ),
+        ),
+        ('EXX_cutoff', config.get('EXX_cutoff')),
     )
-    if exx_kpoint_density is not None:
+    for control_name, control_value in explicit_exx_controls:
+        if control_value is None:
+            continue
         if plan.engine != 'QE':
             raise NotImplementedError(
-                'EXX_kpoint_density is currently supported by '
-                'the QE backend only.'
+                f'{control_name} is currently supported by the '
+                'QE backend only.'
             )
         xc_name = (
             str(config.get('XC_calc', 'PBE'))
@@ -430,11 +441,12 @@ def validate_convergence_config(config, plan):
         )
         if xc_name not in {'HSE', 'HSE06', 'HSE03', 'PBE0'}:
             raise ValueError(
-                'EXX_kpoint_density requires XC_calc to be '
+                f'{control_name} requires XC_calc to be '
                 'HSE06, HSE03, or PBE0 for QE.'
             )
 
     minimum_count = normalized_consecutive + 1
+    cutoff_values = None
     if 'cutoff' in plan.tasks:
         cutoff_values = _positive_float_values(
             config,
@@ -490,6 +502,18 @@ def validate_convergence_config(config, plan):
                 'Density_cutoff_ratio',
                 4.0,
             ),
+        )
+
+    if config.get('EXX_cutoff') is not None:
+        if cutoff_values is not None:
+            largest_wavefunction_cutoff = cutoff_values[-1]
+        else:
+            largest_wavefunction_cutoff = config.get(
+                'Wavefunction_cutoff'
+            )
+        validate_exx_cutoff(
+            config.get('EXX_cutoff'),
+            largest_wavefunction_cutoff,
         )
 
     uses_ground_kpoints = (
@@ -577,6 +601,7 @@ def _build_static_energy_settings(config, atoms, engine):
         'exx_kpoint_density': validate_exx_kpoint_density(
             config.get('EXX_kpoint_density')
         ),
+        'exx_cutoff_ev': config.get('EXX_cutoff'),
         'xc_backend': config.get('XC_backend', 'pw'),
         'occupation': resolve_engine_occupation(
             engine,

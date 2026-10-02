@@ -38,6 +38,7 @@ class QEInputSettings:
     calculation: Optional[str] = None
     ecutwfc: Optional[float] = None
     ecutrho: Optional[float] = None
+    ecutfock: Optional[float] = None
     occupations: Optional[str] = None
     smearing: Optional[str] = None
     degauss: Optional[float] = None
@@ -1763,6 +1764,18 @@ def parse_qe_input(
                         value_clean,
                     )
 
+            elif key_lower == 'ecutfock':
+                try:
+                    settings.ecutfock = _parse_qe_float(
+                        value_clean
+                    )
+                except ValueError:
+                    logger.warning(
+                        "Unable to parse ecutfock "
+                        "from value %r; leaving default",
+                        value_clean,
+                    )
+
             elif key_lower == 'occupations':
                 settings.occupations = (
                     value_clean.lower()
@@ -2032,6 +2045,11 @@ def build_config_lines(
         "Density_cutoff_ratio = "
         f"{density_cutoff_ratio:.6g}"
     )
+    if settings.ecutfock is not None:
+        lines.append(
+            "EXX_cutoff = "
+            f"{settings.ecutfock * RY_TO_EV:.1f}"
+        )
 
     lines.extend(
         _build_kpoint_lines(

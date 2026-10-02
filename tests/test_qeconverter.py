@@ -34,6 +34,7 @@ class TestQEConverter(unittest.TestCase):
   ntyp = 1,
   ecutwfc = 30.0,
   ecutrho = 240.0,
+  ecutfock = 120.0,
   tot_charge = -1.0,
   nbnd = 24,
   occupations = 'smearing',
@@ -76,6 +77,10 @@ K_POINTS automatic
         self.assertAlmostEqual(
             settings.ecutrho,
             240.0,
+        )
+        self.assertAlmostEqual(
+            settings.ecutfock,
+            120.0,
         )
         self.assertEqual(
             settings.occupations,
@@ -234,6 +239,29 @@ K_POINTS automatic
             "Ground_num_of_bands = 24",
             text,
         )
+
+    def test_build_config_lines_converts_exact_exchange_cutoff(self):
+        settings = QEInputSettings(
+            calculation='scf',
+            ecutwfc=30.0,
+            ecutfock=120.0,
+            k_mesh=[2, 2, 2],
+            k_shift=[0, 0, 0],
+        )
+        args = SimpleNamespace(
+            outdirname=None,
+            xc='HSE06',
+        )
+
+        text = '\n'.join(build_config_lines(
+            name='Silicon',
+            geom_filename='Silicon.cif',
+            settings=settings,
+            args=args,
+        ))
+
+        self.assertIn("XC_calc = 'HSE06'", text)
+        self.assertIn("EXX_cutoff = 1632.7", text)
 
     def test_determine_system_name_sanitizes_name(self):
         name = determine_system_name(
