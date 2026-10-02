@@ -1,7 +1,6 @@
 import unittest
 
 from nanoworks.electrostatics import (
-    resolve_gpaw_electrostatic_settings,
     resolve_qe_electrostatic_settings,
     validate_electrostatic_settings,
 )
@@ -72,38 +71,6 @@ class TestElectrostaticSettings(unittest.TestCase):
             'not mapped to QE dipfield',
         ):
             resolve_qe_electrostatic_settings(
-                dipole_correction=True,
-            )
-
-    def test_gpaw_isolated_2d_settings_are_resolved(self):
-        expected_planes = {
-            'x': ('yz', (False, True, True)),
-            'y': ('xz', (True, False, True)),
-            'z': ('xy', (True, True, False)),
-        }
-        for axis, (plane, periodic_axes) in expected_planes.items():
-            with self.subTest(axis=axis):
-                settings = resolve_gpaw_electrostatic_settings(
-                    boundary='isolated-2d',
-                    normal_axis=axis,
-                    dipole_correction=True,
-                )
-                self.assertEqual(settings, {
-                    'periodic_axes': periodic_axes,
-                    'poissonsolver': {'dipolelayer': plane},
-                })
-
-    def test_gpaw_periodic_defaults_are_noop(self):
-        self.assertEqual(
-            resolve_gpaw_electrostatic_settings(),
-            {
-                'periodic_axes': None,
-                'poissonsolver': None,
-            },
-        )
-
-        with self.assertRaisesRegex(ValueError, 'requires'):
-            resolve_gpaw_electrostatic_settings(
                 dipole_correction=True,
             )
 

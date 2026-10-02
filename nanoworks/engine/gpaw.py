@@ -2,7 +2,6 @@
 
 from gpaw import GPAW, PW, MixerSum, FermiDirac
 from gpaw.eigensolvers import Davidson
-from nanoworks.electrostatics import resolve_gpaw_electrostatic_settings
 from nanoworks.hubbard import resolve_gpaw_hubbard
 from nanoworks.hybrids import (
     is_hybrid_functional,
@@ -109,27 +108,6 @@ def build_grid_spec(spacing, size):
         'gpts': tuple(size),
     }
 
-
-def apply_electrostatic_settings(
-    atoms,
-    boundary='periodic',
-    normal_axis='z',
-    dipole_correction=False,
-):
-    """Apply portable electrostatic intent to atoms and GPAW kwargs."""
-    settings = resolve_gpaw_electrostatic_settings(
-        boundary=boundary,
-        normal_axis=normal_axis,
-        dipole_correction=dipole_correction,
-    )
-
-    if settings['periodic_axes'] is not None:
-        atoms.set_pbc(settings['periodic_axes'])
-
-    return {
-        'poissonsolver': settings['poissonsolver'],
-    }
-
 def build_ground_common_kwargs(
     mixer,
     charge,
@@ -140,7 +118,6 @@ def build_ground_common_kwargs(
     nbands='200%',
     maxiter=None,
     eigensolver=None,
-    poissonsolver=None,
 ):
     """Build calculator arguments shared by GPAW ground-state modes."""
     kwargs = {
@@ -158,9 +135,6 @@ def build_ground_common_kwargs(
 
     if eigensolver is not None:
         kwargs['eigensolver'] = eigensolver
-
-    if poissonsolver is not None:
-        kwargs['poissonsolver'] = poissonsolver
 
     return kwargs
 
@@ -181,7 +155,6 @@ def create_regular_pw_ground_calc(
     nbands=None,
     maxiter=None,
     eigensolver=None,
-    poissonsolver=None,
 ):
     """Create a regular GPAW plane-wave ground-state calculator."""
     kwargs = build_ground_common_kwargs(
@@ -194,7 +167,6 @@ def create_regular_pw_ground_calc(
         nbands='200%' if nbands is None else nbands,
         maxiter=maxiter,
         eigensolver=eigensolver,
-        poissonsolver=poissonsolver,
     )
 
     kwargs.update({
@@ -232,7 +204,6 @@ def create_hybrid_pw_ground_calc(
     nbands=None,
     maxiter=None,
     eigensolver=None,
-    poissonsolver=None,
 ):
     """Create a hybrid GPAW plane-wave ground-state calculator."""
     kwargs = build_ground_common_kwargs(
@@ -245,7 +216,6 @@ def create_hybrid_pw_ground_calc(
         nbands='200%' if nbands is None else nbands,
         maxiter=maxiter,
         eigensolver=eigensolver,
-        poissonsolver=poissonsolver,
     )
 
     kwargs.update({
@@ -293,7 +263,6 @@ def create_lcao_ground_calc(
     nbands=None,
     maxiter=None,
     eigensolver=None,
-    poissonsolver=None,
 ):
     """Create a GPAW LCAO ground-state calculator."""
     kwargs = build_ground_common_kwargs(
@@ -306,7 +275,6 @@ def create_lcao_ground_calc(
         nbands='200%' if nbands is None else nbands,
         maxiter=maxiter,
         eigensolver=eigensolver,
-        poissonsolver=poissonsolver,
     )
 
     kwargs.update({
@@ -345,7 +313,6 @@ def create_elastic_calc(
     convergence,
     occupations,
     hybrid=False,
-    poissonsolver=None,
 ):
     """Create a GPAW calculator for elastic deformations."""
     kwargs = build_ground_common_kwargs(
@@ -355,7 +322,6 @@ def create_elastic_calc(
         txt=txt,
         convergence=convergence,
         occupations=occupations,
-        poissonsolver=poissonsolver,
     )
 
     kwargs.update({
@@ -382,21 +348,14 @@ def create_phonon_calc(
     cutoff,
     kpoint_size,
     txt,
-    poissonsolver=None,
 ):
     """Create a GPAW calculator for finite-displacement phonons."""
-    kwargs = {
-        'mode': PW(cutoff),
-        'kpts': {
+    return create_gpaw_calc(
+        mode=PW(cutoff),
+        kpts={
             'size': tuple(kpoint_size),
         },
-        'txt': txt,
-    }
-    if poissonsolver is not None:
-        kwargs['poissonsolver'] = poissonsolver
-
-    return create_gpaw_calc(
-        **kwargs,
+        txt=txt,
     )
 
 def resolve_elastic_settings(

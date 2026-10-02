@@ -3,8 +3,6 @@
 import unittest
 from unittest.mock import patch, MagicMock
 
-from ase import Atoms
-
 try:
     from gpaw import PW, MixerSum
 except ModuleNotFoundError as exc:
@@ -23,7 +21,6 @@ from nanoworks.engine.gpaw import (
     load_gpaw_calc,
     build_kpoint_spec,
     build_grid_spec,
-    apply_electrostatic_settings,
     build_ground_common_kwargs,
     create_regular_pw_ground_calc,
     create_hybrid_pw_ground_calc,
@@ -302,7 +299,6 @@ class TestGPAWEngine(unittest.TestCase):
             kpoint_density=None,
             kpoint_size=(4, 4, 1),
             gamma=True,
-            poissonsolver={'dipolelayer': 'xy'},
         )
 
         self.assertIs(result, calculator)
@@ -329,10 +325,6 @@ class TestGPAWEngine(unittest.TestCase):
             },
         )
         self.assertEqual(kwargs['nbands'], '200%')
-        self.assertEqual(
-            kwargs['poissonsolver'],
-            {'dipolelayer': 'xy'},
-        )
     
     @patch('nanoworks.engine.gpaw.create_gpaw_calc')
     def test_hybrid_pw_ground_calc_builds_expected_arguments(
@@ -448,22 +440,6 @@ class TestGPAWEngine(unittest.TestCase):
         self.assertNotIn('gpts', kwargs)
         self.assertEqual(kwargs['nbands'], '200%')
         self.assertIs(kwargs['mixer'], mixer)
-
-    def test_electrostatic_settings_update_pbc_and_poisson_solver(self):
-        atoms = Atoms('H', cell=[6.0, 6.0, 10.0], pbc=True)
-
-        kwargs = apply_electrostatic_settings(
-            atoms,
-            boundary='isolated-2d',
-            normal_axis='z',
-            dipole_correction=True,
-        )
-
-        self.assertEqual(tuple(atoms.pbc), (True, True, False))
-        self.assertEqual(
-            kwargs,
-            {'poissonsolver': {'dipolelayer': 'xy'}},
-        )
     
     @patch('nanoworks.engine.gpaw.create_gpaw_calc')
     def test_lcao_ground_calc_uses_explicit_grid(

@@ -496,12 +496,10 @@ Electronic Calculations Keywords
     :Type: ``string``
     :Default: ``'periodic'``
 
-    Electrostatic boundary intent. ``'periodic'`` preserves the structure's
-    existing periodicity. With QE, ``'isolated-2d'`` enables Coulomb
-    isolation normal to a periodic plane by writing
-    ``assume_isolated = '2D'`` to every relevant ``pw.x`` input. With GPAW,
-    it makes the selected normal axis non-periodic while keeping the other
-    two axes periodic.
+    Electrostatic boundary intent. ``'periodic'`` preserves ordinary
+    three-dimensional periodic electrostatics. With the QE backend,
+    ``'isolated-2d'`` enables Coulomb isolation normal to a periodic plane
+    by writing ``assume_isolated = '2D'`` to every relevant ``pw.x`` input.
 
 .. code-block:: python
 
@@ -513,9 +511,8 @@ Electronic Calculations Keywords
     :Default: ``'z'``
 
     Axis normal to the periodic plane for ``'isolated-2d'`` electrostatics.
-    GPAW supports ``'x'``, ``'y'``, and ``'z'``. QE currently supports only
-    ``'z'``; requesting ``'x'`` or ``'y'`` with QE fails explicitly instead
-    of rotating or approximating the calculation.
+    QE currently supports only ``'z'``; requesting ``'x'`` or ``'y'`` fails
+    explicitly instead of rotating or approximating the calculation.
 
 .. code-block:: python
 
@@ -527,11 +524,9 @@ Electronic Calculations Keywords
     :Default: ``False``
 
     Separate intent for a dipole correction. This is not treated as
-    equivalent to two-dimensional Coulomb isolation. GPAW maps it to its
-    dipole-layer Poisson solver and requires ``Electrostatic_boundary`` to
-    be ``'isolated-2d'``. QE rejects it explicitly because the portable
-    model does not yet include QE's required field-position and
-    transition-region controls.
+    equivalent to two-dimensional Coulomb isolation. It is currently
+    rejected explicitly because the portable model does not yet include
+    QE's required field-position and transition-region controls.
 
 .. code-block:: python
 
