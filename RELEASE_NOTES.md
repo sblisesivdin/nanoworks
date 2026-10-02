@@ -6,6 +6,7 @@
 - `EXX_kpoint_density` optionally controls the QE exact-exchange q-grid while preserving QE's native default when omitted.
 - `EXX_cutoff` optionally controls QE `ecutfock` in eV and must exceed the wavefunction cutoff.
 - Hybrid functional aliases, exact-exchange controls, and backend support are normalized and validated by one engine-neutral resolver.
+- Hybrid stage capabilities are validated before execution; unsupported GPAW and QE hybrid workflows now fail consistently.
 - Engine-independent `SCF_accuracy`, `SCF_max_steps`, `SCF_mixing` and `Electronic_solver` settings replace GPAW-specific convergence and mixer keywords.
 - GPAW and QE translate the same SCF intent to their native convergence, iteration, mixing and eigensolver controls.
 - Engine-neutral `Occupation_scheme` and `Smearing_width` replace the GPAW-shaped `Occupation` dictionary for ground-state occupations and smearing.

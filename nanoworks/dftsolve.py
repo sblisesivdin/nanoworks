@@ -258,7 +258,9 @@ from nanoworks.scf import (
 from nanoworks.hubbard import normalize_hubbard_u
 from nanoworks.cutoffs import validate_cutoff_settings
 from nanoworks.hybrids import (
+    get_unsupported_hybrid_stages,
     resolve_hybrid_settings,
+    validate_hybrid_stage_support,
     validate_exx_cutoff,
     validate_exx_kpoint_density,
 )
@@ -629,6 +631,32 @@ class DFTConfig:
             raise ValueError(
                 'Hydrostatic_pressure requires at least one enabled '
                 'Relax_cell component.'
+            )
+        if hybrid_settings is not None:
+            hybrid_stages = ['ground']
+            if self.Geo_optim:
+                hybrid_stages.append(
+                    'cell-relaxation'
+                    if any(self.Relax_cell)
+                    else 'geometry'
+                )
+            hybrid_stage_flags = (
+                ('elastic', self.Elastic_calc),
+                ('dos', self.DOS_calc),
+                ('band', self.Band_calc),
+                ('density', self.Density_calc),
+                ('phonon', self.Phonon_calc),
+                ('optical', self.Optical_calc),
+            )
+            hybrid_stages.extend(
+                stage
+                for stage, enabled in hybrid_stage_flags
+                if enabled
+            )
+            validate_hybrid_stage_support(
+                self.XC_calc,
+                self.Engine,
+                hybrid_stages,
             )
         self.Pseudo_family = str(self.Pseudo_family).strip().lower()
         self.Pseudo_xc = str(self.Pseudo_xc).strip().lower()
@@ -6611,6 +6639,40 @@ def check_dft_configuration(
         config.Engine
     )
 
+    requested_hybrid_stages = list(stages)
+    if config.Geo_optim:
+        requested_hybrid_stages.append(
+            'cell-relaxation'
+            if any(config.Relax_cell)
+            else 'geometry'
+        )
+    unsupported_hybrid_stages = get_unsupported_hybrid_stages(
+        config.XC_calc,
+        config.Engine,
+        requested_hybrid_stages,
+    )
+    hybrid_stage_labels = {
+        'geometry': 'geometry optimization',
+        'cell-relaxation': 'cell relaxation',
+        'elastic': 'elastic calculations',
+        'phonon': 'phonon calculations',
+        'optical': 'optical calculations',
+    }
+    for stage in unsupported_hybrid_stages:
+        label = hybrid_stage_labels.get(stage, f'{stage} calculations')
+        verb = (
+            'is'
+            if stage in {'geometry', 'cell-relaxation'}
+            else 'are'
+        )
+        add(
+            'error',
+            'hybrid-geometry'
+            if stage in {'geometry', 'cell-relaxation'}
+            else f'hybrid-{stage}',
+            f'{config.Engine} hybrid {label} {verb} not supported.',
+        )
+
     if config.Engine == 'QE':
         if config.Mode != 'PW':
             add(
@@ -6639,40 +6701,14 @@ def check_dft_configuration(
                 'QE SOC workflows are not supported yet.',
             )
 
-        if config.Elastic_calc:
+        if (
+            config.Elastic_calc
+            and 'elastic' not in unsupported_hybrid_stages
+        ):
             add(
                 'error',
                 'elastic',
                 'Native QE elastic calculations are not supported yet.',
-            )
-
-        hybrid = str(
-            config.XC_calc
-        ).strip().lower() in {
-            'hse06',
-            'hse03',
-            'pbe0',
-        }
-
-        if hybrid and config.Geo_optim:
-            add(
-                'error',
-                'hybrid-geometry',
-                'QE hybrid geometry optimization is not supported.',
-            )
-
-        if hybrid and config.Phonon_calc:
-            add(
-                'error',
-                'hybrid-phonon',
-                'QE hybrid phonons are not supported.',
-            )
-
-        if hybrid and config.Optical_calc:
-            add(
-                'error',
-                'hybrid-optical',
-                'QE hybrid optical calculations are not supported.',
             )
 
         if (

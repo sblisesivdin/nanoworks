@@ -2,9 +2,11 @@ import math
 import unittest
 
 from nanoworks.hybrids import (
+    get_unsupported_hybrid_stages,
     is_hybrid_functional,
     normalize_hybrid_name,
     resolve_hybrid_settings,
+    validate_hybrid_stage_support,
     validate_exx_cutoff,
     validate_exx_kpoint_density,
 )
@@ -69,6 +71,59 @@ class TestHybridSettings(unittest.TestCase):
 
         settings = resolve_hybrid_settings('B3LYP', engine='GPAW')
         self.assertEqual(settings['name'], 'B3LYP')
+
+    def test_backend_hybrid_stage_capabilities_are_centralized(self):
+        self.assertEqual(
+            get_unsupported_hybrid_stages(
+                'HSE06',
+                'QE',
+                ('ground', 'dos', 'band', 'density'),
+            ),
+            (),
+        )
+        self.assertEqual(
+            get_unsupported_hybrid_stages(
+                'HSE06',
+                'QE',
+                ('geometry', 'elastic', 'phonon', 'optical'),
+            ),
+            ('geometry', 'elastic', 'phonon', 'optical'),
+        )
+        self.assertEqual(
+            get_unsupported_hybrid_stages(
+                'PBE0',
+                'GPAW',
+                ('geometry', 'elastic', 'optical'),
+            ),
+            (),
+        )
+        self.assertEqual(
+            get_unsupported_hybrid_stages(
+                'PBE0',
+                'GPAW',
+                ('cell_relaxation', 'phonon'),
+            ),
+            ('cell-relaxation', 'phonon'),
+        )
+
+    def test_unsupported_hybrid_stage_fails_before_execution(self):
+        with self.assertRaisesRegex(
+            NotImplementedError,
+            'QE hybrid functional HSE06.*geometry, phonon',
+        ):
+            validate_hybrid_stage_support(
+                'HSE06',
+                'QE',
+                ('ground', 'geometry', 'phonon'),
+            )
+
+        self.assertIsNone(
+            validate_hybrid_stage_support(
+                'PBE',
+                'QE',
+                ('geometry', 'phonon'),
+            )
+        )
 
     def test_optional_exx_kpoint_density_is_normalized(self):
         self.assertIsNone(validate_exx_kpoint_density(None))

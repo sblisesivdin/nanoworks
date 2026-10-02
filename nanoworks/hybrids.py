@@ -45,6 +45,36 @@ HYBRID_CAPABILITIES = {
     'QE': frozenset({'HSE06', 'HSE03', 'PBE0'}),
 }
 
+HYBRID_STAGE_CAPABILITIES = {
+    'GPAW': frozenset({
+        'ground',
+        'geometry',
+        'elastic',
+        'dos',
+        'band',
+        'density',
+        'optical',
+    }),
+    'QE': frozenset({
+        'ground',
+        'dos',
+        'band',
+        'density',
+    }),
+}
+
+HYBRID_STAGES = frozenset({
+    'ground',
+    'geometry',
+    'cell-relaxation',
+    'elastic',
+    'dos',
+    'band',
+    'density',
+    'phonon',
+    'optical',
+})
+
 
 def _extract_xc_name(xc_calc):
     """Extract an XC name from a string or calculator dictionary."""
@@ -137,6 +167,47 @@ def resolve_hybrid_settings(
         'exx_fraction': exx_fraction,
         'omega': omega,
     }
+
+
+def get_unsupported_hybrid_stages(xc_calc, engine, stages):
+    """Return requested stages unavailable for a backend hybrid workflow."""
+    settings = resolve_hybrid_settings(xc_calc, engine=engine)
+    if settings is None:
+        return ()
+
+    engine = str(engine).strip().upper()
+    normalized_stages = []
+    for stage in stages:
+        normalized = str(stage).strip().lower().replace('_', '-')
+        if normalized not in HYBRID_STAGES:
+            raise ValueError(f'Unknown hybrid calculation stage: {stage}')
+        if normalized not in normalized_stages:
+            normalized_stages.append(normalized)
+
+    supported = HYBRID_STAGE_CAPABILITIES[engine]
+    return tuple(
+        stage
+        for stage in normalized_stages
+        if stage not in supported
+    )
+
+
+def validate_hybrid_stage_support(xc_calc, engine, stages):
+    """Validate stage support and return unsupported-stage errors early."""
+    unsupported = get_unsupported_hybrid_stages(
+        xc_calc,
+        engine,
+        stages,
+    )
+    if unsupported:
+        engine = str(engine).strip().upper()
+        name = normalize_hybrid_name(xc_calc)
+        stage_names = ', '.join(unsupported)
+        raise NotImplementedError(
+            f'{engine} hybrid functional {name} does not support '
+            f'the following calculation stage(s): {stage_names}.'
+        )
+    return normalize_hybrid_name(xc_calc)
 
 
 def validate_exx_kpoint_density(value):

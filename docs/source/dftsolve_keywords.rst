@@ -681,10 +681,11 @@ Electronic Calculations Keywords
     Hybrid names and common aliases are normalized before backend setup;
     for example, ``HSE``, ``HSE-06``, and ``HSE_06`` select ``HSE06``,
     while ``PBE-0`` selects ``PBE0``. Unsupported backend/functional
-    combinations fail during configuration validation.
+    combinations and unsupported hybrid calculation stages fail during
+    configuration validation, before an external calculation starts.
 
     For GPAW, ``Relax_cell`` must contain only ``False`` values with
-    GLLBSC, HSE03, and HSE06.
+    GLLBSC, GLLBSCM, or any hybrid functional.
 
     For QE, ``HSE06``, ``HSE03``, and ``PBE0`` use native plane-wave exact
     exchange. Their supported electronic stages are ground-state, DOS/PDOS,
@@ -703,6 +704,13 @@ Electronic Calculations Keywords
     reliable. Hybrid phonon calculations are not supported. For DOS and band
     structure, the eigenvalues are referenced to the converged ground-state
     Fermi level.
+
+    The shared hybrid capability matrix treats GPAW ground-state, fixed-cell
+    atomic geometry optimization, elastic, DOS/PDOS, band/projected-band,
+    density, and optical stages as available. GPAW hybrid cell relaxation
+    and phonons are rejected. For QE hybrids, ground-state, DOS/PDOS,
+    band/projected-band, and density stages are available; geometry,
+    elastic, phonon, and optical stages are rejected.
 
 .. code-block:: python
 

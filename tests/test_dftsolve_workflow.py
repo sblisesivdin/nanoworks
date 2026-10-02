@@ -157,6 +157,81 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 XC_omega=0.11,
             )
 
+    def test_config_validates_hybrid_stage_capabilities(self):
+        qe = DFTConfig(
+            Engine='QE',
+            XC_calc='HSE06',
+            DOS_calc=True,
+            Band_calc=True,
+            Density_calc=True,
+        )
+        self.assertTrue(qe.DOS_calc)
+
+        gpaw = DFTConfig(
+            Engine='GPAW',
+            XC_calc='PBE0',
+            Geo_optim=True,
+            Elastic_calc=True,
+            Optical_calc=True,
+        )
+        self.assertTrue(gpaw.Geo_optim)
+
+        invalid = (
+            (
+                {
+                    'Engine': 'QE',
+                    'XC_calc': 'HSE06',
+                    'Geo_optim': True,
+                },
+                'geometry',
+            ),
+            (
+                {
+                    'Engine': 'QE',
+                    'XC_calc': 'HSE06',
+                    'Elastic_calc': True,
+                },
+                'elastic',
+            ),
+            (
+                {
+                    'Engine': 'QE',
+                    'XC_calc': 'HSE06',
+                    'Phonon_calc': True,
+                },
+                'phonon',
+            ),
+            (
+                {
+                    'Engine': 'QE',
+                    'XC_calc': 'HSE06',
+                    'Optical_calc': True,
+                },
+                'optical',
+            ),
+            (
+                {
+                    'Engine': 'GPAW',
+                    'XC_calc': 'HSE06',
+                    'Geo_optim': True,
+                    'Relax_cell': [True, True, True, False, False, False],
+                },
+                'cell-relaxation',
+            ),
+            (
+                {
+                    'Engine': 'GPAW',
+                    'XC_calc': 'HSE06',
+                    'Phonon_calc': True,
+                },
+                'phonon',
+            ),
+        )
+        for settings, stage in invalid:
+            with self.subTest(settings=settings):
+                with self.assertRaisesRegex(NotImplementedError, stage):
+                    DFTConfig(**settings)
+
     def test_config_validates_exx_kpoint_density_capability(self):
         config = DFTConfig(
             Engine='QE',
