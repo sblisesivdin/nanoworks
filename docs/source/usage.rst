@@ -34,9 +34,10 @@ and, when requested, ``projwfc.x``. QE density post-processing uses ``pp.x``
 and a completed ground-state calculation. QE hybrid geometry, elastic,
 phonon, and optical workflows are not supported yet.
 
-Semilocal QE elasticity is driven by thermo_pw 2.1.0. Nanoworks validates
-the linked QE banner as exactly 7.4.1 and does not fall back to the Python
-``elastic`` package for QE calculations.
+Semilocal QE elasticity is driven by thermo_pw 2.1.0. This Nanoworks version
+supports the linked QE version 7.4.1. A different detected QE version emits
+a warning without stopping the calculation. Nanoworks does not fall back to
+the Python ``elastic`` package for QE calculations.
 
 When a GPAW input enables optical calculations together with ground-state or
 other post-processing stages, the same ``dftsolve`` command automatically uses

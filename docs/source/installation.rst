@@ -119,12 +119,16 @@ projected bands, ``projwfc.x``. QE hybrid geometry, elastic, phonon, and
 optical workflows are not supported yet. QE DOS calculations currently use
 tetrahedron occupations.
 
-Semilocal QE elastic calculations are driven by ``thermo_pw.x``. Nanoworks
-supports the exact pair Quantum ESPRESSO 7.4.1 and thermo_pw 2.1.0; it does
-not claim compatibility with earlier or later releases.
+Semilocal QE elastic calculations are driven by ``thermo_pw.x``. This
+Nanoworks version supports Quantum ESPRESSO 7.4.1 and thermo_pw 2.1.0. If a
+different QE version is detected, Nanoworks warns that it has not been
+validated but allows the calculation to continue.
 
 Quantum ESPRESSO itself is not installed automatically by the Nanoworks
-Python package. A working Quantum ESPRESSO installation with ``pw.x``,
+Python package or the Debian-based Nanoworks installer. This is intentional:
+QE and thermo_pw remain externally managed calculation engines, commonly
+provided through local builds or HPC environment modules. A working Quantum
+ESPRESSO installation with ``pw.x``,
 ``dos.x``, ``projwfc.x``, ``bands.x``, ``pp.x``, ``ph.x``, ``q2r.x``,
 ``matdyn.x``, ``epsilon.x``, and, for elastic calculations,
 ``thermo_pw.x`` available in ``PATH`` is required for all

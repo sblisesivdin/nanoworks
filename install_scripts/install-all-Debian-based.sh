@@ -64,6 +64,8 @@ else
     echo "-> Development channel: newest package from PyPI"
 fi
 echo "-> Proceeding with system setup..."
+echo "-> External DFT engines are not installed by this script."
+echo "   Install supported QE 7.4.1 and thermo_pw 2.1.0 separately if needed."
 echo ""
 # ---------------------------------------------------------
 
@@ -102,3 +104,5 @@ echo "Examples folder is installed to ~/.nanoworks/examples ..."
 
 # Final message
 echo "Installation complete!"
+echo "Note: Nanoworks does not install Quantum ESPRESSO or thermo_pw."
+echo "For QE workflows, provide QE 7.4.1 and thermo_pw 2.1.0 in PATH."

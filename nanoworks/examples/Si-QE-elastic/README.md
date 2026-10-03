@@ -1,7 +1,8 @@
 # Native QE/thermo_pw elastic smoke test
 
 This example runs the Nanoworks QE elastic stage through thermo_pw. Nanoworks
-supports exactly Quantum ESPRESSO 7.4.1 with thermo_pw 2.1.0.
+supports Quantum ESPRESSO 7.4.1 with thermo_pw 2.1.0. A different detected
+QE version produces a warning but does not stop the calculation.
 
 Install the Nanoworks QE pseudopotentials first and ensure `thermo_pw.x` is in
 `PATH`. Check the input without starting a calculation:

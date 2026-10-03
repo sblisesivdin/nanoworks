@@ -6,6 +6,7 @@ import re
 import os
 import shutil
 import subprocess
+import warnings
 from pathlib import Path
 import numpy as np
 from ase.units import Bohr
@@ -930,7 +931,7 @@ def validate_qe_version(
     version,
     supported=QE_REFERENCE_VERSION,
 ):
-    """Require the one Quantum ESPRESSO release supported by Nanoworks."""
+    """Warn when QE differs from the release supported by Nanoworks."""
     if version is None:
         raise ValueError(
             "Quantum ESPRESSO version could not be detected "
@@ -958,10 +959,13 @@ def validate_qe_version(
             for value in supported
         )
 
-        raise ValueError(
-            "Unsupported Quantum ESPRESSO version "
-            f"{detected}. Nanoworks supports exactly "
-            f"Quantum ESPRESSO {required}."
+        warnings.warn(
+            "This Nanoworks version supports Quantum ESPRESSO "
+            f"{required}; detected Quantum ESPRESSO {detected}. "
+            "The calculation will continue, but this QE version "
+            "has not been validated.",
+            RuntimeWarning,
+            stacklevel=2,
         )
 
     return version

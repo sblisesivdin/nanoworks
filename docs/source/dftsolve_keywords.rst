@@ -96,7 +96,8 @@ or:
 
     Whether elastic calculations are performed. GPAW uses the Python
     ``elastic`` workflow. QE uses thermo_pw 2.1.0 as its primary and only
-    elastic driver; the supported QE version is exactly 7.4.1.
+    elastic driver. This Nanoworks version supports QE 7.4.1; a different
+    detected QE version produces a warning but does not stop the calculation.
     QE results include the 6x6 tensor in GPa and the available Voigt, Reuss,
     and Voigt-Reuss-Hill bulk, Young, shear, and Poisson properties.
 

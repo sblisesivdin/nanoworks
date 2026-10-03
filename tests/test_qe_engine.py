@@ -3475,14 +3475,16 @@ class TestQEEngine(unittest.TestCase):
             (7, 4, 1),
         )
 
-    def test_validate_qe_version_rejects_other_versions(self):
-        with self.assertRaisesRegex(
-            ValueError,
-            'supports exactly Quantum ESPRESSO 7.4.1',
+    def test_validate_qe_version_warns_for_other_versions(self):
+        with self.assertWarnsRegex(
+            RuntimeWarning,
+            'supports Quantum ESPRESSO 7.4.1.*detected Quantum ESPRESSO 7.5',
         ):
-            validate_qe_version(
+            result = validate_qe_version(
                 (7, 5)
             )
+
+        self.assertEqual(result, (7, 5))
 
     def test_validate_qe_version_rejects_missing_version(self):
         with self.assertRaisesRegex(

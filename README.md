@@ -35,6 +35,9 @@ curl -fsSL https://github.com/sblisesivdin/nanoworks/releases/latest/download/in
 This release asset pins the installed Python package to the same Nanoworks
 version as the release. For example, the exact-version URL for v26.8.0 is
 `https://github.com/sblisesivdin/nanoworks/releases/download/v26.8.0/install-all-Debian-based.sh`.
+The installer does not download or compile Quantum ESPRESSO or thermo_pw.
+QE users should provide the supported QE 7.4.1 and thermo_pw 2.1.0 installation
+through their operating system, local build, environment module, or HPC site.
 
 ### Detailed Installation
 
@@ -45,7 +48,7 @@ Prefer a proper and controlled setup? Nanoworks is a Python package. You can ins
 After installation, the following commands will be available in your terminal:
 
 ### 1. dftsolve (formerly gpawsolve.py)
-The main driver for DFT calculations using GPAW or Quantum ESPRESSO. GPAW runs the complete Python workflow under MPI, while Nanoworks launches the supported QE executables with the number of processes requested by the `-p` argument. Native QE includes ground-state, geometry, electronic, density, DFPT phonon, `epsilon.x` RPA optical, and thermo_pw elastic workflows. Nanoworks targets exactly QE 7.4.1 and thermo_pw 2.1.0. QE hybrid `HSE06`, `HSE03`, and `PBE0` workflows use native plane-wave exact exchange for ground-state, DOS/PDOS, band, projected-band, and density calculations; hybrid geometry, elastic, phonon, and optical workflows are not supported yet.
+The main driver for DFT calculations using GPAW or Quantum ESPRESSO. GPAW runs the complete Python workflow under MPI, while Nanoworks launches the supported QE executables with the number of processes requested by the `-p` argument. Native QE includes ground-state, geometry, electronic, density, DFPT phonon, `epsilon.x` RPA optical, and thermo_pw elastic workflows. This Nanoworks version supports QE 7.4.1 and thermo_pw 2.1.0; a different detected QE version produces a warning but does not stop the calculation. QE hybrid `HSE06`, `HSE03`, and `PBE0` workflows use native plane-wave exact exchange for ground-state, DOS/PDOS, band, projected-band, and density calculations; hybrid geometry, elastic, phonon, and optical workflows are not supported yet.
 
 Portable SCF controls (`SCF_accuracy`, `SCF_max_steps`, `SCF_mixing`, and
 `Electronic_solver`) describe calculation intent once and are translated to
