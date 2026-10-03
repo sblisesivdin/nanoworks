@@ -69,6 +69,7 @@ def build_control_settings(
     prefix='nanoworks',
     pseudo_dir=None,
     outdir=None,
+    calculate_stress=False,
 ):
     """Build the QE &CONTROL namelist settings."""
     calculation = str(
@@ -82,6 +83,9 @@ def build_control_settings(
 
     if calculation == 'bands':
         settings['verbosity'] = 'high'
+
+    if calculate_stress:
+        settings['tstress'] = True
 
     if pseudo_dir is not None:
         settings['pseudo_dir'] = str(pseudo_dir)
@@ -2278,6 +2282,7 @@ def render_pw_input(
     electrostatic_normal_axis='z',
     dipole_correction=False,
     vdw_calc='None',
+    calculate_stress=False,
 ):
     """Render a complete QE pw.x input."""
 
@@ -2476,6 +2481,7 @@ def render_pw_input(
         prefix=prefix,
         pseudo_dir=pseudo_dir,
         outdir=outdir,
+        calculate_stress=calculate_stress,
     )
 
     system = build_system_settings(
@@ -2696,6 +2702,7 @@ def render_scf_input(
     electrostatic_normal_axis='z',
     dipole_correction=False,
     vdw_calc='None',
+    calculate_stress=False,
 ):
     """Render a complete QE pw.x SCF input."""
     return render_pw_input(
@@ -2710,6 +2717,7 @@ def render_scf_input(
         electrostatic_normal_axis=electrostatic_normal_axis,
         dipole_correction=dipole_correction,
         vdw_calc=vdw_calc,
+        calculate_stress=calculate_stress,
         kpoint_size=kpoint_size,
         gamma=gamma,
         total_charge=total_charge,
@@ -4676,6 +4684,74 @@ def write_phonon_thermal_properties(output_file, thermal_data):
     return output_file
 
 
+def parse_pw_stress(text):
+    """Parse the final raw QE stress tensor and pressure in kbar."""
+    number_pattern = (
+        r'[-+]?(?:\d+(?:\.\d*)?|\.\d+)'
+        r'(?:[EeDd][-+]?\d+)?'
+    )
+    header_pattern = re.compile(
+        r'total\s+stress\s*'
+        r'\(\s*Ry/bohr(?:\*\*|\^)3\s*\)'
+        r'.*?\(\s*kbar\s*\)'
+        r'.*?P\s*=\s*('
+        + number_pattern
+        + r')',
+        flags=re.IGNORECASE,
+    )
+    stress_results = []
+    lines = str(text).splitlines()
+
+    for line_index, line in enumerate(lines):
+        header_match = header_pattern.search(line)
+
+        if header_match is None:
+            continue
+
+        rows = []
+
+        for row in lines[line_index + 1:]:
+            values = re.findall(
+                number_pattern,
+                row,
+            )
+
+            if len(values) < 6:
+                if rows and row.strip():
+                    break
+                continue
+
+            rows.append([
+                float(
+                    value
+                    .replace('D', 'E')
+                    .replace('d', 'e')
+                )
+                for value in values[-3:]
+            ])
+
+            if len(rows) == 3:
+                break
+
+        if len(rows) != 3:
+            continue
+
+        pressure = float(
+            header_match.group(1)
+            .replace('D', 'E')
+            .replace('d', 'e')
+        )
+        stress_results.append({
+            'pressure_kbar': pressure,
+            'stress_tensor_kbar': rows,
+        })
+
+    if not stress_results:
+        return None
+
+    return stress_results[-1]
+
+
 def parse_pw_output(output):
     """Parse basic results from pw.x output."""
     output = Path(
@@ -4812,6 +4888,9 @@ def parse_pw_output(output):
     job_done = (
         'JOB DONE.' in text
     )
+    stress = parse_pw_stress(
+        text
+    )
 
     return {
         'job_done': job_done,
@@ -4821,6 +4900,16 @@ def parse_pw_output(output):
         'fermi_energy_ev': fermi_energy_ev,
         'highest_occupied_ev': highest_occupied_ev,
         'lowest_unoccupied_ev': lowest_unoccupied_ev,
+        'pressure_kbar': (
+            None
+            if stress is None
+            else stress['pressure_kbar']
+        ),
+        'stress_tensor_kbar': (
+            None
+            if stress is None
+            else stress['stress_tensor_kbar']
+        ),
     }
 
 def parse_pw_relaxed_structure(
@@ -7590,6 +7679,7 @@ def run_scf(
     electrostatic_normal_axis='z',
     dipole_correction=False,
     vdw_calc='None',
+    calculate_stress=False,
 ):
     """Render, execute, and parse one QE pw.x SCF calculation."""
     input_file = Path(
@@ -7632,6 +7722,7 @@ def run_scf(
         electrostatic_normal_axis=electrostatic_normal_axis,
         dipole_correction=dipole_correction,
         vdw_calc=vdw_calc,
+        calculate_stress=calculate_stress,
         kpoint_size=mesh,
         gamma=gamma,
         total_charge=total_charge,

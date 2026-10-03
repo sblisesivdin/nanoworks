@@ -50,6 +50,7 @@ from nanoworks.engine.qe import (
     calculate_phonon_thermal_properties,
     write_phonon_thermal_properties,
     parse_pw_output,
+    parse_pw_stress,
     resolve_qe_band_reference,
     parse_pw_bands_output,
     parse_bands_x_output,
@@ -109,6 +110,39 @@ class TestQEEngine(unittest.TestCase):
 
     def test_reference_version_is_qe_72(self):
         self.assertEqual(QE_REFERENCE_VERSION, (7, 2))
+
+    def test_control_settings_request_stress_explicitly(self):
+        default_settings = build_control_settings()
+        stress_settings = build_control_settings(
+            calculate_stress=True,
+        )
+
+        self.assertNotIn(
+            'tstress',
+            default_settings,
+        )
+        self.assertTrue(
+            stress_settings['tstress']
+        )
+
+        text = render_scf_input(
+            atoms=bulk(
+                'Si',
+                'diamond',
+                a=5.43,
+            ),
+            pseudopotentials={
+                'Si': 'Si.upf',
+            },
+            cutoff_ev=500.0,
+            kpoint_size=(2, 2, 2),
+            calculate_stress=True,
+        )
+
+        self.assertIn(
+            '  tstress = .true.,',
+            text,
+        )
 
     def test_build_and_render_qe_exx_additional_kpoints(self):
         settings = build_qe_exx_additional_kpoints(
@@ -2745,6 +2779,62 @@ class TestQEEngine(unittest.TestCase):
                 -15.12345678
                 * 13.605693122994,
             )
+
+            self.assertIsNone(
+                result['stress_tensor_kbar']
+            )
+
+    def test_parse_pw_output_uses_final_stress_block(self):
+        output_text = """
+         Program PWSCF v.7.2 starts
+
+          total   stress  (Ry/bohr**3)                   (kbar)     P=     12.00
+   0.00001000   0.00000000   0.00000000          1.00       0.00       0.00
+   0.00000000   0.00002000   0.00000000          0.00       2.00       0.00
+   0.00000000   0.00000000   0.00003000          0.00       0.00       3.00
+
+          total   stress  (Ry/bohr**3)                   (kbar)     P= -2.50D+00
+  -0.00001000   0.00000100   0.00000200         -1.50       0.10       0.20
+   0.00000100  -0.00002000   0.00000300          0.10      -2.50       0.30
+   0.00000200   0.00000300  -0.00003000          0.20       0.30      -3.50
+
+         JOB DONE.
+        """
+
+        parsed_stress = parse_pw_stress(
+            output_text
+        )
+
+        self.assertEqual(
+            parsed_stress,
+            {
+                'pressure_kbar': -2.5,
+                'stress_tensor_kbar': [
+                    [-1.5, 0.1, 0.2],
+                    [0.1, -2.5, 0.3],
+                    [0.2, 0.3, -3.5],
+                ],
+            },
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = Path(tmpdir) / 'pw.out'
+            output_file.write_text(
+                output_text,
+                encoding='utf-8',
+            )
+            result = parse_pw_output(
+                output_file
+            )
+
+        self.assertEqual(
+            result['pressure_kbar'],
+            -2.5,
+        )
+        self.assertEqual(
+            result['stress_tensor_kbar'],
+            parsed_stress['stress_tensor_kbar'],
+        )
 
     def test_parse_pw_output_with_patch_version(self):
         output_text = """
