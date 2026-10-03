@@ -97,6 +97,8 @@ or:
     Whether elastic calculations are performed. GPAW uses the Python
     ``elastic`` workflow. QE uses thermo_pw 2.1.0 as its primary and only
     elastic driver; the supported QE version is exactly 7.4.1.
+    QE results include the 6x6 tensor in GPa and the available Voigt, Reuss,
+    and Voigt-Reuss-Hill bulk, Young, shear, and Poisson properties.
 
 .. code-block:: python
 

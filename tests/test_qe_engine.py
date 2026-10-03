@@ -3510,6 +3510,21 @@ class TestQEEngine(unittest.TestCase):
  4 0.0 0.0 0.0 500.0 0.0 0.0
  5 0.0 0.0 0.0 0.0 500.0 0.0
  6 0.0 0.0 0.0 0.0 0.0 500.0
+ Voigt approximation:
+ Bulk modulus B = 400.0 kbar
+ Young modulus E = 900.0 kbar
+ Shear modulus G = 350.0 kbar
+ Poisson Ratio n = 0.20
+ Reuss approximation:
+ Bulk modulus B = 380.0 kbar
+ Young modulus E = 850.0 kbar
+ Shear modulus G = 320.0 kbar
+ Poisson Ratio n = 0.22
+ Voigt-Reuss-Hill average of the two approximations:
+ Bulk modulus B = 390.0 kbar
+ Young modulus E = 875.0 kbar
+ Shear modulus G = 335.0 kbar
+ Poisson Ratio n = 0.21
  JOB DONE.
 """
 
@@ -3523,6 +3538,15 @@ class TestQEEngine(unittest.TestCase):
         np.testing.assert_allclose(
             result['elastic_tensor_gpa'][0],
             [100.0, 10.0, 10.0, 0.0, 0.0, 0.0],
+        )
+        self.assertEqual(
+            result['elastic_moduli']['hill'],
+            {
+                'bulk_modulus_gpa': 39.0,
+                'young_modulus_gpa': 87.5,
+                'shear_modulus_gpa': 33.5,
+                'poisson_ratio': 0.21,
+            },
         )
 
     def test_run_nscf_requires_ground_state(self):

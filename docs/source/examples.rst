@@ -33,6 +33,12 @@ Electronic Properties & Basic DFT
 * **TiC Elastic and Electronic Properties:**
   Shows how to compute both the elastic constants and the electronic band structure / density of states (DOS) for Titanium Carbide (TiC) in a single automated workflow.(Folder: ``TiC-elastic-electronic/``)
 
+* **Silicon QE/thermo_pw Elastic Smoke Test:**
+  Runs the native QE elastic stage through thermo_pw 2.1.0, producing the
+  6x6 elastic tensor and Voigt, Reuss, and Voigt-Reuss-Hill moduli. The
+  deliberately small settings validate the workflow rather than provide
+  converged scientific results. (Folder: ``Si-QE-elastic/``)
+
 * **Graphene LCAO:**
   Demonstrates how to use the fast LCAO (Linear Combination of Atomic Orbitals) mode in GPAW through the Nanoworks interface to calculate the properties of pristine and defective graphene. (Folder: ``Graphene-LCAO/``)
 

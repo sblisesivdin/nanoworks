@@ -2057,21 +2057,52 @@ class dftsolve:
             prefix='nanoworks',
         )
         tensor = workflow['result']['elastic_tensor_gpa']
+        moduli = workflow['result']['elastic_moduli']
         result_file = Path(
             self.struct + '-ELASTIC-QE-Result-Elastic-AllResults.txt'
         )
-        result_file.write_text(
-            "Elastic tensor Cij (GPa):\n"
-            + np.array2string(
+        result_lines = [
+            "Elastic tensor Cij (GPa):",
+            np.array2string(
                 tensor,
                 precision=6,
                 floatmode='fixed',
-            )
-            + "\n",
+            ),
+        ]
+
+        for name in ('voigt', 'reuss', 'hill'):
+            values = moduli.get(name)
+            if values is None:
+                continue
+
+            result_lines.extend([
+                '',
+                name.capitalize() + ' approximation:',
+            ])
+            for label, key, unit in (
+                ('Bulk modulus', 'bulk_modulus_gpa', ' GPa'),
+                ('Young modulus', 'young_modulus_gpa', ' GPa'),
+                ('Shear modulus', 'shear_modulus_gpa', ' GPa'),
+                ('Poisson ratio', 'poisson_ratio', ''),
+            ):
+                value = values.get(key)
+                if value is not None:
+                    result_lines.append(
+                        f'{label}: {value:.6f}{unit}'
+                    )
+
+        result_file.write_text(
+            '\n'.join(result_lines) + '\n',
             encoding='utf-8',
         )
         parprint("Elastic tensor Cij (GPa):")
         parprint(tensor)
+
+        if 'hill' in moduli:
+            parprint("Voigt-Reuss-Hill elastic moduli:")
+            for key, value in moduli['hill'].items():
+                if value is not None:
+                    parprint(f"  {key}: {value:.6f}")
 
         with paropen(
             self.struct + '-TIMINGS-QE-Log-Timings.txt',

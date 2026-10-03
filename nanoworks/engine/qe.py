@@ -3741,6 +3741,7 @@ def parse_thermo_pw_elastic_output(output):
 
     tensor_kbar = None
     tensor_gpa = None
+    elastic_moduli = {}
 
     if tensor_match is not None:
         rows = []
@@ -3755,11 +3756,114 @@ def parse_thermo_pw_elastic_output(output):
             tensor_kbar = np.asarray(rows, dtype=float)
             tensor_gpa = tensor_kbar / 10.0
 
+        result_text = text[tensor_match.end():]
+        next_tensor = re.search(
+            r'Elastic constants C_ij \(kbar\)',
+            result_text,
+            flags=re.IGNORECASE,
+        )
+        if next_tensor is not None:
+            result_text = result_text[:next_tensor.start()]
+
+        number = r'([-+]?\d+(?:\.\d*)?(?:[EeDd][-+]?\d+)?)'
+        global_bulk = re.search(
+            r'Bulk modulus\s+B\s*=\s*' + number + r'\s+kbar',
+            result_text,
+            flags=re.IGNORECASE,
+        )
+        global_bulk_kbar = (
+            float(global_bulk.group(1).replace('D', 'E').replace('d', 'e'))
+            if global_bulk is not None
+            else None
+        )
+        approximation_headers = (
+            ('voigt', r'Voigt approximation:'),
+            ('reuss', r'Reuss approximation:'),
+            (
+                'hill',
+                r'Voigt-Reuss-Hill average of the two approximations:',
+            ),
+        )
+
+        for index, (name, header) in enumerate(approximation_headers):
+            block_match = re.search(
+                header,
+                result_text,
+                flags=re.IGNORECASE,
+            )
+            if block_match is None:
+                continue
+
+            block_end = len(result_text)
+            for _, later_header in approximation_headers[index + 1:]:
+                later_match = re.search(
+                    later_header,
+                    result_text[block_match.end():],
+                    flags=re.IGNORECASE,
+                )
+                if later_match is not None:
+                    block_end = (
+                        block_match.end()
+                        + later_match.start()
+                    )
+                    break
+
+            block = result_text[block_match.end():block_end]
+
+            def find_value(pattern):
+                match = re.search(
+                    pattern + number,
+                    block,
+                    flags=re.IGNORECASE,
+                )
+                if match is None:
+                    return None
+                return float(
+                    match.group(1).replace('D', 'E').replace('d', 'e')
+                )
+
+            bulk_kbar = find_value(r'Bulk modulus\s+B\s*=\s*')
+            if bulk_kbar is None:
+                bulk_kbar = global_bulk_kbar
+
+            young_kbar = find_value(r'Young modulus\s+E\s*=\s*')
+            shear_kbar = find_value(r'Shear modulus\s+G\s*=\s*')
+            poisson_ratio = find_value(r'Poisson Ratio\s+n\s*=\s*')
+
+            if any(
+                value is not None
+                for value in (
+                    bulk_kbar,
+                    young_kbar,
+                    shear_kbar,
+                    poisson_ratio,
+                )
+            ):
+                elastic_moduli[name] = {
+                    'bulk_modulus_gpa': (
+                        bulk_kbar / 10.0
+                        if bulk_kbar is not None
+                        else None
+                    ),
+                    'young_modulus_gpa': (
+                        young_kbar / 10.0
+                        if young_kbar is not None
+                        else None
+                    ),
+                    'shear_modulus_gpa': (
+                        shear_kbar / 10.0
+                        if shear_kbar is not None
+                        else None
+                    ),
+                    'poisson_ratio': poisson_ratio,
+                }
+
     return {
         'qe_version': qe_version,
         'job_done': bool(re.search(r'\bJOB DONE\.', text)),
         'elastic_tensor_kbar': tensor_kbar,
         'elastic_tensor_gpa': tensor_gpa,
+        'elastic_moduli': elastic_moduli,
     }
 
 
@@ -7891,6 +7995,26 @@ def run_thermo_pw_elastic(
         raise RuntimeError(
             "thermo_pw did not print a complete 6x6 elastic tensor. "
             f"See '{output_file}'."
+        )
+
+    required_moduli = {
+        'bulk_modulus_gpa',
+        'young_modulus_gpa',
+        'shear_modulus_gpa',
+        'poisson_ratio',
+    }
+    incomplete_approximations = []
+
+    for approximation in ('voigt', 'reuss', 'hill'):
+        values = result['elastic_moduli'].get(approximation, {})
+        if any(values.get(key) is None for key in required_moduli):
+            incomplete_approximations.append(approximation)
+
+    if incomplete_approximations:
+        raise RuntimeError(
+            "thermo_pw did not print complete elastic moduli for: "
+            + ', '.join(incomplete_approximations)
+            + f". See '{output_file}'."
         )
 
     return {
