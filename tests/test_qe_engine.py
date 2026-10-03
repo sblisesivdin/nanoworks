@@ -15,6 +15,7 @@ from nanoworks.engine.qe import (
     ev_to_rydberg,
     build_control_settings,
     build_system_settings,
+    resolve_qe_dispersion_settings,
     build_cell_parameters,
     build_atomic_positions,
     build_atomic_species,
@@ -272,6 +273,31 @@ class TestQEEngine(unittest.TestCase):
             settings['screening_parameter'],
             0.16,
         )
+
+    def test_qe_d3_maps_to_native_system_setting(self):
+        self.assertEqual(
+            resolve_qe_dispersion_settings('d3'),
+            {'vdw_corr': 'grimme-d3'},
+        )
+
+        settings = build_system_settings(
+            cutoff_ev=500.0,
+            nat=2,
+            ntyp=1,
+            vdw_calc='D3',
+        )
+
+        self.assertEqual(
+            settings['vdw_corr'],
+            'grimme-d3',
+        )
+
+    def test_qe_dispersion_rejects_unknown_method(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            "must be 'None' or 'D3'",
+        ):
+            resolve_qe_dispersion_settings('TS09')
 
     def test_render_scf_input_adds_pbe0_controls(self):
         atoms = bulk(

@@ -47,9 +47,9 @@ or:
     band, projected-band, and density calculations are supported. Native PBE
     also supports DFPT phonons and ``epsilon.x`` RPA optics. Native
     QE ``HSE06``, ``HSE03``, and ``PBE0`` workflows support ground-state,
-    DOS/PDOS, band, projected-band, and density calculations. QE vdW, SOC,
-    and elastic workflows are not supported yet. Hybrid geometry optimization,
-    phonon, and optical workflows are also not supported yet.
+    DOS/PDOS, band, projected-band, density, and Grimme-D3 calculations.
+    QE SOC and elastic workflows are not supported yet. Hybrid geometry
+    optimization, phonon, and optical workflows are also not supported yet.
 
 .. describe:: Mode
 
@@ -220,9 +220,10 @@ or:
     :Type: ``str``
     :Default: ``None``
 
-    Whether a van der Waals correction is added. The established GPAW
-    workflow currently supports the Grimme-D3 correction. QE vdW corrections
-    are not supported yet.
+    Whether a van der Waals correction is added. Both backends support the
+    Grimme-D3 correction. QE maps ``D3`` to its native
+    ``vdw_corr='grimme-d3'`` setting and retains Quantum ESPRESSO's native D3
+    defaults.
 
 .. code-block:: python
 

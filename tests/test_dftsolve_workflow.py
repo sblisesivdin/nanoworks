@@ -397,6 +397,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             Engine='QE',
             Ground_calc=True,
             Optical_calc=True,
+            vdW_calc='D3',
             Pseudo_relativistic='FULL',
             bulk_configuration=Atoms(
                 'Si2',
@@ -789,6 +790,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 SCF_mixing=0.25,
                 Electronic_solver='robust',
                 Electrostatic_boundary='isolated-2d',
+                vdW_calc='D3',
                 bulk_configuration=Atoms(
                     'Si2',
                     scaled_positions=[
@@ -918,6 +920,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             self.assertTrue(pw_inputs)
             for input_text in pw_inputs:
                 self.assertIn("assume_isolated = '2D'", input_text)
+                self.assertIn("vdw_corr = 'grimme-d3'", input_text)
 
             jobs = {
                 job['id']: job

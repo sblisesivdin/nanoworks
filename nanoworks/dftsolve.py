@@ -1242,6 +1242,17 @@ class dftsolve:
             ),
         }
 
+    def _qe_dispersion_settings(self):
+        """Return the portable dispersion argument for QE workflows."""
+        config = getattr(self, 'config', None)
+        return {
+            'vdw_calc': getattr(
+                self,
+                'vdW_calc',
+                getattr(config, 'vdW_calc', 'None'),
+            ),
+        }
+
     def _qe_pseudo_configuration(self):
         """Resolve the portable pseudopotential settings for QE."""
         options = {
@@ -1397,14 +1408,6 @@ class dftsolve:
                 "\033[91mERROR:\033[0m "
                 "Quantum ESPRESSO backend currently supports "
                 "PW mode only."
-            )
-            sys.exit(1)
-
-        if self.config.vdW_calc.upper() != 'NONE':
-            parprint(
-                "\033[91mERROR:\033[0m "
-                "vdW corrections are not implemented "
-                "for the QE backend yet."
             )
             sys.exit(1)
 
@@ -1571,6 +1574,7 @@ class dftsolve:
                     occupation=self.Occupation,
                     **self._qe_scf_settings(),
                     **self._qe_electrostatic_settings(),
+                    **self._qe_dispersion_settings(),
                     parallel_cores=self.parallel_cores,
                     executable='pw.x',
                     prefix='nanoworks',
@@ -1649,6 +1653,7 @@ class dftsolve:
                     occupation=self.Occupation,
                     **self._qe_scf_settings(),
                     **self._qe_electrostatic_settings(),
+                    **self._qe_dispersion_settings(),
                     parallel_cores=self.parallel_cores,
                     executable='pw.x',
                     prefix='nanoworks',
@@ -2856,6 +2861,7 @@ class dftsolve:
                     occupation=dos_occupation,
                     **self._qe_scf_settings(),
                     **self._qe_electrostatic_settings(),
+                    **self._qe_dispersion_settings(),
                     parallel_cores=self.parallel_cores,
                     executable='pw.x',
                     prefix='nanoworks',
@@ -2991,6 +2997,7 @@ class dftsolve:
                     occupation=dos_occupation,
                     **self._qe_scf_settings(),
                     **self._qe_electrostatic_settings(),
+                    **self._qe_dispersion_settings(),
                     emin=self.Energy_min,
                     emax=self.Energy_max,
                     delta_e=delta_e,
@@ -3651,6 +3658,7 @@ class dftsolve:
                         occupation=self.Occupation,
                         **self._qe_scf_settings(),
                         **self._qe_electrostatic_settings(),
+                        **self._qe_dispersion_settings(),
                         parallel_cores=self.parallel_cores,
                         scf_executable='pw.x',
                         bands_executable='bands.x',
@@ -3709,6 +3717,7 @@ class dftsolve:
                     occupation=self.Occupation,
                     **self._qe_scf_settings(),
                     **self._qe_electrostatic_settings(),
+                    **self._qe_dispersion_settings(),
                     parallel_cores=self.parallel_cores,
                     executable='pw.x',
                     prefix='nanoworks',
@@ -5651,6 +5660,7 @@ class dftsolve:
             },
             **self._qe_scf_settings(),
             **self._qe_electrostatic_settings(),
+            **self._qe_dispersion_settings(),
             nosym=True,
             parallel_cores=self.parallel_cores,
             executable='pw.x',
@@ -6746,11 +6756,20 @@ def check_dft_configuration(
                 'PW',
             )
 
-        if str(config.vdW_calc).strip().upper() != 'NONE':
+        vdw_method = str(
+            config.vdW_calc
+        ).strip().upper()
+        if vdw_method not in {'NONE', 'D3'}:
             add(
                 'error',
                 'vdW',
-                'QE vdW corrections are not supported yet.',
+                "QE vdW_calc must be 'None' or 'D3'.",
+            )
+        elif vdw_method == 'D3':
+            add(
+                'ok',
+                'vdW',
+                'Grimme-D3',
             )
 
         if config.SOC_calc:
@@ -7246,6 +7265,7 @@ def prepare_qe_dry_run(
         'electrostatic_boundary': config.Electrostatic_boundary,
         'electrostatic_normal_axis': config.Electrostatic_normal_axis,
         'dipole_correction': config.Dipole_correction,
+        'vdw_calc': config.vdW_calc,
         'total_charge': config.Total_charge,
         'spinpol': config.Spin_calc,
         'magnetic_moments': magnetic_moments,

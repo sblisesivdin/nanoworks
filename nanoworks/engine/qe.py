@@ -45,6 +45,25 @@ def rydberg_to_ev(value):
     return float(value) * EV_PER_RYDBERG
 
 
+def resolve_qe_dispersion_settings(vdw_calc='None'):
+    """Translate the portable dispersion choice to QE ``&SYSTEM``."""
+    method = str(
+        'None' if vdw_calc is None else vdw_calc
+    ).strip().upper()
+
+    if method == 'NONE':
+        return {}
+
+    if method == 'D3':
+        return {
+            'vdw_corr': 'grimme-d3',
+        }
+
+    raise ValueError(
+        "QE vdW_calc must be 'None' or 'D3'."
+    )
+
+
 def build_control_settings(
     calculation='scf',
     prefix='nanoworks',
@@ -90,6 +109,7 @@ def build_system_settings(
     electrostatic_boundary='periodic',
     electrostatic_normal_axis='z',
     dipole_correction=False,
+    vdw_calc='None',
 ):
     """Build the basic QE &SYSTEM namelist settings."""
     cutoff_settings = validate_cutoff_settings(
@@ -112,6 +132,11 @@ def build_system_settings(
         normal_axis=electrostatic_normal_axis,
         dipole_correction=dipole_correction,
     ))
+    settings.update(
+        resolve_qe_dispersion_settings(
+            vdw_calc
+        )
+    )
 
     xc_settings = None
 
@@ -2252,6 +2277,7 @@ def render_pw_input(
     electrostatic_boundary='periodic',
     electrostatic_normal_axis='z',
     dipole_correction=False,
+    vdw_calc='None',
 ):
     """Render a complete QE pw.x input."""
 
@@ -2469,6 +2495,7 @@ def render_pw_input(
         electrostatic_boundary=electrostatic_boundary,
         electrostatic_normal_axis=electrostatic_normal_axis,
         dipole_correction=dipole_correction,
+        vdw_calc=vdw_calc,
     )
     
     system.update(
@@ -2668,6 +2695,7 @@ def render_scf_input(
     electrostatic_boundary='periodic',
     electrostatic_normal_axis='z',
     dipole_correction=False,
+    vdw_calc='None',
 ):
     """Render a complete QE pw.x SCF input."""
     return render_pw_input(
@@ -2681,6 +2709,7 @@ def render_scf_input(
         electrostatic_boundary=electrostatic_boundary,
         electrostatic_normal_axis=electrostatic_normal_axis,
         dipole_correction=dipole_correction,
+        vdw_calc=vdw_calc,
         kpoint_size=kpoint_size,
         gamma=gamma,
         total_charge=total_charge,
@@ -2737,6 +2766,7 @@ def render_nscf_input(
     electrostatic_boundary='periodic',
     electrostatic_normal_axis='z',
     dipole_correction=False,
+    vdw_calc='None',
 ):
     """Render a complete QE pw.x NSCF input."""
     return render_pw_input(
@@ -2750,6 +2780,7 @@ def render_nscf_input(
         electrostatic_boundary=electrostatic_boundary,
         electrostatic_normal_axis=electrostatic_normal_axis,
         dipole_correction=dipole_correction,
+        vdw_calc=vdw_calc,
         kpoint_size=kpoint_size,
         gamma=gamma,
         total_charge=total_charge,
@@ -2812,6 +2843,7 @@ def render_relax_input(
     electrostatic_boundary='periodic',
     electrostatic_normal_axis='z',
     dipole_correction=False,
+    vdw_calc='None',
 ):
     """Render a complete QE pw.x relaxation input."""
     relaxation_settings = resolve_qe_relaxation_settings(
@@ -2836,6 +2868,7 @@ def render_relax_input(
         electrostatic_boundary=electrostatic_boundary,
         electrostatic_normal_axis=electrostatic_normal_axis,
         dipole_correction=dipole_correction,
+        vdw_calc=vdw_calc,
         kpoint_size=kpoint_size,
         gamma=gamma,
         total_charge=total_charge,
@@ -2890,6 +2923,7 @@ def render_bands_input(
     electrostatic_boundary='periodic',
     electrostatic_normal_axis='z',
     dipole_correction=False,
+    vdw_calc='None',
 ):
     """Render a complete QE pw.x bands input."""
     return render_pw_input(
@@ -2903,6 +2937,7 @@ def render_bands_input(
         electrostatic_boundary=electrostatic_boundary,
         electrostatic_normal_axis=electrostatic_normal_axis,
         dipole_correction=dipole_correction,
+        vdw_calc=vdw_calc,
         kpoint_size=None,
         gamma=False,
         total_charge=total_charge,
@@ -7554,6 +7589,7 @@ def run_scf(
     electrostatic_boundary='periodic',
     electrostatic_normal_axis='z',
     dipole_correction=False,
+    vdw_calc='None',
 ):
     """Render, execute, and parse one QE pw.x SCF calculation."""
     input_file = Path(
@@ -7595,6 +7631,7 @@ def run_scf(
         electrostatic_boundary=electrostatic_boundary,
         electrostatic_normal_axis=electrostatic_normal_axis,
         dipole_correction=dipole_correction,
+        vdw_calc=vdw_calc,
         kpoint_size=mesh,
         gamma=gamma,
         total_charge=total_charge,
@@ -7710,6 +7747,7 @@ def run_relax(
     electrostatic_boundary='periodic',
     electrostatic_normal_axis='z',
     dipole_correction=False,
+    vdw_calc='None',
 ):
     """Render, execute, and parse one QE geometry optimization."""
     input_file = Path(
@@ -7761,6 +7799,7 @@ def run_relax(
         electrostatic_boundary=electrostatic_boundary,
         electrostatic_normal_axis=electrostatic_normal_axis,
         dipole_correction=dipole_correction,
+        vdw_calc=vdw_calc,
         kpoint_size=mesh,
         gamma=gamma,
         total_charge=total_charge,
@@ -7899,6 +7938,7 @@ def run_nscf(
     electrostatic_boundary='periodic',
     electrostatic_normal_axis='z',
     dipole_correction=False,
+    vdw_calc='None',
 ):
     """Render, execute, and parse one QE pw.x NSCF calculation."""
     input_file = Path(
@@ -7944,6 +7984,7 @@ def run_nscf(
         electrostatic_boundary=electrostatic_boundary,
         electrostatic_normal_axis=electrostatic_normal_axis,
         dipole_correction=dipole_correction,
+        vdw_calc=vdw_calc,
         kpoint_size=mesh,
         gamma=gamma,
         total_charge=total_charge,
@@ -8056,6 +8097,7 @@ def run_bands(
     electrostatic_boundary='periodic',
     electrostatic_normal_axis='z',
     dipole_correction=False,
+    vdw_calc='None',
 ):
     """Render, execute, and parse one QE pw.x bands calculation."""
     input_file = Path(
@@ -8095,6 +8137,7 @@ def run_bands(
         electrostatic_boundary=electrostatic_boundary,
         electrostatic_normal_axis=electrostatic_normal_axis,
         dipole_correction=dipole_correction,
+        vdw_calc=vdw_calc,
         band_path=band_path,
         total_charge=total_charge,
         nbands=nbands,
@@ -8452,6 +8495,7 @@ def run_hybrid_bands(
     electrostatic_boundary='periodic',
     electrostatic_normal_axis='z',
     dipole_correction=False,
+    vdw_calc='None',
 ):
     """Run a QE hybrid SCF followed by bands.x post-processing."""
     xc_settings = resolve_qe_xc_settings(
@@ -8493,6 +8537,7 @@ def run_hybrid_bands(
         electrostatic_boundary=electrostatic_boundary,
         electrostatic_normal_axis=electrostatic_normal_axis,
         dipole_correction=dipole_correction,
+        vdw_calc=vdw_calc,
         kpoint_density=kpoint_density,
         kpoint_size=kpoint_size,
         gamma=gamma,
@@ -8720,6 +8765,7 @@ def run_hybrid_dos(
     electrostatic_boundary='periodic',
     electrostatic_normal_axis='z',
     dipole_correction=False,
+    vdw_calc='None',
 ):
     """Run a QE hybrid SCF followed by DOS and PDOS post-processing."""
     xc_settings = resolve_qe_xc_settings(
@@ -8748,6 +8794,7 @@ def run_hybrid_dos(
         electrostatic_boundary=electrostatic_boundary,
         electrostatic_normal_axis=electrostatic_normal_axis,
         dipole_correction=dipole_correction,
+        vdw_calc=vdw_calc,
         kpoint_density=kpoint_density,
         kpoint_size=kpoint_size,
         gamma=gamma,

@@ -2,6 +2,7 @@
 
 ### Development Version
 
+- `vdW_calc='D3'` now enables Quantum ESPRESSO's native Grimme-D3 correction across every `pw.x` stage.
 - Portable `Wavefunction_cutoff` replaces `Cut_off_energy`; `Density_cutoff_ratio` controls QE `ecutrho` and defaults to four times the wavefunction cutoff.
 - `EXX_kpoint_density` optionally controls the QE exact-exchange q-grid while preserving QE's native default when omitted.
 - `EXX_cutoff` optionally controls QE `ecutfock` in eV and must exceed the wavefunction cutoff.
