@@ -19,4 +19,7 @@ PseudoDojo set:
 
     dftsolve -p 4 -i WSe2-QE-with-SOC.py
 
+QE SOC and non-SOC calculations must use separate output directories. A saved
+ground state created with one mode is rejected if reused with the other mode.
+
 Because we use `Outdirname` variable, results are saved in different folders.

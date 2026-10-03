@@ -1538,6 +1538,18 @@ class dftsolve:
                 )
                 sys.exit(1)
 
+            try:
+                self.engine.validate_qe_state_spin_orbit(
+                    state_dir,
+                    expected=getattr(self, 'SOC_calc', False),
+                    prefix='nanoworks',
+                )
+            except (FileNotFoundError, ValueError, RuntimeError) as exc:
+                parprint(
+                    f"\033[91mERROR:\033[0m {exc}"
+                )
+                sys.exit(1)
+
             final_structure_loaded = (
                 self._load_existing_final_structure()
             )
@@ -7345,11 +7357,36 @@ def check_dft_configuration(
                 state_dir,
                 prefix='nanoworks',
             ):
-                add(
-                    'ok',
-                    'ground-state',
-                    str(state_dir),
-                )
+                try:
+                    spin_settings = (
+                        engine.validate_qe_state_spin_orbit(
+                            state_dir,
+                            expected=config.SOC_calc,
+                            prefix='nanoworks',
+                        )
+                    )
+                except (FileNotFoundError, ValueError, RuntimeError) as exc:
+                    add(
+                        'error',
+                        'ground-state-spin-mode',
+                        str(exc),
+                    )
+                else:
+                    add(
+                        'ok',
+                        'ground-state',
+                        str(state_dir),
+                    )
+                    if spin_settings['spin_orbit'] is not None:
+                        add(
+                            'ok',
+                            'ground-state-spin-mode',
+                            (
+                                'SOC'
+                                if spin_settings['spin_orbit']
+                                else 'non-SOC'
+                            ),
+                        )
             else:
                 add(
                     'error',

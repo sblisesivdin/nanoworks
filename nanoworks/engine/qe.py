@@ -7,6 +7,7 @@ import os
 import shutil
 import subprocess
 import warnings
+import xml.etree.ElementTree as ET
 from pathlib import Path
 import numpy as np
 from ase.units import Bohr
@@ -3522,6 +3523,98 @@ def has_qe_state(
         return False
 
     return True
+
+
+def read_qe_state_spin_settings(
+    state_dir,
+    prefix='nanoworks',
+):
+    """Read noncollinear and spin-orbit flags from a QE saved state."""
+    schema_file = (
+        Path(state_dir)
+        / f'{prefix}.save'
+        / 'data-file-schema.xml'
+    )
+
+    if not schema_file.is_file():
+        raise FileNotFoundError(
+            f"QE state schema file was not found: {schema_file}"
+        )
+
+    try:
+        root = ET.parse(schema_file).getroot()
+    except ET.ParseError as exc:
+        raise ValueError(
+            f"QE state schema is not valid XML: {schema_file}"
+        ) from exc
+
+    values = {
+        'noncollinear': None,
+        'spin_orbit': None,
+    }
+    tag_names = {
+        'noncolin': 'noncollinear',
+        'spinorbit': 'spin_orbit',
+    }
+
+    for element in root.iter():
+        local_name = str(element.tag).rsplit('}', 1)[-1].lower()
+
+        if local_name not in tag_names:
+            continue
+
+        text = str(element.text or '').strip().lower().strip('.')
+
+        if text in {'true', 't', '1', 'yes'}:
+            value = True
+        elif text in {'false', 'f', '0', 'no'}:
+            value = False
+        else:
+            raise ValueError(
+                f"QE state schema has an invalid {local_name} value "
+                f"in '{schema_file}': {element.text}"
+            )
+
+        values[tag_names[local_name]] = value
+
+    return {
+        'schema_file': schema_file.resolve(),
+        **values,
+    }
+
+
+def validate_qe_state_spin_orbit(
+    state_dir,
+    expected,
+    prefix='nanoworks',
+):
+    """Ensure a saved QE state matches the requested SOC workflow."""
+    settings = read_qe_state_spin_settings(
+        state_dir,
+        prefix=prefix,
+    )
+    expected = bool(expected)
+
+    if expected:
+        if not (
+            settings['noncollinear'] is True
+            and settings['spin_orbit'] is True
+        ):
+            raise RuntimeError(
+                'QE SOC post-processing requires a saved state with '
+                'noncolin=true and spinorbit=true. Rerun Ground_calc with '
+                'SOC_calc = True. State schema: '
+                f"{settings['schema_file']}"
+            )
+    elif settings['spin_orbit'] is True:
+        raise RuntimeError(
+            'The saved QE state contains spin-orbit wavefunctions, but the '
+            'current input has SOC_calc = False. Use SOC_calc = True or '
+            'rerun the ground state without SOC. State schema: '
+            f"{settings['schema_file']}"
+        )
+
+    return settings
 
 def resolve_qe_executable(
     executable='pw.x',
@@ -8563,6 +8656,12 @@ def run_nscf(
             f"for the NSCF calculation: {state_dir}"
         )
 
+    validate_qe_state_spin_orbit(
+        state_dir,
+        expected=spin_orbit,
+        prefix=prefix,
+    )
+
     mesh = resolve_qe_kpoint_size(
         atoms,
         density=kpoint_density,
@@ -8723,6 +8822,12 @@ def run_bands(
             "A valid QE ground-state result is required "
             f"for the bands calculation: {state_dir}"
         )
+
+    validate_qe_state_spin_orbit(
+        state_dir,
+        expected=spin_orbit,
+        prefix=prefix,
+    )
 
     if spin_orbit and projected_band:
         raise NotImplementedError(

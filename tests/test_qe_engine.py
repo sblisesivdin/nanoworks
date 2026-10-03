@@ -73,6 +73,8 @@ from nanoworks.engine.qe import (
     run_hybrid_bands,
     run_hybrid_dos,
     has_qe_state,
+    read_qe_state_spin_settings,
+    validate_qe_state_spin_orbit,
     render_dos_input,
     render_epsilon_input,
     run_epsilon,
@@ -2690,6 +2692,80 @@ class TestQEEngine(unittest.TestCase):
                     state_dir
                 )
             )
+
+    def test_read_qe_state_spin_settings_supports_namespaces(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            save_dir = Path(tmpdir) / 'nanoworks.save'
+            save_dir.mkdir()
+            (save_dir / 'data-file-schema.xml').write_text(
+                '<espresso xmlns="http://www.quantum-espresso.org/ns/qes/">'
+                '<output><magnetization>'
+                '<noncolin>true</noncolin>'
+                '<spinorbit>true</spinorbit>'
+                '</magnetization></output></espresso>',
+                encoding='utf-8',
+            )
+
+            settings = read_qe_state_spin_settings(tmpdir)
+
+        self.assertTrue(settings['noncollinear'])
+        self.assertTrue(settings['spin_orbit'])
+
+    def test_validate_qe_state_spin_orbit_rejects_mismatches(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            save_dir = Path(tmpdir) / 'nanoworks.save'
+            save_dir.mkdir()
+            schema_file = save_dir / 'data-file-schema.xml'
+            schema_file.write_text(
+                '<espresso><spin>'
+                '<noncolin>false</noncolin>'
+                '<spinorbit>false</spinorbit>'
+                '</spin></espresso>',
+                encoding='utf-8',
+            )
+
+            with self.assertRaisesRegex(
+                RuntimeError,
+                'Rerun Ground_calc with SOC_calc = True',
+            ):
+                validate_qe_state_spin_orbit(
+                    tmpdir,
+                    expected=True,
+                )
+
+            schema_file.write_text(
+                '<espresso><spin>'
+                '<noncolin>true</noncolin>'
+                '<spinorbit>true</spinorbit>'
+                '</spin></espresso>',
+                encoding='utf-8',
+            )
+
+            with self.assertRaisesRegex(
+                RuntimeError,
+                'current input has SOC_calc = False',
+            ):
+                validate_qe_state_spin_orbit(
+                    tmpdir,
+                    expected=False,
+                )
+
+    def test_validate_non_soc_state_tolerates_legacy_missing_spin_tags(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            save_dir = Path(tmpdir) / 'nanoworks.save'
+            save_dir.mkdir()
+            (save_dir / 'data-file-schema.xml').write_text(
+                '<espresso/>',
+                encoding='utf-8',
+            )
+
+            settings = validate_qe_state_spin_orbit(
+                tmpdir,
+                expected=False,
+            )
+
+        self.assertIsNone(settings['noncollinear'])
+        self.assertIsNone(settings['spin_orbit'])
 
     @patch('nanoworks.engine.qe.shutil.which')
     def test_resolve_qe_executable_from_path(

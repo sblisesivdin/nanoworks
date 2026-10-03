@@ -3,6 +3,7 @@
 ### Development Version
 
 - `SOC_calc = True` now enables native noncollinear QE spin-orbit Ground, total-DOS, and Band workflows and automatically selects the managed fully-relativistic PseudoDojo set. QE SOC-PDOS, projected bands, magnetic SOC, and hybrid SOC remain explicit unsupported combinations.
+- QE post-processing validates the saved state's `noncolin` and `spinorbit` metadata, preventing SOC and non-SOC ground states from being mixed accidentally.
 - This Nanoworks version supports Quantum ESPRESSO 7.4.1; a different detected QE version now emits a warning and the calculation continues.
 - ``dftsolve`` no longer suppresses Python warnings globally, so QE version compatibility warnings remain visible to users.
 - Nanoworks installers leave QE and thermo_pw externally managed and state the supported QE 7.4.1/thermo_pw 2.1.0 pair explicitly.

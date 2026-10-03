@@ -649,6 +649,57 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             ],
         )
 
+    def test_qe_preflight_rejects_non_soc_state_for_soc_postprocessing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            struct = Path(tmpdir) / 'tungsten'
+            save_dir = Path(
+                str(struct) + '-GROUND-QE-Result-State'
+            ) / 'nanoworks.save'
+            save_dir.mkdir(parents=True)
+            (save_dir / 'data-file-schema.xml').write_text(
+                '<espresso><spin>'
+                '<noncolin>false</noncolin>'
+                '<spinorbit>false</spinorbit>'
+                '</spin></espresso>',
+                encoding='utf-8',
+            )
+            config = DFTConfig(
+                Engine='QE',
+                Ground_calc=False,
+                DOS_calc=True,
+                SOC_calc=True,
+                bulk_configuration=Atoms(
+                    'W',
+                    cell=[3.16, 3.16, 3.16],
+                    pbc=True,
+                ),
+            )
+
+            with (
+                patch(
+                    'nanoworks.dftsolve.shutil.which',
+                    return_value='/usr/bin/qe',
+                ),
+                patch(
+                    'nanoworks.dftsolve.get_qe_pseudo_dir',
+                    return_value=Path('/pseudos/full'),
+                ),
+                patch(
+                    'nanoworks.dftsolve.resolve_qe_pseudopotentials',
+                    return_value={'W': 'W.upf'},
+                ),
+            ):
+                report = check_dft_configuration(
+                    config,
+                    struct=struct,
+                )
+
+        self.assertFalse(report['ok'])
+        self.assertIn(
+            'ground-state-spin-mode',
+            [error['name'] for error in report['errors']],
+        )
+
     def test_check_cli_does_not_create_output_or_run_calculations(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir = Path(tmpdir)

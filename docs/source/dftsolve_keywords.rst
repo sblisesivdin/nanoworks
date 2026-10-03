@@ -270,6 +270,12 @@ or:
     SOC-PDOS, projected bands, magnetic SOC, and hybrid SOC fail explicitly
     instead of silently running a different physical model.
 
+    When ``Ground_calc = False`` reuses an existing QE state, Nanoworks reads
+    ``noncolin`` and ``spinorbit`` from ``data-file-schema.xml``. An SOC input
+    cannot reuse a scalar-relativistic state, and a non-SOC input cannot reuse
+    an SOC state. Rerun the ground calculation with the matching ``SOC_calc``
+    value when changing modes.
+
 .. code-block:: python
 
     SOC_calc = True
