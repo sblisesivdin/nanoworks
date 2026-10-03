@@ -24,6 +24,10 @@ from nanoworks.hybrids import (
     validate_exx_cutoff,
     validate_exx_kpoint_density,
 )
+from nanoworks.elasticity import (
+    calculate_2d_elastic_properties,
+    resolve_elastic_dimensionality,
+)
 
 QE_REFERENCE_VERSION = (7, 4, 1)
 THERMO_PW_SUPPORTED_VERSION = (2, 1, 0)
@@ -7923,6 +7927,8 @@ def run_thermo_pw_elastic(
     electrostatic_normal_axis='z',
     dipole_correction=False,
     vdw_calc='None',
+    elastic_dimensionality='auto',
+    elastic_normal_axis='z',
 ):
     """Render and run the supported thermo_pw elastic workflow."""
     input_file = Path(input_file).expanduser().resolve()
@@ -8021,6 +8027,20 @@ def run_thermo_pw_elastic(
             + f". See '{output_file}'."
         )
 
+    dimensionality = resolve_elastic_dimensionality(
+        atoms,
+        dimensionality=elastic_dimensionality,
+        normal_axis=elastic_normal_axis,
+    )
+    two_dimensional_properties = None
+
+    if dimensionality['resolved'] == '2D':
+        two_dimensional_properties = calculate_2d_elastic_properties(
+            result['elastic_tensor_gpa'],
+            dimensionality['cell_length_angstrom'],
+            normal_axis=dimensionality['normal_axis'],
+        )
+
     return {
         'input_file': input_file,
         'output_file': output_file,
@@ -8029,6 +8049,8 @@ def run_thermo_pw_elastic(
         'state_dir': state_dir,
         'kpoint_size': mesh,
         'thermo_pw_supported_version': THERMO_PW_SUPPORTED_VERSION,
+        'elastic_dimensionality': dimensionality,
+        'two_dimensional_properties': two_dimensional_properties,
         'execution': execution,
         'result': result,
     }

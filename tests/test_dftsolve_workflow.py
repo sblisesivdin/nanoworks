@@ -152,6 +152,21 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         ):
             DFTConfig(Density_cutoff_ratio=0.5)
 
+    def test_config_normalizes_elastic_dimensionality_settings(self):
+        config = DFTConfig(
+            Elastic_dimensionality='2d',
+            Elastic_normal_axis='Z',
+        )
+
+        self.assertEqual(config.Elastic_dimensionality, '2D')
+        self.assertEqual(config.Elastic_normal_axis, 'z')
+
+        with self.assertRaisesRegex(ValueError, 'Elastic_dimensionality'):
+            DFTConfig(Elastic_dimensionality='slab')
+
+        with self.assertRaisesRegex(ValueError, 'Elastic_normal_axis'):
+            DFTConfig(Elastic_normal_axis='c')
+
     def test_config_normalizes_and_validates_electrostatic_settings(self):
         config = DFTConfig(
             Engine='QE',
@@ -902,6 +917,10 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             self.assertEqual(
                 elastic_job['metadata']['thermo_pw_version'],
                 '2.1.0',
+            )
+            self.assertEqual(
+                elastic_job['metadata']['dimensionality']['resolved'],
+                '3D',
             )
             thermo_control = (
                 Path(elastic_job['working_directory'])

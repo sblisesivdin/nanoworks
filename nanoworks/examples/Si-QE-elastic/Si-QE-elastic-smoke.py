@@ -40,6 +40,7 @@ Elastic_kpts_x = 2
 Elastic_kpts_y = 2
 Elastic_kpts_z = 2
 Elastic_gamma = True
+Elastic_dimensionality = '3D'
 
 Spin_calc = False
 Total_charge = 0.0

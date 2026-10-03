@@ -268,6 +268,11 @@ from nanoworks.hybrids import (
     validate_exx_cutoff,
     validate_exx_kpoint_density,
 )
+from nanoworks.elasticity import (
+    normalize_elastic_dimensionality,
+    normalize_elastic_normal_axis,
+    resolve_elastic_dimensionality,
+)
 from argparse import ArgumentParser, HelpFormatter
 from dataclasses import dataclass, field
 from typing import Optional, Dict, List, Any
@@ -343,6 +348,8 @@ class DFTConfig:
     Elastic_kpts_y: Optional[int] = None
     Elastic_kpts_z: Optional[int] = None
     Elastic_gamma: Optional[bool] = None
+    Elastic_dimensionality: str = 'auto'
+    Elastic_normal_axis: str = 'z'
     
     # Ground state parameters
     Wavefunction_cutoff: float = 340
@@ -467,6 +474,12 @@ class DFTConfig:
     def __post_init__(self):
         """Initialize default values that depend on other objects."""
         self.Engine = normalize_engine_name(self.Engine)
+        self.Elastic_dimensionality = normalize_elastic_dimensionality(
+            self.Elastic_dimensionality
+        )
+        self.Elastic_normal_axis = normalize_elastic_normal_axis(
+            self.Elastic_normal_axis
+        )
 
         try:
             engine_defaults = (
@@ -1087,6 +1100,8 @@ class dftsolve:
         self.Elastic_kpts_y = config.Elastic_kpts_y
         self.Elastic_kpts_z = config.Elastic_kpts_z
         self.Elastic_gamma = config.Elastic_gamma
+        self.Elastic_dimensionality = config.Elastic_dimensionality
+        self.Elastic_normal_axis = config.Elastic_normal_axis
         self.Wavefunction_cutoff = config.Wavefunction_cutoff
         self.Density_cutoff_ratio = config.Density_cutoff_ratio
         self.Electrostatic_boundary = config.Electrostatic_boundary
@@ -2053,9 +2068,13 @@ class dftsolve:
             parallel_cores=self.parallel_cores,
             executable='thermo_pw.x',
             prefix='nanoworks',
+            elastic_dimensionality=self.Elastic_dimensionality,
+            elastic_normal_axis=self.Elastic_normal_axis,
         )
         tensor = workflow['result']['elastic_tensor_gpa']
         moduli = workflow['result']['elastic_moduli']
+        dimensionality = workflow['elastic_dimensionality']
+        two_dimensional = workflow['two_dimensional_properties']
         result_file = Path(
             self.struct + '-ELASTIC-QE-Result-Elastic-AllResults.txt'
         )
@@ -2067,6 +2086,59 @@ class dftsolve:
                 floatmode='fixed',
             ),
         ]
+
+        if two_dimensional is not None:
+            first_axis, second_axis = {
+                'x': ('y', 'z'),
+                'y': ('x', 'z'),
+                'z': ('x', 'y'),
+            }[two_dimensional['normal_axis']]
+            result_lines.extend([
+                '',
+                'Two-dimensional in-plane elastic properties:',
+                (
+                    'Normal axis: '
+                    + two_dimensional['normal_axis']
+                ),
+                (
+                    'Normal cell length used for the vacuum correction: '
+                    f"{two_dimensional['normal_cell_length_angstrom']:.6f} A"
+                ),
+                'In-plane stiffness matrix (N/m):',
+                np.array2string(
+                    two_dimensional['stiffness_n_per_m'],
+                    precision=6,
+                    floatmode='fixed',
+                ),
+                (
+                    f'Young modulus ({first_axis}): '
+                    f"{two_dimensional['young_modulus_first_n_per_m']:.6f} N/m"
+                ),
+                (
+                    f'Young modulus ({second_axis}): '
+                    f"{two_dimensional['young_modulus_second_n_per_m']:.6f} N/m"
+                ),
+                (
+                    'In-plane shear modulus: '
+                    f"{two_dimensional['shear_modulus_n_per_m']:.6f} N/m"
+                ),
+                (
+                    f'Poisson ratio ({first_axis}->{second_axis}): '
+                    f"{two_dimensional['poisson_ratio_first_second']:.6f}"
+                ),
+                (
+                    f'Poisson ratio ({second_axis}->{first_axis}): '
+                    f"{two_dimensional['poisson_ratio_second_first']:.6f}"
+                ),
+            ])
+            result_lines.extend([
+                '',
+                (
+                    'The thermo_pw Voigt/Reuss/Hill values below are '
+                    'volume-normalized 3D supercell values and therefore '
+                    'depend on the vacuum length.'
+                ),
+            ])
 
         for name in ('voigt', 'reuss', 'hill'):
             values = moduli.get(name)
@@ -2096,8 +2168,21 @@ class dftsolve:
         parprint("Elastic tensor Cij (GPa):")
         parprint(tensor)
 
+        if two_dimensional is not None:
+            parprint(
+                'Two-dimensional elastic properties were resolved '
+                f"from the {dimensionality['normal_axis']}-normal "
+                'supercell and written in N/m.'
+            )
+
         if 'hill' in moduli:
-            parprint("Voigt-Reuss-Hill elastic moduli:")
+            if two_dimensional is None:
+                parprint("Voigt-Reuss-Hill elastic moduli:")
+            else:
+                parprint(
+                    'Volume-normalized thermo_pw Voigt-Reuss-Hill '
+                    'moduli (vacuum-dependent for this 2D structure):'
+                )
             for key, value in moduli['hill'].items():
                 if value is not None:
                     parprint(f"  {key}: {value:.6f}")
@@ -6838,6 +6923,41 @@ def check_dft_configuration(
             + ' atom(s)',
         )
 
+    if config.Elastic_calc:
+        try:
+            elastic_dimensionality = normalize_elastic_dimensionality(
+                config.Elastic_dimensionality
+            )
+            elastic_normal_axis = normalize_elastic_normal_axis(
+                config.Elastic_normal_axis
+            )
+            dimensionality_detail = (
+                f'{elastic_dimensionality}, normal axis '
+                f'{elastic_normal_axis}'
+            )
+
+            if config.bulk_configuration is not None:
+                dimensionality = resolve_elastic_dimensionality(
+                    config.bulk_configuration,
+                    dimensionality=elastic_dimensionality,
+                    normal_axis=elastic_normal_axis,
+                )
+                dimensionality_detail += (
+                    f", resolved as {dimensionality['resolved']}"
+                )
+        except Exception as exc:
+            add(
+                'error',
+                'elastic-dimensionality',
+                str(exc),
+            )
+        else:
+            add(
+                'ok',
+                'elastic-dimensionality',
+                dimensionality_detail,
+            )
+
     if config.Wavefunction_cutoff <= 0:
         add(
             'error',
@@ -7577,6 +7697,11 @@ def prepare_qe_dry_run(
                 'driver': 'thermo_pw',
                 'thermo_pw_version': '2.1.0',
                 'calculation': 'scf_elastic_constants',
+                'dimensionality': resolve_elastic_dimensionality(
+                    atoms,
+                    dimensionality=config.Elastic_dimensionality,
+                    normal_axis=config.Elastic_normal_axis,
+                ),
             },
         )
 

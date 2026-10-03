@@ -105,6 +105,41 @@ or:
 
     Elastic_calc = True
 
+.. describe:: Elastic_dimensionality
+
+    :Type: ``string``
+    :Default: ``'auto'``
+
+    Controls dimensional reporting for QE/thermo_pw elastic results. Allowed
+    values are ``'auto'``, ``'2D'``, and ``'3D'``. Automatic mode classifies
+    the structure as two-dimensional when the largest periodic nuclear gap
+    along ``Elastic_normal_axis`` is at least 5 Angstrom and 30 percent of the
+    corresponding cell-vector length, and that cell vector is at least 1.5
+    times the longer in-plane vector. Use an explicit value when this
+    conservative geometric criterion is not appropriate for the structure.
+
+.. code-block:: python
+
+    Elastic_dimensionality = '2D'
+
+.. describe:: Elastic_normal_axis
+
+    :Type: ``string``
+    :Default: ``'z'``
+
+    Cell-vector direction normal to a two-dimensional material. Allowed
+    values are ``'x'``, ``'y'``, and ``'z'``. For a resolved 2D calculation,
+    Nanoworks multiplies the thermo_pw GPa tensor by this normal cell-vector
+    length and reports the intrinsic in-plane stiffness matrix, directional
+    Young moduli, shear modulus, and Poisson ratios in N/m. The conversion
+    length is written to the result file so the vacuum correction is explicit.
+    The raw thermo_pw GPa tensor and 3D Voigt/Reuss/Hill values are retained
+    for traceability and labeled as vacuum-dependent supercell quantities.
+
+.. code-block:: python
+
+    Elastic_normal_axis = 'z'
+
 .. describe:: DOS_calc
 
     :Type: ``boolean``

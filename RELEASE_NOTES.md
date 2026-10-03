@@ -7,6 +7,7 @@
 - Nanoworks installers leave QE and thermo_pw externally managed and state the supported QE 7.4.1/thermo_pw 2.1.0 pair explicitly.
 - QE elastic calculations use thermo_pw 2.1.0 as the primary driver with ``scf_elastic_constants`` and the advanced elastic algorithm. The Python ``elastic`` workflow remains GPAW-only.
 - QE thermo_pw results include the 6x6 elastic tensor and parsed Voigt, Reuss, and Voigt-Reuss-Hill bulk, Young, shear, and Poisson properties in a Nanoworks summary.
+- QE thermo_pw elastic results automatically identify slab geometries and report vacuum-corrected in-plane stiffness, Young and shear moduli, and Poisson ratios in N/m; explicit dimensionality and normal-axis overrides are available.
 - QE Slurm dry runs preserve thermo_pw's standard-input execution model instead of incorrectly adding the ``-i`` option.
 - QE `pw.x` SCF inputs can explicitly request stress, and the final raw stress tensor and pressure are parsed in kbar.
 - `vdW_calc='D3'` now enables Quantum ESPRESSO's native Grimme-D3 correction across every `pw.x` stage.
