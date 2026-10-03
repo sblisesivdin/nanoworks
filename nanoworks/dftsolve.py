@@ -8487,7 +8487,8 @@ def write_qe_slurm_script(
         lines.append('')
     else:
         lines.extend([
-            '# Load the site-specific Quantum ESPRESSO module here if needed.',
+            '# Load the site-specific Quantum ESPRESSO 7.4.1 module here.',
+            '# Elastic jobs also require thermo_pw 2.1.0.',
         ])
 
     lines.extend([
@@ -8509,14 +8510,28 @@ def write_qe_slurm_script(
         lines.append('')
 
     for job in jobs:
-        command = shlex.join([
+        command_parts = [
             'srun',
             '-n',
             str(parallel_cores),
             str(job['executable']),
-            '-i',
-            str(job['input_file']),
-        ])
+        ]
+        input_from_stdin = bool(
+            job.get('input_from_stdin')
+        )
+
+        if not input_from_stdin:
+            command_parts.extend([
+                '-i',
+                str(job['input_file']),
+            ])
+
+        command = shlex.join(command_parts)
+        input_redirect = (
+            ' < ' + shlex.quote(str(job['input_file']))
+            if input_from_stdin
+            else ''
+        )
         output_file = shlex.quote(
             str(job['output_file'])
         )
@@ -8526,7 +8541,7 @@ def write_qe_slurm_script(
 
         if working_directory is None:
             lines.append(
-                f"{command} > {output_file}"
+                f"{command}{input_redirect} > {output_file}"
             )
         else:
             lines.append(
@@ -8534,6 +8549,7 @@ def write_qe_slurm_script(
                 + shlex.quote(str(working_directory))
                 + ' && '
                 + command
+                + input_redirect
                 + ' > '
                 + output_file
                 + ')'

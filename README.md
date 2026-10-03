@@ -116,13 +116,15 @@ Generate a Slurm batch script together with the input deck:
 dftsolve --dry-run --scheduler slurm -p 48 \
   --slurm-time 2-00:00:00 --slurm-memory 64G \
   --slurm-account PROJECT --slurm-qos normal \
-  --slurm-module gcc/13.2 --slurm-module quantum-espresso/7.3.1 \
+  --slurm-module gcc/13.2 --slurm-module quantum-espresso/7.4.1 \
   -i input.py -g geometry.cif
 ```
 
 The generated `.slurm` file uses one MPI task per requested process and
 sequential `srun` steps. If `--slurm-module` is omitted, add the site-specific
-Quantum ESPRESSO environment setup before submitting it with `sbatch`.
+Quantum ESPRESSO 7.4.1 environment setup before submitting it with `sbatch`.
+Elastic workflows must also load thermo_pw 2.1.0 when the site packages it as
+a separate module.
 
 Reusable cluster settings can be stored in
 `~/.config/nanoworks/clusters/truba.json` and selected by name:

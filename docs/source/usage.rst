@@ -108,7 +108,7 @@ batch script:
        --slurm-time 2-00:00:00 --slurm-memory 64G \
        --slurm-account PROJECT --slurm-qos normal \
        --slurm-module gcc/13.2 \
-       --slurm-module quantum-espresso/7.3.1 \
+       --slurm-module quantum-espresso/7.4.1 \
        -g geometry.cif -i input.py
 
 The requested process count becomes both ``#SBATCH --ntasks`` and the task
@@ -116,8 +116,10 @@ count for each sequential ``srun`` step. Optional account, partition, memory,
 wall-time, QoS, and job-name settings are written as ``#SBATCH`` directives.
 Each ``--slurm-module`` value becomes a ``module load`` line and is also stored
 in the JSON plan. Repeat the option when the site requires compiler, MPI, and
-Quantum ESPRESSO modules. If the option is omitted, add the site-specific
-environment setup to the generated ``.slurm`` file before submission.
+Quantum ESPRESSO modules. Use the QE 7.4.1 module and, for elastic workflows,
+also load thermo_pw 2.1.0 if the site provides it separately. If the option is
+omitted, add the site-specific environment setup to the generated ``.slurm``
+file before submission.
 
 Reusable Cluster Profiles
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -135,7 +137,7 @@ every command. Pass a file path directly or place a named profile at
        "partition": "compute",
        "account": "YOUR_PROJECT",
        "qos": "normal",
-       "modules": ["quantum-espresso/7.6"],
+       "modules": ["quantum-espresso/7.4.1"],
        "job_name": "nanoworks-qe"
      }
    }

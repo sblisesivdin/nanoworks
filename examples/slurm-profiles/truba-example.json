@@ -6,7 +6,7 @@
     "account": "YOUR_PROJECT",
     "qos": "normal",
     "modules": [
-      "quantum-espresso/7.6"
+      "quantum-espresso/7.4.1"
     ],
     "job_name": "nanoworks-qe"
   }

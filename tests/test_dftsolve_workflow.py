@@ -968,7 +968,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 qos='normal',
                 modules=[
                     'gcc/13.2',
-                    'quantum-espresso/7.3.1',
+                    'quantum-espresso/7.4.1',
                 ],
                 job_name='Si combined workflow',
                 profile_file='/profiles/truba.json',
@@ -1009,12 +1009,22 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 slurm_text,
             )
             self.assertIn(
-                'module load quantum-espresso/7.3.1',
+                'module load quantum-espresso/7.4.1',
                 slurm_text,
             )
             self.assertEqual(
                 slurm_text.count('srun -n 4'),
                 len(plan['jobs']),
+            )
+            thermo_command = next(
+                line
+                for line in slurm_text.splitlines()
+                if 'srun -n 4 thermo_pw.x' in line
+            )
+            self.assertNotIn('thermo_pw.x -i', thermo_command)
+            self.assertIn(
+                '< ' + elastic_job['input_file'],
+                thermo_command,
             )
             slurm_syntax = subprocess.run(
                 [
@@ -1234,7 +1244,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                         '--slurm-module',
                         'gcc/13.2',
                         '--slurm-module',
-                        'quantum-espresso/7.3.1',
+                        'quantum-espresso/7.4.1',
                         '-i',
                         str(input_file),
                         '-g',
@@ -1276,7 +1286,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 qos='normal',
                 modules=[
                     'gcc/13.2',
-                    'quantum-espresso/7.3.1',
+                    'quantum-espresso/7.4.1',
                 ],
                 job_name=None,
                 profile_file=None,
@@ -1446,7 +1456,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                         'qos': 'normal',
                         'modules': [
                             'gcc/13.2',
-                            'quantum-espresso/7.3.1',
+                            'quantum-espresso/7.4.1',
                         ],
                         'job_name': 'nanoworks-qe',
                     },
@@ -1466,7 +1476,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             profile['modules'],
             [
                 'gcc/13.2',
-                'quantum-espresso/7.3.1',
+                'quantum-espresso/7.4.1',
             ],
         )
         self.assertEqual(
