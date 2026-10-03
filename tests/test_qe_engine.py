@@ -4308,6 +4308,61 @@ class TestQEEngine(unittest.TestCase):
             workflow['fermi_energy_ev'],
             5.0,
         )
+        self.assertEqual(workflow['energy_reference_ev'], 5.0)
+        self.assertEqual(
+            workflow['energy_reference'],
+            {
+                'energy_ev': 5.0,
+                'source': 'fermi',
+            },
+        )
+
+    def test_run_hybrid_dos_uses_midgap_reference_for_semiconductor(self):
+        scf_workflow = {
+            'result': {
+                'fermi_energy_ev': None,
+                'highest_occupied_ev': 4.0,
+                'lowest_unoccupied_ev': 6.0,
+            },
+        }
+
+        with patch(
+            'nanoworks.engine.qe.run_scf',
+            return_value=scf_workflow,
+        ), patch(
+            'nanoworks.engine.qe.run_dos',
+            return_value={'dos_file': 'dos.dat'},
+        ) as run_dos_mock, patch(
+            'nanoworks.engine.qe.run_projwfc',
+            return_value={'pdos_tot_file': 'pdos.dat'},
+        ):
+            workflow = run_hybrid_dos(
+                atoms=Atoms('Si'),
+                scf_input_file='scf.in',
+                scf_output_file='scf.out',
+                dos_input_file='dos.in',
+                dos_output_file='dos.out',
+                dos_file='dos.dat',
+                pdos_input_file='pdos.in',
+                pdos_output_file='pdos.out',
+                pdos_prefix='pdos',
+                state_dir='state',
+                pseudopotentials={'Si': 'Si.upf'},
+                pseudo_dir='/tmp/pseudos',
+                cutoff_ev=500.0,
+                xc_calc='HSE06',
+                emin=-5.0,
+                emax=5.0,
+                relative_to_fermi=True,
+            )
+
+        self.assertEqual(run_dos_mock.call_args.kwargs['emin'], 0.0)
+        self.assertEqual(run_dos_mock.call_args.kwargs['emax'], 10.0)
+        self.assertEqual(workflow['energy_reference_ev'], 5.0)
+        self.assertEqual(
+            workflow['energy_reference']['source'],
+            'midgap',
+        )
 
     def test_run_hybrid_dos_rejects_nonhybrid_xc(self):
         with self.assertRaisesRegex(

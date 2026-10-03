@@ -2,6 +2,7 @@
 
 ### Development Version
 
+- QE DOS now uses the same Fermi, midgap, or highest-occupied energy-reference policy as QE bands, so semiconductor and SOC DOS workflows do not require a literal Fermi-energy line in the QE output.
 - `SOC_calc = True` now enables native noncollinear QE spin-orbit Ground, total-DOS, and Band workflows and automatically selects the managed fully-relativistic PseudoDojo set. QE SOC-PDOS, projected bands, magnetic SOC, and hybrid SOC remain explicit unsupported combinations.
 - QE post-processing validates the saved state's `noncolin` and `spinorbit` metadata, preventing SOC and non-SOC ground states from being mixed accidentally.
 - This Nanoworks version supports Quantum ESPRESSO 7.4.1; a different detected QE version now emits a warning and the calculation continues.

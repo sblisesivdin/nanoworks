@@ -21,5 +21,8 @@ PseudoDojo set:
 
 QE SOC and non-SOC calculations must use separate output directories. A saved
 ground state created with one mode is rejected if reused with the other mode.
+For semiconductors such as WSe2, QE DOS and band energies use the middle of the
+reported valence and conduction band edges as zero when QE does not print a
+Fermi energy.
 
 Because we use `Outdirname` variable, results are saved in different folders.

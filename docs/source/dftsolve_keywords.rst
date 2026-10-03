@@ -170,6 +170,10 @@ or:
     started. Hybrid DOS/PDOS uses a dedicated hybrid SCF state and does not
     attempt a separate hybrid NSCF calculation. Spin-polarized calculations
     produce resolved spin-up and spin-down DOS/PDOS data and figures.
+    QE DOS energies and the requested ``Energy_min``/``Energy_max`` window
+    use the same zero as QE bands: the Fermi energy when QE reports one, the
+    middle of the valence/conduction band edges for a semiconductor, or the
+    highest occupied energy when only that edge is available.
 
 .. describe:: Band_calc
 

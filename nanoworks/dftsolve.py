@@ -3274,39 +3274,46 @@ class dftsolve:
                 "QE DOS NSCF calculation finished."
             )
 
-            if result['fermi_energy_ev'] is not None:
-                parprint(
-                    "NSCF Fermi energy: "
-                    f"{result['fermi_energy_ev']:.8f} eV"
-                )
-
         if self.DOS_npoints is None or int(self.DOS_npoints) < 2:
             raise ValueError(
                 "DOS_npoints must be at least 2 for QE DOS calculations."
             )
 
-        fermi_energy = None
+        energy_reference_ev = None
+        energy_reference_source = None
 
         dos_emin_absolute = None
         dos_emax_absolute = None
 
         if not hybrid:
-            fermi_energy = result[
-                'fermi_energy_ev'
-            ]
-
-            if fermi_energy is None:
-                raise RuntimeError(
-                    "QE DOS requires a Fermi energy from the NSCF calculation."
+            try:
+                energy_reference = (
+                    self.engine.resolve_qe_band_reference(
+                        result
+                    )
                 )
+            except (KeyError, TypeError, ValueError) as exc:
+                raise RuntimeError(
+                    'QE DOS requires a Fermi or band-edge energy '
+                    'reference from the NSCF calculation.'
+                ) from exc
+
+            energy_reference_ev = energy_reference['energy_ev']
+            energy_reference_source = energy_reference['source']
+
+            parprint(
+                'NSCF DOS energy reference: '
+                f'{energy_reference_ev:.8f} eV '
+                f'({energy_reference_source})'
+            )
 
             dos_emin_absolute = (
-                float(fermi_energy)
+                float(energy_reference_ev)
                 + float(self.Energy_min)
             )
 
             dos_emax_absolute = (
-                float(fermi_energy)
+                float(energy_reference_ev)
                 + float(self.Energy_max)
             )
 
@@ -3415,11 +3422,16 @@ class dftsolve:
 
             workflow = hybrid_workflow['scf']
             result = workflow['result']
-            fermi_energy = hybrid_workflow.get(
-                'fermi_energy_ev'
+            energy_reference_ev = hybrid_workflow.get(
+                'energy_reference_ev',
+                hybrid_workflow.get('fermi_energy_ev'),
+            )
+            energy_reference_source = (
+                hybrid_workflow.get('energy_reference', {})
+                .get('source')
             )
 
-            if fermi_energy is None:
+            if energy_reference_ev is None:
                 raise RuntimeError(
                     "QE hybrid DOS requires an energy reference from "
                     "the hybrid SCF calculation."
@@ -3430,6 +3442,19 @@ class dftsolve:
 
             parprint(
                 "QE hybrid SCF, DOS and PDOS workflow finished."
+            )
+
+            reference_suffix = ''
+
+            if energy_reference_source is not None:
+                reference_suffix = (
+                    f' ({energy_reference_source})'
+                )
+
+            parprint(
+                'Hybrid DOS energy reference: '
+                f'{energy_reference_ev:.8f} eV'
+                f'{reference_suffix}'
             )
         else:
             parprint(
@@ -3482,7 +3507,7 @@ class dftsolve:
             )
 
         shifted_energies = [
-            energy - fermi_energy
+            energy - energy_reference_ev
             for energy in dos_result['energies_ev']
         ]
 
@@ -3738,7 +3763,7 @@ class dftsolve:
             )
 
         pdos_shifted_energies = [
-            energy - fermi_energy
+            energy - energy_reference_ev
             for energy in pdos_result['energies_ev']
         ]
 

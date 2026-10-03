@@ -5605,7 +5605,7 @@ def parse_pw_relaxed_structure(
     return atoms
 
 def resolve_qe_band_reference(result):
-    """Resolve the energy reference used for QE band outputs."""
+    """Resolve the shared energy reference for QE DOS and band outputs."""
     fermi_energy = result.get(
         'fermi_energy_ev'
     )
@@ -9533,12 +9533,14 @@ def run_hybrid_dos(
     )
 
     energy_reference = None
+    energy_reference_details = None
 
     if relative_to_fermi:
         try:
-            energy_reference = resolve_qe_band_reference(
+            energy_reference_details = resolve_qe_band_reference(
                 scf_workflow['result']
-            )['energy_ev']
+            )
+            energy_reference = energy_reference_details['energy_ev']
         except (
             AttributeError,
             KeyError,
@@ -9592,6 +9594,8 @@ def run_hybrid_dos(
         'dos': dos_workflow,
         'pdos': pdos_workflow,
         'fermi_energy_ev': energy_reference,
+        'energy_reference_ev': energy_reference,
+        'energy_reference': energy_reference_details,
     }
 
 def run_dos(
