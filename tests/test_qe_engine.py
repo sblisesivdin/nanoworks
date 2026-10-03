@@ -151,6 +151,19 @@ class TestQEEngine(unittest.TestCase):
             text,
         )
 
+    def test_scf_soc_uses_noncollinear_spinor_settings(self):
+        text = render_scf_input(
+            atoms=bulk('W', 'bcc', a=3.16),
+            pseudopotentials={'W': 'W.upf'},
+            cutoff_ev=500.0,
+            kpoint_size=(2, 2, 2),
+            spin_orbit=True,
+        )
+
+        self.assertIn('  noncolin = .true.,', text)
+        self.assertIn('  lspinorb = .true.,', text)
+        self.assertNotIn('  nspin = 2,', text)
+
     def test_build_and_render_qe_exx_additional_kpoints(self):
         settings = build_qe_exx_additional_kpoints(
             band_path={

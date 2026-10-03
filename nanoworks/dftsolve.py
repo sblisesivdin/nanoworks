@@ -244,6 +244,7 @@ from nanoworks.dos import (
 )
 from nanoworks.pseudos import (
     get_qe_pseudo_dir,
+    read_upf_has_spin_orbit,
     resolve_qe_pseudopotentials,
 )
 from nanoworks.occupations import (
@@ -714,6 +715,43 @@ class DFTConfig:
                 "Pseudo_relativistic must be 'scalar' or 'full'."
             )
 
+        if self.Engine == 'QE' and self.SOC_calc:
+            self.Pseudo_relativistic = 'full'
+
+            if self.Spin_calc:
+                raise NotImplementedError(
+                    'QE magnetic spin-orbit workflows are not supported '
+                    'yet. Set Spin_calc = False.'
+                )
+
+            if hybrid_settings is not None:
+                raise NotImplementedError(
+                    'QE hybrid spin-orbit workflows are not supported yet.'
+                )
+
+            if self.Projected_band_plot:
+                raise NotImplementedError(
+                    'QE spin-orbit projected bands are not supported yet. '
+                    'Set Projected_band_plot = False.'
+                )
+
+            unsupported_soc_stages = [
+                name
+                for name, enabled in (
+                    ('elastic', self.Elastic_calc),
+                    ('phonon', self.Phonon_calc),
+                    ('optical', self.Optical_calc),
+                )
+                if enabled
+            ]
+
+            if unsupported_soc_stages:
+                raise NotImplementedError(
+                    'QE spin-orbit workflows are not supported yet for: '
+                    + ', '.join(unsupported_soc_stages)
+                    + '.'
+                )
+
         if (
             self.Pseudopotentials is not None
             and not isinstance(self.Pseudopotentials, dict)
@@ -772,7 +810,36 @@ def resolve_qe_pseudo_configuration(config, atoms):
             **options,
         )
 
+    elif config.SOC_calc:
+        validate_qe_soc_pseudopotentials(
+            pseudopotentials,
+            pseudo_dir,
+        )
+
     return pseudo_dir, pseudopotentials
+
+
+def validate_qe_soc_pseudopotentials(pseudopotentials, pseudo_dir):
+    """Require spin-orbit data in every user-supplied QE UPF file."""
+    for symbol, filename in pseudopotentials.items():
+        path = Path(filename).expanduser()
+
+        if not path.is_absolute():
+            path = Path(pseudo_dir).expanduser() / path
+
+        try:
+            has_spin_orbit = read_upf_has_spin_orbit(path)
+        except (FileNotFoundError, ValueError) as exc:
+            raise ValueError(
+                f"QE SOC could not validate the pseudopotential for "
+                f"{symbol}: {exc}"
+            ) from exc
+
+        if not has_spin_orbit:
+            raise ValueError(
+                'QE SOC requires fully relativistic pseudopotentials; '
+                f"'{path}' for {symbol} has has_so=F."
+            )
 
 
 def ase_scalar_pressure_from_gpa(pressure_gpa):
@@ -1289,6 +1356,12 @@ class dftsolve:
                 **options,
             )
 
+        elif getattr(self, 'SOC_calc', False):
+            validate_qe_soc_pseudopotentials(
+                pseudopotentials,
+                pseudo_dir,
+            )
+
         return pseudo_dir, pseudopotentials
 
     def _create_gpaw_geometry_optimizer(self, target):
@@ -1490,7 +1563,7 @@ class dftsolve:
             pseudo_dir, pseudopotentials = (
                 self._qe_pseudo_configuration()
             )
-        except (FileNotFoundError, RuntimeError) as exc:
+        except (FileNotFoundError, RuntimeError, ValueError) as exc:
             parprint(
                 f"\033[91mERROR:\033[0m {exc}"
             )
@@ -1579,6 +1652,7 @@ class dftsolve:
                     total_charge=self.Total_charge,
                     nbands=self.Ground_num_of_bands,
                     spinpol=self.Spin_calc,
+                    spin_orbit=getattr(self, 'SOC_calc', False),
                     magnetic_moments=magnetic_moments,
                     hubbard_u=self.Hubbard_U,
                     xc_calc=self.XC_calc,
@@ -1658,6 +1732,7 @@ class dftsolve:
                     total_charge=self.Total_charge,
                     nbands=self.Ground_num_of_bands,
                     spinpol=self.Spin_calc,
+                    spin_orbit=getattr(self, 'SOC_calc', False),
                     magnetic_moments=magnetic_moments,
                     hubbard_u=self.Hubbard_U,
                     xc_calc=self.XC_calc,
@@ -3013,14 +3088,6 @@ class dftsolve:
             )
             sys.exit(1)
 
-        if self.SOC_calc:
-            parprint(
-                "\033[91mERROR:\033[0m "
-                "Quantum ESPRESSO SOC DOS calculations are not "
-                "supported yet."
-            )
-            sys.exit(1)
-
         try:
             validated_xc = self.engine.validate_qe_xc(
                 self.XC_calc,
@@ -3071,7 +3138,7 @@ class dftsolve:
             pseudo_dir, pseudopotentials = (
                 self._qe_pseudo_configuration()
             )
-        except (FileNotFoundError, RuntimeError) as exc:
+        except (FileNotFoundError, RuntimeError, ValueError) as exc:
             parprint(
                 f"\033[91mERROR:\033[0m {exc}"
             )
@@ -3168,6 +3235,7 @@ class dftsolve:
                     total_charge=self.Total_charge,
                     nbands=self.DOS_num_of_bands,
                     spinpol=self.Spin_calc,
+                    spin_orbit=getattr(self, 'SOC_calc', False),
                     magnetic_moments=magnetic_moments,
                     hubbard_u=self.Hubbard_U,
                     xc_calc=self.XC_calc,
@@ -3590,6 +3658,24 @@ class dftsolve:
                 fig
             )
 
+        if self.SOC_calc:
+            parprint(
+                'QE SOC total DOS is complete. SOC-resolved projected '
+                'DOS is not supported yet and was not requested.'
+            )
+            time22 = time.time()
+
+            with paropen(
+                self.struct + f'-TIMINGS-{self.Engine}-Log-Timings.txt',
+                'a',
+            ) as f1:
+                print(
+                    f'DOS calculation: {round((time22-time21), 2)}',
+                    file=f1,
+                )
+
+            return
+
         if not hybrid:
             parprint(
                 "Starting QE projected DOS calculation..."
@@ -3787,14 +3873,6 @@ class dftsolve:
             )
             sys.exit(1)
 
-        if self.SOC_calc:
-            parprint(
-                "\033[91mERROR:\033[0m "
-                "Quantum ESPRESSO SOC band calculations "
-                "are not supported yet."
-            )
-            sys.exit(1)
-
         try:
             validated_xc = self.engine.validate_qe_xc(
                 self.XC_calc,
@@ -3845,7 +3923,7 @@ class dftsolve:
             pseudo_dir, pseudopotentials = (
                 self._qe_pseudo_configuration()
             )
-        except (FileNotFoundError, RuntimeError) as exc:
+        except (FileNotFoundError, RuntimeError, ValueError) as exc:
             parprint(
                 f"\033[91mERROR:\033[0m {exc}"
             )
@@ -4024,6 +4102,7 @@ class dftsolve:
                     total_charge=self.Total_charge,
                     nbands=self.Band_num_of_bands,
                     spinpol=self.Spin_calc,
+                    spin_orbit=getattr(self, 'SOC_calc', False),
                     magnetic_moments=magnetic_moments,
                     hubbard_u=self.Hubbard_U,
                     xc_calc=self.XC_calc,
@@ -6906,8 +6985,10 @@ def required_dft_executables(config):
         executables.update({
             'pw.x',
             'dos.x',
-            'projwfc.x',
         })
+
+        if not config.SOC_calc:
+            executables.add('projwfc.x')
 
     if config.Band_calc:
         executables.update({
@@ -7127,9 +7208,9 @@ def check_dft_configuration(
 
         if config.SOC_calc:
             add(
-                'error',
+                'ok',
                 'soc',
-                'QE SOC workflows are not supported yet.',
+                'noncollinear spin-orbit Ground/DOS/Band workflow',
             )
 
         if (
@@ -7628,6 +7709,7 @@ def prepare_qe_dry_run(
         'vdw_calc': config.vdW_calc,
         'total_charge': config.Total_charge,
         'spinpol': config.Spin_calc,
+        'spin_orbit': config.SOC_calc,
         'magnetic_moments': magnetic_moments,
         'hubbard_u': config.Hubbard_U,
         'xc_calc': config.XC_calc,
@@ -7911,26 +7993,33 @@ def prepare_qe_dry_run(
             ),
             depends_on=[dos_electronic_job],
         )
-        add_job(
-            'dos-projected',
-            'dos',
-            'projwfc.x',
-            Path(str(struct) + '-DOS-QE-Input-PDOS.in'),
-            Path(str(struct) + '-DOS-QE-Log-PDOS.txt'),
-            engine.render_projwfc_input(
-                prefix='nanoworks',
-                outdir=dos_state_dir,
-                filpdos=Path(str(struct) + '-DOS-QE-Result-Raw-PDOS'),
-                delta_e=delta_e,
-                degauss=degauss,
-                ngauss=dos_settings['ngauss'],
-            ),
-            depends_on=[dos_electronic_job],
-        )
-        notes.append(
-            "DOS and PDOS dry-run inputs omit Emin/Emax because the absolute "
-            "energy window depends on the electronic-stage Fermi energy."
-        )
+        if config.SOC_calc:
+            notes.append(
+                'QE SOC dry-run includes total DOS only; SOC-resolved PDOS '
+                'is not supported yet.'
+            )
+        else:
+            add_job(
+                'dos-projected',
+                'dos',
+                'projwfc.x',
+                Path(str(struct) + '-DOS-QE-Input-PDOS.in'),
+                Path(str(struct) + '-DOS-QE-Log-PDOS.txt'),
+                engine.render_projwfc_input(
+                    prefix='nanoworks',
+                    outdir=dos_state_dir,
+                    filpdos=Path(str(struct) + '-DOS-QE-Result-Raw-PDOS'),
+                    delta_e=delta_e,
+                    degauss=degauss,
+                    ngauss=dos_settings['ngauss'],
+                ),
+                depends_on=[dos_electronic_job],
+            )
+            notes.append(
+                'DOS and PDOS dry-run inputs omit Emin/Emax because the '
+                'absolute energy window depends on the electronic-stage '
+                'Fermi energy.'
+            )
 
     if config.Band_calc:
         band_path = engine.build_band_path(
@@ -8309,6 +8398,7 @@ def prepare_qe_dry_run(
         'scheduler': 'local',
         'parallel_cores': parallel_cores,
         'spin_polarized': bool(config.Spin_calc),
+        'spin_orbit': bool(config.SOC_calc),
         'stages': list(resolve_calculation_stages(config)),
         'jobs': jobs,
         'notes': notes,

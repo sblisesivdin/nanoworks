@@ -111,6 +111,7 @@ def build_system_settings(
     total_charge=0.0,
     nbands=None,
     spinpol=False,
+    spin_orbit=False,
     xc_calc=None,
     pseudo_xc='pbe',
     exx_fraction=None,
@@ -220,7 +221,10 @@ def build_system_settings(
     if nbands is not None:
         settings['nbnd'] = int(nbands)
 
-    if spinpol:
+    if spin_orbit:
+        settings['noncolin'] = True
+        settings['lspinorb'] = True
+    elif spinpol:
         settings['nspin'] = 2
 
     return settings
@@ -2275,6 +2279,7 @@ def render_pw_input(
     total_charge=0.0,
     nbands=None,
     spinpol=False,
+    spin_orbit=False,
     magnetic_moments=None,
     hubbard_u=None,
     xc_calc='PBE',
@@ -2511,6 +2516,7 @@ def render_pw_input(
         total_charge=total_charge,
         nbands=nbands,
         spinpol=spinpol,
+        spin_orbit=spin_orbit,
         xc_calc=xc_calc,
         pseudo_xc=pseudo_xc,
         exx_fraction=exx_fraction,
@@ -2698,6 +2704,7 @@ def render_scf_input(
     total_charge=0.0,
     nbands=None,
     spinpol=False,
+    spin_orbit=False,
     magnetic_moments=None,
     hubbard_u=None,
     xc_calc='PBE',
@@ -2743,6 +2750,7 @@ def render_scf_input(
         total_charge=total_charge,
         nbands=nbands,
         spinpol=spinpol,
+        spin_orbit=spin_orbit,
         magnetic_moments=magnetic_moments,
         hubbard_u=hubbard_u,
         xc_calc=xc_calc,
@@ -2771,6 +2779,7 @@ def render_nscf_input(
     total_charge=0.0,
     nbands=None,
     spinpol=False,
+    spin_orbit=False,
     magnetic_moments=None,
     hubbard_u=None,
     xc_calc='PBE',
@@ -2814,6 +2823,7 @@ def render_nscf_input(
         total_charge=total_charge,
         nbands=nbands,
         spinpol=spinpol,
+        spin_orbit=spin_orbit,
         magnetic_moments=magnetic_moments,
         hubbard_u=hubbard_u,
         xc_calc=xc_calc,
@@ -2849,6 +2859,7 @@ def render_relax_input(
     total_charge=0.0,
     nbands=None,
     spinpol=False,
+    spin_orbit=False,
     magnetic_moments=None,
     hubbard_u=None,
     xc_calc='PBE',
@@ -2902,6 +2913,7 @@ def render_relax_input(
         total_charge=total_charge,
         nbands=nbands,
         spinpol=spinpol,
+        spin_orbit=spin_orbit,
         magnetic_moments=magnetic_moments,
         hubbard_u=hubbard_u,
         xc_calc=xc_calc,
@@ -2929,6 +2941,7 @@ def render_bands_input(
     total_charge=0.0,
     nbands=None,
     spinpol=False,
+    spin_orbit=False,
     magnetic_moments=None,
     hubbard_u=None,
     xc_calc='PBE',
@@ -2971,6 +2984,7 @@ def render_bands_input(
         total_charge=total_charge,
         nbands=nbands,
         spinpol=spinpol,
+        spin_orbit=spin_orbit,
         magnetic_moments=magnetic_moments,
         hubbard_u=hubbard_u,
         xc_calc=xc_calc,
@@ -8148,6 +8162,7 @@ def run_scf(
     total_charge=0.0,
     nbands=None,
     spinpol=False,
+    spin_orbit=False,
     magnetic_moments=None,
     hubbard_u=None,
     xc_calc='PBE',
@@ -8219,6 +8234,7 @@ def run_scf(
         total_charge=total_charge,
         nbands=nbands,
         spinpol=spinpol,
+        spin_orbit=spin_orbit,
         magnetic_moments=magnetic_moments,
         hubbard_u=hubbard_u,
         xc_calc=xc_calc,
@@ -8309,6 +8325,7 @@ def run_relax(
     total_charge=0.0,
     nbands=None,
     spinpol=False,
+    spin_orbit=False,
     magnetic_moments=None,
     hubbard_u=None,
     xc_calc='PBE',
@@ -8387,6 +8404,7 @@ def run_relax(
         total_charge=total_charge,
         nbands=nbands,
         spinpol=spinpol,
+        spin_orbit=spin_orbit,
         magnetic_moments=magnetic_moments,
         hubbard_u=hubbard_u,
         xc_calc=xc_calc,
@@ -8499,6 +8517,7 @@ def run_nscf(
     total_charge=0.0,
     nbands=None,
     spinpol=False,
+    spin_orbit=False,
     magnetic_moments=None,
     hubbard_u=None,
     xc_calc='PBE',
@@ -8572,6 +8591,7 @@ def run_nscf(
         total_charge=total_charge,
         nbands=nbands,
         spinpol=spinpol,
+        spin_orbit=spin_orbit,
         magnetic_moments=magnetic_moments,
         hubbard_u=hubbard_u,
         xc_calc=xc_calc,
@@ -8653,6 +8673,7 @@ def run_bands(
     total_charge=0.0,
     nbands=None,
     spinpol=False,
+    spin_orbit=False,
     magnetic_moments=None,
     hubbard_u=None,
     xc_calc='PBE',
@@ -8703,6 +8724,12 @@ def run_bands(
             f"for the bands calculation: {state_dir}"
         )
 
+    if spin_orbit and projected_band:
+        raise NotImplementedError(
+            'QE spin-orbit projected bands are not supported yet. '
+            'Set Projected_band_plot = False.'
+        )
+
     occupation_settings = (
         resolve_qe_occupation(
             occupation
@@ -8724,6 +8751,7 @@ def run_bands(
         total_charge=total_charge,
         nbands=nbands,
         spinpol=spinpol,
+        spin_orbit=spin_orbit,
         magnetic_moments=magnetic_moments,
         hubbard_u=hubbard_u,
         xc_calc=xc_calc,

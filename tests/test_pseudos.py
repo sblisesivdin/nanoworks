@@ -20,6 +20,7 @@ from nanoworks.pseudos import (
     load_qe_pseudo_manifest,
     install_qe_pseudopotentials,
     resolve_qe_pseudopotentials,
+    read_upf_has_spin_orbit,
     read_upf_z_valence,
     read_upf_atomic_manifolds,
 )
@@ -349,6 +350,36 @@ class TestPseudopotentials(unittest.TestCase):
                 read_upf_z_valence(
                     pseudo_file
                 )
+
+    def test_read_upf_has_spin_orbit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            full_file = Path(tmp) / 'full.upf'
+            scalar_file = Path(tmp) / 'scalar.upf'
+            full_file.write_text(
+                '<PP_HEADER has_so=".T." />\n',
+                encoding='utf-8',
+            )
+            scalar_file.write_text(
+                '<PP_HEADER has_so="false" />\n',
+                encoding='utf-8',
+            )
+
+            self.assertTrue(read_upf_has_spin_orbit(full_file))
+            self.assertFalse(read_upf_has_spin_orbit(scalar_file))
+
+    def test_read_upf_has_spin_orbit_rejects_missing_metadata(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            pseudo_file = Path(tmp) / 'unknown.upf'
+            pseudo_file.write_text(
+                '<PP_HEADER element="Si" />\n',
+                encoding='utf-8',
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                'Could not determine has_so',
+            ):
+                read_upf_has_spin_orbit(pseudo_file)
 
     def test_read_upf_atomic_manifolds(self):
         with tempfile.TemporaryDirectory() as tmp:

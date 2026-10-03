@@ -42,14 +42,16 @@ or:
     At this stage, ``Engine = 'QE'`` supports PBE PW ground-state,
     fixed-cell and variable-cell geometry optimization, DFT+U, total
     and orbital-projected DOS, band-structure, projected-band, and
-    pseudo-valence electron-density workflows using scalar-relativistic
-    PseudoDojo pseudopotentials. Collinear-spin ground-state, DOS/PDOS,
+    pseudo-valence electron-density workflows using managed PseudoDojo
+    pseudopotentials. Collinear-spin ground-state, DOS/PDOS,
     band, projected-band, and density calculations are supported. Native PBE
     also supports DFPT phonons and ``epsilon.x`` RPA optics. Native
     QE ``HSE06``, ``HSE03``, and ``PBE0`` workflows support ground-state,
     DOS/PDOS, band, projected-band, density, and Grimme-D3 calculations.
-    QE SOC workflows are not supported yet. Semilocal QE elastic calculations
-    use thermo_pw 2.1.0 with Quantum ESPRESSO 7.4.1. Hybrid geometry
+    Nonmagnetic PBE QE SOC supports Ground, total DOS, and Band calculations.
+    SOC-PDOS, projected bands, magnetic SOC, and hybrid SOC are not supported
+    yet. Semilocal QE elastic calculations use thermo_pw 2.1.0 with Quantum
+    ESPRESSO 7.4.1. Hybrid geometry
     optimization, phonon, and optical workflows are also not supported yet.
 
 .. describe:: Mode
@@ -258,7 +260,15 @@ or:
     :Type: ``boolean``
     :Default: ``False``
 
-    Whether Spin Orbit Coupling calculations are added to calculation or not.
+    Enables spin-orbit coupling with one engine-neutral switch. For QE,
+    ``True`` automatically selects the managed fully-relativistic PseudoDojo
+    set and writes ``noncolin=.true.`` and ``lspinorb=.true.`` in every
+    Ground, DOS-NSCF, and Band ``pw.x`` stage. No separate
+    ``Pseudo_relativistic`` setting is required.
+
+    Current QE SOC support is nonmagnetic PBE Ground, total DOS, and Band.
+    SOC-PDOS, projected bands, magnetic SOC, and hybrid SOC fail explicitly
+    instead of silently running a different physical model.
 
 .. code-block:: python
 
@@ -928,8 +938,9 @@ Electronic Calculations Keywords
     Selects scalar- or fully-relativistic pseudopotential resources. For QE,
     both managed PseudoDojo sets are installed by
     ``nanoworks --install-qe-pseudos``. Selecting ``full`` alone does not
-    enable spin-orbit coupling; ``SOC_calc`` controls that physical workflow,
-    and native QE SOC is not supported yet.
+    enable spin-orbit coupling; ``SOC_calc`` controls that physical workflow.
+    When QE ``SOC_calc = True``, Nanoworks automatically uses ``full`` for the
+    managed set. User-supplied UPF files must advertise ``has_so = T``.
 
 .. code-block:: python
 

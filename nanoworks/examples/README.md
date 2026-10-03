@@ -21,7 +21,7 @@ There are some example calculations given with different usage scenarios. Please
 | Si-with-HSE | Ground state, DOS, and band structure of Si with HSE06 Hybrid XC |
 | Si-qe       | Example for QE to Nanoworks conversion with qeconverter |
 | Si-vasp       | Example for VASP to Nanoworks conversion with vaspconverter |
-| SOC-WSe2-noCIF | Example for Spin Orbit Coupling Effect on 2D WSe2 |
+| SOC-WSe2-noCIF | GPAW and QE examples for the spin-orbit coupling effect on 2D WSe2 |
 | Bulk-MoS2-vdW | Grimme-D3 correction on MoS2 
 
 

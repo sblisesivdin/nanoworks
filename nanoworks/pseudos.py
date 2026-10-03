@@ -278,6 +278,48 @@ def read_upf_z_valence(path):
 
     return z_valence
 
+
+def read_upf_has_spin_orbit(path):
+    """Return whether a UPF file contains spin-orbit pseudopotential data."""
+    path = Path(path)
+
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"QE pseudopotential file was not found: {path}"
+        )
+
+    with path.open(
+        'r',
+        encoding='utf-8',
+        errors='ignore',
+    ) as fd:
+        text = fd.read(65536)
+
+    match = re.search(
+        r'\bhas_so\s*=\s*["\']\s*([^"\']+?)\s*["\']',
+        text,
+        flags=re.IGNORECASE,
+    )
+
+    if match is None:
+        raise ValueError(
+            "Could not determine has_so from "
+            f"UPF file '{path}'."
+        )
+
+    value = match.group(1).strip().lower().strip('.')
+
+    if value in {'t', 'true', '1', 'yes'}:
+        return True
+
+    if value in {'f', 'false', '0', 'no'}:
+        return False
+
+    raise ValueError(
+        f"UPF has_so has an invalid logical value in '{path}': "
+        f"{match.group(1)}"
+    )
+
 def read_upf_atomic_manifolds(path):
     """Read atomic-wavefunction manifolds from a UPF file."""
     path = Path(

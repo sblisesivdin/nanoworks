@@ -12,4 +12,11 @@ Then run with SOC effects:
 
     dftsolve -p 4 -i WSe2-with-SOC.py
 
+The same engine-neutral ``SOC_calc = True`` switch is used for Quantum
+ESPRESSO. The QE example runs the supported nonmagnetic PBE Ground, total-DOS,
+and Band workflow and automatically selects the fully-relativistic managed
+PseudoDojo set:
+
+    dftsolve -p 4 -i WSe2-QE-with-SOC.py
+
 Because we use `Outdirname` variable, results are saved in different folders.

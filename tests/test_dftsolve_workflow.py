@@ -34,6 +34,7 @@ with patch.object(
         run_gpaw_stage_processes,
         should_split_gpaw_optical,
         struct_from_file,
+        validate_qe_soc_pseudopotentials,
         write_qe_slurm_script,
     )
 
@@ -428,6 +429,20 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 'thermo_pw.x',
             },
         )
+
+    def test_qe_soc_dos_does_not_require_projwfc(self):
+        config = DFTConfig(
+            Engine='QE',
+            Ground_calc=True,
+            DOS_calc=True,
+            SOC_calc=True,
+        )
+
+        self.assertEqual(
+            set(required_dft_executables(config)),
+            {'dos.x', 'pw.x'},
+        )
+        self.assertEqual(config.Pseudo_relativistic, 'full')
 
     def test_qe_preflight_accepts_complete_optical_workflow(self):
         config = DFTConfig(
@@ -1227,6 +1242,70 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             )
             self.assertTrue(
                 stored_plan['spin_polarized']
+            )
+
+    def test_qe_soc_dry_run_uses_spinors_and_omits_projections(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            struct = Path(tmpdir) / 'soc-dry-run' / 'tungsten'
+            config = DFTConfig(
+                Engine='QE',
+                Ground_calc=True,
+                DOS_calc=True,
+                Band_calc=True,
+                Band_path='GX',
+                SOC_calc=True,
+                bulk_configuration=Atoms(
+                    'W',
+                    cell=[3.16, 3.16, 3.16],
+                    pbc=True,
+                ),
+            )
+
+            with (
+                patch(
+                    'nanoworks.dftsolve.get_qe_pseudo_dir',
+                    return_value=Path('/pseudos/full'),
+                ) as pseudo_dir,
+                patch(
+                    'nanoworks.dftsolve.resolve_qe_pseudopotentials',
+                    return_value={'W': 'W.upf'},
+                ),
+                patch(
+                    'nanoworks.dftsolve.shutil.which',
+                    return_value=None,
+                ),
+            ):
+                plan = prepare_qe_dry_run(
+                    config,
+                    struct=struct,
+                    parallel_cores=2,
+                )
+
+            pseudo_dir.assert_called_once_with(
+                family='pseudodojo',
+                xc='pbe',
+                relativistic='full',
+                accuracy='standard',
+            )
+            jobs = {job['id']: job for job in plan['jobs']}
+            self.assertTrue(plan['spin_orbit'])
+            self.assertFalse(plan['spin_polarized'])
+            self.assertEqual(
+                set(jobs),
+                {'ground', 'dos-nscf', 'dos-total', 'band'},
+            )
+
+            for job_id in ('ground', 'dos-nscf', 'band'):
+                input_text = Path(
+                    jobs[job_id]['input_file']
+                ).read_text(encoding='utf-8')
+                self.assertIn('noncolin = .true.', input_text)
+                self.assertIn('lspinorb = .true.', input_text)
+                self.assertNotIn('nspin = 2', input_text)
+
+            self.assertIn(
+                'SOC-resolved PDOS is not supported yet',
+                ' '.join(plan['notes']),
             )
 
     def test_dry_run_cli_stops_before_calculation_stages(self):
@@ -2386,6 +2465,54 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             'symbol-to-filename mapping',
         ):
             DFTConfig(Pseudopotentials=['Si.upf'])
+
+    def test_qe_soc_rejects_unsupported_spin_and_projected_band_modes(self):
+        with self.assertRaisesRegex(
+            NotImplementedError,
+            'magnetic spin-orbit',
+        ):
+            DFTConfig(
+                Engine='QE',
+                SOC_calc=True,
+                Spin_calc=True,
+            )
+
+        with self.assertRaisesRegex(
+            NotImplementedError,
+            'spin-orbit projected bands',
+        ):
+            DFTConfig(
+                Engine='QE',
+                SOC_calc=True,
+                Band_calc=True,
+                Projected_band_plot=True,
+            )
+
+    def test_qe_soc_validates_user_supplied_pseudopotentials(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pseudo_dir = Path(tmpdir)
+            (pseudo_dir / 'W-full.upf').write_text(
+                '<PP_HEADER has_so="T" />\n',
+                encoding='utf-8',
+            )
+            (pseudo_dir / 'Se-scalar.upf').write_text(
+                '<PP_HEADER has_so="F" />\n',
+                encoding='utf-8',
+            )
+
+            validate_qe_soc_pseudopotentials(
+                {'W': 'W-full.upf'},
+                pseudo_dir,
+            )
+
+            with self.assertRaisesRegex(
+                ValueError,
+                'requires fully relativistic pseudopotentials',
+            ):
+                validate_qe_soc_pseudopotentials(
+                    {'Se': 'Se-scalar.upf'},
+                    pseudo_dir,
+                )
 
     def test_geometry_settings_are_portable_and_validated(self):
         config = DFTConfig(

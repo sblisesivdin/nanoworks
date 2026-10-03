@@ -52,7 +52,10 @@ Advanced DFT Methods & Corrections
   Calculates the electronic properties of Wurtzite ZnO with on-site corrections on O-*p* and Zn-*d* states. The folder contains GPAW calculations with and without Hubbard U and a native QE DFT+U example covering ground-state, DOS, and band calculations. (Folder: ``ZnO-with-Hubbard/``)
 
 * **WSe2 with Spin-Orbit Coupling (SOC):**
-  Highlights the splitting of bands due to Spin-Orbit Coupling (SOC) in heavy transition metal dichalcogenides (TMDs) like WSe2. Built entirely using ASE without an external CIF file. (Folder: ``SOC-WSe2-noCIF/``)
+  Highlights the splitting of bands due to Spin-Orbit Coupling (SOC) in heavy
+  transition metal dichalcogenides (TMDs) like WSe2. Includes GPAW and QE
+  inputs using the same ``SOC_calc`` keyword and is built entirely using ASE
+  without an external CIF file. (Folder: ``SOC-WSe2-noCIF/``)
 
 * **Cr2O Spin-Polarized Calculations:**
   Demonstrates how to configure and run spin-polarized calculations for magnetic systems, extracting local magnetic moments and spin-resolved band structures. (Folder: ``Cr2O-spin/``)
