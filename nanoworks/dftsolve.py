@@ -2076,6 +2076,7 @@ class dftsolve:
         dimensionality = workflow['elastic_dimensionality']
         two_dimensional = workflow['two_dimensional_properties']
         stability = workflow['elastic_stability']
+        elastic_data_files = workflow['elastic_data_files']
         result_file = Path(
             self.struct + '-ELASTIC-QE-Result-Elastic-AllResults.txt'
         )
@@ -2086,7 +2087,26 @@ class dftsolve:
                 precision=6,
                 floatmode='fixed',
             ),
+            '',
+            'Canonical thermo_pw elastic data file(s):',
+            *(
+                str(path)
+                for path in elastic_data_files
+            ),
         ]
+
+        if not workflow['result']['moduli_complete']:
+            result_lines.extend([
+                '',
+                (
+                    'WARNING: thermo_pw did not provide complete derived '
+                    'moduli for: '
+                    + ', '.join(
+                        workflow['result']['incomplete_moduli']
+                    )
+                    + '. The tensor and available properties were retained.'
+                ),
+            ])
 
         if two_dimensional is not None:
             first_axis, second_axis = {

@@ -103,7 +103,11 @@ or:
     summary also reports tensor symmetry, stiffness eigenvalues, condition
     number, and whether the relevant stiffness matrix is positive definite at
     zero external stress. A failed stability check is reported as a physical
-    result and does not discard the calculation output.
+    result and does not discard the calculation output. Nanoworks also keeps
+    and validates thermo_pw's canonical elastic-constant data file under the
+    elastic result directory. If thermo_pw completes with a full tensor but
+    cannot provide every derived Voigt/Reuss/Hill value, the tensor and the
+    available properties are retained with a warning.
 
 .. code-block:: python
 

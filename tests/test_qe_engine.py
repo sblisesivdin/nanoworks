@@ -12,6 +12,7 @@ from ase.build import bulk
 from nanoworks.engine.qe import (
     QE_REFERENCE_VERSION,
     THERMO_PW_SUPPORTED_VERSION,
+    THERMO_PW_ELASTIC_DATA_BASENAME,
     THZ_PER_CM_MINUS_ONE,
     ev_to_rydberg,
     build_control_settings,
@@ -41,6 +42,8 @@ from nanoworks.engine.qe import (
     build_qe_command,
     run_qe_program,
     render_thermo_control,
+    extract_qe_error_message,
+    find_thermo_pw_elastic_data_files,
     parse_thermo_pw_elastic_output,
     parse_qe_auxiliary_output,
     parse_epsilon_data_file,
@@ -3500,6 +3503,42 @@ class TestQEEngine(unittest.TestCase):
 
         self.assertIn("what='scf_elastic_constants'", control)
         self.assertIn("elastic_algorithm='advanced'", control)
+        self.assertIn(
+            f"fl_el_cons='{THERMO_PW_ELASTIC_DATA_BASENAME}'",
+            control,
+        )
+
+    def test_extract_qe_error_message_preserves_raw_diagnostic(self):
+        output = """
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+     Error in routine thermo_pw (1):
+     elastic fit failed
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+"""
+
+        self.assertEqual(
+            extract_qe_error_message(output),
+            'Error in routine thermo_pw (1): | elastic fit failed',
+        )
+
+    def test_find_thermo_pw_elastic_data_files(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            data_dir = Path(tmpdir) / 'elastic_constants'
+            data_dir.mkdir()
+            expected = (
+                data_dir
+                / f'{THERMO_PW_ELASTIC_DATA_BASENAME}.g1'
+            )
+            expected.write_text('elastic data\n', encoding='utf-8')
+            (data_dir / 'unrelated.dat').write_text(
+                'ignore\n',
+                encoding='utf-8',
+            )
+
+            result = find_thermo_pw_elastic_data_files(tmpdir)
+            expected_resolved = expected.resolve()
+
+        self.assertEqual(result, (expected_resolved,))
 
     def test_parse_thermo_pw_elastic_output(self):
         output_text = """
@@ -3537,6 +3576,8 @@ class TestQEEngine(unittest.TestCase):
 
         self.assertEqual(result['qe_version'], (7, 4, 1))
         self.assertTrue(result['job_done'])
+        self.assertTrue(result['moduli_complete'])
+        self.assertEqual(result['incomplete_moduli'], ())
         np.testing.assert_allclose(
             result['elastic_tensor_gpa'][0],
             [100.0, 10.0, 10.0, 0.0, 0.0, 0.0],
@@ -3549,6 +3590,34 @@ class TestQEEngine(unittest.TestCase):
                 'shear_modulus_gpa': 33.5,
                 'poisson_ratio': 0.21,
             },
+        )
+
+    def test_parse_thermo_pw_keeps_tensor_when_moduli_are_incomplete(self):
+        output_text = """
+ Program THERMO_PW v.7.4.1 starts
+ Elastic constants C_ij (Kbar)
+ i j=        1           2           3           4           5           6
+ 1 1.0D+03 1.0D+02 1.0D+02 0.0D+00 0.0D+00 0.0D+00
+ 2 1.0D+02 1.0D+03 1.0D+02 0.0D+00 0.0D+00 0.0D+00
+ 3 1.0D+02 1.0D+02 1.0D+03 0.0D+00 0.0D+00 0.0D+00
+ 4 0.0D+00 0.0D+00 0.0D+00 5.0D+02 0.0D+00 0.0D+00
+ 5 0.0D+00 0.0D+00 0.0D+00 0.0D+00 5.0D+02 0.0D+00
+ 6 0.0D+00 0.0D+00 0.0D+00 0.0D+00 0.0D+00 5.0D+02
+ Voigt approximation:
+ Bulk modulus B = 400.0 kbar
+ JOB DONE.
+"""
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = Path(tmpdir) / 'thermo.out'
+            output_file.write_text(output_text, encoding='utf-8')
+            result = parse_thermo_pw_elastic_output(output_file)
+
+        self.assertIsNotNone(result['elastic_tensor_gpa'])
+        self.assertFalse(result['moduli_complete'])
+        self.assertEqual(
+            result['incomplete_moduli'],
+            ('voigt', 'reuss', 'hill'),
         )
 
     def test_run_nscf_requires_ground_state(self):

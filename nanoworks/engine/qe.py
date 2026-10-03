@@ -32,6 +32,7 @@ from nanoworks.elasticity import (
 
 QE_REFERENCE_VERSION = (7, 4, 1)
 THERMO_PW_SUPPORTED_VERSION = (2, 1, 0)
+THERMO_PW_ELASTIC_DATA_BASENAME = 'nanoworks_elastic_constants.dat'
 
 # CODATA-compatible conversion used by ASE and QE-related workflows.
 EV_PER_RYDBERG = 13.605693122994
@@ -981,7 +982,8 @@ def render_thermo_control():
     return (
         "&INPUT_THERMO\n"
         "  what='scf_elastic_constants',\n"
-        "  elastic_algorithm='advanced'\n"
+        "  elastic_algorithm='advanced',\n"
+        f"  fl_el_cons='{THERMO_PW_ELASTIC_DATA_BASENAME}'\n"
         "/\n"
     )
 
@@ -3645,6 +3647,42 @@ def run_qe_program(
     }
 
 
+def extract_qe_error_message(text):
+    """Return the raw diagnostic from a QE-style error block, if present."""
+    block = re.search(
+        r'%{10,}\s*(.*?)\s*%{10,}',
+        str(text),
+        flags=re.DOTALL,
+    )
+
+    if block is None:
+        return None
+
+    lines = [
+        line.strip()
+        for line in block.group(1).splitlines()
+        if line.strip()
+    ]
+
+    return ' | '.join(lines) if lines else None
+
+
+def find_thermo_pw_elastic_data_files(work_dir):
+    """Find the canonical elastic-constant files written by thermo_pw."""
+    data_dir = Path(work_dir) / 'elastic_constants'
+
+    if not data_dir.is_dir():
+        return ()
+
+    return tuple(sorted(
+        path.resolve()
+        for path in data_dir.glob(
+            THERMO_PW_ELASTIC_DATA_BASENAME + '.g*'
+        )
+        if path.is_file() and path.stat().st_size > 0
+    ))
+
+
 def run_thermo_pw_program(
     input_file,
     output_file,
@@ -3702,9 +3740,14 @@ def run_thermo_pw_program(
         )
 
     if result.returncode != 0:
+        diagnostic = extract_qe_error_message(
+            output_file.read_text(encoding='utf-8', errors='replace')
+        )
         raise RuntimeError(
             "thermo_pw elastic calculation failed with "
-            f"return code {result.returncode}. See '{output_file}'."
+            f"return code {result.returncode}."
+            + (f" Diagnostic: {diagnostic}." if diagnostic else '')
+            + f" See '{output_file}'."
         )
 
     return {
@@ -3867,12 +3910,30 @@ def parse_thermo_pw_elastic_output(output):
                     'poisson_ratio': poisson_ratio,
                 }
 
+    required_moduli = (
+        'bulk_modulus_gpa',
+        'young_modulus_gpa',
+        'shear_modulus_gpa',
+        'poisson_ratio',
+    )
+    incomplete_moduli = tuple(
+        approximation
+        for approximation in ('voigt', 'reuss', 'hill')
+        if any(
+            elastic_moduli.get(approximation, {}).get(key) is None
+            for key in required_moduli
+        )
+    )
+
     return {
         'qe_version': qe_version,
         'job_done': bool(re.search(r'\bJOB DONE\.', text)),
+        'error_message': extract_qe_error_message(text),
         'elastic_tensor_kbar': tensor_kbar,
         'elastic_tensor_gpa': tensor_gpa,
         'elastic_moduli': elastic_moduli,
+        'moduli_complete': not incomplete_moduli,
+        'incomplete_moduli': incomplete_moduli,
     }
 
 
@@ -8000,7 +8061,12 @@ def run_thermo_pw_elastic(
     if not result['job_done']:
         raise RuntimeError(
             "thermo_pw finished without a 'JOB DONE.' marker. "
-            f"See '{output_file}'."
+            + (
+                f"Diagnostic: {result['error_message']}. "
+                if result['error_message']
+                else ''
+            )
+            + f"See '{output_file}'."
         )
     if result['elastic_tensor_gpa'] is None:
         raise RuntimeError(
@@ -8008,24 +8074,23 @@ def run_thermo_pw_elastic(
             f"See '{output_file}'."
         )
 
-    required_moduli = {
-        'bulk_modulus_gpa',
-        'young_modulus_gpa',
-        'shear_modulus_gpa',
-        'poisson_ratio',
-    }
-    incomplete_approximations = []
+    if not result['moduli_complete']:
+        warnings.warn(
+            'thermo_pw did not print complete elastic moduli for: '
+            + ', '.join(result['incomplete_moduli'])
+            + '. The elastic tensor and available properties will be '
+            'retained.',
+            RuntimeWarning,
+            stacklevel=2,
+        )
 
-    for approximation in ('voigt', 'reuss', 'hill'):
-        values = result['elastic_moduli'].get(approximation, {})
-        if any(values.get(key) is None for key in required_moduli):
-            incomplete_approximations.append(approximation)
+    elastic_data_files = find_thermo_pw_elastic_data_files(work_dir)
 
-    if incomplete_approximations:
+    if not elastic_data_files:
         raise RuntimeError(
-            "thermo_pw did not print complete elastic moduli for: "
-            + ', '.join(incomplete_approximations)
-            + f". See '{output_file}'."
+            'thermo_pw did not create its canonical elastic-constant '
+            f"data file under '{work_dir / 'elastic_constants'}'. "
+            f"See '{output_file}'."
         )
 
     dimensionality = resolve_elastic_dimensionality(
@@ -8063,6 +8128,7 @@ def run_thermo_pw_elastic(
         'elastic_dimensionality': dimensionality,
         'two_dimensional_properties': two_dimensional_properties,
         'elastic_stability': stability,
+        'elastic_data_files': elastic_data_files,
         'execution': execution,
         'result': result,
     }

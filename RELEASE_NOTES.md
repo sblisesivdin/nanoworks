@@ -9,6 +9,7 @@
 - QE thermo_pw results include the 6x6 elastic tensor and parsed Voigt, Reuss, and Voigt-Reuss-Hill bulk, Young, shear, and Poisson properties in a Nanoworks summary.
 - QE thermo_pw elastic results automatically identify slab geometries and report vacuum-corrected in-plane stiffness, Young and shear moduli, and Poisson ratios in N/m; explicit dimensionality and normal-axis overrides are available.
 - QE elastic summaries report tensor asymmetry, stiffness eigenvalues, condition number, and positive-definite mechanical stability for the resolved 3D or in-plane 2D stiffness matrix.
+- QE elastic workflows validate and expose thermo_pw's canonical elastic-constant data files, preserve raw QE diagnostics, and retain a complete tensor when derived Voigt/Reuss/Hill values are unavailable.
 - QE Slurm dry runs preserve thermo_pw's standard-input execution model instead of incorrectly adding the ``-i`` option.
 - QE `pw.x` SCF inputs can explicitly request stress, and the final raw stress tensor and pressure are parsed in kbar.
 - `vdW_calc='D3'` now enables Quantum ESPRESSO's native Grimme-D3 correction across every `pw.x` stage.

@@ -29,6 +29,8 @@ cutoff, density-cutoff, k-point, SCF, and structural convergence.
 
 The main outputs are the raw thermo_pw log and a Nanoworks summary containing
 the 6x6 elastic tensor in GPa plus Voigt, Reuss, and Voigt-Reuss-Hill moduli.
+The thermo_pw canonical elastic-constant file is retained below the result
+directory's `elastic_constants` subdirectory and listed in the summary.
 For slab structures, `Elastic_dimensionality = 'auto'` also reports the
 vacuum-corrected in-plane stiffness and directional moduli in N/m. Set
 `Elastic_dimensionality` explicitly to `'2D'` or `'3D'` when the
