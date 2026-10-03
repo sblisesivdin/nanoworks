@@ -48,7 +48,8 @@ or:
     also supports DFPT phonons and ``epsilon.x`` RPA optics. Native
     QE ``HSE06``, ``HSE03``, and ``PBE0`` workflows support ground-state,
     DOS/PDOS, band, projected-band, density, and Grimme-D3 calculations.
-    QE SOC and elastic workflows are not supported yet. Hybrid geometry
+    QE SOC workflows are not supported yet. Semilocal QE elastic calculations
+    use thermo_pw 2.1.0 with Quantum ESPRESSO 7.4.1. Hybrid geometry
     optimization, phonon, and optical workflows are also not supported yet.
 
 .. describe:: Mode
@@ -93,7 +94,9 @@ or:
     :Type: ``boolean``
     :Default: ``False``
 
-    Whether Elastic calculations are performed or not.
+    Whether elastic calculations are performed. GPAW uses the Python
+    ``elastic`` workflow. QE uses thermo_pw 2.1.0 as its primary and only
+    elastic driver; the supported QE version is exactly 7.4.1.
 
 .. code-block:: python
 
@@ -694,7 +697,7 @@ Electronic Calculations Keywords
     quantum number is required so that the QE mapping is unambiguous.
     The requested manifold is checked against the selected UPF file.
 
-    QE 7.2 inputs use an ``HUBBARD (ortho-atomic)`` card. The correction
+    QE 7.4.1 inputs use an ``HUBBARD (ortho-atomic)`` card. The correction
     is propagated consistently to ground-state, geometry-optimization,
     DOS NSCF, and band calculations. If magnetic moments cause one
     element to be represented by multiple internal QE species, the

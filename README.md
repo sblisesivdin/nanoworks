@@ -18,7 +18,7 @@
 It acts as a wrapper and orchestrator for several powerful scientific libraries, making advanced materials simulation accessible through simple command-line tools.
 
 **Core Capabilities:**
-1.  **DFT (via GPAW, Quantum ESPRESSO & ASE):** The `dftsolve` tool provides the complete established workflow through GPAW and a native Quantum ESPRESSO backend. QE supports PBE ground-state, atomic and variable-cell geometry optimization, DFT+U, spin-resolved DOS/PDOS, band, projected (fat) band, and pseudo-valence electron-density Cube calculations. Native QE `HSE06`, `HSE03`, and `PBE0` support ground-state, DOS/PDOS, band, projected-band, and density calculations.
+1.  **DFT (via GPAW, Quantum ESPRESSO & ASE):** The `dftsolve` tool provides the complete established workflow through GPAW and a native Quantum ESPRESSO backend. QE supports PBE ground-state, atomic and variable-cell geometry optimization, thermo_pw elasticity, DFT+U, spin-resolved DOS/PDOS, band, projected (fat) band, and pseudo-valence electron-density Cube calculations. Native QE `HSE06`, `HSE03`, and `PBE0` support ground-state, DOS/PDOS, band, projected-band, and density calculations.
 2. **MD (via ASAP3, LAMMPS & OpenKIM):** The `mdsolve` tool provides molecular dynamics calculations using either ASAP3 or LAMMPS with OpenKIM interatomic potentials.
 3.  **ML Potentials (New!):** The `mlsolve` tool enables geometry optimization and static calculations using state-of-the-art Machine Learning Force Fields (MLFF), including **MACE**, **CHGNet**, and **SevenNet**.
 
@@ -45,7 +45,7 @@ Prefer a proper and controlled setup? Nanoworks is a Python package. You can ins
 After installation, the following commands will be available in your terminal:
 
 ### 1. dftsolve (formerly gpawsolve.py)
-The main driver for DFT calculations using GPAW or Quantum ESPRESSO. GPAW runs the complete Python workflow under MPI, while Nanoworks launches the supported QE executables with the number of processes requested by the `-p` argument. Native QE includes ground-state, geometry, electronic, density, DFPT phonon, and `epsilon.x` RPA optical workflows. QE hybrid `HSE06`, `HSE03`, and `PBE0` workflows use native plane-wave exact exchange for ground-state, DOS/PDOS, band, projected-band, and density calculations; hybrid geometry, elastic, phonon, and optical workflows are not supported yet.
+The main driver for DFT calculations using GPAW or Quantum ESPRESSO. GPAW runs the complete Python workflow under MPI, while Nanoworks launches the supported QE executables with the number of processes requested by the `-p` argument. Native QE includes ground-state, geometry, electronic, density, DFPT phonon, `epsilon.x` RPA optical, and thermo_pw elastic workflows. Nanoworks targets exactly QE 7.4.1 and thermo_pw 2.1.0. QE hybrid `HSE06`, `HSE03`, and `PBE0` workflows use native plane-wave exact exchange for ground-state, DOS/PDOS, band, projected-band, and density calculations; hybrid geometry, elastic, phonon, and optical workflows are not supported yet.
 
 Portable SCF controls (`SCF_accuracy`, `SCF_max_steps`, `SCF_mixing`, and
 `Electronic_solver`) describe calculation intent once and are translated to
@@ -235,7 +235,7 @@ figures from saved JSON without rerunning GPAW or Quantum ESPRESSO.
 The package includes an `examples/` directory covering various scenarios. You can find the location of these examples by running the `nanoworks` command.
 
 ## Citing
-Please do not forget that Nanoworks is a wrapper/orchestrator software. For DFT calculations, it uses ASE together with GPAW or Quantum ESPRESSO, depending on the selected workflow and backend. It also uses the Elastic Python package for elastic tensor solutions and ASAP with the KIM database for interatomic interaction calculations and Phonopy for the phonon calculations. Therefore, you must know what you use and cite them properly. Here, the basic citation information of each package is given.
+Please do not forget that Nanoworks is a wrapper/orchestrator software. For DFT calculations, it uses ASE together with GPAW or Quantum ESPRESSO, depending on the selected workflow and backend. GPAW elasticity uses the Elastic Python package; QE elasticity uses thermo_pw. It also uses ASAP with the KIM database for interatomic interaction calculations and Phonopy for the phonon calculations. Therefore, you must know what you use and cite them properly. Here, the basic citation information of each package is given.
 
 ### ASE 
 * Ask Hjorth Larsen et al. "[The Atomic Simulation Environment—A Python library for working with atoms](https://doi.org/10.1088/1361-648X/aa680e)" J. Phys.: Condens. Matter Vol. 29 273002, 2017.

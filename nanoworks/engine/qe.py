@@ -24,7 +24,8 @@ from nanoworks.hybrids import (
     validate_exx_kpoint_density,
 )
 
-QE_REFERENCE_VERSION = (7, 2)
+QE_REFERENCE_VERSION = (7, 4, 1)
+THERMO_PW_SUPPORTED_VERSION = (2, 1, 0)
 
 # CODATA-compatible conversion used by ASE and QE-related workflows.
 EV_PER_RYDBERG = 13.605693122994
@@ -452,7 +453,7 @@ def build_qe_magnetic_species(
 
         if abs(fraction) > 1.0:
             raise ValueError(
-                "QE 7.2 starting magnetization must be "
+                "QE 7.4.1 starting magnetization must be "
                 "between -1 and 1. The requested moment is "
                 f"too large for species {symbol}."
             )
@@ -487,7 +488,7 @@ def build_qe_magnetic_species(
 
     if len(species) > 10:
         raise ValueError(
-            "QE 7.2 supports at most ten atomic species."
+            "QE 7.4.1 supports at most ten atomic species."
         )
 
     positions = []
@@ -927,9 +928,9 @@ def render_qe_exx_additional_kpoints(settings):
 
 def validate_qe_version(
     version,
-    minimum=QE_REFERENCE_VERSION,
+    supported=QE_REFERENCE_VERSION,
 ):
-    """Validate the Quantum ESPRESSO version used by a calculation."""
+    """Require the one Quantum ESPRESSO release supported by Nanoworks."""
     if version is None:
         raise ValueError(
             "Quantum ESPRESSO version could not be detected "
@@ -941,14 +942,12 @@ def validate_qe_version(
         for value in version
     )
 
-    minimum = tuple(
+    supported = tuple(
         int(value)
-        for value in minimum
+        for value in supported
     )
 
-    version_major_minor = version[:2]
-
-    if version_major_minor < minimum:
+    if version != supported:
         detected = '.'.join(
             str(value)
             for value in version
@@ -956,16 +955,26 @@ def validate_qe_version(
 
         required = '.'.join(
             str(value)
-            for value in minimum
+            for value in supported
         )
 
         raise ValueError(
             "Unsupported Quantum ESPRESSO version "
-            f"{detected}. Nanoworks currently requires "
-            f"Quantum ESPRESSO {required} or newer."
+            f"{detected}. Nanoworks supports exactly "
+            f"Quantum ESPRESSO {required}."
         )
 
     return version
+
+
+def render_thermo_control():
+    """Render thermo_pw control settings for zero-temperature elasticity."""
+    return (
+        "&INPUT_THERMO\n"
+        "  what='scf_elastic_constants',\n"
+        "  elastic_algorithm='advanced'\n"
+        "/\n"
+    )
 
 def resolve_qe_xc_settings(
     xc_calc,
@@ -1127,7 +1136,7 @@ def render_qe_hubbard_card(
     settings,
     species_by_element=None,
 ):
-    """Render a QE 7.2 HUBBARD card."""
+    """Render a QE 7.4.1 HUBBARD card."""
     if settings is None:
         return ''
 
@@ -3624,6 +3633,133 @@ def run_qe_program(
         'command': command,
         'returncode': result.returncode,
         'output_file': output_file,
+    }
+
+
+def run_thermo_pw_program(
+    input_file,
+    output_file,
+    executable='thermo_pw.x',
+    launcher=None,
+    cwd=None,
+):
+    """Run thermo_pw with its QE input connected to standard input."""
+    input_file = Path(input_file).expanduser().resolve()
+    output_file = Path(output_file).expanduser().resolve()
+
+    if not input_file.is_file():
+        raise FileNotFoundError(
+            f"thermo_pw input file was not found: {input_file}"
+        )
+
+    executable = resolve_qe_executable(executable)
+    command = []
+
+    if launcher is not None:
+        if isinstance(launcher, str):
+            raise TypeError(
+                "QE launcher must be a sequence of command arguments, "
+                "not a shell command string."
+            )
+        command.extend(str(value) for value in launcher)
+
+    command.append(executable)
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    child_env = os.environ.copy()
+
+    for variable in (
+        'OMP_NUM_THREADS',
+        'OPENBLAS_NUM_THREADS',
+        'MKL_NUM_THREADS',
+        'VECLIB_MAXIMUM_THREADS',
+        'NUMEXPR_NUM_THREADS',
+    ):
+        child_env[variable] = '1'
+    child_env['OMP_DYNAMIC'] = 'FALSE'
+
+    with (
+        input_file.open('r', encoding='utf-8') as input_fd,
+        output_file.open('w', encoding='utf-8') as output_fd,
+    ):
+        result = subprocess.run(
+            command,
+            cwd=(Path(cwd).expanduser().resolve() if cwd else None),
+            stdin=input_fd,
+            stdout=output_fd,
+            stderr=subprocess.STDOUT,
+            check=False,
+            text=True,
+            env=child_env,
+        )
+
+    if result.returncode != 0:
+        raise RuntimeError(
+            "thermo_pw elastic calculation failed with "
+            f"return code {result.returncode}. See '{output_file}'."
+        )
+
+    return {
+        'command': command,
+        'returncode': result.returncode,
+        'output_file': output_file,
+    }
+
+
+def parse_thermo_pw_elastic_output(output):
+    """Parse completion metadata and the final thermo_pw elastic tensor."""
+    output = Path(output)
+
+    if not output.is_file():
+        raise FileNotFoundError(
+            f"thermo_pw output was not found: {output}"
+        )
+
+    text = output.read_text(encoding='utf-8', errors='replace')
+    version_match = re.search(
+        r'Program\s+THERMO_PW\s+v\.(\d+)\.(\d+)(?:\.(\d+))?',
+        text,
+        flags=re.IGNORECASE,
+    )
+    qe_version = None
+
+    if version_match is not None:
+        qe_version = tuple(
+            int(value)
+            for value in version_match.groups()
+            if value is not None
+        )
+
+    tensor_match = None
+    for match in re.finditer(
+        r'Elastic constants C_ij \(kbar\)\s*\n'
+        r'\s*i j=\s*1\s+2\s+3\s+4\s+5\s+6\s*\n'
+        r'((?:\s*[1-6](?:\s+[-+]?\d+(?:\.\d*)?(?:[EeDd][-+]?\d+)?){6}\s*\n?){6})',
+        text,
+        flags=re.IGNORECASE,
+    ):
+        tensor_match = match
+
+    tensor_kbar = None
+    tensor_gpa = None
+
+    if tensor_match is not None:
+        rows = []
+        for line in tensor_match.group(1).splitlines():
+            values = line.split()
+            if len(values) == 7:
+                rows.append([
+                    float(value.replace('D', 'E').replace('d', 'e'))
+                    for value in values[1:]
+                ])
+        if len(rows) == 6:
+            tensor_kbar = np.asarray(rows, dtype=float)
+            tensor_gpa = tensor_kbar / 10.0
+
+    return {
+        'qe_version': qe_version,
+        'job_done': bool(re.search(r'\bJOB DONE\.', text)),
+        'elastic_tensor_kbar': tensor_kbar,
+        'elastic_tensor_gpa': tensor_gpa,
     }
 
 
@@ -7638,6 +7774,133 @@ def run_matdyn_dos(
         'fldos': fldos,
         'qpoint_grid': qpoint_grid,
         'dos': dos,
+        'execution': execution,
+        'result': result,
+    }
+
+
+def run_thermo_pw_elastic(
+    atoms,
+    input_file,
+    output_file,
+    work_dir,
+    state_dir,
+    pseudopotentials,
+    pseudo_dir,
+    cutoff_ev,
+    kpoint_density=None,
+    kpoint_size=(5, 5, 5),
+    gamma=False,
+    total_charge=0.0,
+    nbands=None,
+    spinpol=False,
+    magnetic_moments=None,
+    hubbard_u=None,
+    xc_calc='PBE',
+    pseudo_xc='pbe',
+    exx_fraction=None,
+    omega=None,
+    occupation=None,
+    conv_thr=None,
+    mixing_beta=None,
+    electron_maxstep=None,
+    diagonalization=None,
+    parallel_cores=1,
+    executable='thermo_pw.x',
+    prefix='nanoworks',
+    density_cutoff_ratio=4.0,
+    exx_kpoint_density=None,
+    exx_cutoff_ev=None,
+    electrostatic_boundary='periodic',
+    electrostatic_normal_axis='z',
+    dipole_correction=False,
+    vdw_calc='None',
+):
+    """Render and run the supported thermo_pw elastic workflow."""
+    input_file = Path(input_file).expanduser().resolve()
+    output_file = Path(output_file).expanduser().resolve()
+    work_dir = Path(work_dir).expanduser().resolve()
+    state_dir = Path(state_dir).expanduser().resolve()
+    work_dir.mkdir(parents=True, exist_ok=True)
+    state_dir.mkdir(parents=True, exist_ok=True)
+
+    mesh = resolve_qe_kpoint_size(
+        atoms,
+        density=kpoint_density,
+        size=kpoint_size,
+    )
+    occupation_settings = resolve_qe_occupation(occupation)
+    input_text = render_scf_input(
+        atoms=atoms,
+        pseudopotentials=pseudopotentials,
+        cutoff_ev=cutoff_ev,
+        density_cutoff_ratio=density_cutoff_ratio,
+        exx_kpoint_density=exx_kpoint_density,
+        exx_cutoff_ev=exx_cutoff_ev,
+        electrostatic_boundary=electrostatic_boundary,
+        electrostatic_normal_axis=electrostatic_normal_axis,
+        dipole_correction=dipole_correction,
+        vdw_calc=vdw_calc,
+        kpoint_size=mesh,
+        gamma=gamma,
+        total_charge=total_charge,
+        nbands=nbands,
+        spinpol=spinpol,
+        magnetic_moments=magnetic_moments,
+        hubbard_u=hubbard_u,
+        xc_calc=xc_calc,
+        pseudo_xc=pseudo_xc,
+        exx_fraction=exx_fraction,
+        omega=omega,
+        occupations=occupation_settings['occupations'],
+        smearing=occupation_settings['smearing'],
+        width_ev=occupation_settings['width_ev'],
+        prefix=prefix,
+        pseudo_dir=pseudo_dir,
+        outdir=state_dir,
+        conv_thr=conv_thr,
+        mixing_beta=mixing_beta,
+        electron_maxstep=electron_maxstep,
+        diagonalization=diagonalization,
+    )
+    input_file.parent.mkdir(parents=True, exist_ok=True)
+    input_file.write_text(input_text, encoding='utf-8')
+    control_file = work_dir / 'thermo_control'
+    control_file.write_text(render_thermo_control(), encoding='utf-8')
+
+    execution = run_thermo_pw_program(
+        input_file=input_file,
+        output_file=output_file,
+        executable=executable,
+        launcher=build_qe_launcher(parallel_cores=parallel_cores),
+        cwd=work_dir,
+    )
+    result = parse_thermo_pw_elastic_output(output_file)
+
+    try:
+        validate_qe_version(result['qe_version'])
+    except ValueError as exc:
+        raise RuntimeError(f"{exc} See '{output_file}'.") from exc
+
+    if not result['job_done']:
+        raise RuntimeError(
+            "thermo_pw finished without a 'JOB DONE.' marker. "
+            f"See '{output_file}'."
+        )
+    if result['elastic_tensor_gpa'] is None:
+        raise RuntimeError(
+            "thermo_pw did not print a complete 6x6 elastic tensor. "
+            f"See '{output_file}'."
+        )
+
+    return {
+        'input_file': input_file,
+        'output_file': output_file,
+        'control_file': control_file,
+        'work_dir': work_dir,
+        'state_dir': state_dir,
+        'kpoint_size': mesh,
+        'thermo_pw_supported_version': THERMO_PW_SUPPORTED_VERSION,
         'execution': execution,
         'result': result,
     }

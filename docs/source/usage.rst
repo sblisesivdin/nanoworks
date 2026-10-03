@@ -34,6 +34,10 @@ and, when requested, ``projwfc.x``. QE density post-processing uses ``pp.x``
 and a completed ground-state calculation. QE hybrid geometry, elastic,
 phonon, and optical workflows are not supported yet.
 
+Semilocal QE elasticity is driven by thermo_pw 2.1.0. Nanoworks validates
+the linked QE banner as exactly 7.4.1 and does not fall back to the Python
+``elastic`` package for QE calculations.
+
 When a GPAW input enables optical calculations together with ground-state or
 other post-processing stages, the same ``dftsolve`` command automatically uses
 two sequential processes. The electronic stages finish first; optical then
@@ -268,7 +272,7 @@ Use ``--xc HSE06``, ``--xc HSE03``, or ``--xc PBE0`` to override the
 exchange-correlation functional in the generated QE input. The resulting
 input can use the native QE hybrid electronic workflows described above.
 
-QE 7.2 ``HUBBARD`` cards containing on-site ``U`` terms are converted
+QE 7.4.1 ``HUBBARD`` cards containing on-site ``U`` terms are converted
 to the common Nanoworks ``Hubbard_U`` syntax. For example:
 
 .. code-block:: text

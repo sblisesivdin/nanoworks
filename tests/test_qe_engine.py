@@ -11,6 +11,7 @@ from ase import Atoms
 from ase.build import bulk
 from nanoworks.engine.qe import (
     QE_REFERENCE_VERSION,
+    THERMO_PW_SUPPORTED_VERSION,
     THZ_PER_CM_MINUS_ONE,
     ev_to_rydberg,
     build_control_settings,
@@ -39,6 +40,8 @@ from nanoworks.engine.qe import (
     resolve_qe_executable,
     build_qe_command,
     run_qe_program,
+    render_thermo_control,
+    parse_thermo_pw_elastic_output,
     parse_qe_auxiliary_output,
     parse_epsilon_data_file,
     prepare_epsilon_optical_data,
@@ -108,8 +111,9 @@ from nanoworks.engine.qe import (
 
 class TestQEEngine(unittest.TestCase):
 
-    def test_reference_version_is_qe_72(self):
-        self.assertEqual(QE_REFERENCE_VERSION, (7, 2))
+    def test_supported_versions_are_exact(self):
+        self.assertEqual(QE_REFERENCE_VERSION, (7, 4, 1))
+        self.assertEqual(THERMO_PW_SUPPORTED_VERSION, (2, 1, 0))
 
     def test_control_settings_request_stress_explicitly(self):
         default_settings = build_control_settings()
@@ -674,7 +678,7 @@ class TestQEEngine(unittest.TestCase):
 
         self.assertEqual(
             engine.QE_REFERENCE_VERSION,
-            (7, 2),
+            (7, 4, 1),
         )
 
     def test_cell_parameters_are_built_in_angstrom(self):
@@ -2735,7 +2739,7 @@ class TestQEEngine(unittest.TestCase):
 
     def test_parse_pw_output(self):
         output_text = """
-         Program PWSCF v.7.2 starts
+         Program PWSCF v.7.4.1 starts
 
     !    total energy              =     -15.12345678 Ry
 
@@ -2761,7 +2765,7 @@ class TestQEEngine(unittest.TestCase):
 
             self.assertEqual(
                 result['qe_version'],
-                (7, 2),
+                (7, 4, 1),
             )
 
             self.assertAlmostEqual(
@@ -2786,7 +2790,7 @@ class TestQEEngine(unittest.TestCase):
 
     def test_parse_pw_output_uses_final_stress_block(self):
         output_text = """
-         Program PWSCF v.7.2 starts
+         Program PWSCF v.7.4.1 starts
 
           total   stress  (Ry/bohr**3)                   (kbar)     P=     12.00
    0.00001000   0.00000000   0.00000000          1.00       0.00       0.00
@@ -2838,7 +2842,7 @@ class TestQEEngine(unittest.TestCase):
 
     def test_parse_pw_output_with_patch_version(self):
         output_text = """
-         Program PWSCF v.7.2.1 starts
+         Program PWSCF v.7.4.1 starts
 
          JOB DONE.
         """
@@ -2860,7 +2864,7 @@ class TestQEEngine(unittest.TestCase):
 
             self.assertEqual(
                 result['qe_version'],
-                (7, 2, 1),
+                (7, 4, 1),
             )
 
     def test_parse_pw_output_without_version(self):
@@ -2912,7 +2916,7 @@ class TestQEEngine(unittest.TestCase):
 
     def test_parse_pw_output_resolves_band_edges(self):
         output_text = """
-         Program PWSCF v.7.2 starts
+         Program PWSCF v.7.4.1 starts
 
          highest occupied, lowest unoccupied level (ev):
              5.0000  6.0000
@@ -3463,31 +3467,21 @@ class TestQEEngine(unittest.TestCase):
 
     def test_validate_qe_version_accepts_reference_version(self):
         result = validate_qe_version(
-            (7, 2)
+            (7, 4, 1)
         )
 
         self.assertEqual(
             result,
-            (7, 2),
+            (7, 4, 1),
         )
 
-    def test_validate_qe_version_accepts_patch_version(self):
-        result = validate_qe_version(
-            (7, 2, 1)
-        )
-
-        self.assertEqual(
-            result,
-            (7, 2, 1),
-        )
-
-    def test_validate_qe_version_rejects_older_version(self):
+    def test_validate_qe_version_rejects_other_versions(self):
         with self.assertRaisesRegex(
             ValueError,
-            'requires Quantum ESPRESSO 7.2 or newer',
+            'supports exactly Quantum ESPRESSO 7.4.1',
         ):
             validate_qe_version(
-                (7, 1)
+                (7, 5)
             )
 
     def test_validate_qe_version_rejects_missing_version(self):
@@ -3498,6 +3492,38 @@ class TestQEEngine(unittest.TestCase):
             validate_qe_version(
                 None
             )
+
+    def test_thermo_control_selects_advanced_scf_elasticity(self):
+        control = render_thermo_control()
+
+        self.assertIn("what='scf_elastic_constants'", control)
+        self.assertIn("elastic_algorithm='advanced'", control)
+
+    def test_parse_thermo_pw_elastic_output(self):
+        output_text = """
+ Program THERMO_PW v.7.4.1 starts
+ Elastic constants C_ij (kbar)
+ i j=        1           2           3           4           5           6
+ 1 1000.0 100.0 100.0 0.0 0.0 0.0
+ 2 100.0 1000.0 100.0 0.0 0.0 0.0
+ 3 100.0 100.0 1000.0 0.0 0.0 0.0
+ 4 0.0 0.0 0.0 500.0 0.0 0.0
+ 5 0.0 0.0 0.0 0.0 500.0 0.0
+ 6 0.0 0.0 0.0 0.0 0.0 500.0
+ JOB DONE.
+"""
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_file = Path(tmpdir) / 'thermo.out'
+            output_file.write_text(output_text, encoding='utf-8')
+            result = parse_thermo_pw_elastic_output(output_file)
+
+        self.assertEqual(result['qe_version'], (7, 4, 1))
+        self.assertTrue(result['job_done'])
+        np.testing.assert_allclose(
+            result['elastic_tensor_gpa'][0],
+            [100.0, 10.0, 10.0, 0.0, 0.0, 0.0],
+        )
 
     def test_run_nscf_requires_ground_state(self):
         atoms = bulk(
@@ -4137,7 +4163,7 @@ class TestQEEngine(unittest.TestCase):
         )
 
         output_text = """
-         Program PWSCF v.7.2 starts
+         Program PWSCF v.7.4.1 starts
 
          End of band structure calculation
 
@@ -5090,7 +5116,7 @@ class TestQEEngine(unittest.TestCase):
             )
 
             output_file.write_text(
-                "Program PWSCF v.7.2\nJOB DONE.\n",
+                "Program PWSCF v.7.4.1\nJOB DONE.\n",
                 encoding='utf-8',
             )
 
@@ -5111,7 +5137,7 @@ class TestQEEngine(unittest.TestCase):
         )
 
         output_text = """
-        Program PWSCF v.7.2 starts
+        Program PWSCF v.7.4.1 starts
 
         !    total energy              =    -15.00000000 Ry
 
@@ -5218,7 +5244,7 @@ class TestQEEngine(unittest.TestCase):
         )
 
         output_text = """
-        Program PWSCF v.7.2 starts
+        Program PWSCF v.7.4.1 starts
 
         !    total energy              =    -15.00000000 Ry
 
@@ -6304,7 +6330,7 @@ class TestQEEngine(unittest.TestCase):
         )
 
         output_text = """
-         Program PWSCF v.7.2 starts
+         Program PWSCF v.7.4.1 starts
 
          End of band structure calculation
 
@@ -6489,7 +6515,7 @@ class TestQEEngine(unittest.TestCase):
         )
 
         output_text = """
-         Program PWSCF v.7.2 starts
+         Program PWSCF v.7.4.1 starts
 
               k = 0.0000 0.0000 0.0000 ( 123 PWs)   bands (ev):
 
@@ -7215,7 +7241,7 @@ class TestQEEngine(unittest.TestCase):
         )
 
         output_text = """
-        Program PWSCF v.7.2 starts
+        Program PWSCF v.7.4.1 starts
 
         !    total energy = -15.00000000 Ry
 
@@ -7297,7 +7323,7 @@ class TestQEEngine(unittest.TestCase):
 
     def test_parse_pw_bands_output_supports_adjacent_values(self):
         output_text = """
-        Program PWSCF v.7.2 starts
+        Program PWSCF v.7.4.1 starts
 
              k = 0.0000 0.0000 0.0000 (123 PWs) bands (ev):
 
@@ -7898,7 +7924,7 @@ class TestQEEngine(unittest.TestCase):
 
     def test_parse_qe_auxiliary_output(self):
         output_text = """
-        Program PHONON v.7.2 starts
+        Program PHONON v.7.4.1 starts
 
         JOB DONE.
         """
@@ -7925,7 +7951,7 @@ class TestQEEngine(unittest.TestCase):
         )
         self.assertEqual(
             result['qe_version'],
-            (7, 2),
+            (7, 4, 1),
         )
         self.assertTrue(
             result['job_done']
@@ -7933,7 +7959,7 @@ class TestQEEngine(unittest.TestCase):
 
     def test_parse_qe_auxiliary_output_supports_patch_version(self):
         output_text = """
-        Program MATDYN v.7.2.1 starts
+        Program MATDYN v.7.4.1 starts
 
         JOB DONE.
         """
@@ -7956,12 +7982,12 @@ class TestQEEngine(unittest.TestCase):
 
         self.assertEqual(
             result['qe_version'],
-            (7, 2, 1),
+            (7, 4, 1),
         )
 
     def test_parse_qe_auxiliary_output_preserves_incomplete_job(self):
         output_text = """
-        Program Q2R v.7.2 starts
+        Program Q2R v.7.4.1 starts
         """
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -7986,7 +8012,7 @@ class TestQEEngine(unittest.TestCase):
 
     def test_parse_qe_auxiliary_output_rejects_wrong_program(self):
         output_text = """
-        Program Q2R v.7.2 starts
+        Program Q2R v.7.4.1 starts
 
         JOB DONE.
         """
@@ -8516,7 +8542,7 @@ class TestQEEngine(unittest.TestCase):
 
     def test_run_ph_uses_existing_ground_state(self):
         output_text = """
-        Program PHONON v.7.2 starts
+        Program PHONON v.7.4.1 starts
 
         JOB DONE.
         """
@@ -8613,7 +8639,7 @@ class TestQEEngine(unittest.TestCase):
 
     def test_run_ph_requires_dynamical_matrix_outputs(self):
         output_text = """
-        Program PHONON v.7.2 starts
+        Program PHONON v.7.4.1 starts
 
         JOB DONE.
         """
@@ -8661,7 +8687,7 @@ class TestQEEngine(unittest.TestCase):
 
     def test_run_q2r_uses_phonon_grid_outputs(self):
         output_text = """
-        Program Q2R v.7.2 starts
+        Program Q2R v.7.4.1 starts
 
         JOB DONE.
         """
@@ -8744,7 +8770,7 @@ class TestQEEngine(unittest.TestCase):
 
     def test_run_q2r_requires_force_constants_output(self):
         output_text = """
-        Program Q2R v.7.2 starts
+        Program Q2R v.7.4.1 starts
 
         JOB DONE.
         """
@@ -8788,7 +8814,7 @@ class TestQEEngine(unittest.TestCase):
 
     def test_run_matdyn_band_uses_force_constants(self):
         output_text = """
-        Program MATDYN v.7.2 starts
+        Program MATDYN v.7.4.1 starts
 
         JOB DONE.
         """
@@ -8898,7 +8924,7 @@ class TestQEEngine(unittest.TestCase):
 
     def test_run_matdyn_band_requires_frequency_output(self):
         output_text = """
-        Program MATDYN v.7.2 starts
+        Program MATDYN v.7.4.1 starts
 
         JOB DONE.
         """
@@ -8947,7 +8973,7 @@ class TestQEEngine(unittest.TestCase):
 
     def test_run_matdyn_dos_uses_force_constants(self):
         output_text = """
-        Program MATDYN v.7.2 starts
+        Program MATDYN v.7.4.1 starts
 
         JOB DONE.
         """
@@ -9040,7 +9066,7 @@ class TestQEEngine(unittest.TestCase):
 
     def test_run_matdyn_dos_requires_dos_output(self):
         output_text = """
-        Program MATDYN v.7.2 starts
+        Program MATDYN v.7.4.1 starts
 
         JOB DONE.
         """

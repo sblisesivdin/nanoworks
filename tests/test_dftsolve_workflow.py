@@ -369,6 +369,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         config = DFTConfig(
             Engine='QE',
             Ground_calc=True,
+            Elastic_calc=True,
             DOS_calc=True,
             Band_calc=True,
             Projected_band_plot=True,
@@ -389,6 +390,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 'projwfc.x',
                 'pw.x',
                 'q2r.x',
+                'thermo_pw.x',
             },
         )
 
@@ -520,7 +522,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             list,
         )
 
-    def test_qe_preflight_rejects_unsupported_elastic_stage(self):
+    def test_qe_preflight_requires_thermo_pw_for_elastic_stage(self):
         config = DFTConfig(
             Engine='QE',
             Ground_calc=True,
@@ -535,7 +537,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         with (
             patch(
                 'nanoworks.dftsolve.shutil.which',
-                return_value='/usr/bin/pw.x',
+                side_effect=lambda name: f'/usr/bin/{name}',
             ),
             patch(
                 'nanoworks.dftsolve.get_qe_pseudo_dir',
@@ -553,15 +555,10 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 struct='silicon',
             )
 
-        self.assertFalse(
-            report['ok']
-        )
+        self.assertTrue(report['ok'])
         self.assertIn(
-            'elastic',
-            [
-                error['name']
-                for error in report['errors']
-            ],
+            'executable:thermo_pw.x',
+            [check['name'] for check in report['checks']],
         )
 
     def test_qe_preflight_requires_saved_state_when_ground_is_skipped(self):
@@ -776,6 +773,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             config = DFTConfig(
                 Engine='QE',
                 Ground_calc=True,
+                Elastic_calc=True,
                 DOS_calc=True,
                 Band_calc=True,
                 Band_path='GXG',
@@ -847,6 +845,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 job_ids,
                 {
                     'ground',
+                    'elastic',
                     'dos-nscf',
                     'dos-total',
                     'dos-projected',
@@ -870,6 +869,28 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                     job['command'][:3],
                     ['mpiexec', '-np', '4'],
                 )
+
+            elastic_job = next(
+                job for job in plan['jobs']
+                if job['id'] == 'elastic'
+            )
+            self.assertEqual(
+                elastic_job['executable'],
+                'thermo_pw.x',
+            )
+            self.assertTrue(elastic_job['input_from_stdin'])
+            self.assertEqual(
+                elastic_job['metadata']['thermo_pw_version'],
+                '2.1.0',
+            )
+            thermo_control = (
+                Path(elastic_job['working_directory'])
+                / 'thermo_control'
+            )
+            self.assertIn(
+                "what='scf_elastic_constants'",
+                thermo_control.read_text(encoding='utf-8'),
+            )
 
             plan_file = Path(plan['plan_file'])
             script_file = Path(plan['script_file'])

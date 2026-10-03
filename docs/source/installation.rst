@@ -119,10 +119,15 @@ projected bands, ``projwfc.x``. QE hybrid geometry, elastic, phonon, and
 optical workflows are not supported yet. QE DOS calculations currently use
 tetrahedron occupations.
 
+Semilocal QE elastic calculations are driven by ``thermo_pw.x``. Nanoworks
+supports the exact pair Quantum ESPRESSO 7.4.1 and thermo_pw 2.1.0; it does
+not claim compatibility with earlier or later releases.
+
 Quantum ESPRESSO itself is not installed automatically by the Nanoworks
 Python package. A working Quantum ESPRESSO installation with ``pw.x``,
 ``dos.x``, ``projwfc.x``, ``bands.x``, ``pp.x``, ``ph.x``, ``q2r.x``,
-``matdyn.x``, and ``epsilon.x`` available in ``PATH`` is required for all
+``matdyn.x``, ``epsilon.x``, and, for elastic calculations,
+``thermo_pw.x`` available in ``PATH`` is required for all
 currently supported workflows.
 
 Nanoworks can install the required PseudoDojo pseudopotential libraries
@@ -145,7 +150,8 @@ to select the fully-relativistic set consistently. This resource selection
 does not itself enable spin-orbit coupling; native QE SOC workflows are not
 supported yet.
 
-Quantum ESPRESSO 7.2 is the initially validated version.
+Quantum ESPRESSO 7.4.1 is the supported version. The supported thermo_pw
+version is 2.1.0.
 
 Installation of Nanoworks and Python Modules
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

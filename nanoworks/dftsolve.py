@@ -1964,6 +1964,128 @@ class dftsolve:
             sys.exit(1)
 
     def elasticcalc(self, drawfigs=False, strain_n=5, strain_mag=0.01, thickness=None):
+        """Run elasticity with the native workflow for the selected engine."""
+        if self.Engine == 'QE':
+            return self._elasticcalc_qe()
+
+        if self.Engine == 'GPAW':
+            return self._elasticcalc_gpaw(
+                drawfigs=drawfigs,
+                strain_n=strain_n,
+                strain_mag=strain_mag,
+                thickness=thickness,
+            )
+
+        raise ValueError(f"Unsupported DFT engine: {self.Engine}")
+
+    def _elasticcalc_qe(self):
+        """Run QE elasticity through thermo_pw 2.1.0."""
+        time_start = time.time()
+        parprint(
+            "Starting QE elastic calculation with thermo_pw 2.1.0..."
+        )
+        pseudo_dir, pseudopotentials = self._qe_pseudo_configuration()
+        ground_gamma = (
+            self.Gamma
+            if self.Ground_gamma is None
+            else self.Ground_gamma
+        )
+        (
+            elastic_density,
+            elastic_size,
+            elastic_gamma,
+        ) = resolve_stage_kpoint_settings(
+            stage_density=self.Elastic_kpts_density,
+            stage_size=(
+                self.Elastic_kpts_x,
+                self.Elastic_kpts_y,
+                self.Elastic_kpts_z,
+            ),
+            stage_gamma=self.Elastic_gamma,
+            ground_density=self.Ground_kpts_density,
+            ground_size=(
+                self.Ground_kpts_x,
+                self.Ground_kpts_y,
+                self.Ground_kpts_z,
+            ),
+            ground_gamma=ground_gamma,
+        )
+        magnetic_moments = None
+
+        if self.Spin_calc:
+            magnetic_moments = resolve_initial_magnetic_moments(
+                atoms=self.bulk_configuration,
+                magmom_per_atom=self.Magmom_per_atom,
+                magmom_single_atom=self.Magmom_single_atom,
+            )
+
+        work_dir = Path(
+            self.struct + '-ELASTIC-QE-Result-thermo_pw'
+        )
+        workflow = self.engine.run_thermo_pw_elastic(
+            atoms=self.bulk_configuration,
+            input_file=work_dir / 'elastic.in',
+            output_file=Path(
+                self.struct + '-ELASTIC-QE-Log-thermo_pw.txt'
+            ),
+            work_dir=work_dir,
+            state_dir=work_dir / 'state',
+            pseudopotentials=pseudopotentials,
+            pseudo_dir=pseudo_dir,
+            cutoff_ev=self.Wavefunction_cutoff,
+            density_cutoff_ratio=self.Density_cutoff_ratio,
+            exx_kpoint_density=self.EXX_kpoint_density,
+            exx_cutoff_ev=self.EXX_cutoff,
+            kpoint_density=elastic_density,
+            kpoint_size=elastic_size,
+            gamma=elastic_gamma,
+            total_charge=self.Total_charge,
+            nbands=self.Ground_num_of_bands,
+            spinpol=self.Spin_calc,
+            magnetic_moments=magnetic_moments,
+            hubbard_u=self.Hubbard_U,
+            xc_calc=self.XC_calc,
+            pseudo_xc=self.Pseudo_xc,
+            exx_fraction=self.XC_exx_fraction,
+            omega=self.XC_omega,
+            occupation=self.Occupation,
+            **self._qe_scf_settings(),
+            **self._qe_electrostatic_settings(),
+            **self._qe_dispersion_settings(),
+            parallel_cores=self.parallel_cores,
+            executable='thermo_pw.x',
+            prefix='nanoworks',
+        )
+        tensor = workflow['result']['elastic_tensor_gpa']
+        result_file = Path(
+            self.struct + '-ELASTIC-QE-Result-Elastic-AllResults.txt'
+        )
+        result_file.write_text(
+            "Elastic tensor Cij (GPa):\n"
+            + np.array2string(
+                tensor,
+                precision=6,
+                floatmode='fixed',
+            )
+            + "\n",
+            encoding='utf-8',
+        )
+        parprint("Elastic tensor Cij (GPa):")
+        parprint(tensor)
+
+        with paropen(
+            self.struct + '-TIMINGS-QE-Log-Timings.txt',
+            'a',
+        ) as timing_file:
+            print(
+                'Elastic Calculation: ',
+                round(time.time() - time_start, 2),
+                file=timing_file,
+            )
+
+        return workflow
+
+    def _elasticcalc_gpaw(self, drawfigs=False, strain_n=5, strain_mag=0.01, thickness=None):
         """
         Calculate the full elastic constant tensor and derived moduli.
         - strain_n: Number of strain points (including zero) for each independent strain mode.
@@ -6584,6 +6706,9 @@ def required_dft_executables(config):
     if config.Ground_calc:
         executables.add('pw.x')
 
+    if config.Elastic_calc:
+        executables.add('thermo_pw.x')
+
     if config.DOS_calc:
         executables.update({
             'pw.x',
@@ -6780,16 +6905,6 @@ def check_dft_configuration(
             )
 
         if (
-            config.Elastic_calc
-            and 'elastic' not in unsupported_hybrid_stages
-        ):
-            add(
-                'error',
-                'elastic',
-                'Native QE elastic calculations are not supported yet.',
-            )
-
-        if (
             config.Optical_calc
             and str(config.Opt_calc_type).strip().upper() != 'RPA'
         ):
@@ -6874,6 +6989,7 @@ def check_dft_configuration(
 
         pseudo_required = any((
             config.Ground_calc,
+            config.Elastic_calc,
             config.DOS_calc,
             config.Band_calc,
             config.Optical_calc,
@@ -6900,7 +7016,17 @@ def check_dft_configuration(
                     f'{len(pseudopotentials)} species in {pseudo_dir}',
                 )
 
-        if check_saved_state and not config.Ground_calc:
+        if (
+            check_saved_state
+            and not config.Ground_calc
+            and any((
+                config.DOS_calc,
+                config.Band_calc,
+                config.Density_calc,
+                config.Phonon_calc,
+                config.Optical_calc,
+            ))
+        ):
             state_dir = Path(
                 struct
                 + '-GROUND-QE-Result-State'
@@ -7120,6 +7246,7 @@ def prepare_qe_dry_run(
     notes = []
 
     if config.Geo_optim and any((
+        config.Elastic_calc,
         config.DOS_calc,
         config.Band_calc,
         config.Density_calc,
@@ -7132,7 +7259,7 @@ def prepare_qe_dry_run(
             "embedded in those inputs."
         )
 
-    def command_for(executable, input_file):
+    def command_for(executable, input_file, input_from_stdin=False):
         command = []
 
         if parallel_cores > 1:
@@ -7153,11 +7280,12 @@ def prepare_qe_dry_run(
                 str(parallel_cores),
             ])
 
-        command.extend([
-            executable,
-            '-i',
-            str(input_file),
-        ])
+        command.append(executable)
+        if not input_from_stdin:
+            command.extend([
+                '-i',
+                str(input_file),
+            ])
         return command
 
     def add_job(
@@ -7170,6 +7298,7 @@ def prepare_qe_dry_run(
         depends_on=None,
         working_directory=None,
         metadata=None,
+        input_from_stdin=False,
     ):
         input_file = Path(input_file).expanduser().resolve()
         output_file = Path(output_file).expanduser().resolve()
@@ -7185,6 +7314,7 @@ def prepare_qe_dry_run(
         command = command_for(
             executable,
             input_file,
+            input_from_stdin=input_from_stdin,
         )
         working_directory = (
             Path(working_directory).expanduser().resolve()
@@ -7212,6 +7342,7 @@ def prepare_qe_dry_run(
                 else None
             ),
             'command': command,
+            'input_from_stdin': bool(input_from_stdin),
             'depends_on': list(depends_on or []),
             'metadata': dict(metadata or {}),
         })
@@ -7228,6 +7359,7 @@ def prepare_qe_dry_run(
     magnetic_moments = None
     needs_pw_input = any((
         config.Ground_calc,
+        config.Elastic_calc,
         config.DOS_calc,
         config.Band_calc,
         config.Optical_calc,
@@ -7336,13 +7468,88 @@ def prepare_qe_dry_run(
             Path(str(struct) + f'-GROUND-QE-Log-{label}.txt'),
             input_text,
         )
-    else:
+    elif any((
+        config.DOS_calc,
+        config.Band_calc,
+        config.Density_calc,
+        config.Phonon_calc,
+        config.Optical_calc,
+    )):
         notes.append(
             "Ground_calc is False; generated post-processing commands expect "
             f"an existing QE state in {ground_state_dir}."
         )
 
     ground_dependency = ['ground'] if config.Ground_calc else []
+
+    if config.Elastic_calc:
+        (
+            elastic_density,
+            elastic_size,
+            elastic_gamma,
+        ) = resolve_stage_kpoint_settings(
+            stage_density=config.Elastic_kpts_density,
+            stage_size=(
+                config.Elastic_kpts_x,
+                config.Elastic_kpts_y,
+                config.Elastic_kpts_z,
+            ),
+            stage_gamma=config.Elastic_gamma,
+            ground_density=config.Ground_kpts_density,
+            ground_size=(
+                config.Ground_kpts_x,
+                config.Ground_kpts_y,
+                config.Ground_kpts_z,
+            ),
+            ground_gamma=ground_gamma,
+        )
+        elastic_mesh = engine.resolve_qe_kpoint_size(
+            atoms,
+            density=elastic_density,
+            size=elastic_size,
+        )
+        elastic_occupation = engine.resolve_qe_occupation(
+            portable_occupation
+        )
+        elastic_work_dir = Path(
+            str(struct) + '-ELASTIC-QE-Result-thermo_pw'
+        ).resolve()
+        elastic_state_dir = elastic_work_dir / 'state'
+        elastic_control_file = elastic_work_dir / 'thermo_control'
+        elastic_work_dir.mkdir(parents=True, exist_ok=True)
+        elastic_control_file.write_text(
+            engine.render_thermo_control(),
+            encoding='utf-8',
+        )
+        setup_directories.add(str(elastic_work_dir))
+        setup_directories.add(str(elastic_state_dir))
+        add_job(
+            'elastic',
+            'elastic',
+            'thermo_pw.x',
+            elastic_work_dir / 'elastic.in',
+            Path(str(struct) + '-ELASTIC-QE-Log-thermo_pw.txt'),
+            engine.render_scf_input(
+                **{
+                    **common_pw,
+                    'outdir': elastic_state_dir,
+                },
+                kpoint_size=elastic_mesh,
+                gamma=elastic_gamma,
+                nbands=config.Ground_num_of_bands,
+                occupations=elastic_occupation['occupations'],
+                smearing=elastic_occupation['smearing'],
+                width_ev=elastic_occupation['width_ev'],
+            ),
+            depends_on=ground_dependency,
+            working_directory=elastic_work_dir,
+            input_from_stdin=True,
+            metadata={
+                'driver': 'thermo_pw',
+                'thermo_pw_version': '2.1.0',
+                'calculation': 'scf_elastic_constants',
+            },
+        )
 
     if config.DOS_calc:
         (
@@ -7902,10 +8109,15 @@ def prepare_qe_dry_run(
     for job in jobs:
         command = shlex.join(job['command'])
         output_file = shlex.quote(job['output_file'])
+        input_redirect = (
+            ' < ' + shlex.quote(job['input_file'])
+            if job.get('input_from_stdin')
+            else ''
+        )
 
         if job['working_directory'] is None:
             script_lines.append(
-                f"{command} > {output_file}"
+                f"{command}{input_redirect} > {output_file}"
             )
         else:
             script_lines.append(
@@ -7913,6 +8125,7 @@ def prepare_qe_dry_run(
                 + shlex.quote(job['working_directory'])
                 + ' && '
                 + command
+                + input_redirect
                 + ' > '
                 + output_file
                 + ')'

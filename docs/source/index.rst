@@ -49,6 +49,7 @@ optical calculations. Native QE
 ``HSE06``, ``HSE03``, and ``PBE0`` support the electronic stages: ground,
 DOS/PDOS, band, projected-band, and density. QE hybrid geometry, elastic,
 phonon, and optical workflows are not supported yet.
+Semilocal QE elastic calculations use thermo_pw 2.1.0 with QE 7.4.1.
 
 Why Nanoworks?
 --------------

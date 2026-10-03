@@ -2,7 +2,9 @@
 
 ### Development Version
 
-- QE `pw.x` SCF inputs can explicitly request stress, and the final raw stress tensor and pressure are parsed in kbar for the native elastic workflow.
+- Quantum ESPRESSO support now targets exactly QE 7.4.1; other QE releases are rejected instead of being treated as implicitly compatible.
+- QE elastic calculations use thermo_pw 2.1.0 as the primary driver with ``scf_elastic_constants`` and the advanced elastic algorithm. The Python ``elastic`` workflow remains GPAW-only.
+- QE `pw.x` SCF inputs can explicitly request stress, and the final raw stress tensor and pressure are parsed in kbar.
 - `vdW_calc='D3'` now enables Quantum ESPRESSO's native Grimme-D3 correction across every `pw.x` stage.
 - Portable `Wavefunction_cutoff` replaces `Cut_off_energy`; `Density_cutoff_ratio` controls QE `ecutrho` and defaults to four times the wavefunction cutoff.
 - `EXX_kpoint_density` optionally controls the QE exact-exchange q-grid while preserving QE's native default when omitted.
@@ -48,7 +50,7 @@
 - GPAW optical-state preparation keeps the full-diagonalization domain communicator serial while allowing automatic k-point and band distribution across the remaining MPI ranks.
 - `Projected_band_plot` and `Projections` support orbital-projected (fat) bands with GPAW and QE.
 - `qeconverter` converts common QE inputs and accepts `--xc HSE06`, `--xc HSE03` and `--xc PBE0` overrides.
-- Quantum ESPRESSO 7.2 is the initially validated QE version. PseudoDojo PBE pseudopotentials can be installed with `nanoworks --install-qe-pseudos`.
+- Quantum ESPRESSO 7.4.1 is the supported QE version. PseudoDojo PBE pseudopotentials can be installed with `nanoworks --install-qe-pseudos`.
 - The `dftsolve -p N` interface is retained. GPAW runs under MPI and QE executables are launched with the requested process count.
 - LAMMPS is available in `mdsolve` alongside ASAP3 with shared temperature, time-step, damping and parameter-sweep settings.
 - `mlsolve` supports geometry optimization and static calculations with MACE, CHGNet and SevenNet.
