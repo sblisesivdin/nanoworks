@@ -3,6 +3,7 @@
 ### Development Version
 
 - This Nanoworks version supports Quantum ESPRESSO 7.4.1; a different detected QE version now emits a warning and the calculation continues.
+- ``dftsolve`` no longer suppresses Python warnings globally, so QE version compatibility warnings remain visible to users.
 - Nanoworks installers leave QE and thermo_pw externally managed and state the supported QE 7.4.1/thermo_pw 2.1.0 pair explicitly.
 - QE elastic calculations use thermo_pw 2.1.0 as the primary driver with ``scf_elastic_constants`` and the advanced elastic algorithm. The Python ``elastic`` workflow remains GPAW-only.
 - QE thermo_pw results include the 6x6 elastic tensor and parsed Voigt, Reuss, and Voigt-Reuss-Hill bulk, Young, shear, and Poisson properties in a Nanoworks summary.

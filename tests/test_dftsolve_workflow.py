@@ -40,6 +40,26 @@ with patch.object(
 
 class TestDFTSolveWorkflow(unittest.TestCase):
 
+    def test_import_does_not_suppress_runtime_warnings(self):
+        completed = subprocess.run(
+            [
+                sys.executable,
+                '-c',
+                (
+                    'import warnings; '
+                    'warnings.resetwarnings(); '
+                    'import nanoworks.dftsolve; '
+                    "warnings.warn('visible warning', RuntimeWarning)"
+                ),
+            ],
+            capture_output=True,
+            check=False,
+            text=True,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn('RuntimeWarning: visible warning', completed.stderr)
+
     def test_input_rejects_unknown_or_removed_keywords(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             input_file = Path(tmpdir) / 'invalid_input.py'

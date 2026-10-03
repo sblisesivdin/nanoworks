@@ -287,8 +287,6 @@ from ase.io.cif import write_cif
 from pathlib import Path
 import numpy as np
 from numpy import genfromtxt
-import warnings
-warnings.filterwarnings('ignore')
 
 DFT_ENGINE_DEFAULTS = {
     'GPAW': {
