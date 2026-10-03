@@ -143,11 +143,12 @@ def calculate_2d_elastic_properties(
         )
 
     indices = _IN_PLANE_VOIGT[axis]
-    stiffness = (
+    raw_stiffness = (
         tensor[np.ix_(indices, indices)]
         * conversion_length
         * 0.1
     )
+    stiffness = 0.5 * (raw_stiffness + raw_stiffness.T)
 
     try:
         compliance = np.linalg.inv(stiffness)
@@ -181,4 +182,85 @@ def calculate_2d_elastic_properties(
         'shear_modulus_n_per_m': shear,
         'poisson_ratio_first_second': -compliance[0, 1] / compliance[0, 0],
         'poisson_ratio_second_first': -compliance[0, 1] / compliance[1, 1],
+    }
+
+
+def analyze_elastic_stability(
+    elastic_tensor_gpa,
+    dimensionality='3D',
+    stiffness_2d_n_per_m=None,
+    symmetry_relative_tolerance=1.0e-5,
+    eigenvalue_relative_tolerance=1.0e-8,
+):
+    """Check tensor symmetry and positive-definite mechanical stability."""
+    tensor = np.asarray(elastic_tensor_gpa, dtype=float)
+
+    if tensor.shape != (6, 6) or not np.all(np.isfinite(tensor)):
+        raise ValueError(
+            'The elastic tensor must be a finite 6x6 matrix.'
+        )
+
+    dimensionality = normalize_elastic_dimensionality(dimensionality)
+
+    if dimensionality == 'auto':
+        raise ValueError(
+            'Elastic stability analysis requires resolved 2D or 3D data.'
+        )
+
+    tensor_scale = max(float(np.max(np.abs(tensor))), 1.0)
+    symmetry_tolerance = max(
+        1.0e-8,
+        tensor_scale * float(symmetry_relative_tolerance),
+    )
+    maximum_asymmetry = float(np.max(np.abs(tensor - tensor.T)))
+    tensor_symmetric = maximum_asymmetry <= symmetry_tolerance
+
+    if dimensionality == '2D':
+        if stiffness_2d_n_per_m is None:
+            raise ValueError(
+                '2D stability analysis requires an in-plane stiffness matrix.'
+            )
+        matrix = np.asarray(stiffness_2d_n_per_m, dtype=float)
+        expected_shape = (3, 3)
+        units = 'N/m'
+        criterion = (
+            'positive-definite 3x3 in-plane stiffness at zero external stress'
+        )
+    else:
+        matrix = tensor
+        expected_shape = (6, 6)
+        units = 'GPa'
+        criterion = (
+            'positive-definite 6x6 stiffness at zero external stress'
+        )
+
+    if matrix.shape != expected_shape or not np.all(np.isfinite(matrix)):
+        raise ValueError(
+            f'The resolved {dimensionality} stiffness matrix must be a '
+            f'finite {expected_shape[0]}x{expected_shape[1]} matrix.'
+        )
+
+    symmetric_matrix = 0.5 * (matrix + matrix.T)
+    eigenvalues = np.linalg.eigvalsh(symmetric_matrix)
+    matrix_scale = max(float(np.max(np.abs(symmetric_matrix))), 1.0)
+    eigenvalue_tolerance = max(
+        1.0e-8,
+        matrix_scale * float(eigenvalue_relative_tolerance),
+    )
+    minimum_eigenvalue = float(np.min(eigenvalues))
+    mechanically_stable = minimum_eigenvalue > eigenvalue_tolerance
+    condition_number = float(np.linalg.cond(symmetric_matrix))
+
+    return {
+        'dimensionality': dimensionality,
+        'criterion': criterion,
+        'units': units,
+        'tensor_symmetric': tensor_symmetric,
+        'maximum_tensor_asymmetry_gpa': maximum_asymmetry,
+        'tensor_symmetry_tolerance_gpa': symmetry_tolerance,
+        'eigenvalues': [float(value) for value in eigenvalues],
+        'eigenvalue_tolerance': eigenvalue_tolerance,
+        'minimum_eigenvalue': minimum_eigenvalue,
+        'condition_number': condition_number,
+        'mechanically_stable': mechanically_stable,
     }

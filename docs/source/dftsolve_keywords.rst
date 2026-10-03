@@ -99,7 +99,11 @@ or:
     elastic driver. This Nanoworks version supports QE 7.4.1; a different
     detected QE version produces a warning but does not stop the calculation.
     QE results include the 6x6 tensor in GPa and the available Voigt, Reuss,
-    and Voigt-Reuss-Hill bulk, Young, shear, and Poisson properties.
+    and Voigt-Reuss-Hill bulk, Young, shear, and Poisson properties. The
+    summary also reports tensor symmetry, stiffness eigenvalues, condition
+    number, and whether the relevant stiffness matrix is positive definite at
+    zero external stress. A failed stability check is reported as a physical
+    result and does not discard the calculation output.
 
 .. code-block:: python
 

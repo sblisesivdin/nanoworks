@@ -34,3 +34,9 @@ vacuum-corrected in-plane stiffness and directional moduli in N/m. Set
 `Elastic_dimensionality` explicitly to `'2D'` or `'3D'` when the
 automatic geometric classification is unsuitable, and use
 `Elastic_normal_axis` to select the slab-normal cell vector.
+
+The summary checks tensor symmetry and reports the stiffness eigenvalues,
+condition number, and positive-definite mechanical stability. The full 6x6
+matrix is used for 3D materials; the vacuum-corrected 3x3 in-plane matrix is
+used for 2D materials. An unstable result remains available for inspection
+instead of being treated as a workflow failure.

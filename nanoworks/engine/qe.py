@@ -25,6 +25,7 @@ from nanoworks.hybrids import (
     validate_exx_kpoint_density,
 )
 from nanoworks.elasticity import (
+    analyze_elastic_stability,
     calculate_2d_elastic_properties,
     resolve_elastic_dimensionality,
 )
@@ -8041,6 +8042,16 @@ def run_thermo_pw_elastic(
             normal_axis=dimensionality['normal_axis'],
         )
 
+    stability = analyze_elastic_stability(
+        result['elastic_tensor_gpa'],
+        dimensionality=dimensionality['resolved'],
+        stiffness_2d_n_per_m=(
+            two_dimensional_properties['stiffness_n_per_m']
+            if two_dimensional_properties is not None
+            else None
+        ),
+    )
+
     return {
         'input_file': input_file,
         'output_file': output_file,
@@ -8051,6 +8062,7 @@ def run_thermo_pw_elastic(
         'thermo_pw_supported_version': THERMO_PW_SUPPORTED_VERSION,
         'elastic_dimensionality': dimensionality,
         'two_dimensional_properties': two_dimensional_properties,
+        'elastic_stability': stability,
         'execution': execution,
         'result': result,
     }

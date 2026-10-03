@@ -2075,6 +2075,7 @@ class dftsolve:
         moduli = workflow['result']['elastic_moduli']
         dimensionality = workflow['elastic_dimensionality']
         two_dimensional = workflow['two_dimensional_properties']
+        stability = workflow['elastic_stability']
         result_file = Path(
             self.struct + '-ELASTIC-QE-Result-Elastic-AllResults.txt'
         )
@@ -2140,6 +2141,49 @@ class dftsolve:
                 ),
             ])
 
+        result_lines.extend([
+            '',
+            'Elastic tensor consistency and mechanical stability:',
+            (
+                'Tensor symmetric within tolerance: '
+                + ('yes' if stability['tensor_symmetric'] else 'no')
+            ),
+            (
+                'Maximum |Cij-Cji|: '
+                f"{stability['maximum_tensor_asymmetry_gpa']:.8g} GPa"
+            ),
+            (
+                'Symmetry tolerance: '
+                f"{stability['tensor_symmetry_tolerance_gpa']:.8g} GPa"
+            ),
+            'Stability criterion: ' + stability['criterion'],
+            (
+                f"Stiffness eigenvalues ({stability['units']}): "
+                + ' '.join(
+                    f'{value:.8g}'
+                    for value in stability['eigenvalues']
+                )
+            ),
+            (
+                'Minimum stiffness eigenvalue: '
+                f"{stability['minimum_eigenvalue']:.8g} "
+                f"{stability['units']}"
+            ),
+            (
+                'Positive-eigenvalue tolerance: '
+                f"{stability['eigenvalue_tolerance']:.8g} "
+                f"{stability['units']}"
+            ),
+            (
+                'Stiffness condition number: '
+                f"{stability['condition_number']:.8g}"
+            ),
+            (
+                'Mechanically stable: '
+                + ('yes' if stability['mechanically_stable'] else 'no')
+            ),
+        ])
+
         for name in ('voigt', 'reuss', 'hill'):
             values = moduli.get(name)
             if values is None:
@@ -2167,6 +2211,21 @@ class dftsolve:
         )
         parprint("Elastic tensor Cij (GPa):")
         parprint(tensor)
+
+        if not stability['tensor_symmetric']:
+            parprint(
+                'WARNING: The thermo_pw elastic tensor is not symmetric '
+                'within the reporting tolerance.'
+            )
+
+        parprint(
+            'Mechanical stability ('
+            + stability['dimensionality']
+            + '): '
+            + ('stable' if stability['mechanically_stable'] else 'unstable')
+            + f"; minimum eigenvalue = {stability['minimum_eigenvalue']:.6f} "
+            + stability['units']
+        )
 
         if two_dimensional is not None:
             parprint(
