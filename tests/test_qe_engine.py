@@ -4789,6 +4789,31 @@ class TestQEEngine(unittest.TestCase):
                     pdos_prefix=tmpdir / 'pdos',
                 )
 
+    def test_run_projwfc_rejects_non_soc_state_for_soc_workflow(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+            save_dir = tmpdir / 'state' / 'nanoworks.save'
+            save_dir.mkdir(parents=True)
+            (save_dir / 'data-file-schema.xml').write_text(
+                '<espresso><spin>'
+                '<noncolin>false</noncolin>'
+                '<spinorbit>false</spinorbit>'
+                '</spin></espresso>',
+                encoding='utf-8',
+            )
+
+            with self.assertRaisesRegex(
+                RuntimeError,
+                'Rerun Ground_calc with SOC_calc = True',
+            ):
+                run_projwfc(
+                    input_file=tmpdir / 'pdos.in',
+                    output_file=tmpdir / 'pdos.out',
+                    state_dir=tmpdir / 'state',
+                    pdos_prefix=tmpdir / 'pdos',
+                    spin_orbit=True,
+                )
+
     def test_parse_projwfc_pdos_p_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             pdos_file = (
@@ -4853,6 +4878,78 @@ class TestQEEngine(unittest.TestCase):
         self.assertIsNone(
             result['components_up']
         )
+
+        self.assertFalse(result['spin_orbit'])
+        self.assertIsNone(result['total_angular_momentum'])
+
+    def test_parse_spin_orbit_projwfc_pdos_p_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pdos_file = (
+                Path(tmpdir)
+                / 'test.pdos_atm#2(Se)_wfc#3(p_j1.5)'
+            )
+            pdos_file.write_text(
+                '# E ldos mj1 mj2 mj3 mj4\n'
+                '1.0 1.00 0.10 0.20 0.30 0.40\n'
+                '2.0 1.40 0.20 0.30 0.40 0.50\n',
+                encoding='utf-8',
+            )
+
+            result = parse_projwfc_pdos_file(pdos_file)
+
+        self.assertTrue(result['spin_orbit'])
+        self.assertFalse(result['spin_polarized'])
+        self.assertEqual(result['total_angular_momentum'], 1.5)
+        self.assertEqual(
+            list(result['components']),
+            [
+                'j_component_1',
+                'j_component_2',
+                'j_component_3',
+                'j_component_4',
+            ],
+        )
+        self.assertEqual(
+            result['components']['j_component_4'],
+            [0.4, 0.5],
+        )
+
+    def test_aggregate_spin_orbit_projwfc_pdos(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            prefix = Path(tmpdir) / 'nanoworks-pdos'
+            files = {
+                's_j0.5': (
+                    '.pdos_atm#1(W)_wfc#1(s_j0.5)',
+                    '1.0 0.30 0.10 0.20\n2.0 0.50 0.20 0.30\n',
+                ),
+                'p_j0.5': (
+                    '.pdos_atm#1(W)_wfc#2(p_j0.5)',
+                    '1.0 0.20 0.08 0.12\n2.0 0.40 0.15 0.25\n',
+                ),
+                'p_j1.5': (
+                    '.pdos_atm#1(W)_wfc#3(p_j1.5)',
+                    '1.0 0.60 0.10 0.15 0.15 0.20\n'
+                    '2.0 1.00 0.20 0.25 0.25 0.30\n',
+                ),
+            }
+
+            for suffix, content in files.values():
+                Path(str(prefix) + suffix).write_text(
+                    '# E ldos components\n' + content,
+                    encoding='utf-8',
+                )
+
+            result = aggregate_projwfc_pdos(prefix)
+
+        self.assertTrue(result['spin_orbit'])
+        self.assertFalse(result['spin_polarized'])
+        self.assertEqual(result['s_total'], [0.3, 0.5])
+        self.assertEqual(result['p_total'], [0.8, 1.4])
+        self.assertEqual(result['j_totals']['s_j0.5'], [0.3, 0.5])
+        self.assertEqual(result['j_totals']['p_j0.5'], [0.2, 0.4])
+        self.assertEqual(result['j_totals']['p_j1.5'], [0.6, 1.0])
+        np.testing.assert_allclose(result['total'], [1.1, 1.9])
+        self.assertEqual(result['px'], [0.0, 0.0])
 
     def test_parse_spin_polarized_projwfc_pdos_p_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -3695,24 +3695,6 @@ class dftsolve:
                 fig
             )
 
-        if self.SOC_calc:
-            parprint(
-                'QE SOC total DOS is complete. SOC-resolved projected '
-                'DOS is not supported yet and was not requested.'
-            )
-            time22 = time.time()
-
-            with paropen(
-                self.struct + f'-TIMINGS-{self.Engine}-Log-Timings.txt',
-                'a',
-            ) as f1:
-                print(
-                    f'DOS calculation: {round((time22-time21), 2)}',
-                    file=f1,
-                )
-
-            return
-
         if not hybrid:
             parprint(
                 "Starting QE projected DOS calculation..."
@@ -3732,6 +3714,11 @@ class dftsolve:
                     parallel_cores=self.parallel_cores,
                     executable='projwfc.x',
                     prefix='nanoworks',
+                    spin_orbit=getattr(
+                        self,
+                        'SOC_calc',
+                        False,
+                    ),
                 )
             except Exception as exc:
                 parprint(
@@ -3760,6 +3747,15 @@ class dftsolve:
             raise RuntimeError(
                 "QE PDOS spin channels do not match "
                 "the requested Spin_calc setting."
+            )
+
+        if (
+            pdos_result['spin_orbit']
+            != bool(self.SOC_calc)
+        ):
+            raise RuntimeError(
+                'QE PDOS angular-momentum channels do not match '
+                'the requested SOC_calc setting.'
             )
 
         pdos_shifted_energies = [
@@ -3815,7 +3811,77 @@ class dftsolve:
                         file=fd,
                     )
 
-        if self.Spin_calc:
+        def write_soc_pdos_csv(
+            output_path,
+            projection,
+        ):
+            j_labels = sorted(
+                projection['j_totals'],
+                key=lambda label: (
+                    'spdf'.index(label[0]),
+                    float(label.split('_j', 1)[1]),
+                ),
+            )
+
+            with output_path.open(
+                'w',
+                encoding='utf-8',
+            ) as fd:
+                print(
+                    *(
+                        'Energy',
+                        's-total',
+                        'p-total',
+                        'd-total',
+                        'f-total',
+                        *j_labels,
+                        'TOTAL',
+                    ),
+                    sep=', ',
+                    file=fd,
+                )
+
+                for index, energy in enumerate(
+                    pdos_shifted_energies
+                ):
+                    print(
+                        *(
+                            energy,
+                            projection['s_total'][index],
+                            projection['p_total'][index],
+                            projection['d_total'][index],
+                            projection['f_total'][index],
+                            *(
+                                projection['j_totals'][label][index]
+                                for label in j_labels
+                            ),
+                            projection['total'][index],
+                        ),
+                        sep=', ',
+                        file=fd,
+                    )
+
+        if self.SOC_calc:
+            pdos_csv_file = Path(
+                self.struct
+                + f'-DOS-{self.Engine}-Result-PDOS.csv'
+            )
+
+            write_soc_pdos_csv(
+                pdos_csv_file,
+                pdos_result,
+            )
+
+            parprint(
+                'Saving total-angular-momentum-resolved SOC PDOS...'
+            )
+
+            parprint(
+                'Nanoworks SOC PDOS data saved to: '
+                f'{pdos_csv_file}'
+            )
+
+        elif self.Spin_calc:
             pdos_up_file = Path(
                 self.struct
                 + f'-DOS-{self.Engine}-Result-PDOS-Up.csv'
@@ -7027,10 +7093,8 @@ def required_dft_executables(config):
         executables.update({
             'pw.x',
             'dos.x',
+            'projwfc.x',
         })
-
-        if not config.SOC_calc:
-            executables.add('projwfc.x')
 
     if config.Band_calc:
         executables.update({
@@ -8060,28 +8124,38 @@ def prepare_qe_dry_run(
             ),
             depends_on=[dos_electronic_job],
         )
+        add_job(
+            'dos-projected',
+            'dos',
+            'projwfc.x',
+            Path(str(struct) + '-DOS-QE-Input-PDOS.in'),
+            Path(str(struct) + '-DOS-QE-Log-PDOS.txt'),
+            engine.render_projwfc_input(
+                prefix='nanoworks',
+                outdir=dos_state_dir,
+                filpdos=Path(str(struct) + '-DOS-QE-Result-Raw-PDOS'),
+                delta_e=delta_e,
+                degauss=degauss,
+                ngauss=dos_settings['ngauss'],
+            ),
+            depends_on=[dos_electronic_job],
+            metadata={
+                'spin_orbit': bool(config.SOC_calc),
+                'projection_basis': (
+                    'total-angular-momentum'
+                    if config.SOC_calc
+                    else 'orbital'
+                ),
+            },
+        )
+
         if config.SOC_calc:
             notes.append(
-                'QE SOC dry-run includes total DOS only; SOC-resolved PDOS '
-                'is not supported yet.'
+                'QE SOC PDOS uses projwfc.x total-angular-momentum '
+                '(l_j) projections.'
             )
+
         else:
-            add_job(
-                'dos-projected',
-                'dos',
-                'projwfc.x',
-                Path(str(struct) + '-DOS-QE-Input-PDOS.in'),
-                Path(str(struct) + '-DOS-QE-Log-PDOS.txt'),
-                engine.render_projwfc_input(
-                    prefix='nanoworks',
-                    outdir=dos_state_dir,
-                    filpdos=Path(str(struct) + '-DOS-QE-Result-Raw-PDOS'),
-                    delta_e=delta_e,
-                    degauss=degauss,
-                    ngauss=dos_settings['ngauss'],
-                ),
-                depends_on=[dos_electronic_job],
-            )
             notes.append(
                 'DOS and PDOS dry-run inputs omit Emin/Emax because the '
                 'absolute energy window depends on the electronic-stage '

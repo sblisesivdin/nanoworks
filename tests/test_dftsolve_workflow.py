@@ -430,7 +430,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             },
         )
 
-    def test_qe_soc_dos_does_not_require_projwfc(self):
+    def test_qe_soc_dos_requires_projwfc(self):
         config = DFTConfig(
             Engine='QE',
             Ground_calc=True,
@@ -440,7 +440,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
 
         self.assertEqual(
             set(required_dft_executables(config)),
-            {'dos.x', 'pw.x'},
+            {'dos.x', 'projwfc.x', 'pw.x'},
         )
         self.assertEqual(config.Pseudo_relativistic, 'full')
 
@@ -1348,6 +1348,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                     'ground',
                     'dos-nscf',
                     'dos-total',
+                    'dos-projected',
                     'band',
                     'density-pseudo-total',
                 },
@@ -1362,8 +1363,13 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 self.assertNotIn('nspin = 2', input_text)
 
             self.assertIn(
-                'SOC-resolved PDOS is not supported yet',
+                'total-angular-momentum (l_j) projections',
                 ' '.join(plan['notes']),
+            )
+
+            self.assertEqual(
+                jobs['dos-projected']['metadata']['projection_basis'],
+                'total-angular-momentum',
             )
 
             density_text = Path(

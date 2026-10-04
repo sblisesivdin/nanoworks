@@ -13,9 +13,10 @@ Then run with SOC effects:
     dftsolve -p 4 -i WSe2-with-SOC.py
 
 The same engine-neutral ``SOC_calc = True`` switch is used for Quantum
-ESPRESSO. The QE example runs the supported nonmagnetic PBE Ground, total-DOS,
+ESPRESSO. The QE example runs the supported nonmagnetic PBE Ground, DOS/PDOS,
 Band, and total pseudo-valence density workflow and automatically selects the
-fully-relativistic managed PseudoDojo set:
+fully-relativistic managed PseudoDojo set. SOC PDOS is reported in QE's
+total-angular-momentum ``l_j`` channels:
 
     dftsolve -p 4 -i WSe2-QE-with-SOC.py
 

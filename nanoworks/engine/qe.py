@@ -7091,7 +7091,7 @@ def parse_dos_output(dos_file):
     }
 
 def parse_projwfc_pdos_file(pdos_file):
-    """Parse one collinear-spin or non-spin QE PDOS file."""
+    """Parse one scalar, collinear-spin, or spin-orbit QE PDOS file."""
     pdos_file = Path(
         pdos_file
     )
@@ -7104,7 +7104,8 @@ def parse_projwfc_pdos_file(pdos_file):
     name = pdos_file.name
 
     match = re.search(
-        r'\.pdos_atm#(\d+)\(([^)]+)\)_wfc#(\d+)\(([spdf])\)$',
+        r'\.pdos_atm#(\d+)\(([^)]+)\)_wfc#(\d+)'
+        r'\(([spdf])(?:_j(\d+(?:\.\d+)?))?\)$',
         name,
     )
 
@@ -7125,6 +7126,14 @@ def parse_projwfc_pdos_file(pdos_file):
 
     orbital = match.group(4)
 
+    total_angular_momentum = (
+        float(match.group(5))
+        if match.group(5) is not None
+        else None
+    )
+
+    spin_orbit = total_angular_momentum is not None
+
     component_names = {
         's': [
             's',
@@ -7143,15 +7152,40 @@ def parse_projwfc_pdos_file(pdos_file):
         ],
     }
 
-    if orbital not in component_names:
+    if spin_orbit:
+        angular_momentum = 'spdf'.index(orbital)
+        allowed_j = {
+            angular_momentum + 0.5,
+            abs(angular_momentum - 0.5),
+        }
+
+        if not any(
+            abs(total_angular_momentum - value) < 1.0e-8
+            for value in allowed_j
+        ):
+            raise ValueError(
+                'QE SOC PDOS filename contains an invalid total '
+                f'angular momentum: {name}'
+            )
+
+        component_count = int(
+            round(2.0 * total_angular_momentum + 1.0)
+        )
+        names = [
+            f'j_component_{index}'
+            for index in range(1, component_count + 1)
+        ]
+
+    elif orbital not in component_names:
         raise NotImplementedError(
             "QE PDOS parsing currently supports "
             "s, p, and d orbitals only."
         )
 
-    names = component_names[
-        orbital
-    ]
+    else:
+        names = component_names[
+            orbital
+        ]
 
     nonspin_columns = (
         2
@@ -7213,7 +7247,13 @@ def parse_projwfc_pdos_file(pdos_file):
             except ValueError:
                 continue
 
-            if len(values) == nonspin_columns:
+            if spin_orbit and len(values) == nonspin_columns:
+                row_is_spin_polarized = False
+
+            elif spin_orbit:
+                continue
+
+            elif len(values) == nonspin_columns:
                 row_is_spin_polarized = False
 
             elif len(values) == spin_columns:
@@ -7311,6 +7351,8 @@ def parse_projwfc_pdos_file(pdos_file):
         'symbol': symbol,
         'wfc_index': wfc_index,
         'orbital': orbital,
+        'spin_orbit': spin_orbit,
+        'total_angular_momentum': total_angular_momentum,
         'energies_ev': energies,
         'ldos': ldos,
         'ldos_up': (
@@ -7339,7 +7381,7 @@ def parse_projwfc_pdos_file(pdos_file):
     }
 
 def aggregate_projwfc_pdos(pdos_prefix):
-    """Aggregate collinear-spin or non-spin QE atomic PDOS files."""
+    """Aggregate scalar, collinear-spin, or spin-orbit QE PDOS files."""
     pdos_prefix = Path(
         pdos_prefix
     )
@@ -7380,6 +7422,8 @@ def aggregate_projwfc_pdos(pdos_prefix):
         'dx2_y2': None,
         'dxy': None,
     }
+
+    j_totals = {}
 
     parsed_files = []
 
@@ -7436,7 +7480,7 @@ def aggregate_projwfc_pdos(pdos_prefix):
             'orbital'
         ]
 
-        if orbital == 'f':
+        if orbital == 'f' and not parsed['spin_orbit']:
             raise NotImplementedError(
                 "QE f-orbital PDOS aggregation is not "
                 "implemented yet."
@@ -7449,9 +7493,25 @@ def aggregate_projwfc_pdos(pdos_prefix):
                 orbital
             ][index] += value
 
+        if parsed['spin_orbit']:
+            j_label = (
+                f"{orbital}_j"
+                f"{parsed['total_angular_momentum']:.1f}"
+            )
+            if j_label not in j_totals:
+                j_totals[j_label] = [
+                    0.0
+                ] * len(energies)
+
+            for index, value in enumerate(parsed['ldos']):
+                j_totals[j_label][index] += value
+
         for component_name, values in (
             parsed['components'].items()
         ):
+            if parsed['spin_orbit']:
+                continue
+
             if orbital == 's' and component_name == 's':
                 continue
 
@@ -7494,6 +7554,23 @@ def aggregate_projwfc_pdos(pdos_prefix):
     spin_polarized = (
         spin_modes.pop()
     )
+
+    spin_orbit_modes = {
+        parsed['spin_orbit']
+        for parsed in parsed_files
+    }
+
+    if len(spin_orbit_modes) != 1:
+        raise ValueError(
+            'QE PDOS files mix scalar and spin-orbit projections.'
+        )
+
+    spin_orbit = spin_orbit_modes.pop()
+
+    if spin_orbit and spin_polarized:
+        raise ValueError(
+            'QE spin-orbit PDOS cannot contain collinear spin channels.'
+        )
 
     spin_up = None
     spin_down = None
@@ -7637,6 +7714,8 @@ def aggregate_projwfc_pdos(pdos_prefix):
         'parsed_files': parsed_files,
         'npoints': len(energies),
         'spin_polarized': spin_polarized,
+        'spin_orbit': spin_orbit,
+        'j_totals': j_totals,
         'spin_up': spin_up,
         'spin_down': spin_down,
     }
@@ -10002,6 +10081,7 @@ def run_projwfc(
     parallel_cores=1,
     executable='projwfc.x',
     prefix='nanoworks',
+    spin_orbit=False,
 ):
     """Render and execute one Quantum ESPRESSO projwfc.x calculation."""
     input_file = Path(
@@ -10028,6 +10108,12 @@ def run_projwfc(
             "A valid QE electronic state is required "
             f"for the PDOS calculation: {state_dir}"
         )
+
+    validate_qe_state_spin_orbit(
+        state_dir,
+        expected=spin_orbit,
+        prefix=prefix,
+    )
 
     input_text = render_projwfc_input(
         prefix=prefix,

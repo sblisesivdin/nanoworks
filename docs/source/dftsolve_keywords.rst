@@ -48,10 +48,11 @@ or:
     also supports DFPT phonons and ``epsilon.x`` RPA optics. Native
     QE ``HSE06``, ``HSE03``, and ``PBE0`` workflows support ground-state,
     DOS/PDOS, band, projected-band, density, and Grimme-D3 calculations.
-    Nonmagnetic PBE QE SOC supports Ground, total DOS, Band, and total
-    pseudo-valence density calculations.
-    SOC-PDOS, projected bands, magnetic SOC, and hybrid SOC are not supported
-    yet. Semilocal QE elastic calculations use thermo_pw 2.1.0 with Quantum
+    Nonmagnetic PBE QE SOC supports Ground, DOS/PDOS, Band, and total
+    pseudo-valence density calculations. SOC PDOS is resolved in QE's
+    total-angular-momentum ``l_j`` basis. SOC projected bands, magnetic SOC,
+    and hybrid SOC are not supported yet. Semilocal QE elastic calculations
+    use thermo_pw 2.1.0 with Quantum
     ESPRESSO 7.4.1. Hybrid geometry
     optimization, phonon, and optical workflows are also not supported yet.
 
@@ -176,6 +177,11 @@ or:
     middle of the valence/conduction band edges for a semiconductor, or the
     highest occupied energy when only that edge is available.
 
+    With ``SOC_calc = True``, QE projected DOS is written in the
+    total-angular-momentum basis produced by ``projwfc.x``. CSV columns use
+    labels such as ``p_j0.5`` and ``p_j1.5``; Cartesian orbital labels are
+    intentionally not used for these spinor projections.
+
 .. describe:: Band_calc
 
     :Type: ``boolean``
@@ -276,10 +282,12 @@ or:
     Ground, DOS-NSCF, and Band ``pw.x`` stage. No separate
     ``Pseudo_relativistic`` setting is required.
 
-    Current QE SOC support is nonmagnetic PBE Ground, total DOS, Band, and
-    total pseudo-valence density. SOC-PDOS, projected bands, magnetic SOC,
-    and hybrid SOC fail explicitly instead of silently running a different
-    physical model.
+    Current QE SOC support is nonmagnetic PBE Ground, DOS/PDOS, Band, and
+    total pseudo-valence density. QE ``projwfc.x`` SOC output is exported in
+    its physical total-angular-momentum channels such as ``p_j0.5`` and
+    ``p_j1.5`` rather than being mislabeled as Cartesian ``px``, ``py``, and
+    ``pz`` orbitals. SOC projected bands, magnetic SOC, and hybrid SOC fail
+    explicitly instead of silently running a different physical model.
 
     When ``Ground_calc = False`` reuses an existing QE state, Nanoworks reads
     ``noncolin`` and ``spinorbit`` from ``data-file-schema.xml``. An SOC input
