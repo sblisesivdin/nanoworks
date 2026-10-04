@@ -18,6 +18,7 @@ Geo_optim = False
 Elastic_calc = False
 DOS_calc = True
 Band_calc = True
+Projected_band_plot = True
 Density_calc = True
 Phonon_calc = False
 Optical_calc = False
@@ -41,3 +42,27 @@ DOS_integration = 'tetrahedron'
 Spin_calc = False
 Energy_min = -5
 Energy_max = 5
+
+Projections = [
+    {
+        'atoms': [0],
+        'orbital': 'd',
+        'j': 1.5,
+        'color': 'red',
+        'label': 'W d_j=3/2',
+    },
+    {
+        'atoms': [0],
+        'orbital': 'd',
+        'j': 2.5,
+        'color': 'orange',
+        'label': 'W d_j=5/2',
+    },
+    {
+        'atoms': [1, 2],
+        'orbital': 'p',
+        'j': 1.5,
+        'color': 'blue',
+        'label': 'Se p_j=3/2',
+    },
+]

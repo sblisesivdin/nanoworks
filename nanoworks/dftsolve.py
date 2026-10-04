@@ -729,12 +729,6 @@ class DFTConfig:
                     'QE hybrid spin-orbit workflows are not supported yet.'
                 )
 
-            if self.Projected_band_plot:
-                raise NotImplementedError(
-                    'QE spin-orbit projected bands are not supported yet. '
-                    'Set Projected_band_plot = False.'
-                )
-
             unsupported_soc_stages = [
                 name
                 for name, enabled in (
@@ -7316,7 +7310,8 @@ def check_dft_configuration(
             add(
                 'ok',
                 'soc',
-                'noncollinear spin-orbit Ground/DOS/Band workflow',
+                'noncollinear spin-orbit '
+                'Ground/DOS/Band/projected-band workflow',
             )
 
         if (
@@ -7443,7 +7438,7 @@ def check_dft_configuration(
             ))
         ):
             state_dir = Path(
-                struct
+                str(struct)
                 + '-GROUND-QE-Result-State'
             )
 
@@ -8330,6 +8325,12 @@ def prepare_qe_dry_run(
                 depends_on=[band_projection_dependency],
                 metadata={
                     'hybrid': hybrid,
+                    'spin_orbit': bool(config.SOC_calc),
+                    'projection_basis': (
+                        'total-angular-momentum'
+                        if config.SOC_calc
+                        else 'orbital'
+                    ),
                     **(
                         hybrid_index_metadata
                         if hybrid

@@ -108,7 +108,8 @@ Prepare a native QE workflow for inspection or later execution:
 dftsolve --dry-run -p 4 -i input.py -g geometry.cif
 ```
 
-Dry-run generation supports native semilocal workflows and the supported QE
+Dry-run generation supports native semilocal workflows, including QE SOC
+projected bands in the total-angular-momentum basis, and the supported QE
 hybrid ground-state, DOS/PDOS, band, and projected-band workflows. It does not
 require the QE executables or an existing saved state, but installed
 pseudopotentials are required to render `pw.x` inputs.

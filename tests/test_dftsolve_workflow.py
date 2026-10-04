@@ -1295,7 +1295,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 stored_plan['spin_polarized']
             )
 
-    def test_qe_soc_dry_run_uses_spinors_and_omits_projections(self):
+    def test_qe_soc_dry_run_uses_spinors_and_band_projections(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             struct = Path(tmpdir) / 'soc-dry-run' / 'tungsten'
             config = DFTConfig(
@@ -1303,6 +1303,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 Ground_calc=True,
                 DOS_calc=True,
                 Band_calc=True,
+                Projected_band_plot=True,
                 Density_calc=True,
                 Band_path='GX',
                 SOC_calc=True,
@@ -1350,6 +1351,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                     'dos-total',
                     'dos-projected',
                     'band',
+                    'band-projections',
                     'density-pseudo-total',
                 },
             )
@@ -1370,6 +1372,13 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             self.assertEqual(
                 jobs['dos-projected']['metadata']['projection_basis'],
                 'total-angular-momentum',
+            )
+            self.assertEqual(
+                jobs['band-projections']['metadata']['projection_basis'],
+                'total-angular-momentum',
+            )
+            self.assertTrue(
+                jobs['band-projections']['metadata']['spin_orbit']
             )
 
             density_text = Path(
@@ -2536,7 +2545,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         ):
             DFTConfig(Pseudopotentials=['Si.upf'])
 
-    def test_qe_soc_rejects_unsupported_spin_and_projected_band_modes(self):
+    def test_qe_soc_rejects_unsupported_magnetic_mode(self):
         with self.assertRaisesRegex(
             NotImplementedError,
             'magnetic spin-orbit',
@@ -2547,16 +2556,14 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 Spin_calc=True,
             )
 
-        with self.assertRaisesRegex(
-            NotImplementedError,
-            'spin-orbit projected bands',
-        ):
-            DFTConfig(
-                Engine='QE',
-                SOC_calc=True,
-                Band_calc=True,
-                Projected_band_plot=True,
-            )
+        config = DFTConfig(
+            Engine='QE',
+            SOC_calc=True,
+            Band_calc=True,
+            Projected_band_plot=True,
+        )
+        self.assertTrue(config.Projected_band_plot)
+        self.assertEqual(config.Pseudo_relativistic, 'full')
 
     def test_qe_soc_validates_user_supplied_pseudopotentials(self):
         with tempfile.TemporaryDirectory() as tmpdir:

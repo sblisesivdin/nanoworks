@@ -6354,10 +6354,10 @@ def parse_projwfc_band_file(
             f"{projection_file}: {exc}"
         ) from exc
 
-    if noncollinear or spin_orbit:
+    if noncollinear and not spin_orbit:
         raise NotImplementedError(
-            "Noncollinear and spin-orbit QE band "
-            "projections are not supported."
+            "Noncollinear QE band projections without spin-orbit "
+            "coupling are not supported."
         )
 
     orbital_names = {
@@ -6377,10 +6377,16 @@ def parse_projwfc_band_file(
             'atomic-state header'
         )
 
-        if len(state_fields) < 7:
+        expected_state_fields = (
+            8
+            if spin_orbit
+            else 7
+        )
+
+        if len(state_fields) < expected_state_fields:
             raise ValueError(
-                "A QE atomic-state header must contain "
-                "seven fields."
+                "A QE atomic-state header must contain at least "
+                f"{expected_state_fields} fields."
             )
 
         try:
@@ -6400,9 +6406,18 @@ def parse_projwfc_band_file(
                 state_fields[5]
             )
 
-            magnetic_component = parse_integer(
-                state_fields[6]
-            )
+            if spin_orbit:
+                total_angular_momentum = parse_float(
+                    state_fields[6]
+                )
+                magnetic_component = parse_float(
+                    state_fields[7]
+                )
+            else:
+                total_angular_momentum = None
+                magnetic_component = parse_integer(
+                    state_fields[6]
+                )
 
         except ValueError as exc:
             raise ValueError(
@@ -6421,6 +6436,34 @@ def parse_projwfc_band_file(
                 "QE band projection state references "
                 f"unknown atom index {qe_atom_index}."
             )
+
+        if spin_orbit:
+            allowed_j = {
+                angular_momentum + 0.5,
+                abs(angular_momentum - 0.5),
+            }
+
+            if not any(
+                abs(total_angular_momentum - value) < 1.0e-8
+                for value in allowed_j
+            ):
+                raise ValueError(
+                    "QE spin-orbit band projection contains an "
+                    "incompatible l and j pair: "
+                    f"l={angular_momentum}, "
+                    f"j={total_angular_momentum}."
+                )
+
+            if (
+                abs(magnetic_component)
+                > total_angular_momentum + 1.0e-8
+            ):
+                raise ValueError(
+                    "QE spin-orbit band projection contains an "
+                    "invalid m_j value: "
+                    f"j={total_angular_momentum}, "
+                    f"m_j={magnetic_component}."
+                )
 
         weights = [
             [
@@ -6544,6 +6587,12 @@ def parse_projwfc_band_file(
             'wfc_index': wfc_index,
             'l': angular_momentum,
             'm': magnetic_component,
+            'j': total_angular_momentum,
+            'm_j': (
+                magnetic_component
+                if spin_orbit
+                else None
+            ),
             'orbital': orbital_names.get(
                 angular_momentum,
                 f'l={angular_momentum}',
@@ -6623,6 +6672,13 @@ def prepare_qe_band_projection_data(
     states = projection_result[
         'states'
     ]
+
+    spin_orbit = bool(
+        projection_result.get(
+            'spin_orbit',
+            False,
+        )
+    )
 
     if not projections:
         projections = [{
@@ -6709,6 +6765,10 @@ def prepare_qe_band_projection_data(
             'orbital'
         )
 
+        total_angular_momentum = projection.get(
+            'j'
+        )
+
         if orbital is not None:
             if not isinstance(
                 orbital,
@@ -6725,6 +6785,49 @@ def prepare_qe_band_projection_data(
                 raise ValueError(
                     "Unsupported QE band projection "
                     f"orbital: {orbital}"
+                )
+
+        if total_angular_momentum is not None:
+            if isinstance(total_angular_momentum, bool):
+                raise TypeError(
+                    "QE band projection 'j' must be a half-integer."
+                )
+
+            try:
+                total_angular_momentum = float(
+                    total_angular_momentum
+                )
+            except (TypeError, ValueError) as exc:
+                raise TypeError(
+                    "QE band projection 'j' must be a half-integer."
+                ) from exc
+
+            if not spin_orbit:
+                raise ValueError(
+                    "QE band projection 'j' requires SOC_calc = True."
+                )
+
+            if orbital is None:
+                raise ValueError(
+                    "QE band projection 'j' also requires an orbital."
+                )
+
+            angular_momentum = 'spdf'.index(
+                orbital
+            )
+            allowed_j = {
+                angular_momentum + 0.5,
+                abs(angular_momentum - 0.5),
+            }
+
+            if not any(
+                abs(total_angular_momentum - value) < 1.0e-8
+                for value in allowed_j
+            ):
+                raise ValueError(
+                    "Unsupported QE band projection total angular "
+                    f"momentum for {orbital}: "
+                    f"j={total_angular_momentum}."
                 )
 
         color = projection.get(
@@ -6778,6 +6881,18 @@ def prepare_qe_band_projection_data(
             ):
                 continue
 
+            if (
+                total_angular_momentum is not None
+                and (
+                    state.get('j') is None
+                    or abs(
+                        state['j']
+                        - total_angular_momentum
+                    ) >= 1.0e-8
+                )
+            ):
+                continue
+
             selected_state_count += 1
 
             for kpoint_index in range(
@@ -6810,6 +6925,7 @@ def prepare_qe_band_projection_data(
             'index': projection_index,
             'atoms': atom_indices,
             'orbital': orbital,
+            'j': total_angular_momentum,
             'color': color,
             'label': label,
             'selected_state_count': (
@@ -6822,6 +6938,12 @@ def prepare_qe_band_projection_data(
         'natoms': natoms,
         'nkpoints': nkpoints,
         'nbands': nbands,
+        'spin_orbit': spin_orbit,
+        'projection_basis': (
+            'total-angular-momentum'
+            if spin_orbit
+            else 'orbital'
+        ),
         'projections': prepared,
     }
 
@@ -8908,12 +9030,6 @@ def run_bands(
         prefix=prefix,
     )
 
-    if spin_orbit and projected_band:
-        raise NotImplementedError(
-            'QE spin-orbit projected bands are not supported yet. '
-            'Set Projected_band_plot = False.'
-        )
-
     occupation_settings = (
         resolve_qe_occupation(
             occupation
@@ -9054,6 +9170,7 @@ def run_bands(
                     projection_prefix
                 ),
                 spinpol=spinpol,
+                spin_orbit=spin_orbit,
                 parallel_cores=parallel_cores,
                 executable=(
                     projection_executable
@@ -9120,6 +9237,14 @@ def run_bands(
             'workflow': projection_workflow,
             'spin_polarized': bool(
                 spinpol
+            ),
+            'spin_orbit': bool(
+                spin_orbit
+            ),
+            'projection_basis': (
+                'total-angular-momentum'
+                if spin_orbit
+                else 'orbital'
             ),
             'raw_up': raw_up,
             'raw_down': raw_down,
@@ -10191,6 +10316,7 @@ def run_band_projections(
     projection_prefix,
     pdos_prefix=None,
     spinpol=False,
+    spin_orbit=False,
     parallel_cores=1,
     executable='projwfc.x',
     prefix='nanoworks',
@@ -10230,6 +10356,12 @@ def run_band_projections(
             "A valid QE bands state is required "
             f"for band projections: {state_dir}"
         )
+
+    validate_qe_state_spin_orbit(
+        state_dir,
+        expected=spin_orbit,
+        prefix=prefix,
+    )
 
     input_text = render_projwfc_input(
         prefix=prefix,
@@ -10336,6 +10468,14 @@ def run_band_projections(
         'pdos_prefix': pdos_prefix,
         'spin_polarized': bool(
             spinpol
+        ),
+        'spin_orbit': bool(
+            spin_orbit
+        ),
+        'projection_basis': (
+            'total-angular-momentum'
+            if spin_orbit
+            else 'orbital'
         ),
         'execution': execution,
     }

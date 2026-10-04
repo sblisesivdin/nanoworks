@@ -48,9 +48,9 @@ or:
     also supports DFPT phonons and ``epsilon.x`` RPA optics. Native
     QE ``HSE06``, ``HSE03``, and ``PBE0`` workflows support ground-state,
     DOS/PDOS, band, projected-band, density, and Grimme-D3 calculations.
-    Nonmagnetic PBE QE SOC supports Ground, DOS/PDOS, Band, and total
-    pseudo-valence density calculations. SOC PDOS is resolved in QE's
-    total-angular-momentum ``l_j`` basis. SOC projected bands, magnetic SOC,
+    Nonmagnetic PBE QE SOC supports Ground, DOS/PDOS, Band/projected-band,
+    and total pseudo-valence density calculations. SOC PDOS and projected
+    bands preserve QE's total-angular-momentum ``l_j`` basis. Magnetic SOC
     and hybrid SOC are not supported yet. Semilocal QE elastic calculations
     use thermo_pw 2.1.0 with Quantum
     ESPRESSO 7.4.1. Hybrid geometry
@@ -282,12 +282,13 @@ or:
     Ground, DOS-NSCF, and Band ``pw.x`` stage. No separate
     ``Pseudo_relativistic`` setting is required.
 
-    Current QE SOC support is nonmagnetic PBE Ground, DOS/PDOS, Band, and
-    total pseudo-valence density. QE ``projwfc.x`` SOC output is exported in
-    its physical total-angular-momentum channels such as ``p_j0.5`` and
-    ``p_j1.5`` rather than being mislabeled as Cartesian ``px``, ``py``, and
-    ``pz`` orbitals. SOC projected bands, magnetic SOC, and hybrid SOC fail
-    explicitly instead of silently running a different physical model.
+    Current QE SOC support is nonmagnetic PBE Ground, DOS/PDOS,
+    Band/projected-band, and total pseudo-valence density. QE ``projwfc.x``
+    SOC output is exported in its physical total-angular-momentum channels
+    such as ``p_j0.5`` and ``p_j1.5`` rather than being mislabeled as
+    Cartesian ``px``, ``py``, and ``pz`` orbitals. Magnetic SOC and hybrid
+    SOC fail explicitly instead of silently running a different physical
+    model.
 
     When ``Ground_calc = False`` reuses an existing QE state, Nanoworks reads
     ``noncolin`` and ``spinorbit`` from ``data-file-schema.xml``. An SOC input
@@ -1338,6 +1339,13 @@ backend interpret the settings it supports.
     With a QE hybrid functional, the projection is evaluated on the
     zero-weight band-path states included in the native hybrid SCF workflow.
 
+    With QE ``SOC_calc = True``, Nanoworks reads the spinor projection states
+    as :math:`|l,j,m_j\rangle`. An ``orbital='p'`` or ``orbital='d'``
+    selection sums all corresponding :math:`j` and :math:`m_j` components;
+    add the optional ``j`` field to select one total-angular-momentum channel.
+    Cartesian labels such as ``px`` and ``py`` are not assigned to SOC
+    spinors.
+
 .. describe:: Projections
 
     :Type: ``list``
@@ -1359,6 +1367,12 @@ backend interpret the settings it supports.
         Orbital type to project. Supported values are ``"s"``, ``"p"``,
         ``"d"``, and ``"f"`` when available for the selected atom and
         pseudopotential. Use ``None`` to sum all available orbitals.
+
+    * ``j`` (float, optional)
+        QE SOC only. Selects one total-angular-momentum channel compatible
+        with ``orbital``; for example, ``1.5`` selects :math:`p_{3/2}` when
+        ``orbital='p'`` or :math:`d_{3/2}` when ``orbital='d'``. Omit this
+        field to sum all :math:`j` channels for the selected orbital.
 
     * ``color`` (string)
         Matplotlib-compatible color used when plotting the projected

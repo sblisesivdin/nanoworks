@@ -2,10 +2,11 @@
 
 ### Development Version
 
+- QE spin-orbit projected bands now preserve `projwfc.x` total-angular-momentum states and support optional `j`-resolved selections in `Projections`.
 - QE spin-orbit DOS workflows now run `projwfc.x` and export total-angular-momentum-resolved `l_j` PDOS columns without mislabeling them as Cartesian orbitals.
 - Nonmagnetic PBE QE spin-orbit workflows now support total pseudo-valence density output through `Density_calc = True`, with saved-state SOC validation before `pp.x` runs.
 - QE DOS now uses the same Fermi, midgap, or highest-occupied energy-reference policy as QE bands, so semiconductor and SOC DOS workflows do not require a literal Fermi-energy line in the QE output.
-- `SOC_calc = True` now enables native noncollinear QE spin-orbit Ground, DOS/PDOS, Band, and total-density workflows and automatically selects the managed fully-relativistic PseudoDojo set. QE SOC projected bands, magnetic SOC, and hybrid SOC remain explicit unsupported combinations.
+- `SOC_calc = True` now enables native noncollinear QE spin-orbit Ground, DOS/PDOS, Band/projected-band, and total-density workflows and automatically selects the managed fully-relativistic PseudoDojo set. Magnetic SOC and hybrid SOC remain explicit unsupported combinations.
 - QE post-processing validates the saved state's `noncolin` and `spinorbit` metadata, preventing SOC and non-SOC ground states from being mixed accidentally.
 - This Nanoworks version supports Quantum ESPRESSO 7.4.1; a different detected QE version now emits a warning and the calculation continues.
 - ``dftsolve`` no longer suppresses Python warnings globally, so QE version compatibility warnings remain visible to users.

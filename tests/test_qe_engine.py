@@ -6434,7 +6434,7 @@ class TestQEEngine(unittest.TestCase):
             ],
         )
 
-    def test_parse_projwfc_band_file_rejects_spin_orbit(
+    def test_parse_projwfc_band_file_reads_spin_orbit_states(
         self,
     ):
         projection_text = """
@@ -6443,8 +6443,14 @@ class TestQEEngine(unittest.TestCase):
         10.0 4.0 30.0 9
         1 Fe 16.0
         1 0.0 0.0 0.0 1
-        1 1 1
-        F T
+        2 1 2
+        T T
+        1 1 W 5D 1 2 1.5 -1.5
+        1 1 0.25
+        1 2 0.75
+        2 1 W 5D 2 2 2.5 2.5
+        1 1 0.60
+        1 2 0.40
         """
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -6458,13 +6464,18 @@ class TestQEEngine(unittest.TestCase):
                 encoding='utf-8',
             )
 
-            with self.assertRaisesRegex(
-                NotImplementedError,
-                'spin-orbit',
-            ):
-                parse_projwfc_band_file(
-                    projection_file
-                )
+            result = parse_projwfc_band_file(
+                projection_file
+            )
+
+        self.assertTrue(result['noncollinear'])
+        self.assertTrue(result['spin_orbit'])
+        self.assertEqual(result['states'][0]['orbital'], 'd')
+        self.assertEqual(result['states'][0]['j'], 1.5)
+        self.assertEqual(result['states'][0]['m_j'], -1.5)
+        self.assertEqual(result['states'][0]['weights'], [[0.25, 0.75]])
+        self.assertEqual(result['states'][1]['j'], 2.5)
+        self.assertEqual(result['states'][1]['m_j'], 2.5)
 
     def test_prepare_qe_band_projection_data(self):
         projection_result = {
@@ -6604,6 +6615,49 @@ class TestQEEngine(unittest.TestCase):
             ],
         )
 
+    def test_prepare_qe_band_projection_data_selects_soc_j_channel(self):
+        projection_result = {
+            'natoms': 1,
+            'nkpoints': 1,
+            'nbands': 2,
+            'spin_orbit': True,
+            'states': [
+                {
+                    'atom_index': 0,
+                    'orbital': 'd',
+                    'j': 1.5,
+                    'weights': [[0.10, 0.20]],
+                },
+                {
+                    'atom_index': 0,
+                    'orbital': 'd',
+                    'j': 2.5,
+                    'weights': [[0.30, 0.40]],
+                },
+            ],
+        }
+
+        result = prepare_qe_band_projection_data(
+            projection_result,
+            projections=[{
+                'atoms': [0],
+                'orbital': 'd',
+                'j': 2.5,
+                'color': 'red',
+                'label': 'W d_j=5/2',
+            }],
+        )
+
+        self.assertTrue(result['spin_orbit'])
+        self.assertEqual(
+            result['projection_basis'],
+            'total-angular-momentum',
+        )
+        projection = result['projections'][0]
+        self.assertEqual(projection['j'], 2.5)
+        self.assertEqual(projection['selected_state_count'], 1)
+        self.assertEqual(projection['weights'], [[0.30, 0.40]])
+
     def test_prepare_qe_band_projection_data_rejects_atom_index(
         self,
     ):
@@ -6732,6 +6786,7 @@ class TestQEEngine(unittest.TestCase):
                 'natoms': 2,
                 'nkpoints': 2,
                 'nbands': 2,
+                'spin_orbit': False,
                 'states': [],
             }
 
@@ -6739,6 +6794,8 @@ class TestQEEngine(unittest.TestCase):
                 'natoms': 2,
                 'nkpoints': 2,
                 'nbands': 2,
+                'spin_orbit': False,
+                'projection_basis': 'orbital',
                 'projections': [],
             }
 
@@ -6835,6 +6892,103 @@ class TestQEEngine(unittest.TestCase):
             ][
                 'down'
             ]
+        )
+
+    def test_run_bands_prepares_spin_orbit_projected_band_data(self):
+        atoms = bulk('Si', 'diamond', a=5.43)
+        band_path = build_band_path(
+            atoms=atoms,
+            path='GX',
+            npoints=2,
+        )
+        output_text = """
+         Program PWSCF v.7.4.1 starts
+              k = 0.0000 0.0000 0.0000 ( 123 PWs)   bands (ev):
+            -5.0000  -1.0000
+              k = 0.5000 0.0000 0.5000 ( 120 PWs)   bands (ev):
+            -4.5000  -0.5000
+         JOB DONE.
+        """
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+            state_dir = tmpdir / 'state'
+            save_dir = state_dir / 'nanoworks.save'
+            save_dir.mkdir(parents=True)
+            (save_dir / 'data-file-schema.xml').write_text(
+                '<espresso><spin><noncolin>true</noncolin>'
+                '<spinorbit>true</spinorbit></spin></espresso>',
+                encoding='utf-8',
+            )
+
+            def fake_run_qe_program(**kwargs):
+                Path(kwargs['output_file']).write_text(
+                    output_text,
+                    encoding='utf-8',
+                )
+                return {'returncode': 0}
+
+            projection_workflow = {
+                'projection_up_file': tmpdir / 'projection.projwfc_up',
+                'projection_down_file': None,
+                'spin_orbit': True,
+            }
+            raw_projection = {
+                'natoms': 2,
+                'nkpoints': 2,
+                'nbands': 2,
+                'spin_orbit': True,
+                'states': [],
+            }
+            prepared_projection = {
+                'natoms': 2,
+                'nkpoints': 2,
+                'nbands': 2,
+                'spin_orbit': True,
+                'projection_basis': 'total-angular-momentum',
+                'projections': [],
+            }
+
+            with patch(
+                'nanoworks.engine.qe.run_qe_program',
+                side_effect=fake_run_qe_program,
+            ), patch(
+                'nanoworks.engine.qe.run_band_projections',
+                return_value=projection_workflow,
+            ) as run_projection, patch(
+                'nanoworks.engine.qe.parse_projwfc_band_file',
+                return_value=raw_projection,
+            ), patch(
+                'nanoworks.engine.qe.prepare_qe_band_projection_data',
+                return_value=prepared_projection,
+            ):
+                workflow = run_bands(
+                    atoms=atoms,
+                    input_file=tmpdir / 'bands.in',
+                    output_file=tmpdir / 'bands.out',
+                    state_dir=state_dir,
+                    pseudopotentials={'Si': 'Si.upf'},
+                    pseudo_dir='/tmp/pseudos',
+                    cutoff_ev=400.0,
+                    band_path=band_path,
+                    nbands=2,
+                    spin_orbit=True,
+                    projected_band=True,
+                    projections=[{
+                        'atoms': [0],
+                        'orbital': 'p',
+                        'j': 1.5,
+                    }],
+                    projection_input_file=tmpdir / 'projection.in',
+                    projection_output_file=tmpdir / 'projection.out',
+                    projection_prefix=tmpdir / 'projection',
+                )
+
+        self.assertTrue(run_projection.call_args.kwargs['spin_orbit'])
+        self.assertTrue(workflow['band_projections']['spin_orbit'])
+        self.assertEqual(
+            workflow['band_projections']['projection_basis'],
+            'total-angular-momentum',
         )
 
     def test_run_bands_requires_projected_band_paths(self):
