@@ -9870,6 +9870,7 @@ def run_pp_density(
     parallel_cores=1,
     executable='pp.x',
     prefix='nanoworks',
+    spin_orbit=False,
 ):
     """Render and execute one QE pp.x density calculation."""
     input_file = Path(
@@ -9900,6 +9901,12 @@ def run_pp_density(
             "A valid QE ground-state result is required "
             f"for the density calculation: {state_dir}"
         )
+
+    validate_qe_state_spin_orbit(
+        state_dir,
+        expected=spin_orbit,
+        prefix=prefix,
+    )
 
     input_text = render_pp_input(
         prefix=prefix,

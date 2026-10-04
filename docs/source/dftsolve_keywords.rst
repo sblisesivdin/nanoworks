@@ -48,7 +48,8 @@ or:
     also supports DFPT phonons and ``epsilon.x`` RPA optics. Native
     QE ``HSE06``, ``HSE03``, and ``PBE0`` workflows support ground-state,
     DOS/PDOS, band, projected-band, density, and Grimme-D3 calculations.
-    Nonmagnetic PBE QE SOC supports Ground, total DOS, and Band calculations.
+    Nonmagnetic PBE QE SOC supports Ground, total DOS, Band, and total
+    pseudo-valence density calculations.
     SOC-PDOS, projected bands, magnetic SOC, and hybrid SOC are not supported
     yet. Semilocal QE elastic calculations use thermo_pw 2.1.0 with Quantum
     ESPRESSO 7.4.1. Hybrid geometry
@@ -217,6 +218,11 @@ or:
     ``*-EDENSITY-QE-Result-Spin-Density.cube``. The last file contains
     :math:`\rho_\uparrow - \rho_\downarrow`.
 
+    A nonmagnetic QE spin-orbit calculation produces the total
+    pseudo-valence density only. Nanoworks verifies that the saved QE state
+    contains matching ``noncolin`` and ``spinorbit`` metadata before running
+    ``pp.x``.
+
     With the norm-conserving pseudopotentials distributed by Nanoworks, QE
     density files are pseudo-valence densities and must not be interpreted
     as reconstructed all-electron densities.
@@ -270,9 +276,10 @@ or:
     Ground, DOS-NSCF, and Band ``pw.x`` stage. No separate
     ``Pseudo_relativistic`` setting is required.
 
-    Current QE SOC support is nonmagnetic PBE Ground, total DOS, and Band.
-    SOC-PDOS, projected bands, magnetic SOC, and hybrid SOC fail explicitly
-    instead of silently running a different physical model.
+    Current QE SOC support is nonmagnetic PBE Ground, total DOS, Band, and
+    total pseudo-valence density. SOC-PDOS, projected bands, magnetic SOC,
+    and hybrid SOC fail explicitly instead of silently running a different
+    physical model.
 
     When ``Ground_calc = False`` reuses an existing QE state, Nanoworks reads
     ``noncolin`` and ``spinorbit`` from ``data-file-schema.xml``. An SOC input

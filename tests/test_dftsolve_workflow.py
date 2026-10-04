@@ -1303,6 +1303,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 Ground_calc=True,
                 DOS_calc=True,
                 Band_calc=True,
+                Density_calc=True,
                 Band_path='GX',
                 SOC_calc=True,
                 bulk_configuration=Atoms(
@@ -1343,7 +1344,13 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             self.assertFalse(plan['spin_polarized'])
             self.assertEqual(
                 set(jobs),
-                {'ground', 'dos-nscf', 'dos-total', 'band'},
+                {
+                    'ground',
+                    'dos-nscf',
+                    'dos-total',
+                    'band',
+                    'density-pseudo-total',
+                },
             )
 
             for job_id in ('ground', 'dos-nscf', 'band'):
@@ -1358,6 +1365,12 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 'SOC-resolved PDOS is not supported yet',
                 ' '.join(plan['notes']),
             )
+
+            density_text = Path(
+                jobs['density-pseudo-total']['input_file']
+            ).read_text(encoding='utf-8')
+            self.assertIn('plot_num = 0', density_text)
+            self.assertNotIn('spin_component', density_text)
 
     def test_dry_run_cli_stops_before_calculation_stages(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -3258,6 +3271,35 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 call.kwargs['parallel_cores'],
                 4,
             )
+
+    def test_qe_soc_densitycalc_dispatches_total_density_only(self):
+        solver = object.__new__(
+            DFTSolver
+        )
+        solver.struct = 'wse2'
+        solver.XC_calc = 'PBE'
+        solver.Spin_calc = False
+        solver.SOC_calc = True
+        solver.parallel_cores = 2
+        solver.engine = SimpleNamespace(
+            validate_qe_xc=Mock(
+                return_value='pbe'
+            ),
+            run_pp_density=Mock(
+                side_effect=lambda **kwargs: kwargs
+            ),
+        )
+
+        with patch(
+            'nanoworks.dftsolve.parprint',
+        ):
+            outputs = solver._densitycalc_qe()
+
+        self.assertEqual(set(outputs), {'Pseudo-Total'})
+        call = solver.engine.run_pp_density.call_args
+        self.assertTrue(call.kwargs['spin_orbit'])
+        self.assertEqual(call.kwargs['plot_num'], 0)
+        self.assertIsNone(call.kwargs['spin_component'])
 
     def test_qe_doscalc_dispatches_hybrid_dos_workflow(self):
         solver = object.__new__(

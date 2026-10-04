@@ -5288,6 +5288,11 @@ class dftsolve:
                     parallel_cores=self.parallel_cores,
                     executable='pp.x',
                     prefix='nanoworks',
+                    spin_orbit=getattr(
+                        self,
+                        'SOC_calc',
+                        False,
+                    ),
                 )
             except Exception as exc:
                 parprint(

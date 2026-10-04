@@ -6968,6 +6968,32 @@ class TestQEEngine(unittest.TestCase):
                     ),
                 )
 
+    def test_run_pp_density_rejects_non_soc_state_for_soc_workflow(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+            save_dir = tmpdir / 'state' / 'nanoworks.save'
+            save_dir.mkdir(parents=True)
+            (save_dir / 'data-file-schema.xml').write_text(
+                '<espresso><spin>'
+                '<noncolin>false</noncolin>'
+                '<spinorbit>false</spinorbit>'
+                '</spin></espresso>',
+                encoding='utf-8',
+            )
+
+            with self.assertRaisesRegex(
+                RuntimeError,
+                'Rerun Ground_calc with SOC_calc = True',
+            ):
+                run_pp_density(
+                    input_file=tmpdir / 'density.in',
+                    output_file=tmpdir / 'density.out',
+                    state_dir=tmpdir / 'state',
+                    filplot=tmpdir / 'density.pp',
+                    cube_file=tmpdir / 'density.cube',
+                    spin_orbit=True,
+                )
+
     def test_run_pp_density_creates_cube_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir = Path(
