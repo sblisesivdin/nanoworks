@@ -5,6 +5,15 @@ mlsolve Keyword List
 
 The ``mlsolve`` tool uses a Python script as an input file. Below are the supported variables that can be defined in this file.
 
+Exit Status
+-----------
+
+``0`` indicates a successful static calculation or a converged optimization.
+``1`` indicates a calculation error. ``2`` indicates an invalid task or optimizer
+selection (or missing command-line arguments). ``3`` indicates an optimization
+that did not converge within the step limit. A saved final structure alone does
+not establish convergence.
+
 General Parameters
 ------------------
 
@@ -102,7 +111,9 @@ Optimization Parameters
     :Type: ``int``
     :Default: ``200``
 
-    The maximum number of optimization steps allowed.
+    The maximum number of optimization steps allowed. If the calculation reaches
+    this limit without convergence, the final structure is still saved and
+    ``mlsolve`` returns exit status ``3``.
 
 .. describe:: cell_relax
 

@@ -236,6 +236,14 @@ def main():
 
     # Load struct and config
     struct, config = config_from_file(inputfile=args.input, geometryfile=args.geometry)
+
+    if config.task not in ('static', 'optimize'):
+        parser.error(f"Unknown task {config.task!r}. Choose static or optimize.")
+    if config.task == 'optimize':
+        try:
+            optimizer_class = get_optimizer(config.optimizer)
+        except ValueError as exc:
+            parser.error(str(exc))
     
     print("=========================================================")
     print(f"  MLSolve - {time.ctime()}")
@@ -266,6 +274,7 @@ def main():
     atoms.calc = calc
 
     # 6. Execute task
+    exit_code = 0
     if config.task == 'static':
         print("--- Starting Static Calculation ---")
         try:
@@ -285,6 +294,7 @@ def main():
                     print(f"Warning: Could not retrieve magnetic moments: {e}")
         except Exception as e:
             print(f"Calculation Error: {e}")
+            exit_code = 1
 
     elif config.task == 'optimize':
         print(f"--- Starting Geometry Optimization ({config.optimizer}) ---")
@@ -300,29 +310,39 @@ def main():
             opt_target = atoms
 
         # Optimizer selection
-        optimizer_class = get_optimizer(config.optimizer)
         dyn = optimizer_class(opt_target, trajectory=config.trajectory, logfile=config.logfile)
 
         try:
-            dyn.run(fmax=config.fmax, steps=config.steps)
+            converged = dyn.run(fmax=config.fmax, steps=config.steps)
             
             write(config.out_file, atoms)
-            print(f"\nOptimization completed.")
+            if converged:
+                print("\nOptimization converged.")
+            else:
+                exit_code = 3
+                print("\nOptimization did not converge within the step limit.")
+                print("The final structure is saved for inspection or continuation.")
             print(f"Final Energy : {atoms.get_potential_energy():.6f} eV")
             print(f"Final Cell   : {atoms.cell.cellpar().round(3)}")
             print(f"Output       : {config.out_file}")
             print(f"Trajectory   : {config.trajectory}")
             
         except Exception as e:
+            exit_code = 1
             print(f"\nError during optimization: {e}")
-            write('crash_dump.cif', atoms)
-            print("Current structure saved to 'crash_dump.cif'.")
+            crash_file = str(Path(config.out_file).with_name('crash_dump.cif'))
+            try:
+                write(crash_file, atoms)
+                print(f"Current structure saved to '{crash_file}'.")
+            except Exception as save_error:
+                print(f"Could not save the current structure: {save_error}")
 
     # 7. End
     elapsed = time.time() - t0
     print(f"\nTotal Time: {elapsed:.2f} seconds")
-    print("Done.")
+    print(f"Exit status: {exit_code}")
+    return exit_code
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
