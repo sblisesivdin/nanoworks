@@ -7,6 +7,7 @@ import unittest
 import sys
 import json
 import subprocess
+import ast
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -31,6 +32,7 @@ with patch.object(
         format_dft_preflight_report,
         load_slurm_profile,
         main,
+        parse_dft_overrides,
         prepare_qe_dry_run,
         release_stage_resources,
         required_dft_executables,
@@ -38,12 +40,109 @@ with patch.object(
         run_gpaw_stage_processes,
         should_split_gpaw_optical,
         struct_from_file,
+        struct_from_auto,
         validate_qe_soc_pseudopotentials,
         write_qe_slurm_script,
     )
 
 
 class TestDFTSolveWorkflow(unittest.TestCase):
+
+    def test_cli_overrides_parse_literals_and_last_value_wins(self):
+        result = parse_dft_overrides([
+            'Wavefunction_cutoff=450', 'Wavefunction_cutoff=600',
+            'DOS_calc=True', 'Ground_gamma=None', 'Band_path=GXM',
+            "Projections=[{'atoms': [0], 'orbital': 'p', 'j': 1.5}]",
+        ], engine='qe')
+        self.assertEqual(result['Engine'], 'QE')
+        self.assertEqual(result['Wavefunction_cutoff'], 600)
+        self.assertIs(result['DOS_calc'], True)
+        self.assertIsNone(result['Ground_gamma'])
+        self.assertEqual(result['Band_path'], 'GXM')
+        self.assertEqual(result['Projections'][0]['j'], 1.5)
+
+    def test_cli_overrides_reject_unknown_code_and_engine_conflict(self):
+        for expression in (
+            'Missing_keyword=1', 'DOS_calc', 'DOS_calc=false',
+            "DOS_calc='False'", 'Ground_gamma=1',
+            "Band_path=__import__('os').getcwd()", 'Wavefunction_cutoff=1e999',
+        ):
+            with self.subTest(expression=expression):
+                with self.assertRaises(ValueError):
+                    parse_dft_overrides([expression])
+        with self.assertRaisesRegex(ValueError, 'conflicts'):
+            parse_dft_overrides(['Engine=GPAW'], engine='QE')
+        self.assertEqual(parse_dft_overrides(['Engine=qe'], engine='QE'), {'Engine': 'QE'})
+
+    def test_cli_engine_override_precedes_defaults_and_validation(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / 'cli_engine_override_input.py'
+            source = "Engine = 'unsupported'\nGround_calc = True\n"
+            path.write_text(source, encoding='utf-8')
+            _, config = struct_from_file(
+                path, None, create_output=False, report_structure=False,
+                overrides=parse_dft_overrides(['Wavefunction_cutoff=600'], 'QE'),
+            )
+            self.assertEqual(config.Engine, 'QE')
+            self.assertEqual(config.XC_calc, 'PBE')
+            self.assertEqual(config.Opt_calc_type, 'RPA')
+            self.assertEqual(config.Wavefunction_cutoff, 600)
+            self.assertEqual(path.read_text(), source)
+            self.assertFalse((Path(tmpdir) / 'results').exists())
+
+    def test_auto_overrides_are_validated_and_preserved_in_generated_input(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            geometry = Path(tmpdir) / 'cli_auto_si.cif'
+            write(geometry, Atoms('Si', positions=[[0, 0, 0]], cell=[5, 5, 5], pbc=True))
+            struct, config = struct_from_auto(
+                geometry, report_structure=False,
+                overrides=parse_dft_overrides(['DOS_calc=False', 'Wavefunction_cutoff=650'], 'QE'),
+            )
+            self.assertEqual(config.Engine, 'QE')
+            self.assertFalse(config.DOS_calc)
+            self.assertEqual(config.Wavefunction_cutoff, 650)
+            text = Path(struct + '-CONFIG-NANOWORKS-Input-Auto.py').read_text()
+            ast.parse(text)
+            self.assertIn("Engine = 'QE'", text)
+            self.assertIn('DOS_calc = False', text)
+            self.assertIn('Wavefunction_cutoff = 650', text)
+
+    def test_cli_override_metadata_in_preflight_json(self):
+        config = DFTConfig(Ground_calc=True)
+        config._cli_overrides = {'Ground_calc': True, 'Engine': 'GPAW'}
+        report = check_dft_configuration(
+            config, 'unused', check_executables=False, check_saved_state=False,
+        )
+        self.assertEqual(json.loads(format_dft_preflight_json(report))['overrides'], config._cli_overrides)
+
+    def test_main_passes_cli_overrides_to_input_loader(self):
+        config = DFTConfig(Engine='QE', Ground_calc=True)
+        report = {'ok': True, 'engine': 'QE', 'stages': ['ground'], 'checks': [], 'errors': []}
+        with (
+            patch.object(sys, 'argv', ['dftsolve', '-i', 'input.py', '-E', 'QE', '-s', 'DOS_calc=True', '--check', '--json']),
+            patch('nanoworks.dftsolve.struct_from_file', return_value=('unused', config)) as loader,
+            patch('nanoworks.dftsolve.check_dft_configuration', return_value=report),
+            patch('nanoworks.dftsolve.parprint'),
+        ):
+            self.assertEqual(main(), 0)
+        self.assertEqual(loader.call_args.kwargs['overrides'], {'Engine': 'QE', 'DOS_calc': True})
+
+    def test_invalid_override_check_json_stays_machine_readable(self):
+        with (
+            patch.object(sys, 'argv', ['dftsolve', '-s', 'DOS_calc=false', '--check', '--json']),
+            patch('nanoworks.dftsolve.parprint') as output,
+            patch('nanoworks.dftsolve.struct_from_file') as loader,
+        ):
+            self.assertEqual(main(), 2)
+        loader.assert_not_called()
+        payload = json.loads(output.call_args.args[0])
+        self.assertFalse(payload['ok'])
+        self.assertEqual(payload['errors'][0]['name'], 'configuration')
+
+    def test_gpaw_child_command_preserves_override_and_energy_arguments(self):
+        arguments = ['-i', 'input.py', '-E', 'GPAW', '-s', 'DOS_calc=True', '-e']
+        command = build_gpaw_process_command(None, arguments)
+        self.assertEqual(command[-len(arguments):], arguments)
 
     def test_import_does_not_suppress_runtime_warnings(self):
         completed = subprocess.run(
@@ -1318,6 +1417,8 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 ),
             )
 
+            config._cli_overrides = {'Engine': 'QE', 'SOC_calc': True}
+
             with (
                 patch(
                     'nanoworks.dftsolve.get_qe_pseudo_dir',
@@ -1344,6 +1445,8 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 relativistic='full',
                 accuracy='standard',
             )
+            self.assertEqual(plan['overrides'], config._cli_overrides)
+            self.assertEqual(json.loads(Path(plan['plan_file']).read_text())['overrides'], config._cli_overrides)
             jobs = {job['id']: job for job in plan['jobs']}
             self.assertTrue(plan['spin_orbit'])
             self.assertFalse(plan['spin_polarized'])

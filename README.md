@@ -50,6 +50,11 @@ After installation, the following commands will be available in your terminal:
 ### 1. dftsolve (formerly gpawsolve.py)
 The main driver for DFT calculations using GPAW or Quantum ESPRESSO. GPAW runs the complete Python workflow under MPI, while Nanoworks launches the supported QE executables with the number of processes requested by the `-p` argument. Native QE includes ground-state, geometry, electronic, density, DFPT phonon, `epsilon.x` RPA optical, and thermo_pw elastic workflows, including vacuum-corrected 2D elastic reporting in N/m. This Nanoworks version supports QE 7.4.1 and thermo_pw 2.1.0; a different detected QE version produces a warning but does not stop the calculation. QE hybrid `HSE06`, `HSE03`, and `PBE0` workflows use native plane-wave exact exchange for ground-state, DOS/PDOS, band, projected-band, and density calculations; hybrid geometry, elastic, phonon, and optical workflows are not supported yet.
 
+Use `-E QE` or `--engine GPAW` to override the input backend for one run.
+Repeat `-s "Keyword=value"` / `--set` to override other input settings before
+validation, for example `-s "Wavefunction_cutoff=600" -s "DOS_calc=True"`.
+The original input is preserved; lowercase `-e` remains energy measurement.
+
 Portable SCF controls (`SCF_accuracy`, `SCF_max_steps`, `SCF_mixing`, and
 `Electronic_solver`) describe calculation intent once and are translated to
 native GPAW or QE settings. Portable `Pseudo_*` settings likewise select

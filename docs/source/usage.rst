@@ -124,6 +124,41 @@ or with auto mode:
 
    $ dftsolve -p <cores> -g <geometry.cif> -a
 
+Command-line keyword overrides
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use ``-E`` / ``--engine`` to select a backend for one invocation without
+editing the input's ``Engine`` keyword. The lowercase ``-e`` / ``--energy``
+continues to enable energy-consumption measurement.
+
+.. code-block:: console
+
+   $ dftsolve -g Si.cif -i input.py -E QE
+   $ dftsolve -g Si.cif -i input.py -E QE -s "Wavefunction_cutoff=600" -s "DOS_calc=True"
+   $ dftsolve -g Si.cif -i input.py --set "Engine='GPAW'" --set "Band_path='GXM'"
+
+The repeatable ``-s`` / ``--set`` option accepts ``Keyword=value``. Values
+can be numbers, ``True`` / ``False``, ``None``, quoted strings, lists, or
+dictionaries. A single bare identifier such as ``QE`` is also accepted as
+a string. Python expressions and function calls are not evaluated by this
+option. Quote the entire assignment in the shell when it contains spaces,
+lists, dictionaries, or string quotes.
+
+Precedence is command-line override, explicit input value, then backend
+default. Overrides are applied before configuration validation and backend
+defaults are resolved. Explicit input values are preserved unless overridden;
+switching engines does not automatically translate unsupported settings.
+For repeated ``--set`` assignments to the same keyword, the last value wins.
+Conflicting ``--engine`` and ``--set Engine=...`` selections are rejected,
+as are unknown keywords and unsupported calculation combinations.
+
+Overrides also apply to ``--check``, ``--check --json``, ``--dry-run`` and
+``-a`` auto mode, and survive GPAW MPI and optical process relaunches.
+Preflight reports and dry-run JSON plans record the supplied overrides.
+Normal calculations print them and save
+``*-CONFIG-<engine>-Input-Overrides.json``. Existing input files are never
+edited. Auto mode's newly generated input includes the override assignments.
+
 Preflight Check
 ~~~~~~~~~~~~~~~
 

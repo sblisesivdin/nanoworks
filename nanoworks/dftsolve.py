@@ -26,6 +26,7 @@ import math
 import shlex
 import shutil
 import subprocess
+from types import SimpleNamespace
 
 def log_energy_consumption(meter, struct_name, engine):
     """
@@ -861,11 +862,58 @@ class RawFormatter(HelpFormatter):
     def _fill_text(self, text, width, indent):
         return "\n".join([textwrap.fill(line, width) for line in textwrap.indent(textwrap.dedent(text), indent).splitlines()])
 
+def parse_dft_overrides(assignments=None, engine=None):
+    """Parse CLI keyword values as literals, never as executable code."""
+    overrides = {}
+    for assignment in assignments or ():
+        name, separator, expression = assignment.partition('=')
+        name, expression = name.strip(), expression.strip()
+        if not separator or not expression:
+            raise ValueError('--set requires Keyword=value.')
+        if name not in DFTConfig.__dataclass_fields__:
+            raise ValueError(f'Unknown dftsolve keyword: {name}')
+        try:
+            value = ast.literal_eval(expression)
+        except (ValueError, SyntaxError) as exc:
+            if expression.isidentifier() and expression not in {'true', 'false', 'null'}:
+                value = expression
+            else:
+                raise ValueError(
+                    f'Invalid literal for {name}; use numbers, True/False, '
+                    'None, quoted strings, lists, or dictionaries.'
+                ) from exc
+        field_type = DFTConfig.__dataclass_fields__[name].type
+        if (field_type in (bool, Optional[bool])
+                and not isinstance(value, bool)
+                and not (field_type == Optional[bool] and value is None)):
+            raise ValueError(f'{name} requires True or False.')
+        try:
+            json.dumps(value, allow_nan=False)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f'{name} must be a finite JSON-compatible literal.') from exc
+        overrides[name] = value
+    if 'Engine' in overrides:
+        if not isinstance(overrides['Engine'], str):
+            raise ValueError('Engine must be GPAW or QE.')
+        overrides['Engine'] = overrides['Engine'].strip().upper()
+        if overrides['Engine'] not in {'GPAW', 'QE'}:
+            raise ValueError('Engine must be GPAW or QE.')
+    if engine is not None:
+        engine = engine.strip().upper()
+        if engine not in {'GPAW', 'QE'}:
+            raise ValueError('Engine must be GPAW or QE.')
+        if 'Engine' in overrides and overrides['Engine'] != engine:
+            raise ValueError('--engine conflicts with --set Engine.')
+        overrides['Engine'] = engine
+    return overrides
+
+
 def struct_from_file(
     inputfile,
     geometryfile,
     create_output=True,
     report_structure=True,
+    overrides=None,
 ):
     """Load variables from parse function and return DFTConfig instance."""
     input_path = Path(inputfile)
@@ -910,7 +958,10 @@ def struct_from_file(
 
     
     # Create DFTConfig instance
-    config = DFTConfig(**{k: v for k, v in config_dict.items() if k in DFTConfig.__dataclass_fields__})
+    config_values = {k: v for k, v in config_dict.items() if k in DFTConfig.__dataclass_fields__}
+    config_values.update(overrides or {})
+    config = DFTConfig(**config_values)
+    config._cli_overrides = dict(overrides or {})
     
     # If there is a CIF input, use it. Otherwise use the bulk configuration provided above.
     if geometryfile is None:
@@ -942,6 +993,7 @@ def struct_from_auto(
     geometryfile,
     write_output=True,
     report_structure=True,
+    overrides=None,
 ):
     """Generate configuration automatically from geometry file."""
     struct_path = Path(geometryfile)
@@ -949,7 +1001,7 @@ def struct_from_auto(
     
     # Generate Auto Config
     atoms = read(geometryfile)
-    config = DFTConfig()
+    config = SimpleNamespace()
     config.Mode = 'PW'
     config.Ground_calc = True
     config.XC_calc = 'PBE'
@@ -1010,10 +1062,14 @@ def struct_from_auto(
     config.Band_calc = True
     
     config.bulk_configuration = atoms
+    config_values = vars(config).copy()
+    config_values.update(overrides or {})
+    config = DFTConfig(**config_values)
+    config._cli_overrides = dict(overrides or {})
     
     # Determine output path
     input_dir = struct_path.parent
-    structpath = input_dir / struct_name
+    structpath = input_dir / (config.Outdirname or struct_name)
     
     if write_output and not os.path.isdir(structpath):
         os.makedirs(structpath, exist_ok=True)
@@ -1026,11 +1082,14 @@ def struct_from_auto(
     )
     if write_output:
         with open(input_filename, 'w') as f:
+            f.write('# SPDX-FileCopyrightText: Sefer Bora Lisesivdin and Beyza Lisesivdin\n')
+            f.write('# SPDX-License-Identifier: MIT\n')
+            f.write('# See LICENSE.md in the project root for license terms.\n\n')
             f.write("from ase.io import read\n")
             f.write("import numpy as np\n\n")
             f.write(f"Mode = '{config.Mode}'\n")
             f.write(f"Ground_calc = {config.Ground_calc}\n")
-            f.write(f"XC_calc = '{config.XC_calc}'\n")
+            f.write(f"XC_calc = {config.XC_calc!r}\n")
             f.write(f"XC_exx_fraction = {getattr(config, 'XC_exx_fraction', None)}\n")
             f.write(f"XC_omega = {getattr(config, 'XC_omega', None)}\n")
             f.write(f"XC_backend = '{getattr(config, 'XC_backend', 'pw')}'\n")
@@ -1051,10 +1110,15 @@ def struct_from_auto(
             f.write(f"Ground_kpts_z = {config.Ground_kpts_z}\n")
             f.write(f"DOS_calc = {config.DOS_calc}\n")
             f.write(f"Band_calc = {config.Band_calc}\n")
+            f.write(f"Engine = {config.Engine!r}\n")
+            if overrides:
+                f.write('\n# Command-line overrides applied to this generated input\n')
+                for name, value in sorted(overrides.items()):
+                    f.write(f'{name} = {value!r}\n')
             f.write(f"\n# Geometry is handled via command line -g or loaded here if needed\n")
 
     if report_structure:
-        parprint(f"Auto-configured for {struct_name}: PBE, 450eV, Spin={config.Spin_calc}")
+        parprint(f"Auto-configured for {struct_name}: {config.Engine}, {config.XC_calc}, {config.Wavefunction_cutoff}eV, Spin={config.Spin_calc}")
         parprint(f"Geometry analysis: Cell {cell_lengths}, Spans {spans}")
         parprint(f"Vacuum detected: {is_vacuum} -> K-points set to {kpts}")
         if write_output:
@@ -7163,6 +7227,9 @@ def check_dft_configuration(
     stages = resolve_calculation_stages(
         config
     )
+    cli_overrides = getattr(config, '_cli_overrides', {})
+    if cli_overrides:
+        add('ok', 'cli-overrides', json.dumps(cli_overrides, sort_keys=True))
     add(
         'ok',
         'workflow',
@@ -7655,6 +7722,10 @@ def format_dft_preflight_json(report):
         'errors': report['errors'],
         'error_count': len(report['errors']),
     }
+    override_check = next((check for check in report['checks']
+                           if check['name'] == 'cli-overrides'), None)
+    if override_check is not None:
+        payload['overrides'] = json.loads(override_check['detail'])
 
     return json.dumps(
         payload,
@@ -8571,6 +8642,8 @@ def prepare_qe_dry_run(
         'plan_file': str(plan_file),
         'script_file': str(script_file),
     }
+    if getattr(config, '_cli_overrides', {}):
+        plan['overrides'] = config._cli_overrides
     plan_file.write_text(
         json.dumps(
             plan,
@@ -9085,7 +9158,9 @@ def main():
     parser.add_argument("-g", "--geometry",dest ="geometryfile", help="Use CIF file for geometry")
     parser.add_argument("-a", "--auto", dest="auto", action='store_true', help="Automatically generate input parameters based on geometry")
     parser.add_argument("-v", "--version", dest="version", action='store_true')
-    parser.add_argument("-e", "--energy", dest="energymeas", action='store_true')
+    parser.add_argument("-e", "--energy", dest="energymeas", action='store_true', help='Measure energy consumption using pyRAPL')
+    parser.add_argument('-E', '--engine', help='Override the input engine (GPAW or QE)')
+    parser.add_argument('-s', '--set', dest='overrides', action='append', metavar='KEYWORD=VALUE', help='Override an input keyword; repeat for multiple values')
     parser.add_argument("-p", "--parallel", dest="parallel", type=int, help="Number of cores to run in parallel")
     parser.add_argument("--check", dest="check", action='store_true', help="Validate the selected workflow without running calculations")
     parser.add_argument("--json", dest="json", action='store_true', help="Print --check results as machine-readable JSON")
@@ -9112,6 +9187,22 @@ def main():
     if args is None:
         parprint("No arguments used.")
         sys.exit(1)
+
+    def configuration_error(message):
+        if args.check and args.json:
+            error = {'status': 'error', 'name': 'configuration', 'detail': message}
+            parprint(format_dft_preflight_json({
+                'ok': False, 'engine': None, 'stages': [],
+                'checks': [error], 'errors': [error],
+            }))
+        else:
+            parprint(f'ERROR: {message}')
+        return 2
+
+    try:
+        cli_overrides = parse_dft_overrides(args.overrides, args.engine)
+    except ValueError as exc:
+        return configuration_error(str(exc))
 
     if args.json and not args.check:
         parprint("ERROR: --json requires --check.")
@@ -9208,37 +9299,51 @@ def main():
     # Start time
     time0 = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time.time()))
 
-    # Load struct and config
-    if args.auto:
-        struct, config = struct_from_auto(
-            inFile,
-            write_output=(
-                not args.check
-                and not args.dry_run
-            ),
-            report_structure=(
-                not args.check
-                and not args.dry_run
-            ),
-        )
-    else:
-        struct, config = struct_from_file(
-            inputfile=configpath,
-            geometryfile=inFile,
-            create_output=(
-                not args.check
-                and not args.dry_run
-            ),
-            report_structure=(
-                not args.check
-                and not args.dry_run
-            ),
-        )
+    try:
+        # Load struct and config
+        if args.auto:
+            struct, config = struct_from_auto(
+                inFile,
+                write_output=(
+                    not args.check
+                    and not args.dry_run
+                ),
+                report_structure=(
+                    not args.check
+                    and not args.dry_run
+                ),
+                **({'overrides': cli_overrides} if cli_overrides else {}),
+            )
+        else:
+            struct, config = struct_from_file(
+                inputfile=configpath,
+                geometryfile=inFile,
+                create_output=(
+                    not args.check
+                    and not args.dry_run
+                ),
+                report_structure=(
+                    not args.check
+                    and not args.dry_run
+                ),
+                **({'overrides': cli_overrides} if cli_overrides else {}),
+            )
+
+    except (ValueError, TypeError, NotImplementedError) as exc:
+        return configuration_error(f'Invalid calculation configuration: {exc}')
 
     if REQUESTED_PARALLEL is not None:
         parallel_cores = REQUESTED_PARALLEL
     else:
         parallel_cores = world.size
+
+    if cli_overrides and not args.check and not args.dry_run:
+        parprint('Command-line overrides: ' + json.dumps(cli_overrides, sort_keys=True))
+        if world.rank == 0:
+            Path(struct + f'-CONFIG-{config.Engine}-Input-Overrides.json').write_text(
+                json.dumps(cli_overrides, indent=2, sort_keys=True) + '\n',
+                encoding='utf-8',
+            )
 
     if args.check:
         report = check_dft_configuration(

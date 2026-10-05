@@ -2,6 +2,7 @@
 
 ### Development Version
 
+- `dftsolve -E/--engine` overrides the input backend; repeatable `-s/--set Keyword=value` overrides apply before validation and are recorded for each workflow.
 - Source files carry MIT SPDX notices; source and wheel distributions include the project license and preserved third-party attribution.
 - QE SOC projected-band inputs preserve explicit `j` selections; unsupported backend combinations fail early.
 - QE projected bands warn when a selection matches no atomic states and export the matching state count to CSV.
