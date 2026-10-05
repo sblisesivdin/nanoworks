@@ -1350,7 +1350,10 @@ backend interpret the settings it supports.
     ``*-BAND-QE-Result-Projected-Band.csv``. Collinear calculations write
     separate ``-Up.csv`` and ``-Down.csv`` files. Each row identifies the
     zero-based k-point, band and projection indices, path distance, energy
-    in eV, atom indices, orbital, optional ``j``, projection basis and weight.
+    in eV, atom indices, orbital, optional ``j``, projection basis,
+    ``selected_state_count`` and weight. A selection matching no atomic states
+    emits a warning and has a state count of zero; a matching state can still
+    have zero weight at a particular band and k-point.
     The energy zero is identical to the band data and figure.
 
 .. describe:: Projections

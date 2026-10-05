@@ -1,6 +1,7 @@
 import csv
 import unittest
 import tempfile
+import warnings
 from pathlib import Path
 from unittest.mock import patch
 
@@ -6668,6 +6669,7 @@ class TestQEEngine(unittest.TestCase):
             'projections': [{
                 'index': 0, 'atoms': [0, 1], 'orbital': 'd', 'j': 2.5,
                 'label': 'W d, j=5/2', 'weights': [[0.25, 0.75]],
+                'selected_state_count': 6,
             }],
         }
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -6684,6 +6686,39 @@ class TestQEEngine(unittest.TestCase):
         self.assertEqual(rows[0]['energy_ev'], '-1.0')
         self.assertEqual(rows[1]['weight'], '0.75')
         self.assertEqual(rows[0]['projection_basis'], 'total-angular-momentum')
+        self.assertEqual(rows[0]['selected_state_count'], '6')
+
+    def test_prepare_qe_band_projection_warns_for_unmatched_selection(self):
+        for spin_orbit in (False, True):
+            with self.subTest(spin_orbit=spin_orbit):
+                source = {
+                    'natoms': 1, 'nkpoints': 1, 'nbands': 1,
+                    'spin_orbit': spin_orbit,
+                    'states': [{
+                        'atom_index': 0, 'orbital': 's', 'j': 0.5,
+                        'weights': [[0.0]],
+                    }],
+                }
+                with self.assertWarnsRegex(RuntimeWarning, 'matches no atomic states'):
+                    result = prepare_qe_band_projection_data(source, [{
+                        'atoms': [0], 'orbital': 'd', 'label': 'Missing d',
+                    }])
+                self.assertEqual(result['projections'][0]['selected_state_count'], 0)
+                self.assertEqual(result['projections'][0]['weights'], [[0.0]])
+
+    def test_prepare_qe_band_projection_keeps_zero_weight_matching_state(self):
+        source = {
+            'natoms': 1, 'nkpoints': 1, 'nbands': 1,
+            'states': [{'atom_index': 0, 'orbital': 's', 'weights': [[0.0]]}],
+        }
+        with warnings.catch_warnings(record=True) as captured:
+            warnings.simplefilter('always')
+            result = prepare_qe_band_projection_data(source, [{
+                'atoms': [0], 'orbital': 's',
+            }])
+        self.assertEqual(captured, [])
+        self.assertEqual(result['projections'][0]['selected_state_count'], 1)
+        self.assertEqual(result['projections'][0]['weights'], [[0.0]])
 
     def test_write_qe_band_projection_csv_rejects_invalid_weights(self):
         for invalid in (-0.1, float('nan'), float('inf')):

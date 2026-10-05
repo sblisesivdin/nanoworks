@@ -6933,6 +6933,15 @@ def prepare_qe_band_projection_data(
                         band_index
                     ]
 
+        if selected_state_count == 0:
+            warnings.warn(
+                f"QE band projection {projection_index} ({label!r}) matches "
+                "no atomic states in projwfc.x output; its weights are zero. "
+                "Check the selected atoms, orbital, j, and pseudopotentials.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+
         prepared.append({
             'index': projection_index,
             'atoms': atom_indices,
@@ -6994,7 +7003,7 @@ def write_qe_band_projection_csv(
         writer.writerow([
             'kpoint_index', 'band_index', 'distance', 'energy_ev',
             'projection_index', 'label', 'atoms', 'orbital', 'j',
-            'projection_basis', 'weight',
+            'projection_basis', 'selected_state_count', 'weight',
         ])
         for kpoint in range(nkpoints):
             for band in range(nbands):
@@ -7005,6 +7014,7 @@ def write_qe_band_projection_csv(
                         ';'.join(str(atom) for atom in selection['atoms']),
                         selection['orbital'], selection.get('j'),
                         projection_data.get('projection_basis', 'orbital'),
+                        selection.get('selected_state_count'),
                         weights[index][kpoint, band],
                     ])
     return output_file
