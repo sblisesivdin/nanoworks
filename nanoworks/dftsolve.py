@@ -4695,6 +4695,16 @@ class dftsolve:
                 dtype=float,
             )
 
+            csv_suffix = '' if spin_label is None else f'-{spin_label}'
+            projection_csv = self.engine.write_qe_band_projection_csv(
+                self.struct + '-BAND-QE-Result-Projected-Band'
+                + csv_suffix + '.csv',
+                distances=distances,
+                eigenvalues=eigenvalues,
+                projection_data=projection_data,
+            )
+            parprint(f'QE projected-band CSV saved to: {projection_csv}')
+
             expected_shape = (
                 band_data['nkpoints'],
                 band_data['nbands'],

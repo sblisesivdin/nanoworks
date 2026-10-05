@@ -1346,6 +1346,13 @@ backend interpret the settings it supports.
     Cartesian labels such as ``px`` and ``py`` are not assigned to SOC
     spinors.
 
+    Selected weights and the referenced band energies are also exported to
+    ``*-BAND-QE-Result-Projected-Band.csv``. Collinear calculations write
+    separate ``-Up.csv`` and ``-Down.csv`` files. Each row identifies the
+    zero-based k-point, band and projection indices, path distance, energy
+    in eV, atom indices, orbital, optional ``j``, projection basis and weight.
+    The energy zero is identical to the band data and figure.
+
 .. describe:: Projections
 
     :Type: ``list``

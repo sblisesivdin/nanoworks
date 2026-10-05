@@ -1,3 +1,4 @@
+import csv
 import unittest
 import tempfile
 from pathlib import Path
@@ -93,6 +94,7 @@ from nanoworks.engine.qe import (
     run_band_projections,
     parse_projwfc_band_file,
     prepare_qe_band_projection_data,
+    write_qe_band_projection_csv,
     render_pp_input,
     run_pp_density,
     render_qe_hubbard_card,
@@ -6657,6 +6659,63 @@ class TestQEEngine(unittest.TestCase):
         self.assertEqual(projection['j'], 2.5)
         self.assertEqual(projection['selected_state_count'], 1)
         self.assertEqual(projection['weights'], [[0.30, 0.40]])
+
+    def test_write_qe_band_projection_csv_preserves_soc_metadata(self):
+        projection = {
+            'nkpoints': 1,
+            'nbands': 2,
+            'projection_basis': 'total-angular-momentum',
+            'projections': [{
+                'index': 0, 'atoms': [0, 1], 'orbital': 'd', 'j': 2.5,
+                'label': 'W d, j=5/2', 'weights': [[0.25, 0.75]],
+            }],
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = write_qe_band_projection_csv(
+                Path(tmpdir) / 'projections.csv', [0.0],
+                [[-1.0, 2.0]], projection,
+            )
+            with output.open(newline='', encoding='utf-8') as stream:
+                rows = list(csv.DictReader(stream))
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0]['label'], 'W d, j=5/2')
+        self.assertEqual(rows[0]['atoms'], '0;1')
+        self.assertEqual(rows[0]['j'], '2.5')
+        self.assertEqual(rows[0]['energy_ev'], '-1.0')
+        self.assertEqual(rows[1]['weight'], '0.75')
+        self.assertEqual(rows[0]['projection_basis'], 'total-angular-momentum')
+
+    def test_write_qe_band_projection_csv_rejects_invalid_weights(self):
+        for invalid in (-0.1, float('nan'), float('inf')):
+            with self.subTest(weight=invalid), tempfile.TemporaryDirectory() as tmpdir:
+                output = Path(tmpdir) / 'projections.csv'
+                with self.assertRaisesRegex(ValueError, 'finite'):
+                    write_qe_band_projection_csv(output, [0.0], [[1.0]], {
+                        'nkpoints': 1, 'nbands': 1,
+                        'projections': [{'weights': [[invalid]]}],
+                    })
+                self.assertFalse(output.exists())
+
+    def test_parse_soc_band_projections_rejects_invalid_mj_and_weights(self):
+        header = (
+            '8 8 8 8 8 8 1 1\n'
+            '1 5.0 0.0 0.0 0.0 0.0 0.0\n'
+            '10.0 4.0 30.0 9\n1 W 183.84\n'
+            '1 0.0 0.0 0.0 1\n1 1 1\nT T\n'
+        )
+        cases = [
+            ('1 1 W 5D 1 2 1.5 0.0\n1 1 0.25\n', 'invalid m_j'),
+            ('1 1 W 5D 1 2 1.5 nan\n1 1 0.25\n', 'invalid m_j'),
+            ('1 1 W 5D 1 2 1.5 0.5\n1 1 nan\n', 'finite'),
+            ('1 1 W 5D 1 2 1.5 0.5\n1 1 -0.1\n', 'nonnegative'),
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir) / 'bands.projwfc_up'
+            for body, message in cases:
+                with self.subTest(body=body):
+                    output.write_text(header + body, encoding='utf-8')
+                    with self.assertRaisesRegex(ValueError, message):
+                        parse_projwfc_band_file(output)
 
     def test_prepare_qe_band_projection_data_rejects_atom_index(
         self,

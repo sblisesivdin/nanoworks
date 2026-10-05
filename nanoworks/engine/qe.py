@@ -1,5 +1,6 @@
 """Quantum ESPRESSO computation engine helpers."""
 
+import csv
 import math
 import operator
 import re
@@ -6455,8 +6456,13 @@ def parse_projwfc_band_file(
                 )
 
             if (
-                abs(magnetic_component)
+                not math.isfinite(magnetic_component)
+                or abs(magnetic_component)
                 > total_angular_momentum + 1.0e-8
+                or abs(
+                    total_angular_momentum - magnetic_component
+                    - round(total_angular_momentum - magnetic_component)
+                ) > 1.0e-8
             ):
                 raise ValueError(
                     "QE spin-orbit band projection contains an "
@@ -6556,6 +6562,12 @@ def parse_projwfc_band_file(
                     "Duplicate QE projection weight for "
                     f"k-point {raw_kpoint_index}, "
                     f"band {band_index + 1}."
+                )
+
+            if not math.isfinite(weight) or weight < 0.0:
+                raise ValueError(
+                    "QE band projection weights must be finite and "
+                    "nonnegative."
                 )
 
             weights[
@@ -6946,6 +6958,57 @@ def prepare_qe_band_projection_data(
         ),
         'projections': prepared,
     }
+
+def write_qe_band_projection_csv(
+    output_file,
+    distances,
+    eigenvalues,
+    projection_data,
+):
+    """Export referenced energies and selected weights in long CSV form."""
+    nkpoints = projection_data['nkpoints']
+    nbands = projection_data['nbands']
+    energies = np.asarray(eigenvalues, dtype=float)
+    xvalues = np.asarray(distances, dtype=float)
+    selections = projection_data['projections']
+    weights = [
+        np.asarray(selection['weights'], dtype=float)
+        for selection in selections
+    ]
+    if energies.shape != (nkpoints, nbands) or xvalues.shape != (nkpoints,):
+        raise ValueError('QE projected-band CSV dimensions are inconsistent.')
+    if any(values.shape != energies.shape for values in weights):
+        raise ValueError('QE projected-band CSV weight dimensions are inconsistent.')
+    if (
+        not np.isfinite(energies).all()
+        or not np.isfinite(xvalues).all()
+        or any(not np.isfinite(values).all() or (values < 0).any()
+               for values in weights)
+    ):
+        raise ValueError('QE projected-band CSV data must be finite with nonnegative weights.')
+
+    output_file = Path(output_file)
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    with output_file.open('w', encoding='utf-8', newline='') as stream:
+        writer = csv.writer(stream)
+        writer.writerow([
+            'kpoint_index', 'band_index', 'distance', 'energy_ev',
+            'projection_index', 'label', 'atoms', 'orbital', 'j',
+            'projection_basis', 'weight',
+        ])
+        for kpoint in range(nkpoints):
+            for band in range(nbands):
+                for index, selection in enumerate(selections):
+                    writer.writerow([
+                        kpoint, band, xvalues[kpoint], energies[kpoint, band],
+                        selection['index'], selection['label'],
+                        ';'.join(str(atom) for atom in selection['atoms']),
+                        selection['orbital'], selection.get('j'),
+                        projection_data.get('projection_basis', 'orbital'),
+                        weights[index][kpoint, band],
+                    ])
+    return output_file
+
 
 def prepare_qe_band_data(
     bands,
@@ -9184,6 +9247,11 @@ def run_bands(
                 'projection_up_file'
             ]
         )
+
+        if bool(raw_up.get('spin_orbit', False)) != bool(spin_orbit):
+            raise RuntimeError(
+                'QE band projection metadata does not match SOC_calc.'
+            )
 
         if (
             raw_up['nkpoints']

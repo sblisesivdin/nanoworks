@@ -2,6 +2,7 @@
 
 ### Development Version
 
+- QE projected-band workflows export referenced energies and selection weights to CSV; SOC parsing validates allowed `m_j` values and rejects nonfinite or negative weights.
 - QE spin-orbit projected bands now preserve `projwfc.x` total-angular-momentum states and support optional `j`-resolved selections in `Projections`.
 - QE spin-orbit DOS workflows now run `projwfc.x` and export total-angular-momentum-resolved `l_j` PDOS columns without mislabeling them as Cartesian orbitals.
 - Nonmagnetic PBE QE spin-orbit workflows now support total pseudo-valence density output through `Density_calc = True`, with saved-state SOC validation before `pp.x` runs.
