@@ -45,6 +45,75 @@ two sequential processes. The electronic stages finish first; optical then
 starts in a fresh process so the earlier GPAW wave-function memory has been
 released. With ``-p``, both processes use the requested MPI process count.
 
+Workflow support
+~~~~~~~~~~~~~~~~
+
+The following table describes implemented workflow routes. It does not mean
+that every material, input combination, or external-engine version has been
+numerically validated. QE SOC means nonmagnetic semilocal calculations;
+QE hybrid means ``HSE06``, ``HSE03``, or ``PBE0`` without SOC.
+
+.. list-table:: Calculation-stage support
+   :header-rows: 1
+   :widths: 25 20 20 20 20
+
+   * - Stage
+     - GPAW semilocal
+     - QE semilocal
+     - QE hybrid
+     - QE SOC
+   * - Ground
+     - Supported
+     - Supported
+     - Supported
+     - Supported
+   * - Atomic / cell relaxation
+     - Supported
+     - Supported
+     - Unsupported
+     - Supported
+   * - DOS / PDOS
+     - Supported
+     - Supported
+     - Supported
+     - Supported (``l_j`` PDOS)
+   * - Band / projected band
+     - Supported
+     - Supported
+     - Supported
+     - Supported (optional ``j`` selection)
+   * - Density
+     - Supported
+     - Supported (pseudo-valence)
+     - Supported (pseudo-valence)
+     - Supported (total pseudo-valence)
+   * - Elastic
+     - Python ``elastic``
+     - thermo_pw 2.1.0
+     - Unsupported
+     - Unsupported
+   * - Phonon
+     - Supported
+     - Native DFPT
+     - Unsupported
+     - Unsupported
+   * - Optical
+     - RPA / BSE routes
+     - ``epsilon.x`` RPA
+     - Unsupported
+     - Unsupported
+
+GPAW hybrid stage validation allows ground, atomic relaxation, elastic,
+DOS, band, density, and optical stages; hybrid cell relaxation and phonon
+stages are rejected. GPAW SOC uses its own post-processing route and is
+not equivalent to QE's self-consistent spinor workflow. In particular,
+GPAW SOC DOS requires ``DOS_integration = 'smearing'``. Magnetic QE SOC,
+QE hybrid-SOC, and spin-texture outputs are not implemented.
+
+Use ``--check`` for the actual input's supported combinations, dependencies,
+and required programs. External-engine smoke calculations remain necessary
+to validate scientific results.
+
 .. code-block:: console
 
    $ dftsolve -p <cores> -g <geometry.cif> -i <input.py>

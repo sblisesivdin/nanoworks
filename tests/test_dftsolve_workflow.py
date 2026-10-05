@@ -2565,6 +2565,37 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         self.assertTrue(config.Projected_band_plot)
         self.assertEqual(config.Pseudo_relativistic, 'full')
 
+    def test_qe_soc_projection_selection_survives_input_normalization(self):
+        from nanoworks.engine.qe import prepare_qe_band_projection_data
+
+        config = DFTConfig(
+            Engine='QE', SOC_calc=True, Band_calc=True,
+            Projected_band_plot=True,
+            Projections=[{'atoms': [0], 'orbital': 'p', 'j': 1.5}],
+        )
+        source = {
+            'natoms': 1, 'nkpoints': 1, 'nbands': 1, 'spin_orbit': True,
+            'states': [
+                {'atom_index': 0, 'orbital': 'p', 'j': 0.5,
+                 'weights': [[0.2]]},
+                {'atom_index': 0, 'orbital': 'p', 'j': 1.5,
+                 'weights': [[0.7]]},
+            ],
+        }
+        result = prepare_qe_band_projection_data(source, config.Projections)
+        self.assertEqual(result['projections'][0]['j'], 1.5)
+        self.assertEqual(result['projections'][0]['weights'], [[0.7]])
+        self.assertEqual(result['projections'][0]['selected_state_count'], 1)
+
+    def test_projection_j_is_rejected_outside_qe_soc(self):
+        for engine, soc in (('QE', False), ('GPAW', False), ('GPAW', True)):
+            with self.subTest(engine=engine, soc=soc):
+                with self.assertRaisesRegex(NotImplementedError, "Projections 'j'"):
+                    DFTConfig(
+                        Engine=engine, SOC_calc=soc,
+                        Projections=[{'atoms': [0], 'orbital': 'p', 'j': 1.5}],
+                    )
+
     def test_qe_soc_validates_user_supplied_pseudopotentials(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             pseudo_dir = Path(tmpdir)

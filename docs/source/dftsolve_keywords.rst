@@ -1383,6 +1383,8 @@ backend interpret the settings it supports.
         with ``orbital``; for example, ``1.5`` selects :math:`p_{3/2}` when
         ``orbital='p'`` or :math:`d_{3/2}` when ``orbital='d'``. Omit this
         field to sum all :math:`j` channels for the selected orbital.
+        A non-null ``j`` selection is rejected for GPAW and non-SOC QE
+        inputs rather than silently ignored.
 
     * ``color`` (string)
         Matplotlib-compatible color used when plotting the projected

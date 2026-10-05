@@ -2,6 +2,7 @@
 
 ### Development Version
 
+- QE SOC projected-band inputs preserve explicit `j` selections; unsupported backend combinations fail early.
 - QE projected bands warn when a selection matches no atomic states and export the matching state count to CSV.
 - QE projected-band workflows export referenced energies and selection weights to CSV; SOC parsing validates allowed `m_j` values and rejects nonfinite or negative weights.
 - QE spin-orbit projected bands now preserve `projwfc.x` total-angular-momentum states and support optional `j`-resolved selections in `Projections`.

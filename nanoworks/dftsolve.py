@@ -779,6 +779,13 @@ class DFTConfig:
                     'color': proj.get('color', 'blue'),  # Default to blue if missing
                     'label': proj.get('label', f"Proj-{idx+1}") # Default label if missing
                 }
+                if proj.get('j') is not None:
+                    if self.Engine != 'QE' or not self.SOC_calc:
+                        raise NotImplementedError(
+                            "Projections 'j' requires the QE backend "
+                            'with SOC_calc = True.'
+                        )
+                    safe_proj['j'] = proj['j']
                 sanitized_projections.append(safe_proj)
         
         # Replace the user's raw list with the safely formatted list
