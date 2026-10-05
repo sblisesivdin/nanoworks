@@ -28,6 +28,7 @@ import sys
 import argparse
 import time
 import warnings
+import runpy
 import nanoworks
 import numpy as np
 from pathlib import Path
@@ -72,16 +73,15 @@ class MLConfig:
     Outdirname: str = ''
 
 def config_from_file(inputfile, geometryfile):
-    """Load variables from parse function and return MLConfig instance."""
-    # Works like from FILE import *
-    sys.path.append(str(Path(inputfile).parent))
-    inputf = __import__(Path(inputfile).stem, globals(), locals(), ['*'])
-    
-    # Create a config object with loaded parameters
-    config_dict = {}
-    for k in dir(inputf):
-        if not k.startswith('_'):
-            config_dict[k] = getattr(inputf, k)
+    """Execute the requested input file afresh and return its MLConfig."""
+    input_path = Path(inputfile).resolve()
+    original_path = sys.path[:]
+    try:
+        # Allow imports from the input directory without leaving it on sys.path.
+        sys.path.insert(0, str(input_path.parent))
+        config_dict = runpy.run_path(str(input_path))
+    finally:
+        sys.path[:] = original_path
     
     # Create MLConfig instance
     config = MLConfig(**{k: v for k, v in config_dict.items() if k in MLConfig.__dataclass_fields__})

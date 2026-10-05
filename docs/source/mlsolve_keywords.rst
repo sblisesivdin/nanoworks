@@ -5,6 +5,11 @@ mlsolve Keyword List
 
 The ``mlsolve`` tool uses a Python script as an input file. Below are the supported variables that can be defined in this file.
 
+The file supplied with ``-i`` is executed from its exact path on each load.
+Different directories may contain inputs with the same filename. The input
+directory is temporarily available for imports of helper modules; those helper
+modules follow Python's normal import caching rules.
+
 Exit Status
 -----------
 
