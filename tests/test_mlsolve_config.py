@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Sefer Bora Lisesivdin and Beyza Lisesivdin
+# SPDX-License-Identifier: MIT
+# See LICENSE.md in the project root for license terms.
+
 """Input paths and current contents must determine the ML configuration."""
 
 import sys

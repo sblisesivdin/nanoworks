@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Sefer Bora Lisesivdin and Beyza Lisesivdin
+# SPDX-License-Identifier: MIT
+# See LICENSE.md in the project root for license terms.
+
 """Small native QE/thermo_pw smoke input for bulk Si elasticity."""
 
 from ase.build import bulk

@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: Sefer Bora Lisesivdin and Beyza Lisesivdin
+# SPDX-License-Identifier: MIT
+# See LICENSE.md in the project root for license terms.
+
 """Convert a set of VASP input files into dftsolve.py-ready inputs.
 
 The script reads VASP style POSCAR/CONTCAR (structure), INCAR (calculation

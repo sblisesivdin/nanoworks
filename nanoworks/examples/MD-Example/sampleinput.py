@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Sefer Bora Lisesivdin and Beyza Lisesivdin
+# SPDX-License-Identifier: MIT
+# See LICENSE.md in the project root for license terms.
+
 Engine = 'lammps'
 OpenKIM_potential = 'LJ_ElliottAkerson_2015_Universal__MO_959249795837_003'
 Temperature = 1.0 #Kelvin

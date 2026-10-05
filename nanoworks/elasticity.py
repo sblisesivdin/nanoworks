@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Sefer Bora Lisesivdin and Beyza Lisesivdin
+# SPDX-License-Identifier: MIT
+# See LICENSE.md in the project root for license terms.
+
 """Engine-neutral helpers for elastic-property reporting."""
 
 import math

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Sefer Bora Lisesivdin and Beyza Lisesivdin
+# SPDX-License-Identifier: MIT
+# See LICENSE.md in the project root for license terms.
+
 import unittest
 
 from nanoworks.dos import resolve_dos_settings, validate_dos_settings

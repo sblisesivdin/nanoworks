@@ -1,4 +1,10 @@
 #!/usr/bin/env python
+# SPDX-FileCopyrightText: Sefer Bora Lisesivdin and Beyza Lisesivdin
+# SPDX-FileCopyrightText: 2020 Michael Lamparski
+# SPDX-License-Identifier: MIT
+# See LICENSE.md in the project root for license terms.
+# See THIRD_PARTY_NOTICES.md for included third-party attribution.
+
 
 '''
 dftsolve: High-level Wrapper Script for GPAW

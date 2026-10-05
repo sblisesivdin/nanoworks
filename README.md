@@ -277,4 +277,7 @@ And for `Nanoworks` usage, please use the following citation:
 Many other packages need to be cited. With GPAW, you may need to cite LibXC or cite for LCAO, TDDFT, and linear-response calculations. With Quantum ESPRESSO, you must also cite the pseudopotential library and any additional QE components used by the calculation. Please visit their pages for many other citation possibilities. For more you can visit [https://wiki.fysik.dtu.dk/ase/faq.html#how-should-i-cite-ase](https://wiki.fysik.dtu.dk/ase/faq.html#how-should-i-cite-ase), [https://wiki.fysik.dtu.dk/gpaw/faq.html#citation-how-should-i-cite-gpaw](https://wiki.fysik.dtu.dk/gpaw/faq.html#citation-how-should-i-cite-gpaw), and [https://openkim.org/how-to-cite/](https://openkim.org/how-to-cite/).
 
 ## Licensing
-This project is licensed under the terms of the [MIT license](https://opensource.org/licenses/MIT).
+This project is licensed under the [MIT license](LICENSE.md). Preserve the
+copyright and permission notices when redistributing it. See
+[third-party notices](THIRD_PARTY_NOTICES.md) for the attribution of included
+third-party code. External engines and dependencies retain their own licenses.

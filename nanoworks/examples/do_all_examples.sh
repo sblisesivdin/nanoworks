@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: Sefer Bora Lisesivdin and Beyza Lisesivdin
+# SPDX-License-Identifier: MIT
+# See LICENSE.md in the project root for license terms.
+
 echo "Nanoworks: "
 echo "Adding all examples to tsp queue. Please use tsp after running this."
 CORENUMBER=4

@@ -1,3 +1,7 @@
+@REM SPDX-FileCopyrightText: Sefer Bora Lisesivdin and Beyza Lisesivdin
+@REM SPDX-License-Identifier: MIT
+@REM See LICENSE.md in the project root for license terms.
+
 @ECHO OFF
 
 pushd %~dp0

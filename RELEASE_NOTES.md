@@ -2,6 +2,7 @@
 
 ### Development Version
 
+- Source files carry MIT SPDX notices; source and wheel distributions include the project license and preserved third-party attribution.
 - QE SOC projected-band inputs preserve explicit `j` selections; unsupported backend combinations fail early.
 - QE projected bands warn when a selection matches no atomic states and export the matching state count to CSV.
 - QE projected-band workflows export referenced energies and selection weights to CSV; SOC parsing validates allowed `m_j` values and rejects nonfinite or negative weights.

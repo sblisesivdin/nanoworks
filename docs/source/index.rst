@@ -228,3 +228,4 @@ Documentation
    code_of_conduct
    release_notes
    license
+   third_party_notices

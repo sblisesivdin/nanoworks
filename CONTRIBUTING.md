@@ -41,6 +41,26 @@ Licensing
 
 All code is licensed under the MIT License. If you didn't write the code yourself, it's your responsibility to ensure that the existing license is compatible with and included with the contributed files.
 
+The authoritative license text is `LICENSE.md` in the repository root.
+Comment-capable source files, tests, executable examples, build scripts and
+configuration files carry the following header using the file's comment syntax:
+
+```text
+SPDX-FileCopyrightText: Sefer Bora Lisesivdin and Beyza Lisesivdin
+SPDX-License-Identifier: MIT
+See LICENSE.md in the project root for license terms.
+```
+
+Keep a script's shebang and Python encoding declaration in their required
+positions. Preserve existing third-party copyright notices, record included
+third-party code in `THIRD_PARTY_NOTICES.md`, and include those notices in
+redistributions. Do not insert comments into formats that prohibit them,
+such as JSON; these files remain covered by the root license unless otherwise
+specified. External dependencies and engines are covered by their own licenses.
+
+Run `python scripts/check_license_headers.py` before submitting new source
+files. CI runs the same check without installing or running DFT engines.
+
 New Release
 -----------
 

@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: Sefer Bora Lisesivdin and Beyza Lisesivdin
+# SPDX-License-Identifier: MIT
+# See LICENSE.md in the project root for license terms.
+
 """Convert a Quantum ESPRESSO pw.x input into Nanoworks QE files.
 
 The script reads a pw.x style input file, extracts common calculation
