@@ -43,7 +43,7 @@ try:
     from ase import Atoms
     from ase.io import read, write
     from ase.optimize import BFGS, FIRE, LBFGS
-    from ase.filters import ExpCellFilter, UnitCellFilter
+    from ase.filters import FrechetCellFilter
 except ImportError as err:
     print(repr(err))
     sys.exit("Error: ASE (Atomic Simulation Environment) library not found.")
@@ -306,9 +306,8 @@ def main():
         
         # Relaxation target: atomic positions + cell or only positions
         if config.cell_relax:
-            print("Info: Relaxing both atomic positions and unit cell (ExpCellFilter).")
-            ecf = ExpCellFilter(atoms)
-            opt_target = ecf
+            print("Info: Relaxing both atomic positions and unit cell (FrechetCellFilter).")
+            opt_target = FrechetCellFilter(atoms)
         else:
             print("Info: Relaxing atomic positions only (Fixed cell).")
             opt_target = atoms

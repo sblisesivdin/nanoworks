@@ -28,7 +28,7 @@ requires-python = ">=3.8"
 license = { file = "LICENSE.md" }
 authors = [{name = "Sefer Bora Lisesivdin" }, {name = "Beyza Sarikavak-Lisesivdin"}]
 dependencies = [
-    "ase>=3.22.0",
+    "ase>=3.23.0",
     "spglib",
     "docutils"
 ]

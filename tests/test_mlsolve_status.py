@@ -9,6 +9,7 @@ from unittest.mock import Mock
 import pytest
 from ase.build import bulk
 from ase.calculators.emt import EMT
+from ase.filters import FrechetCellFilter
 
 from nanoworks import mlsolve
 
@@ -50,6 +51,23 @@ def test_optimization_failure_saves_crash_in_output_directory(monkeypatch, tmp_p
 
     assert mlsolve.main() == 1
     writer.assert_called_once_with(str(tmp_path / 'crash_dump.cif'), config.bulk_configuration)
+
+
+def test_cell_relaxation_passes_filter_to_optimizer_and_saves_atoms(monkeypatch, tmp_path):
+    config, _, writer = prepare_run(monkeypatch, tmp_path)
+    config.cell_relax = True
+    dynamics = Mock()
+    dynamics.run.return_value = True
+    optimizer = Mock(return_value=dynamics)
+    monkeypatch.setattr(mlsolve, 'BFGS', optimizer)
+
+    assert mlsolve.main() == 0
+    target = optimizer.call_args.args[0]
+    assert isinstance(target, FrechetCellFilter)
+    assert target.atoms is config.bulk_configuration
+    # Exercise the combined atomic/cell force interface using EMT stress.
+    assert target.get_forces().shape == (len(config.bulk_configuration) + 3, 3)
+    writer.assert_called_once_with(config.out_file, config.bulk_configuration)
 
 
 def test_static_failure_returns_error(monkeypatch, tmp_path):

@@ -127,7 +127,8 @@ Optimization Parameters
 
     Determines whether to relax the unit cell vectors along with atomic positions.
     
-    *   ``True``: Relax both cell and positions (uses ``ExpCellFilter``).
+    *   ``True``: Relax both cell and positions (uses ``FrechetCellFilter``;
+        requires ASE 3.23 or newer and a calculator providing stress).
     *   ``False``: Relax only atomic positions (fixed cell).
 
 .. describe:: optimizer
