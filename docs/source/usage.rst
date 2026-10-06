@@ -313,7 +313,7 @@ Perform quick geometric optimizations or MD runs using classical potentials via 
 mlsolve (New!)
 -----------------
 
-Run geometry optimizations or static calculations using Machine Learning Force Fields.
+Run geometry optimizations, static calculations or bulk EOS calculations using Machine Learning Force Fields.
 
 .. code-block:: console
 
@@ -334,6 +334,11 @@ Optimize a structure using MACE (assuming parameters are in `ml_input.py`)
 
 
 **Supported Models:** `mace`, `chgnet`, `sevennet`
+
+Set ``task = 'eos'`` for a 3D bulk volume scan with equilibrium volume, bulk
+modulus and pressure derivative. The workflow saves raw data, sampled
+structures, JSON metadata and a PNG graph. See :ref:`mlsolve_keywords` and the
+``Bulk-Cu-ML-EOS`` example for settings and fit validity checks.
 
 nanoworks
 ------------

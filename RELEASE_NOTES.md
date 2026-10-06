@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- `mlsolve` adds bulk EOS with volume scans, fixed-cell atomic relaxation, V0/B0/B' fits, raw data, JSON and PNG outputs.
+
 - `dftsolve -E/--engine` overrides the input backend; repeatable `-s/--set Keyword=value` overrides apply before validation and are recorded for each workflow.
 - Source files carry MIT SPDX notices; source and wheel distributions include the project license and preserved third-party attribution.
 - QE SOC projected-band inputs preserve explicit `j` selections; unsupported backend combinations fail early.

@@ -66,6 +66,10 @@ class MLConfig:
     dispersion: bool = False
     model_path: Optional[str] = None
     model_name: str = '7net-0'
+    eos_scale: Any = (0.94, 1.06)
+    eos_points: int = 11
+    eos_relax_atoms: bool = True
+    eos_fit: str = 'birchmurnaghan'
     fmax: float = 0.05
     steps: int = 200
     cell_relax: bool = True
@@ -241,9 +245,16 @@ def main():
     # Load struct and config
     struct, config = config_from_file(inputfile=args.input, geometryfile=args.geometry)
 
-    if config.task not in ('static', 'optimize'):
-        parser.error(f"Unknown task {config.task!r}. Choose static or optimize.")
-    if config.task == 'optimize':
+    if config.task not in ('static', 'optimize', 'eos'):
+        parser.error(f"Unknown task {config.task!r}. Choose static, optimize, or eos.")
+    if config.task == 'eos':
+        from nanoworks.ml_eos import run_eos, validate_eos
+        try:
+            validate_eos(config.bulk_configuration, config)
+        except (ValueError, TypeError) as exc:
+            parser.error(str(exc))
+    optimizer_class = None
+    if config.task == 'optimize' or (config.task == 'eos' and config.eos_relax_atoms):
         try:
             optimizer_class = get_optimizer(config.optimizer)
         except ValueError as exc:
@@ -279,7 +290,9 @@ def main():
 
     # 6. Execute task
     exit_code = 0
-    if config.task == 'static':
+    if config.task == 'eos':
+        exit_code = run_eos(atoms, config, struct, optimizer_class)
+    elif config.task == 'static':
         print("--- Starting Static Calculation ---")
         try:
             pe = atoms.get_potential_energy()

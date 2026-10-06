@@ -13,11 +13,13 @@ modules follow Python's normal import caching rules.
 Exit Status
 -----------
 
-``0`` indicates a successful static calculation or a converged optimization.
+``0`` indicates a successful static calculation, a converged optimization, or a
+valid EOS fit.
 ``1`` indicates a calculation error. ``2`` indicates an invalid task or optimizer
 selection (or missing command-line arguments). ``3`` indicates an optimization
 that did not converge within the step limit. A saved final structure alone does
-not establish convergence.
+not establish convergence. For EOS, ``3`` means at least one sampled atomic
+relaxation did not converge; ``1`` also covers a failed or invalid fit.
 
 General Parameters
 ------------------
@@ -38,12 +40,13 @@ General Parameters
 
     :Type: ``str``
     :Default: ``'optimize'``
-    :Options: ``'optimize'``, ``'static'``
+    :Options: ``'optimize'``, ``'static'``, ``'eos'``
 
     Defines the type of calculation to perform.
 
     *   ``'optimize'``: Performs a geometry optimization (relaxation).
     *   ``'static'``: Performs a single-point energy and force calculation without relaxing the structure.
+    *   ``'eos'``: Samples bulk E(V) and fits equilibrium volume and bulk modulus.
 
 .. describe:: device
 
@@ -138,6 +141,75 @@ Optimization Parameters
     :Options: ``'BFGS'``, ``'FIRE'``, ``'LBFGS'``
 
     Selects the optimization algorithm.
+
+EOS Parameters
+--------------
+
+EOS applies to fully periodic 3D bulk structures without vacuum. Slabs and
+molecules are not suitable for this volume-based bulk modulus, including slabs
+stored with three periodic flags. Start from a relaxed structure near equilibrium.
+The scan preserves the input cell shape and scales all three vectors uniformly;
+it is not a cell-shape optimization or a 2D elastic calculation.
+
+.. describe:: eos_scale
+
+    :Type: pair of ``float``
+    :Default: ``(0.94, 1.06)``
+
+    Minimum and maximum **volume ratios** relative to the input cell volume.
+    ``0.94`` means 94 percent of the input volume. The corresponding cell-vector
+    scale is the cube root of this ratio.
+
+.. describe:: eos_points
+
+    :Type: ``int``
+    :Default: ``11``
+
+    Number of equally spaced volume ratios. At least five points are required.
+
+.. describe:: eos_relax_atoms
+
+    :Type: ``bool``
+    :Default: ``True``
+
+    Relax only atomic positions at each fixed-volume point using ``optimizer``,
+    ``fmax`` and ``steps``. Each point starts from an independently scaled copy
+    of the input structure. ``cell_relax`` is not used for EOS. If any point does
+    not converge, samples are retained but no fit is reported.
+
+.. describe:: eos_fit
+
+    :Type: ``str``
+    :Default: ``'birchmurnaghan'``
+    :Options: ``'birchmurnaghan'``, ``'murnaghan'``, ``'vinet'``
+
+    ASE equation-of-state fit. The fitted minimum must lie inside the sampled
+    volume interval and the bulk modulus must be finite and positive. Otherwise
+    adjust the initial structure or scan range. An accepted fit is a result of
+    the selected MLIP; assess its suitability for the material and validate with
+    DFT when needed.
+
+For example::
+
+    model = 'mace'
+    task = 'eos'
+    eos_scale = (0.94, 1.06)
+    eos_points = 11
+    eos_relax_atoms = True
+    eos_fit = 'birchmurnaghan'
+    optimizer = 'LBFGS'
+    fmax = 0.02
+    steps = 200
+
+The result directory contains ``<structure>-ML-EOS-Result.dat`` (volume ratio,
+volume in Å³/cell, energy in eV/cell, energy in eV/atom, convergence flag),
+``<structure>-ML-EOS-Structures.traj`` (one final structure per sampled volume),
+``<structure>-ML-EOS-Fit.json`` (status, model settings, samples and fit results),
+and ``<structure>-ML-EOS-Graph.png`` on success. Atom relaxation logs are named
+``<structure>-ML-EOS-001.log``, etc. Raw samples are saved as the scan progresses.
+The JSON reports V₀ in Å³/cell, B₀ in GPa, dimensionless B′ and fit RMSE in eV/cell.
+Custom ``trajectory`` and ``logfile`` names apply to ``optimize``; EOS uses these
+task-specific filenames in the directory containing ``out_file``.
 
 Output Control
 --------------

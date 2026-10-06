@@ -20,7 +20,7 @@ It acts as a wrapper and orchestrator for several powerful scientific libraries,
 **Core Capabilities:**
 1.  **DFT (via GPAW, Quantum ESPRESSO & ASE):** The `dftsolve` tool provides the complete established workflow through GPAW and a native Quantum ESPRESSO backend. QE supports PBE ground-state, atomic and variable-cell geometry optimization, thermo_pw elasticity, DFT+U, spin-resolved DOS/PDOS, band, projected (fat) band, and pseudo-valence electron-density Cube calculations. Native QE `HSE06`, `HSE03`, and `PBE0` support ground-state, DOS/PDOS, band, projected-band, and density calculations.
 2. **MD (via ASAP3, LAMMPS & OpenKIM):** The `mdsolve` tool provides molecular dynamics calculations using either ASAP3 or LAMMPS with OpenKIM interatomic potentials.
-3.  **ML Potentials (New!):** The `mlsolve` tool enables geometry optimization and static calculations using state-of-the-art Machine Learning Force Fields (MLFF), including **MACE**, **CHGNet**, and **SevenNet**.
+3.  **ML Potentials (New!):** The `mlsolve` tool enables geometry optimization, static calculations and bulk equation-of-state calculations using Machine Learning Force Fields (MLFF), including **MACE**, **CHGNet**, and **SevenNet**.
 
 ## Installation
 
@@ -160,7 +160,7 @@ mdsolve -g <geometry.cif> -i <input.py>
 *   `-i, --input`: Path to the input file overriding default parameters (e.g., potential selection).
 
 ### 3. mlsolve (New!)
-Run geometry optimizations or static calculations using Machine Learning Force Fields.
+Run geometry optimizations, static calculations or bulk EOS calculations using Machine Learning Force Fields.
 
 **Usage:**
 ```bash
@@ -178,6 +178,12 @@ mlsolve -g structure.cif -i ml_input.py
 ```
 
 **Supported Models:** `mace`, `chgnet`, `sevennet`.
+
+Set `task = 'eos'` to sample E(V) and obtain equilibrium volume, bulk modulus
+and its pressure derivative. Raw data, sampled structures, JSON fit results and
+a PNG graph are saved. See `nanoworks/examples/Bulk-Cu-ML-EOS` for a complete
+3D bulk example and the [ML keyword guide](https://nanoworks.readthedocs.io/en/latest/mlsolve_keywords.html)
+for volume ratios, fit choices and convergence controls.
 
 ### 4. nanoworks
 A helper CLI to locate package resources, install examples, and install the
