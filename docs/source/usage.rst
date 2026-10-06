@@ -313,7 +313,7 @@ Perform quick geometric optimizations or MD runs using classical potentials via 
 mlsolve (New!)
 -----------------
 
-Run geometry optimizations, static calculations or bulk EOS calculations using Machine Learning Force Fields.
+Run geometry optimizations, static, bulk EOS or 3D/2D elastic calculations using Machine Learning Force Fields.
 
 .. code-block:: console
 
@@ -339,6 +339,10 @@ Set ``task = 'eos'`` for a 3D bulk volume scan with equilibrium volume, bulk
 modulus and pressure derivative. The workflow saves raw data, sampled
 structures, JSON metadata and a PNG graph. See :ref:`mlsolve_keywords` and the
 ``Bulk-Cu-ML-EOS`` example for settings and fit validity checks.
+
+Set ``task = 'elastic'`` for a stress-strain tensor and mechanical diagnostics,
+with optional fixed-cell internal relaxation. 3D results use GPa; 2D in-plane
+results use N/m. See :ref:`mlsolve_keywords` and ``Bulk-Cu-ML-Elastic``.
 
 nanoworks
 ------------

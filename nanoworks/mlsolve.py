@@ -70,6 +70,12 @@ class MLConfig:
     eos_points: int = 11
     eos_relax_atoms: bool = True
     eos_fit: str = 'birchmurnaghan'
+    elastic_strain: float = 0.005
+    elastic_points: int = 5
+    elastic_relax_internal: bool = True
+    elastic_dimensionality: str = 'auto'
+    elastic_normal_axis: str = 'z'
+    elastic_reference_stress_tolerance: float = 0.1
     fmax: float = 0.05
     steps: int = 200
     cell_relax: bool = True
@@ -245,8 +251,14 @@ def main():
     # Load struct and config
     struct, config = config_from_file(inputfile=args.input, geometryfile=args.geometry)
 
-    if config.task not in ('static', 'optimize', 'eos'):
-        parser.error(f"Unknown task {config.task!r}. Choose static, optimize, or eos.")
+    if config.task not in ('static', 'optimize', 'eos', 'elastic'):
+        parser.error(f"Unknown task {config.task!r}. Choose static, optimize, eos, or elastic.")
+    if config.task == 'elastic':
+        from nanoworks.ml_elastic import run_elastic, validate_elastic
+        try:
+            validate_elastic(config.bulk_configuration, config)
+        except (ValueError, TypeError) as exc:
+            parser.error(str(exc))
     if config.task == 'eos':
         from nanoworks.ml_eos import run_eos, validate_eos
         try:
@@ -254,7 +266,8 @@ def main():
         except (ValueError, TypeError) as exc:
             parser.error(str(exc))
     optimizer_class = None
-    if config.task == 'optimize' or (config.task == 'eos' and config.eos_relax_atoms):
+    if (config.task == 'optimize' or (config.task == 'eos' and config.eos_relax_atoms)
+            or (config.task == 'elastic' and config.elastic_relax_internal)):
         try:
             optimizer_class = get_optimizer(config.optimizer)
         except ValueError as exc:
@@ -290,7 +303,9 @@ def main():
 
     # 6. Execute task
     exit_code = 0
-    if config.task == 'eos':
+    if config.task == 'elastic':
+        exit_code = run_elastic(atoms, config, struct, optimizer_class)
+    elif config.task == 'eos':
         exit_code = run_eos(atoms, config, struct, optimizer_class)
     elif config.task == 'static':
         print("--- Starting Static Calculation ---")

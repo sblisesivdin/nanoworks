@@ -14,12 +14,14 @@ Exit Status
 -----------
 
 ``0`` indicates a successful static calculation, a converged optimization, or a
-valid EOS fit.
+valid EOS fit or a completed elastic tensor calculation.
 ``1`` indicates a calculation error. ``2`` indicates an invalid task or optimizer
 selection (or missing command-line arguments). ``3`` indicates an optimization
 that did not converge within the step limit. A saved final structure alone does
 not establish convergence. For EOS, ``3`` means at least one sampled atomic
-relaxation did not converge; ``1`` also covers a failed or invalid fit.
+relaxation did not converge; ``1`` also covers a failed or invalid fit. For elastic
+calculations, ``3`` means an internal relaxation did not converge and ``1`` means
+a calculation error. Elastic exit ``0`` does not assert mechanical stability.
 
 General Parameters
 ------------------
@@ -40,13 +42,14 @@ General Parameters
 
     :Type: ``str``
     :Default: ``'optimize'``
-    :Options: ``'optimize'``, ``'static'``, ``'eos'``
+    :Options: ``'optimize'``, ``'static'``, ``'eos'``, ``'elastic'``
 
     Defines the type of calculation to perform.
 
     *   ``'optimize'``: Performs a geometry optimization (relaxation).
     *   ``'static'``: Performs a single-point energy and force calculation without relaxing the structure.
     *   ``'eos'``: Samples bulk E(V) and fits equilibrium volume and bulk modulus.
+    *   ``'elastic'``: Fits stress-strain elastic tensors using a stress-capable MLIP.
 
 .. describe:: device
 
@@ -210,6 +213,109 @@ and ``<structure>-ML-EOS-Graph.png`` on success. Atom relaxation logs are named
 The JSON reports V₀ in Å³/cell, B₀ in GPa, dimensionless B′ and fit RMSE in eV/cell.
 Custom ``trajectory`` and ``logfile`` names apply to ``optimize``; EOS uses these
 task-specific filenames in the directory containing ``out_file``.
+
+Elastic Parameters
+------------------
+
+Start from a cell-relaxed structure near zero stress. The cell is kept fixed
+during the reference atomic relaxation. Each strained structure starts from
+that reference and is evaluated or internally relaxed at its prescribed cell.
+``cell_relax`` is not used in this task.
+
+The workflow fits ASE Cauchy stress increments against small symmetric strains.
+Voigt order is ``xx, yy, zz, yz, xz, xy``. Shear strain is engineering shear:
+the off-diagonal entries of the symmetric strain matrix are half the requested
+shear. Cell vectors are deformed using ``F = I + epsilon``. These are tangent
+response coefficients at the input cell, with no finite-pressure correction.
+Converge the strain amplitude and atomic-force tolerance for quantitative use.
+
+.. describe:: elastic_strain
+
+    :Type: ``float``
+    :Default: ``0.005``
+
+    Maximum absolute engineering strain (0.5 percent by default). Must be
+    positive and no larger than ``0.05``.
+
+.. describe:: elastic_points
+
+    :Type: ``int``
+    :Default: ``5``
+
+    Odd number of uniformly spaced strains per mode, at least three. With five
+    points the values are ``-s, -s/2, 0, s/2, s``. The unstrained reference is
+    computed once, giving 25 structures in 3D or 13 in 2D.
+
+.. describe:: elastic_relax_internal
+
+    :Type: ``bool``
+    :Default: ``True``
+
+    Relax atomic positions at the reference and each strained cell using
+    ``optimizer``, ``fmax`` and ``steps``. ``False`` gives a clamped-ion response.
+    Any unconverged relaxation prevents tensor reporting; available raw samples
+    are retained.
+
+.. describe:: elastic_dimensionality
+
+    :Type: ``str``
+    :Default: ``'auto'``
+    :Options: ``'auto'``, ``'3D'``, ``'2D'``
+
+    ``auto`` uses the shared Nanoworks vacuum-gap and cell-aspect heuristic.
+    Set this explicitly for unusual bulk cells or slabs. 3D samples all six
+    strain modes and reports a 6x6 tensor in GPa. 2D samples only the three
+    in-plane modes and reports a 3x3 tensor in N/m, multiplying supercell stress
+    derivatives by the normal cell length (GPa × Å × 0.1). This removes the
+    vacuum normalization; no effective material thickness is assumed.
+
+.. describe:: elastic_normal_axis
+
+    :Type: ``str``
+    :Default: ``'z'``
+    :Options: ``'x'``, ``'y'``, ``'z'``
+
+    Normal cell-vector index and matching Cartesian normal for 2D calculations.
+    The normal vector must align with that Cartesian axis and the other two
+    vectors must lie in its perpendicular plane; otherwise reorient the cell.
+    A nonorthogonal in-plane lattice is supported. For ``z``, output order is
+    ``xx, yy, xy``. No complete 3D tensor is inferred from a 2D scan.
+
+.. describe:: elastic_reference_stress_tolerance
+
+    :Type: ``float``
+    :Default: ``0.1``
+    :Unit: GPa for 3D, N/m for 2D
+
+    Maximum reference stress component for applying the zero-prestress stability
+    criterion. Above this value, the tensor is retained but ``mechanically_stable``
+    is ``null``. Significant tensor asymmetry also prevents that conclusion.
+    The eigenvalues and positive-definiteness diagnostic remain available.
+
+Elastic outputs are ``<structure>-ML-ELASTIC-Samples.csv`` (raw stresses in GPa,
+engineering strains, energies and convergence flags),
+``<structure>-ML-ELASTIC-Structures.traj``, per-structure relaxation logs,
+``<structure>-ML-ELASTIC-Tensor.dat`` (symmetrized tensor in the resolved units),
+and ``<structure>-ML-ELASTIC-Result.json``. The JSON preserves the unsymmetrized
+tensor, fit RMSE, tensor asymmetry, reference stress, model settings and stability
+diagnostics. For positive-definite stiffness it includes Voigt/Reuss/Hill bulk,
+shear, Young and Poisson aggregates in 3D, or directional in-plane Young and
+shear moduli and Poisson ratios in 2D. Derived moduli are omitted for nonpositive
+stiffness; the tensor itself is still reported. Zero-prestress stability is a
+local elastic diagnostic, not proof of overall thermodynamic or phonon stability.
+
+For example::
+
+    model = 'mace'
+    task = 'elastic'
+    elastic_dimensionality = '2D'
+    elastic_normal_axis = 'z'
+    elastic_strain = 0.005
+    elastic_points = 5
+    elastic_relax_internal = True
+    optimizer = 'LBFGS'
+    fmax = 0.005
+    steps = 300
 
 Output Control
 --------------

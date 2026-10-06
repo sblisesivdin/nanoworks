@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- `mlsolve` adds 3D/2D elastic tensors, internal relaxation, GPa/N/m outputs, derived moduli and stability diagnostics.
+
 - `mlsolve` adds bulk EOS with volume scans, fixed-cell atomic relaxation, V0/B0/B' fits, raw data, JSON and PNG outputs.
 
 - `dftsolve -E/--engine` overrides the input backend; repeatable `-s/--set Keyword=value` overrides apply before validation and are recorded for each workflow.
