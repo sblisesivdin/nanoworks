@@ -1926,6 +1926,8 @@ def _run_md_engine(
     rdf_pairs,
     vacf_calc,
     vacf_interval,
+    vacf_diffusion_calc,
+    vacf_diffusion_dimensions,
     random_seed,
     md_cycles,
     md_steps_per_cycle,
