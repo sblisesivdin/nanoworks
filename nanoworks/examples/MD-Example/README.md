@@ -84,3 +84,12 @@ LAMMPS can compute a total radial distribution function during the MD run. See `
     mdsolve -i sampleinput_rdf.py -g argon_fcc_4x4x4.cif
 
 The workflow writes both the native LAMMPS RDF data and a Nanoworks `*-RDF.csv` file.
+
+
+## VACF analysis
+
+LAMMPS can compute the velocity autocorrelation function during the MD run. See `sampleinput_vacf.py`:
+
+    mdsolve -i sampleinput_vacf.py -g argon_fcc_4x4x4.cif
+
+The workflow writes both the native LAMMPS VACF data and a Nanoworks `*-VACF.csv` file.
