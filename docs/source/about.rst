@@ -60,7 +60,7 @@ Molecular Dynamics
 
 ``mdsolve`` provides molecular-dynamics workflows using OpenKIM interatomic
 potentials through ASAP3 or LAMMPS. ASAP provides NVT Langevin dynamics;
-LAMMPS provides NVT Langevin and NVE dynamics.
+LAMMPS provides NVT Langevin, NVE, and fully periodic 3D NPT dynamics.
 
 Machine-Learned Potentials
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
