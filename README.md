@@ -19,7 +19,7 @@ It acts as a wrapper and orchestrator for several powerful scientific libraries,
 
 **Core Capabilities:**
 1.  **DFT (via GPAW, Quantum ESPRESSO & ASE):** The `dftsolve` tool provides the complete established workflow through GPAW and a native Quantum ESPRESSO backend. QE supports PBE ground-state, atomic and variable-cell geometry optimization, thermo_pw elasticity, DFT+U, spin-resolved DOS/PDOS, band, projected (fat) band, and pseudo-valence electron-density Cube calculations. Native QE `HSE06`, `HSE03`, and `PBE0` support ground-state, DOS/PDOS, band, projected-band, and density calculations.
-2. **MD (via ASAP3, LAMMPS, OpenKIM & native EAM/alloy):** The `mdsolve` tool provides a common molecular dynamics workflow with OpenKIM interatomic potentials. ASAP3 supports NVT Langevin dynamics; LAMMPS supports NVT Langevin, NVE, and fully periodic 3D NPT dynamics.
+2. **MD (via ASAP3, LAMMPS, OpenKIM & native potentials):** The `mdsolve` tool provides a common molecular dynamics workflow with OpenKIM interatomic potentials. ASAP3 supports NVT Langevin dynamics; LAMMPS supports NVT Langevin, NVE, and fully periodic 3D NPT dynamics.
 3.  **ML Potentials (New!):** The `mlsolve` tool enables geometry optimization, static, bulk EOS, 3D/2D elastic and bulk phonon calculations using Machine Learning Force Fields (MLFF), including **MACE**, **CHGNet**, and **SevenNet**.
 
 ## Installation
@@ -148,7 +148,7 @@ The profile supports `time`, `memory`, `partition`, `account`, `qos`,
 values. See `examples/slurm-profiles/truba-example.json`.
 
 ### 2. mdsolve (formerly asapsolve.py)
-Perform molecular dynamics calculations using ASAP3 or LAMMPS with OpenKIM interatomic potentials. Select `Ensemble = 'NVT'` for the common Langevin workflow, `Ensemble = 'NVE'` for LAMMPS microcanonical dynamics, or `Ensemble = 'NPT'` for fully periodic 3D isotropic pressure coupling. LAMMPS runs can use OpenKIM or native EAM/alloy potentials and can optionally perform a conjugate-gradient energy minimization before MD and compute mean squared displacement, species-resolved MSD, radial distribution functions, and velocity autocorrelation functions during the trajectory, and estimate diffusion coefficients from MSD or VACF Green-Kubo integration. Long LAMMPS runs can also write and resume from binary restart checkpoints, with configurable trajectory and thermodynamic output cadence.
+Perform molecular dynamics calculations using ASAP3 or LAMMPS with OpenKIM interatomic potentials. Select `Ensemble = 'NVT'` for the common Langevin workflow, `Ensemble = 'NVE'` for LAMMPS microcanonical dynamics, or `Ensemble = 'NPT'` for fully periodic 3D isotropic pressure coupling. LAMMPS runs can use OpenKIM or native EAM/alloy, EAM/fs, Tersoff, and SW potentials and can optionally perform a conjugate-gradient energy minimization before MD and compute mean squared displacement, species-resolved MSD, radial distribution functions, and velocity autocorrelation functions during the trajectory, and estimate diffusion coefficients from MSD or VACF Green-Kubo integration. Long LAMMPS runs can also write and resume from binary restart checkpoints, with configurable trajectory and thermodynamic output cadence.
 
 **Usage:**
 ```bash
