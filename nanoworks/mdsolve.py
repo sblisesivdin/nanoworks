@@ -92,6 +92,7 @@ VACF_diffusion_dimensions = 3
 Restart_write = False
 Restart_interval = 1000
 Restart_final = True
+Restart_read = ''
 
 # Molecular dynamics loop configuration
 MD_cycles = 25
@@ -390,6 +391,7 @@ def _write_lammps_input(
     restart_write,
     restart_interval,
     restart_final,
+    restart_read,
     random_seed,
     md_cycles,
     md_steps_per_cycle,
@@ -440,15 +442,37 @@ def _write_lammps_input(
         '',
         f'kim init {openkim_potential} metal',
         '',
-        'atom_style atomic',
-        f'boundary {boundary_string}',
-        f'read_data "{data_file}"',
-        '',
-        *mass_lines,
-        '',
-        f'kim interactions {species_string}',
-        '',
     ]
+
+    if restart_read:
+        lines.extend(
+            [
+                f'read_restart "{restart_read}"',
+                'reset_timestep 0',
+                '',
+                f'kim interactions {species_string}',
+                '',
+            ]
+        )
+    else:
+        lines.extend(
+            [
+                'atom_style atomic',
+                f'boundary {boundary_string}',
+                f'read_data "{data_file}"',
+                '',
+                *mass_lines,
+                '',
+                f'kim interactions {species_string}',
+                '',
+            ]
+        )
+
+    if restart_read and minimize:
+        raise ValueError(
+            'Minimize cannot be combined with Restart_read. '
+            'Minimize the restarted state in a separate run.'
+        )
 
     if minimize:
         if minimize_energy_tolerance < 0.0:
@@ -483,16 +507,17 @@ def _write_lammps_input(
             ]
         )
 
-    lines.extend(
-        [
-        (
-            f'velocity all create '
-            f'{initial_temperature:.8f} {int(random_seed)} '
-            'mom yes rot yes dist gaussian'
-        ),
-        '',
-        ]
-    )
+    if not restart_read:
+        lines.extend(
+            [
+                (
+                    f'velocity all create '
+                    f'{initial_temperature:.8f} {int(random_seed)} '
+                    'mom yes rot yes dist gaussian'
+                ),
+                '',
+            ]
+        )
 
     requested_msd_species = [
         str(symbol)
@@ -1980,6 +2005,7 @@ def _run_md_engine(
     restart_write,
     restart_interval,
     restart_final,
+    restart_read,
     random_seed,
     md_cycles,
     md_steps_per_cycle,
@@ -2039,6 +2065,7 @@ def _run_md_engine(
             restart_write=restart_write,
             restart_interval=restart_interval,
             restart_final=restart_final,
+            restart_read=restart_read,
             random_seed=random_seed,
             md_cycles=md_cycles,
             md_steps_per_cycle=md_steps_per_cycle,
@@ -2381,6 +2408,30 @@ def main():
             'VACF_calc = True.'
         )
         sys.exit(1)
+
+    restart_read = str(
+        namespace.get('Restart_read', Restart_read)
+    ).strip()
+
+    if restart_read:
+        restart_path = Path(
+            restart_read
+        ).expanduser()
+
+        if not restart_path.is_absolute():
+            restart_path = (
+                config_dir / restart_path
+            ).resolve()
+
+        if not restart_path.is_file():
+            print(
+                'Restart file was not found: '
+                f'{restart_path}'
+            )
+            sys.exit(1)
+
+        restart_read = str(restart_path)
+        namespace['Restart_read'] = restart_read
 
     if Engine == 'LAMMPS':
         try:
@@ -2800,6 +2851,12 @@ def main():
                 namespace.get(
                     'Restart_final',
                     Restart_final,
+                )
+            ),
+            restart_read=str(
+                namespace.get(
+                    'Restart_read',
+                    Restart_read,
                 )
             ),
             md_cycles=MD_cycles,
