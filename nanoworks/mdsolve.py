@@ -52,6 +52,7 @@ from ase.calculators.kim import KIM
 
 # Simulation parameters
 Engine = 'ASAP'
+Ensemble = 'NVT'
 OpenKIM_potential = 'LJ_ElliottAkerson_2015_Universal__MO_959249795837_003'
 Temperature = 1.0 # K
 Time_step = 5.0 # fs
@@ -144,6 +145,27 @@ def _resolve_engine(namespace):
 
     return engine
 
+def _resolve_ensemble(namespace, engine):
+    """Resolve and validate the molecular dynamics ensemble."""
+
+    ensemble = str(
+        namespace.get('Ensemble', Ensemble)
+    ).strip().upper()
+
+    supported = {
+        'ASAP': ('NVT',),
+        'LAMMPS': ('NVT', 'NVE'),
+    }
+
+    if ensemble not in supported[engine]:
+        raise ValueError(
+            f'Unsupported MD ensemble {ensemble} for {engine}. '
+            f'Supported ensembles: '
+            f'{", ".join(supported[engine])}'
+        )
+
+    return ensemble
+
 def _check_lammps_available():
     """Check whether the system-wide LAMMPS executable is available."""
 
@@ -183,11 +205,24 @@ def _write_energy_csv(path, records):
     with open(path, 'w') as fd:
         fd.write(header + "\n")
         for rec in records:
+            temperature_damp = rec.get(
+                'temperature_damp'
+            )
+
+            if temperature_damp is None:
+                temperature_damp_text = ''
+            else:
+                temperature_damp_text = (
+                    f'{temperature_damp:.6f}'
+                )
+
             fd.write(
                 f"{rec['step']},{rec['cycle']},"
-                f"{rec['epot']:.6f},{rec['ekin']:.6f},{rec['total']:.6f},"
-                f"{rec['temperature']:.6f},{rec['timestep']:.6f},"
-                f"{rec['temperature_damp']:.6f}\n"
+                f"{rec['epot']:.6f},{rec['ekin']:.6f},"
+                f"{rec['total']:.6f},"
+                f"{rec['temperature']:.6f},"
+                f"{rec['timestep']:.6f},"
+                f"{temperature_damp_text}\n"
             )
 
 
@@ -236,6 +271,7 @@ def _write_lammps_input(
     data_file,
     species,
     pbc,
+    ensemble,
     openkim_potential,
     temperature_profile,
     timestep_profile,
@@ -244,7 +280,7 @@ def _write_lammps_input(
     md_cycles,
     md_steps_per_cycle,
 ):
-    """Write a LAMMPS input file for Langevin molecular dynamics."""
+    """Write a LAMMPS input file for molecular dynamics."""
 
     input_file = struct_prefix + '-LAMMPS.in'
     dump_file = struct_prefix + '-LAMMPS.dump'
@@ -303,14 +339,8 @@ def _write_lammps_input(
     ]
 
     for cycle in range(md_cycles):
-        temperature = float(
-            temperature_profile[cycle]
-        )
         timestep_fs = float(
             timestep_profile[cycle]
-        )
-        temperature_damp_fs = float(
-            temperature_damp_profile[cycle]
         )
 
         if timestep_fs <= 0.0:
@@ -318,34 +348,54 @@ def _write_lammps_input(
                 'Time_step must be greater than zero.'
             )
 
-        if temperature_damp_fs <= 0.0:
-            raise ValueError(
-                'Temperature_damp must be greater than zero.'
-            )
-
         # LAMMPS metal units use picoseconds.
         timestep_ps = timestep_fs / 1000.0
-        temperature_damp_ps = (
-            temperature_damp_fs / 1000.0
-        )
-
-        cycle_seed = int(random_seed) + cycle
 
         lines.extend(
             [
                 f'# MD cycle {cycle + 1}',
                 f'timestep {timestep_ps:.10f}',
-                (
-                    f'fix nw_thermostat all langevin '
-                    f'{temperature:.8f} {temperature:.8f} '
-                    f'{temperature_damp_ps:.10f} '
-                    f'{cycle_seed} zero yes'
-                ),
-                f'run {int(md_steps_per_cycle)}',
-                'unfix nw_thermostat',
-                '',
             ]
         )
+
+        if ensemble == 'NVT':
+            temperature = float(
+                temperature_profile[cycle]
+            )
+            temperature_damp_fs = float(
+                temperature_damp_profile[cycle]
+            )
+
+            if temperature_damp_fs <= 0.0:
+                raise ValueError(
+                    'Temperature_damp must be greater than zero.'
+                )
+
+            temperature_damp_ps = (
+                temperature_damp_fs / 1000.0
+            )
+            cycle_seed = int(random_seed) + cycle
+
+            lines.extend(
+                [
+                    (
+                        f'fix nw_thermostat all langevin '
+                        f'{temperature:.8f} {temperature:.8f} '
+                        f'{temperature_damp_ps:.10f} '
+                        f'{cycle_seed} zero yes'
+                    ),
+                    f'run {int(md_steps_per_cycle)}',
+                    'unfix nw_thermostat',
+                    '',
+                ]
+            )
+        else:
+            lines.extend(
+                [
+                    f'run {int(md_steps_per_cycle)}',
+                    '',
+                ]
+            )
 
     lines.extend(
         [
@@ -464,6 +514,7 @@ def _write_lammps_trajectory(
 
 def _parse_lammps_thermo(
     log_file,
+    ensemble,
     temperature_profile,
     timestep_profile,
     temperature_damp_profile,
@@ -504,6 +555,7 @@ def _parse_lammps_thermo(
             try:
                 step = int(fields[0])
                 atoms = int(fields[1])
+                instantaneous_temperature = float(fields[2])
                 potential_energy = float(fields[3])
                 kinetic_energy = float(fields[4])
                 total_energy = float(fields[5])
@@ -527,6 +579,21 @@ def _parse_lammps_thermo(
             if profile_index >= len(temperature_profile):
                 continue
 
+            if ensemble == 'NVE':
+                recorded_temperature = (
+                    instantaneous_temperature
+                )
+                recorded_temperature_damp = None
+            else:
+                recorded_temperature = float(
+                    temperature_profile[profile_index]
+                )
+                recorded_temperature_damp = float(
+                    temperature_damp_profile[
+                        profile_index
+                    ]
+                )
+
             records.append(
                 {
                     'cycle': cycle,
@@ -534,17 +601,11 @@ def _parse_lammps_thermo(
                     'epot': potential_energy / atoms,
                     'ekin': kinetic_energy / atoms,
                     'total': total_energy / atoms,
-                    'temperature': float(
-                        temperature_profile[profile_index]
-                    ),
+                    'temperature': recorded_temperature,
                     'timestep': float(
                         timestep_profile[profile_index]
                     ),
-                    'temperature_damp': float(
-                        temperature_damp_profile[
-                            profile_index
-                        ]
-                    ),
+                    'temperature_damp': recorded_temperature_damp,
                 }
             )
 
@@ -692,6 +753,7 @@ def _run_asap_langevin(
 
 def _run_md_engine(
     engine,
+    ensemble,
     atoms,
     struct_prefix,
     openkim_potential,
@@ -727,6 +789,7 @@ def _run_md_engine(
             data_file=data_file,
             species=species,
             pbc=atoms.get_pbc(),
+            ensemble=ensemble,
             openkim_potential=openkim_potential,
             temperature_profile=temperature_profile,
             timestep_profile=timestep_profile,
@@ -764,6 +827,7 @@ def _run_md_engine(
 
         energy_records = _parse_lammps_thermo(
             log_file=log_file,
+            ensemble=ensemble,
             temperature_profile=temperature_profile,
             timestep_profile=timestep_profile,
             temperature_damp_profile=temperature_damp_profile,
@@ -866,6 +930,18 @@ def main():
     Engine = resolved_engine
     namespace['Engine'] = Engine
 
+    try:
+        resolved_ensemble = _resolve_ensemble(
+            namespace,
+            Engine,
+        )
+    except ValueError as exc:
+        print(str(exc))
+        sys.exit(1)
+
+    Ensemble = resolved_ensemble
+    namespace['Ensemble'] = Ensemble
+
     if Engine == 'LAMMPS':
         try:
             _check_lammps_available()
@@ -961,14 +1037,17 @@ def main():
         )
     ]
 
-    temperature_damp_options = [
-        float(v)
-        for v in _get_run_values(
-            'Temperature_damp',
-            Temperature_damp,
-            namespace,
-        )
-    ]
+    if Ensemble == 'NVT':
+        temperature_damp_options = [
+            float(v)
+            for v in _get_run_values(
+                'Temperature_damp',
+                Temperature_damp,
+                namespace,
+            )
+        ]
+    else:
+        temperature_damp_options = [None]
 
     combinations = list(
         product(
@@ -1026,7 +1105,10 @@ def main():
 
         namespace['Temperature'] = temperature_value
         namespace['Time_step'] = timestep_value
-        namespace['Temperature_damp'] = temperature_damp_value
+        if Ensemble == 'NVT':
+            namespace['Temperature_damp'] = (
+                temperature_damp_value
+            )
 
         temperature_profile = _build_profile(
             'Temperature',
@@ -1042,24 +1124,32 @@ def main():
             namespace,
         )
 
-        temperature_damp_profile = _build_profile(
-            'Temperature_damp',
-            temperature_damp_value,
-            MD_cycles,
-            namespace,
-        )
+        if Ensemble == 'NVT':
+            temperature_damp_profile = _build_profile(
+                'Temperature_damp',
+                temperature_damp_value,
+                MD_cycles,
+                namespace,
+            )
+        else:
+            temperature_damp_profile = None
 
         if len(combinations) > 1:
             print("")
-            print(
+            message = (
                 f"Run {combo_index}/{len(combinations)}: "
                 f"T={temperature_value} K, "
-                f"dt={timestep_value} fs, "
-                f"T-damp={temperature_damp_value} fs"
+                f"dt={timestep_value} fs"
             )
+            if Ensemble == 'NVT':
+                message += (
+                    f", T-damp={temperature_damp_value} fs"
+                )
+            print(message)
 
         energy_records = _run_md_engine(
             engine=Engine,
+            ensemble=Ensemble,
             atoms=asestruct,
             struct_prefix=struct_prefix,
             openkim_potential=OpenKIM_potential,
