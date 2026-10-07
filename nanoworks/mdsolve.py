@@ -94,6 +94,10 @@ Restart_interval = 1000
 Restart_final = False
 Restart_read = ''
 
+# LAMMPS output cadence
+Trajectory_interval = 1
+Thermo_interval = 1
+
 # Molecular dynamics loop configuration
 MD_cycles = 25
 MD_steps_per_cycle = 10
@@ -392,6 +396,8 @@ def _write_lammps_input(
     restart_interval,
     restart_final,
     restart_read,
+    trajectory_interval,
+    thermo_interval,
     random_seed,
     md_cycles,
     md_steps_per_cycle,
@@ -408,6 +414,9 @@ def _write_lammps_input(
     )
     final_restart_file = (
         struct_prefix + '-LAMMPS-Final.restart'
+    )
+    final_dump_file = (
+        struct_prefix + '-LAMMPS-Final.dump'
     )
 
     species_string = ' '.join(species)
@@ -715,15 +724,26 @@ def _write_lammps_input(
             ]
         )
 
+    if int(trajectory_interval) <= 0:
+        raise ValueError(
+            'Trajectory_interval must be a positive integer.'
+        )
+
+    if int(thermo_interval) <= 0:
+        raise ValueError(
+            'Thermo_interval must be a positive integer.'
+        )
+
     lines.extend(
         [
         (
-            f'dump nw_dump all custom 1 "{dump_file}" '
+            f'dump nw_dump all custom '
+            f'{int(trajectory_interval)} "{dump_file}" '
             'id type x y z vx vy vz'
         ),
         'dump_modify nw_dump sort id',
         '',
-        'thermo 1',
+        f'thermo {int(thermo_interval)}',
         'thermo_style custom step atoms temp press pe ke etotal vol',
         '',
         ]
@@ -910,6 +930,12 @@ def _write_lammps_input(
 
     lines.extend(
         [
+            (
+                f'write_dump all custom '
+                f'"{final_dump_file}" '
+                'id type x y z vx vy vz '
+                'modify sort id'
+            ),
             'undump nw_dump',
             '',
         ]
@@ -965,7 +991,7 @@ def _update_atoms_from_lammps_dump(
 ):
     """Update ASE atoms from the final LAMMPS dump frame."""
 
-    dump_file = struct_prefix + '-LAMMPS.dump'
+    dump_file = struct_prefix + '-LAMMPS-Final.dump'
 
     final_atoms = read(
         dump_file,
@@ -2006,6 +2032,8 @@ def _run_md_engine(
     restart_interval,
     restart_final,
     restart_read,
+    trajectory_interval,
+    thermo_interval,
     random_seed,
     md_cycles,
     md_steps_per_cycle,
@@ -2074,6 +2102,8 @@ def _run_md_engine(
             restart_interval=restart_interval,
             restart_final=restart_final,
             restart_read=restart_read,
+            trajectory_interval=trajectory_interval,
+            thermo_interval=thermo_interval,
             random_seed=random_seed,
             md_cycles=md_cycles,
             md_steps_per_cycle=md_steps_per_cycle,
@@ -2890,6 +2920,18 @@ def main():
                 namespace.get(
                     'Restart_read',
                     Restart_read,
+                )
+            ),
+            trajectory_interval=int(
+                namespace.get(
+                    'Trajectory_interval',
+                    Trajectory_interval,
+                )
+            ),
+            thermo_interval=int(
+                namespace.get(
+                    'Thermo_interval',
+                    Thermo_interval,
                 )
             ),
             md_cycles=MD_cycles,
