@@ -1407,18 +1407,34 @@ def main():
                 positions,
             ):
                 f.write(
-                    "    Atom("
+                    "        Atom("
                     f"'{symbol}', "
                     f"({position[0]}, "
                     f"{position[1]}, "
                     f"{position[2]})),\n"
                 )
-            
-            if Manual_PBC == False:
-                f.write("    pbc=True,\n")
-            else:
-                f.write("    pbc=["+str(PBC_constraints[0])+","+str(PBC_constraints[1])+","+str(PBC_constraints[2])+"],\n")
-            f.write("    )\n")
+
+            f.write("    ],\n")
+
+            cell = asestruct.get_cell()
+            f.write("    cell=[\n")
+            for vector in cell:
+                f.write(
+                    "        ("
+                    f"{vector[0]}, "
+                    f"{vector[1]}, "
+                    f"{vector[2]}),\n"
+                )
+            f.write("    ],\n")
+
+            pbc = asestruct.get_pbc()
+            f.write(
+                "    pbc=["
+                f"{bool(pbc[0])},"
+                f"{bool(pbc[1])},"
+                f"{bool(pbc[2])}],\n"
+            )
+            f.write(")\n")
 
         _export_cif(struct_prefix, asestruct)
 
