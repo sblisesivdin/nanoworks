@@ -6,6 +6,7 @@
 - The `mdsolve` examples and documentation are renewed for the ASAP3/LAMMPS backend workflow and ensemble selection.
 - Pressure and volume are included in common MD energy outputs.
 - LAMMPS `mdsolve` runs can optionally perform pre-MD energy minimization.
+- LAMMPS `mdsolve` can calculate mean squared displacement and export it to CSV.
 
 - `mlsolve` adds bulk phonon bands, DOS and imaginary-mode diagnostics with ML potentials.
 
