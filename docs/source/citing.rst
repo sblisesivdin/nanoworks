@@ -65,6 +65,19 @@ Phonopy
   *Journal of the Physical Society of Japan* **92**, 012001 (2023).
   https://doi.org/10.7566/JPSJ.92.012001
 
+LAMMPS
+------
+
+For molecular dynamics calculations performed with the LAMMPS backend, cite
+the canonical LAMMPS overview paper:
+
+* A. P. Thompson *et al.*, “LAMMPS - a flexible simulation tool for
+  particle-based materials modeling at the atomic, meso, and continuum
+  scales,” *Computer Physics Communications* **271**, 108171 (2022).
+  https://doi.org/10.1016/j.cpc.2021.108171
+
+Also cite feature-specific references requested by LAMMPS when applicable.
+
 OpenKIM
 -------
 
