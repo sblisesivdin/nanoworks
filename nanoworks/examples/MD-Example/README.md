@@ -102,3 +102,12 @@ Nanoworks can estimate a diffusion coefficient from the linear part of the MSD c
     mdsolve -i sampleinput_diffusion.py -g argon_fcc_4x4x4.cif
 
 The result is written to `*-Diffusion.csv`. The chosen fit window and diffusion dimensionality should be treated as scientific analysis parameters, not automatic convergence criteria.
+
+
+## Species-resolved MSD
+
+For multicomponent systems, MSD can be calculated separately for selected elements with `MSD_species`. See `sampleinput_species_msd.py`:
+
+    mdsolve -i sampleinput_species_msd.py -g argon_fcc_4x4x4.cif
+
+For example, a Li-containing oxide could use `MSD_species = ['Li', 'O']`. The combined output is written to `*-MSD-Species.csv`.
