@@ -19,7 +19,7 @@ It acts as a wrapper and orchestrator for several powerful scientific libraries,
 
 **Core Capabilities:**
 1.  **DFT (via GPAW, Quantum ESPRESSO & ASE):** The `dftsolve` tool provides the complete established workflow through GPAW and a native Quantum ESPRESSO backend. QE supports PBE ground-state, atomic and variable-cell geometry optimization, thermo_pw elasticity, DFT+U, spin-resolved DOS/PDOS, band, projected (fat) band, and pseudo-valence electron-density Cube calculations. Native QE `HSE06`, `HSE03`, and `PBE0` support ground-state, DOS/PDOS, band, projected-band, and density calculations.
-2. **MD (via ASAP3, LAMMPS, OpenKIM & native potentials):** The `mdsolve` tool provides a common molecular dynamics workflow with OpenKIM interatomic potentials. ASAP3 supports NVT Langevin dynamics; LAMMPS supports NVT Langevin, NVE, and fully periodic 3D NPT dynamics.
+2. **MD (via ASAP3, LAMMPS, OpenKIM & native potentials):** The `mdsolve` tool provides a common molecular dynamics workflow with OpenKIM interatomic potentials. ASAP3 supports NVT Langevin dynamics; LAMMPS supports Langevin or Nose–Hoover NVT, NVE, and fully periodic 3D NPT dynamics.
 3.  **ML Potentials (New!):** The `mlsolve` tool enables geometry optimization, static, bulk EOS, 3D/2D elastic and bulk phonon calculations using Machine Learning Force Fields (MLFF), including **MACE**, **CHGNet**, and **SevenNet**.
 
 ## Installation
