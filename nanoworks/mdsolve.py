@@ -166,6 +166,31 @@ def _resolve_ensemble(namespace, engine):
 
     return ensemble
 
+def _validate_ensemble_settings(namespace, ensemble):
+    """Validate ensemble-specific molecular dynamics settings."""
+
+    if ensemble != 'NVE':
+        return
+
+    unsupported = (
+        'Temperature_profile',
+        'Temperature_range',
+        'Temperature_damp_profile',
+        'Temperature_damp_range',
+        'Temperature_damp_values',
+    )
+
+    present = [
+        name for name in unsupported
+        if name in namespace
+    ]
+
+    if present:
+        raise ValueError(
+            'NVE does not use thermostat schedules: '
+            + ', '.join(present)
+        )
+
 def _check_lammps_available():
     """Check whether the system-wide LAMMPS executable is available."""
 
@@ -941,6 +966,15 @@ def main():
 
     Ensemble = resolved_ensemble
     namespace['Ensemble'] = Ensemble
+
+    try:
+        _validate_ensemble_settings(
+            namespace,
+            Ensemble,
+        )
+    except ValueError as exc:
+        print(str(exc))
+        sys.exit(1)
 
     if Engine == 'LAMMPS':
         try:
