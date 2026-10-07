@@ -367,6 +367,7 @@ def _write_lammps_input(
     msd_calc,
     msd_interval,
     msd_remove_com,
+    msd_species,
     diffusion_calc,
     diffusion_start_fraction,
     diffusion_dimensions,
@@ -990,6 +991,91 @@ def _write_lammps_msd_csv(
 
     return csv_file, records
 
+def _write_lammps_species_msd_csv(
+    struct_prefix,
+    requested_species,
+    timestep_profile,
+    md_steps_per_cycle,
+):
+    """Combine element-resolved LAMMPS MSD outputs into one CSV."""
+
+    csv_file = struct_prefix + '-MSD-Species.csv'
+    records = []
+
+    for symbol in requested_species:
+        source_file = (
+            struct_prefix
+            + f'-LAMMPS-MSD-{symbol}.dat'
+        )
+
+        if not os.path.isfile(source_file):
+            raise FileNotFoundError(
+                'LAMMPS species MSD output was not found: '
+                f'{source_file}'
+            )
+
+        with open(source_file, 'r') as fd:
+            for line in fd:
+                stripped = line.strip()
+
+                if (
+                    not stripped
+                    or stripped.startswith('#')
+                ):
+                    continue
+
+                fields = stripped.split()
+
+                if len(fields) < 5:
+                    continue
+
+                try:
+                    step = int(float(fields[0]))
+                    msd_x = float(fields[1])
+                    msd_y = float(fields[2])
+                    msd_z = float(fields[3])
+                    msd_total = float(fields[4])
+                except ValueError:
+                    continue
+
+                time_ps = _time_ps_for_step(
+                    step,
+                    timestep_profile,
+                    md_steps_per_cycle,
+                )
+
+                records.append(
+                    (
+                        symbol,
+                        step,
+                        time_ps,
+                        msd_x,
+                        msd_y,
+                        msd_z,
+                        msd_total,
+                    )
+                )
+
+    with open(csv_file, 'w') as fd:
+        fd.write(
+            'Species,Step,Time(ps),'
+            'MSD_X(A^2),MSD_Y(A^2),'
+            'MSD_Z(A^2),MSD_Total(A^2)\n'
+        )
+
+        for record in records:
+            fd.write(
+                f'{record[0]},'
+                f'{record[1]},'
+                f'{record[2]:.10g},'
+                f'{record[3]:.10g},'
+                f'{record[4]:.10g},'
+                f'{record[5]:.10g},'
+                f'{record[6]:.10g}\n'
+            )
+
+    return csv_file
+
 def _write_diffusion_summary(
     struct_prefix,
     msd_records,
@@ -1533,6 +1619,9 @@ def _run_md_engine(
     msd_interval,
     msd_remove_com,
     msd_species,
+    diffusion_calc,
+    diffusion_start_fraction,
+    diffusion_dimensions,
     rdf_calc,
     rdf_bins,
     rdf_interval,
@@ -1582,6 +1671,10 @@ def _run_md_engine(
             msd_calc=msd_calc,
             msd_interval=msd_interval,
             msd_remove_com=msd_remove_com,
+            msd_species=msd_species,
+            diffusion_calc=diffusion_calc,
+            diffusion_start_fraction=diffusion_start_fraction,
+            diffusion_dimensions=diffusion_dimensions,
             rdf_calc=rdf_calc,
             rdf_bins=rdf_bins,
             rdf_interval=rdf_interval,
@@ -1647,6 +1740,20 @@ def _run_md_engine(
                     'Diffusion summary written: '
                     f'{diffusion_csv}'
                 )
+
+        if msd_species:
+            species_msd_csv = (
+                _write_lammps_species_msd_csv(
+                    struct_prefix=struct_prefix,
+                    requested_species=msd_species,
+                    timestep_profile=timestep_profile,
+                    md_steps_per_cycle=md_steps_per_cycle,
+                )
+            )
+            print(
+                'Species MSD file written: '
+                f'{species_msd_csv}'
+            )
 
         if rdf_calc:
             rdf_csv = _write_lammps_rdf_csv(
@@ -1800,6 +1907,9 @@ def main():
     if bool(namespace.get('MSD_calc', MSD_calc)):
         lammps_only_features.append('MSD_calc')
 
+    if namespace.get('MSD_species', MSD_species):
+        lammps_only_features.append('MSD_species')
+
     if bool(
         namespace.get(
             'Diffusion_calc',
@@ -1834,6 +1944,17 @@ def main():
     ):
         print(
             'Diffusion_calc requires MSD_calc = True.'
+        )
+        sys.exit(1)
+
+    if namespace.get(
+        'MSD_species',
+        MSD_species,
+    ) and not bool(
+        namespace.get('MSD_calc', MSD_calc)
+    ):
+        print(
+            'MSD_species requires MSD_calc = True.'
         )
         sys.exit(1)
 
@@ -2171,6 +2292,12 @@ def main():
                 namespace.get(
                     'MSD_remove_com',
                     MSD_remove_com,
+                )
+            ),
+            msd_species=list(
+                namespace.get(
+                    'MSD_species',
+                    MSD_species,
                 )
             ),
             diffusion_calc=bool(
