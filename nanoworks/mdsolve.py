@@ -81,6 +81,7 @@ Diffusion_dimensions = 3
 RDF_calc = False
 RDF_bins = 100
 RDF_interval = 10
+RDF_pairs = []
 
 VACF_calc = False
 VACF_interval = 1
@@ -374,6 +375,7 @@ def _write_lammps_input(
     rdf_calc,
     rdf_bins,
     rdf_interval,
+    rdf_pairs,
     vacf_calc,
     vacf_interval,
     random_seed,
@@ -559,6 +561,44 @@ def _write_lammps_input(
             ]
         )
 
+    resolved_rdf_pairs = []
+
+    if rdf_pairs:
+        for pair in rdf_pairs:
+            if (
+                not isinstance(pair, (list, tuple))
+                or len(pair) != 2
+            ):
+                raise ValueError(
+                    'Each RDF_pairs entry must contain '
+                    'exactly two element symbols.'
+                )
+
+            first = str(pair[0])
+            second = str(pair[1])
+
+            missing = [
+                symbol
+                for symbol in (first, second)
+                if symbol not in species
+            ]
+
+            if missing:
+                raise ValueError(
+                    'RDF_pairs contains elements not present '
+                    'in the structure: '
+                    + ', '.join(sorted(set(missing)))
+                )
+
+            resolved_rdf_pairs.append(
+                (
+                    first,
+                    second,
+                    species.index(first) + 1,
+                    species.index(second) + 1,
+                )
+            )
+
     if rdf_calc:
         if int(rdf_bins) <= 0:
             raise ValueError(
@@ -569,9 +609,21 @@ def _write_lammps_input(
                 'RDF_interval must be a positive integer.'
             )
 
+        rdf_pair_text = ' '.join(
+            f'{pair[2]} {pair[3]}'
+            for pair in resolved_rdf_pairs
+        )
+
+        rdf_compute = (
+            f'compute nw_rdf all rdf {int(rdf_bins)}'
+        )
+
+        if rdf_pair_text:
+            rdf_compute += f' {rdf_pair_text}'
+
         lines.extend(
             [
-                f'compute nw_rdf all rdf {int(rdf_bins)}',
+                rdf_compute,
                 (
                     f'fix nw_rdf_output all ave/time '
                     f'{int(rdf_interval)} 1 '
@@ -1297,7 +1349,10 @@ def _write_species_diffusion_summary(
 
     return output_file
 
-def _write_lammps_rdf_csv(struct_prefix):
+def _write_lammps_rdf_csv(
+    struct_prefix,
+    rdf_pairs,
+):
     """Convert LAMMPS RDF output to a Nanoworks CSV file."""
 
     source_file = struct_prefix + '-LAMMPS-RDF.dat'
@@ -1307,6 +1362,14 @@ def _write_lammps_rdf_csv(struct_prefix):
         raise FileNotFoundError(
             f'LAMMPS RDF output was not found: {source_file}'
         )
+
+    labels = [
+        f'{pair[0]}-{pair[1]}'
+        for pair in rdf_pairs
+    ]
+
+    if not labels:
+        labels = ['All-All']
 
     records = []
 
@@ -1343,39 +1406,53 @@ def _write_lammps_rdf_csv(struct_prefix):
             fields = lines[index].split()
             index += 1
 
-            if len(fields) < 4:
+            expected = 2 + 2 * len(labels)
+
+            if len(fields) < expected:
                 continue
 
             try:
                 bin_index = int(float(fields[0]))
                 radius = float(fields[1])
-                rdf = float(fields[2])
-                coordination = float(fields[3])
             except ValueError:
                 continue
 
-            records.append(
-                (
-                    step,
-                    bin_index,
-                    radius,
-                    rdf,
-                    coordination,
+            for pair_index, label in enumerate(labels):
+                base = 2 + 2 * pair_index
+
+                try:
+                    rdf = float(fields[base])
+                    coordination = float(
+                        fields[base + 1]
+                    )
+                except ValueError:
+                    continue
+
+                records.append(
+                    (
+                        label,
+                        step,
+                        bin_index,
+                        radius,
+                        rdf,
+                        coordination,
+                    )
                 )
-            )
 
     with open(csv_file, 'w') as fd:
         fd.write(
-            'Step,Bin,R(A),g(r),CoordinationNumber\n'
+            'Pair,Step,Bin,R(A),g(r),'
+            'CoordinationNumber\n'
         )
 
         for record in records:
             fd.write(
                 f'{record[0]},'
                 f'{record[1]},'
-                f'{record[2]:.10g},'
+                f'{record[2]},'
                 f'{record[3]:.10g},'
-                f'{record[4]:.10g}\n'
+                f'{record[4]:.10g},'
+                f'{record[5]:.10g}\n'
             )
 
     return csv_file
@@ -1718,6 +1795,7 @@ def _run_md_engine(
     rdf_calc,
     rdf_bins,
     rdf_interval,
+    rdf_pairs,
     vacf_calc,
     vacf_interval,
     random_seed,
@@ -1771,6 +1849,7 @@ def _run_md_engine(
             rdf_calc=rdf_calc,
             rdf_bins=rdf_bins,
             rdf_interval=rdf_interval,
+            rdf_pairs=rdf_pairs,
             vacf_calc=vacf_calc,
             vacf_interval=vacf_interval,
             random_seed=random_seed,
@@ -1872,6 +1951,7 @@ def _run_md_engine(
         if rdf_calc:
             rdf_csv = _write_lammps_rdf_csv(
                 struct_prefix=struct_prefix,
+                rdf_pairs=rdf_pairs,
             )
             print(
                 f'LAMMPS RDF file written: {rdf_csv}'
@@ -2445,6 +2525,12 @@ def main():
                 namespace.get(
                     'RDF_interval',
                     RDF_interval,
+                )
+            ),
+            rdf_pairs=list(
+                namespace.get(
+                    'RDF_pairs',
+                    RDF_pairs,
                 )
             ),
             vacf_calc=bool(
