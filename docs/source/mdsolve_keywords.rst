@@ -253,9 +253,20 @@ Angstrom squared.
 
     Number of MD steps between RDF samples.
 
+.. describe:: RDF_pairs
+
+    :Type: ``list``
+    :Default: ``[]``
+
+    Optional element pairs for pair-resolved RDF analysis, for example
+    ``[('Li', 'O'), ('O', 'O')]``. If omitted, Nanoworks calculates
+    the total RDF across all atom types. Selected elements must be present
+    in the structure.
+
 When enabled, Nanoworks preserves the native LAMMPS RDF output and also writes
-``*-RDF.csv`` with the radial coordinate, total ``g(r)``, and
-coordination number for each sampled step.
+``*-RDF.csv`` with pair labels, radial coordinate, ``g(r)``, and coordination
+number for each sampled step. With an empty ``RDF_pairs`` list, the pair label
+is ``All-All``.
 
 
 .. describe:: VACF_calc
