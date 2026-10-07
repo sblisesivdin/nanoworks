@@ -10,6 +10,7 @@
 - Diffusion coefficients can be estimated from the linear MSD region.
 - Species-resolved MSD is available for selected elements.
 - Species-resolved diffusion coefficients can be obtained from the selected MSD groups.
+- Pair-resolved RDF is supported for selected element pairs.
 
 - `mlsolve` adds bulk phonon bands, DOS and imaginary-mode diagnostics with ML potentials.
 
