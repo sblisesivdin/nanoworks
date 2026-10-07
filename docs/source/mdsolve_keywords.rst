@@ -26,9 +26,10 @@ Ensemble
     :Default: ``'NVT'``
 
     Molecular dynamics ensemble. ASAP currently supports ``'NVT'``.
-    LAMMPS supports ``'NVT'`` and ``'NVE'``. In NVE calculations,
+    LAMMPS supports ``'NVT'``, ``'NVE'`` and ``'NPT'``. In NVE calculations,
     ``Temperature`` sets the initial velocity distribution and
-    ``Temperature_damp`` is not used.
+    ``Temperature_damp`` is not used. NPT currently uses isotropic pressure
+    coupling for fully periodic 3D cells.
 
 OpenKIM Potential
 -----------------
@@ -69,8 +70,24 @@ Molecular Dynamics Parameters
     :Default: ``200.0``
     :Unit: fs
 
-    Langevin thermostat damping time for NVT calculations. It is not used
+    Thermostat damping time for NVT and NPT calculations. It is not used
     by NVE calculations.
+
+.. describe:: Pressure
+
+    :Type: ``float``
+    :Default: ``0.0``
+    :Unit: GPa
+
+    Target isotropic pressure for LAMMPS NPT calculations.
+
+.. describe:: Pressure_damp
+
+    :Type: ``float``
+    :Default: ``1000.0``
+    :Unit: fs
+
+    Barostat damping time for LAMMPS NPT calculations.
 
 .. describe:: Random_seed
 
@@ -92,7 +109,8 @@ Profiles
 
 ``Temperature_profile``, ``Time_step_profile`` and
 ``Temperature_damp_profile`` can be used to define cycle-dependent
-molecular dynamics parameters for NVT calculations. NVE calculations use
+molecular dynamics parameters for NVT calculations. NPT additionally supports
+``Pressure_profile`` and ``Pressure_damp_profile``. NVE calculations use
 ``Time_step_profile``; ``Temperature`` only initializes the velocities.
 
 Parameter Sweeps
@@ -100,9 +118,10 @@ Parameter Sweeps
 
 ``Temperature_values``, ``Time_step_values`` and
 ``Temperature_damp_values`` can be used to perform independent
-calculations for all combinations of the listed values. For NVE,
+calculations for all combinations of the listed values. NPT also supports
+``Pressure_values`` and ``Pressure_damp_values``. For NVE,
 ``Temperature_values`` changes the initial velocity temperature and
-``Temperature_damp_values`` and thermostat profiles are rejected because they do not apply to NVE.
+thermostat or pressure schedules are rejected because they do not apply to NVE.
 
 Structure Parameters
 --------------------
