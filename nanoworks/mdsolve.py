@@ -53,6 +53,7 @@ from ase.calculators.kim import KIM
 # Simulation parameters
 Engine = 'ASAP'
 Ensemble = 'NVT'
+Thermostat = 'Langevin'
 Potential_style = 'OpenKIM'
 Potential_file = ''
 OpenKIM_potential = 'LJ_ElliottAkerson_2015_Universal__MO_959249795837_003'
@@ -209,6 +210,44 @@ def _resolve_ensemble(namespace, engine):
         )
 
     return ensemble
+
+def _resolve_thermostat(namespace, engine, ensemble):
+    """Resolve the thermostat used by NVT dynamics."""
+
+    thermostat = str(
+        namespace.get(
+            'Thermostat',
+            Thermostat,
+        )
+    ).strip().upper().replace('_', '-')
+
+    aliases = {
+        'LANGEVIN': 'LANGEVIN',
+        'NOSE-HOOVER': 'NOSE-HOOVER',
+        'NOSEHOOVER': 'NOSE-HOOVER',
+        'NH': 'NOSE-HOOVER',
+    }
+
+    if thermostat not in aliases:
+        raise ValueError(
+            'Unsupported Thermostat: '
+            f'{thermostat}. Supported values: '
+            'Langevin, Nose-Hoover'
+        )
+
+    resolved = aliases[thermostat]
+
+    if (
+        ensemble == 'NVT'
+        and engine == 'ASAP'
+        and resolved != 'LANGEVIN'
+    ):
+        raise ValueError(
+            'ASAP NVT currently supports only '
+            'Thermostat = Langevin.'
+        )
+
+    return resolved
 
 def _validate_ensemble_settings(namespace, ensemble):
     """Validate ensemble-specific molecular dynamics settings."""
@@ -412,6 +451,7 @@ def _write_lammps_input(
     species,
     pbc,
     ensemble,
+    thermostat,
     potential_style,
     potential_file,
     openkim_potential,
@@ -679,24 +719,40 @@ def _write_lammps_input(
             equil_damp_ps = (
                 equil_damp_fs / 1000.0
             )
-            equil_seed = int(random_seed) + 7919
 
-            lines.extend(
-                [
-                    'fix nw_equil_integrator all nve',
-                    (
-                        f'fix nw_equil_thermostat all langevin '
-                        f'{equil_temperature:.8f} '
-                        f'{equil_temperature:.8f} '
-                        f'{equil_damp_ps:.10f} '
-                        f'{equil_seed} zero yes'
-                    ),
-                    f'run {equilibration_steps}',
-                    'unfix nw_equil_thermostat',
-                    'unfix nw_equil_integrator',
-                    '',
-                ]
-            )
+            if thermostat == 'LANGEVIN':
+                equil_seed = int(random_seed) + 7919
+
+                lines.extend(
+                    [
+                        'fix nw_equil_integrator all nve',
+                        (
+                            f'fix nw_equil_thermostat all langevin '
+                            f'{equil_temperature:.8f} '
+                            f'{equil_temperature:.8f} '
+                            f'{equil_damp_ps:.10f} '
+                            f'{equil_seed} zero yes'
+                        ),
+                        f'run {equilibration_steps}',
+                        'unfix nw_equil_thermostat',
+                        'unfix nw_equil_integrator',
+                        '',
+                    ]
+                )
+            else:
+                lines.extend(
+                    [
+                        (
+                            f'fix nw_equil_thermostat all nvt '
+                            f'temp {equil_temperature:.8f} '
+                            f'{equil_temperature:.8f} '
+                            f'{equil_damp_ps:.10f}'
+                        ),
+                        f'run {equilibration_steps}',
+                        'unfix nw_equil_thermostat',
+                        '',
+                    ]
+                )
 
         elif ensemble == 'NPT':
             equil_temperature = float(
@@ -989,7 +1045,13 @@ def _write_lammps_input(
         ]
     )
 
-    if ensemble in ('NVT', 'NVE'):
+    if (
+        ensemble == 'NVE'
+        or (
+            ensemble == 'NVT'
+            and thermostat == 'LANGEVIN'
+        )
+    ):
         lines.extend(
             [
                 'fix nw_integrator all nve',
@@ -1033,21 +1095,37 @@ def _write_lammps_input(
             temperature_damp_ps = (
                 temperature_damp_fs / 1000.0
             )
-            cycle_seed = int(random_seed) + cycle
 
-            lines.extend(
-                [
-                    (
-                        f'fix nw_thermostat all langevin '
-                        f'{temperature:.8f} {temperature:.8f} '
-                        f'{temperature_damp_ps:.10f} '
-                        f'{cycle_seed} zero yes'
-                    ),
-                    f'run {int(md_steps_per_cycle)}',
-                    'unfix nw_thermostat',
-                    '',
-                ]
-            )
+            if thermostat == 'LANGEVIN':
+                cycle_seed = int(random_seed) + cycle
+
+                lines.extend(
+                    [
+                        (
+                            f'fix nw_thermostat all langevin '
+                            f'{temperature:.8f} {temperature:.8f} '
+                            f'{temperature_damp_ps:.10f} '
+                            f'{cycle_seed} zero yes'
+                        ),
+                        f'run {int(md_steps_per_cycle)}',
+                        'unfix nw_thermostat',
+                        '',
+                    ]
+                )
+            else:
+                lines.extend(
+                    [
+                        (
+                            f'fix nw_thermostat all nvt '
+                            f'temp {temperature:.8f} '
+                            f'{temperature:.8f} '
+                            f'{temperature_damp_ps:.10f}'
+                        ),
+                        f'run {int(md_steps_per_cycle)}',
+                        'unfix nw_thermostat',
+                        '',
+                    ]
+                )
 
         elif ensemble == 'NPT':
             temperature = float(
@@ -1108,7 +1186,13 @@ def _write_lammps_input(
                 ]
             )
 
-    if ensemble in ('NVT', 'NVE'):
+    if (
+        ensemble == 'NVE'
+        or (
+            ensemble == 'NVT'
+            and thermostat == 'LANGEVIN'
+        )
+    ):
         lines.append('unfix nw_integrator')
 
     if msd_calc:
@@ -2285,6 +2369,7 @@ def _run_asap_langevin(
 def _run_md_engine(
     engine,
     ensemble,
+    thermostat,
     atoms,
     struct_prefix,
     potential_style,
@@ -2365,6 +2450,7 @@ def _run_md_engine(
             species=species,
             pbc=atoms.get_pbc(),
             ensemble=ensemble,
+            thermostat=thermostat,
             potential_style=potential_style,
             potential_file=potential_file,
             openkim_potential=openkim_potential,
@@ -2659,6 +2745,19 @@ def main():
 
     Ensemble = resolved_ensemble
     namespace['Ensemble'] = Ensemble
+
+    try:
+        resolved_thermostat = _resolve_thermostat(
+            namespace,
+            Engine,
+            Ensemble,
+        )
+    except ValueError as exc:
+        print(str(exc))
+        sys.exit(1)
+
+    Thermostat = resolved_thermostat
+    namespace['Thermostat'] = Thermostat
 
     try:
         _validate_ensemble_settings(
@@ -3132,6 +3231,7 @@ def main():
         energy_records = _run_md_engine(
             engine=Engine,
             ensemble=Ensemble,
+            thermostat=Thermostat,
             atoms=asestruct,
             struct_prefix=struct_prefix,
             potential_style=Potential_style,
