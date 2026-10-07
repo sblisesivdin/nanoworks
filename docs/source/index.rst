@@ -31,7 +31,7 @@ settings explicit and reusable.
      <article class="nw-card">
        <span class="nw-command">mdsolve</span>
        <h3>Molecular Dynamics with ASAP3 and LAMMPS</h3>
-       <p>Run molecular dynamics calculations through a common Nanoworks workflow using ASAP3 or LAMMPS with OpenKIM interatomic potentials.</p>
+       <p>Run NVT Langevin dynamics with ASAP3 or LAMMPS, and NVE dynamics with LAMMPS, using OpenKIM interatomic potentials.</p>
        <a href="usage.html#mdsolve-formerly-asapsolve-py">Explore MD workflows →</a>
      </article>
      <article class="nw-card">
@@ -142,7 +142,7 @@ machine-learning tools through consistent workflows.
 
 .. raw:: html
 
-   <p class="nw-ecosystem">ASE · GPAW · Quantum ESPRESSO · Phonopy · Elastic · OpenKIM · ASAP3 · MACE · CHGNet · SevenNet</p>
+   <p class="nw-ecosystem">ASE · GPAW · Quantum ESPRESSO · LAMMPS · Phonopy · Elastic · OpenKIM · ASAP3 · MACE · CHGNet · SevenNet</p>
 
 Use Nanoworks in Your Research
 ------------------------------
