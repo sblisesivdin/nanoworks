@@ -146,10 +146,10 @@ For long LAMMPS runs, `Trajectory_interval` and `Thermo_interval` can be increas
 
 ## Native LAMMPS potentials
 
-OpenKIM remains the default potential source. LAMMPS can also use native EAM/alloy files:
+OpenKIM remains the default potential source. LAMMPS can also use native EAM/alloy, EAM/fs, Tersoff, and Stillinger-Weber files:
 
     Engine = 'LAMMPS'
-    Potential_style = 'EAM/alloy'
-    Potential_file = '/path/to/potential.eam.alloy'
+    Potential_style = 'Tersoff'
+    Potential_file = '/path/to/potential.tersoff'
 
-Nanoworks maps the elements in the structure to the EAM/alloy `pair_coeff` element list. The potential file itself is not distributed with this example.
+The same `Potential_file` interface is used for `EAM/alloy`, `EAM/fs`, and `SW`. Nanoworks maps the structure elements to the native LAMMPS `pair_coeff` element list. Potential files are not distributed with this example.
