@@ -73,6 +73,10 @@ MSD_calc = False
 MSD_interval = 1
 MSD_remove_com = True
 
+Diffusion_calc = False
+Diffusion_start_fraction = 0.5
+Diffusion_dimensions = 3
+
 RDF_calc = False
 RDF_bins = 100
 RDF_interval = 10
@@ -362,6 +366,9 @@ def _write_lammps_input(
     msd_calc,
     msd_interval,
     msd_remove_com,
+    diffusion_calc,
+    diffusion_start_fraction,
+    diffusion_dimensions,
     rdf_calc,
     rdf_bins,
     rdf_interval,
@@ -810,7 +817,37 @@ def _write_lammps_trajectory(
 
     return trajectory_file
 
-def _write_lammps_msd_csv(struct_prefix):
+def _time_ps_for_step(
+    step,
+    timestep_profile,
+    md_steps_per_cycle,
+):
+    """Return cumulative simulation time in ps for a global MD step."""
+
+    remaining = int(step)
+    time_fs = 0.0
+
+    for timestep_fs in timestep_profile:
+        if remaining <= 0:
+            break
+
+        cycle_steps = min(
+            remaining,
+            int(md_steps_per_cycle),
+        )
+
+        time_fs += (
+            cycle_steps * float(timestep_fs)
+        )
+        remaining -= cycle_steps
+
+    return time_fs / 1000.0
+
+def _write_lammps_msd_csv(
+    struct_prefix,
+    timestep_profile,
+    md_steps_per_cycle,
+):
     """Convert LAMMPS MSD output to a Nanoworks CSV file."""
 
     source_file = struct_prefix + '-LAMMPS-MSD.dat'
@@ -844,9 +881,16 @@ def _write_lammps_msd_csv(struct_prefix):
             except ValueError:
                 continue
 
+            time_ps = _time_ps_for_step(
+                step,
+                timestep_profile,
+                md_steps_per_cycle,
+            )
+
             records.append(
                 (
                     step,
+                    time_ps,
                     msd_x,
                     msd_y,
                     msd_z,
@@ -856,7 +900,7 @@ def _write_lammps_msd_csv(struct_prefix):
 
     with open(csv_file, 'w') as fd:
         fd.write(
-            'Step,MSD_X(A^2),MSD_Y(A^2),'
+            'Step,Time(ps),MSD_X(A^2),MSD_Y(A^2),'
             'MSD_Z(A^2),MSD_Total(A^2)\n'
         )
 
@@ -866,10 +910,139 @@ def _write_lammps_msd_csv(struct_prefix):
                 f'{record[1]:.10g},'
                 f'{record[2]:.10g},'
                 f'{record[3]:.10g},'
-                f'{record[4]:.10g}\n'
+                f'{record[4]:.10g},'
+                f'{record[5]:.10g}\n'
             )
 
-    return csv_file
+    return csv_file, records
+
+def _write_diffusion_summary(
+    struct_prefix,
+    msd_records,
+    start_fraction,
+    dimensions,
+):
+    """Estimate a diffusion coefficient from the linear MSD regime."""
+
+    start_fraction = float(start_fraction)
+    dimensions = int(dimensions)
+
+    if not 0.0 <= start_fraction < 1.0:
+        raise ValueError(
+            'Diffusion_start_fraction must satisfy '
+            '0 <= value < 1.'
+        )
+
+    if dimensions not in (1, 2, 3):
+        raise ValueError(
+            'Diffusion_dimensions must be 1, 2, or 3.'
+        )
+
+    if len(msd_records) < 2:
+        raise ValueError(
+            'At least two MSD samples are required '
+            'for diffusion fitting.'
+        )
+
+    start_index = int(
+        len(msd_records) * start_fraction
+    )
+
+    fit_records = msd_records[start_index:]
+
+    if len(fit_records) < 2:
+        fit_records = msd_records[-2:]
+
+    x_values = [
+        float(record[1])
+        for record in fit_records
+    ]
+    y_values = [
+        float(record[5])
+        for record in fit_records
+    ]
+
+    x_mean = sum(x_values) / len(x_values)
+    y_mean = sum(y_values) / len(y_values)
+
+    denominator = sum(
+        (x - x_mean) ** 2
+        for x in x_values
+    )
+
+    if denominator <= 0.0:
+        raise ValueError(
+            'MSD fit requires at least two distinct '
+            'simulation times.'
+        )
+
+    slope = (
+        sum(
+            (x - x_mean) * (y - y_mean)
+            for x, y in zip(
+                x_values,
+                y_values,
+            )
+        )
+        / denominator
+    )
+
+    intercept = y_mean - slope * x_mean
+
+    ss_tot = sum(
+        (y - y_mean) ** 2
+        for y in y_values
+    )
+    ss_res = sum(
+        (
+            y - (
+                slope * x + intercept
+            )
+        ) ** 2
+        for x, y in zip(
+            x_values,
+            y_values,
+        )
+    )
+
+    r_squared = (
+        1.0 - ss_res / ss_tot
+        if ss_tot > 0.0
+        else 1.0
+    )
+
+    diffusion_a2_per_ps = (
+        slope / (2.0 * dimensions)
+    )
+    diffusion_cm2_per_s = (
+        diffusion_a2_per_ps * 1.0e-4
+    )
+
+    output_file = (
+        struct_prefix + '-Diffusion.csv'
+    )
+
+    with open(output_file, 'w') as fd:
+        fd.write(
+            'Dimensions,FitStartFraction,'
+            'FitStartTime(ps),FitEndTime(ps),'
+            'Samples,Slope(A^2/ps),'
+            'Diffusion(A^2/ps),'
+            'Diffusion(cm^2/s),R_squared\n'
+        )
+        fd.write(
+            f'{dimensions},'
+            f'{start_fraction:.6f},'
+            f'{x_values[0]:.10g},'
+            f'{x_values[-1]:.10g},'
+            f'{len(x_values)},'
+            f'{slope:.10g},'
+            f'{diffusion_a2_per_ps:.10g},'
+            f'{diffusion_cm2_per_s:.10g},'
+            f'{r_squared:.10g}\n'
+        )
+
+    return output_file
 
 def _write_lammps_rdf_csv(struct_prefix):
     """Convert LAMMPS RDF output to a Nanoworks CSV file."""
@@ -1371,12 +1544,34 @@ def _run_md_engine(
         )
 
         if msd_calc:
-            msd_csv = _write_lammps_msd_csv(
-                struct_prefix=struct_prefix,
+            msd_csv, msd_records = (
+                _write_lammps_msd_csv(
+                    struct_prefix=struct_prefix,
+                    timestep_profile=timestep_profile,
+                    md_steps_per_cycle=md_steps_per_cycle,
+                )
             )
             print(
                 f'LAMMPS MSD file written: {msd_csv}'
             )
+
+            if diffusion_calc:
+                diffusion_csv = (
+                    _write_diffusion_summary(
+                        struct_prefix=struct_prefix,
+                        msd_records=msd_records,
+                        start_fraction=(
+                            diffusion_start_fraction
+                        ),
+                        dimensions=(
+                            diffusion_dimensions
+                        ),
+                    )
+                )
+                print(
+                    'Diffusion summary written: '
+                    f'{diffusion_csv}'
+                )
 
         if rdf_calc:
             rdf_csv = _write_lammps_rdf_csv(
@@ -1530,6 +1725,16 @@ def main():
     if bool(namespace.get('MSD_calc', MSD_calc)):
         lammps_only_features.append('MSD_calc')
 
+    if bool(
+        namespace.get(
+            'Diffusion_calc',
+            Diffusion_calc,
+        )
+    ):
+        lammps_only_features.append(
+            'Diffusion_calc'
+        )
+
     if bool(namespace.get('RDF_calc', RDF_calc)):
         lammps_only_features.append('RDF_calc')
 
@@ -1541,6 +1746,19 @@ def main():
             'These settings are currently supported only '
             'by LAMMPS: '
             + ', '.join(lammps_only_features)
+        )
+        sys.exit(1)
+
+    if bool(
+        namespace.get(
+            'Diffusion_calc',
+            Diffusion_calc,
+        )
+    ) and not bool(
+        namespace.get('MSD_calc', MSD_calc)
+    ):
+        print(
+            'Diffusion_calc requires MSD_calc = True.'
         )
         sys.exit(1)
 
@@ -1878,6 +2096,24 @@ def main():
                 namespace.get(
                     'MSD_remove_com',
                     MSD_remove_com,
+                )
+            ),
+            diffusion_calc=bool(
+                namespace.get(
+                    'Diffusion_calc',
+                    Diffusion_calc,
+                )
+            ),
+            diffusion_start_fraction=float(
+                namespace.get(
+                    'Diffusion_start_fraction',
+                    Diffusion_start_fraction,
+                )
+            ),
+            diffusion_dimensions=int(
+                namespace.get(
+                    'Diffusion_dimensions',
+                    Diffusion_dimensions,
                 )
             ),
             rdf_calc=bool(
