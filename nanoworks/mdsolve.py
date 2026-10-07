@@ -73,6 +73,10 @@ MSD_calc = False
 MSD_interval = 1
 MSD_remove_com = True
 
+RDF_calc = False
+RDF_bins = 100
+RDF_interval = 10
+
 # Molecular dynamics loop configuration
 MD_cycles = 25
 MD_steps_per_cycle = 10
@@ -355,6 +359,9 @@ def _write_lammps_input(
     msd_calc,
     msd_interval,
     msd_remove_com,
+    rdf_calc,
+    rdf_bins,
+    rdf_interval,
     random_seed,
     md_cycles,
     md_steps_per_cycle,
@@ -364,6 +371,7 @@ def _write_lammps_input(
     input_file = struct_prefix + '-LAMMPS.in'
     dump_file = struct_prefix + '-LAMMPS.dump'
     msd_file = struct_prefix + '-LAMMPS-MSD.dat'
+    rdf_file = struct_prefix + '-LAMMPS-RDF.dat'
 
     species_string = ' '.join(species)
     
@@ -472,6 +480,30 @@ def _write_lammps_input(
                     f'c_nw_msd[1] c_nw_msd[2] '
                     f'c_nw_msd[3] c_nw_msd[4] '
                     f'file "{msd_file}" mode scalar'
+                ),
+                '',
+            ]
+        )
+
+    if rdf_calc:
+        if int(rdf_bins) <= 0:
+            raise ValueError(
+                'RDF_bins must be a positive integer.'
+            )
+        if int(rdf_interval) <= 0:
+            raise ValueError(
+                'RDF_interval must be a positive integer.'
+            )
+
+        lines.extend(
+            [
+                f'compute nw_rdf all rdf {int(rdf_bins)}',
+                (
+                    f'fix nw_rdf_output all ave/time '
+                    f'{int(rdf_interval)} 1 '
+                    f'{int(rdf_interval)} '
+                    f'c_nw_rdf[*] '
+                    f'file "{rdf_file}" mode vector'
                 ),
                 '',
             ]
@@ -618,6 +650,14 @@ def _write_lammps_input(
             [
                 'unfix nw_msd_output',
                 'uncompute nw_msd',
+            ]
+        )
+
+    if rdf_calc:
+        lines.extend(
+            [
+                'unfix nw_rdf_output',
+                'uncompute nw_rdf',
             ]
         )
 
@@ -789,6 +829,89 @@ def _write_lammps_msd_csv(struct_prefix):
             fd.write(
                 f'{record[0]},'
                 f'{record[1]:.10g},'
+                f'{record[2]:.10g},'
+                f'{record[3]:.10g},'
+                f'{record[4]:.10g}\n'
+            )
+
+    return csv_file
+
+def _write_lammps_rdf_csv(struct_prefix):
+    """Convert LAMMPS RDF output to a Nanoworks CSV file."""
+
+    source_file = struct_prefix + '-LAMMPS-RDF.dat'
+    csv_file = struct_prefix + '-RDF.csv'
+
+    if not os.path.isfile(source_file):
+        raise FileNotFoundError(
+            f'LAMMPS RDF output was not found: {source_file}'
+        )
+
+    records = []
+
+    with open(source_file, 'r') as fd:
+        lines = [
+            line.strip()
+            for line in fd
+            if line.strip()
+            and not line.lstrip().startswith('#')
+        ]
+
+    index = 0
+
+    while index < len(lines):
+        header = lines[index].split()
+
+        if len(header) != 2:
+            index += 1
+            continue
+
+        try:
+            step = int(float(header[0]))
+            row_count = int(float(header[1]))
+        except ValueError:
+            index += 1
+            continue
+
+        index += 1
+
+        for _ in range(row_count):
+            if index >= len(lines):
+                break
+
+            fields = lines[index].split()
+            index += 1
+
+            if len(fields) < 4:
+                continue
+
+            try:
+                bin_index = int(float(fields[0]))
+                radius = float(fields[1])
+                rdf = float(fields[2])
+                coordination = float(fields[3])
+            except ValueError:
+                continue
+
+            records.append(
+                (
+                    step,
+                    bin_index,
+                    radius,
+                    rdf,
+                    coordination,
+                )
+            )
+
+    with open(csv_file, 'w') as fd:
+        fd.write(
+            'Step,Bin,R(A),g(r),CoordinationNumber\n'
+        )
+
+        for record in records:
+            fd.write(
+                f'{record[0]},'
+                f'{record[1]},'
                 f'{record[2]:.10g},'
                 f'{record[3]:.10g},'
                 f'{record[4]:.10g}\n'
@@ -1064,6 +1187,9 @@ def _run_md_engine(
     msd_calc,
     msd_interval,
     msd_remove_com,
+    rdf_calc,
+    rdf_bins,
+    rdf_interval,
     random_seed,
     md_cycles,
     md_steps_per_cycle,
@@ -1108,6 +1234,9 @@ def _run_md_engine(
             msd_calc=msd_calc,
             msd_interval=msd_interval,
             msd_remove_com=msd_remove_com,
+            rdf_calc=rdf_calc,
+            rdf_bins=rdf_bins,
+            rdf_interval=rdf_interval,
             random_seed=random_seed,
             md_cycles=md_cycles,
             md_steps_per_cycle=md_steps_per_cycle,
@@ -1145,6 +1274,14 @@ def _run_md_engine(
             )
             print(
                 f'LAMMPS MSD file written: {msd_csv}'
+            )
+
+        if rdf_calc:
+            rdf_csv = _write_lammps_rdf_csv(
+                struct_prefix=struct_prefix,
+            )
+            print(
+                f'LAMMPS RDF file written: {rdf_csv}'
             )
 
         energy_records = _parse_lammps_thermo(
@@ -1282,6 +1419,9 @@ def main():
 
     if bool(namespace.get('MSD_calc', MSD_calc)):
         lammps_only_features.append('MSD_calc')
+
+    if bool(namespace.get('RDF_calc', RDF_calc)):
+        lammps_only_features.append('RDF_calc')
 
     if Engine != 'LAMMPS' and lammps_only_features:
         print(
@@ -1625,6 +1765,21 @@ def main():
                 namespace.get(
                     'MSD_remove_com',
                     MSD_remove_com,
+                )
+            ),
+            rdf_calc=bool(
+                namespace.get('RDF_calc', RDF_calc)
+            ),
+            rdf_bins=int(
+                namespace.get(
+                    'RDF_bins',
+                    RDF_bins,
+                )
+            ),
+            rdf_interval=int(
+                namespace.get(
+                    'RDF_interval',
+                    RDF_interval,
                 )
             ),
             md_cycles=MD_cycles,
