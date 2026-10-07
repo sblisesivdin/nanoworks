@@ -2,8 +2,9 @@
 
 ### Development Version
 
-- `mdsolve` adds LAMMPS NVE molecular dynamics while retaining the common NVT Langevin workflow with ASAP3 and LAMMPS.
+- `mdsolve` adds LAMMPS NVE and NPT molecular dynamics while retaining the common NVT Langevin workflow with ASAP3 and LAMMPS.
 - The `mdsolve` examples and documentation are renewed for the ASAP3/LAMMPS backend workflow and ensemble selection.
+- Pressure and volume are included in common MD energy outputs.
 
 - `mlsolve` adds bulk phonon bands, DOS and imaginary-mode diagnostics with ML potentials.
 
