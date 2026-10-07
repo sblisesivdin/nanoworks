@@ -13,13 +13,20 @@ To run, execute:
 
     mdsolve -i sampleinput.py -g argon_fcc_4x4x4.cif
 
-The calculation engine is selected in the input file:
+The calculation engine and ensemble are selected in the input file:
 
     Engine = 'ASAP'
+    Ensemble = 'NVT'
 
-or
+or, for LAMMPS:
 
     Engine = 'LAMMPS'
+    Ensemble = 'NVT'
+
+LAMMPS also supports microcanonical NVE dynamics:
+
+    Engine = 'LAMMPS'
+    Ensemble = 'NVE'
 
 The main MD parameters are:
 
@@ -30,6 +37,13 @@ The main MD parameters are:
     MD_cycles = 25
     MD_steps_per_cycle = 10
 
-Temperature, time step and temperature damping can also be varied using profiles or value lists.
+Temperature, time step and temperature damping can also be varied using profiles or value lists for NVT calculations. In NVE calculations, `Temperature` initializes the velocity distribution, while `Temperature_damp` is not used.
 
 Both ASAP and LAMMPS workflows produce the common Nanoworks energy table, ASE trajectory, final CIF structure and reconstructed Atoms file. LAMMPS calculations also retain the generated LAMMPS input, data, dump and log files.
+
+
+## NVE run
+
+A compact LAMMPS NVE example is provided in `sampleinput_nve.py`:
+
+    mdsolve -i sampleinput_nve.py -g argon_fcc_4x4x4.cif
