@@ -14,7 +14,7 @@
 - Green-Kubo diffusion coefficients can be estimated from VACF integration.
 - Long LAMMPS MD runs can write periodic/final restart checkpoints and continue from a saved restart state.
 - LAMMPS trajectory and thermodynamic output cadence can be reduced for long runs while preserving the exact final frame.
-- `mdsolve` supports native LAMMPS EAM/alloy potential files in addition to OpenKIM.
+- `mdsolve` supports native LAMMPS EAM/alloy, EAM/fs, Tersoff, and Stillinger-Weber potential files in addition to OpenKIM.
 
 - `mlsolve` adds bulk phonon bands, DOS and imaginary-mode diagnostics with ML potentials.
 
