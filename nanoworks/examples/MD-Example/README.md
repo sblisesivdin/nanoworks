@@ -130,3 +130,10 @@ The total VACF can be integrated to estimate a Green-Kubo diffusion coefficient.
     mdsolve -i sampleinput_vacf_diffusion.py -g argon_fcc_4x4x4.cif
 
 The result is written to `*-Diffusion-VACF.csv`.
+
+
+## Restart and checkpointing
+
+Long LAMMPS runs can write periodic binary checkpoints with `Restart_write`, `Restart_interval`, and `Restart_final`. See `sampleinput_checkpoint.py`.
+
+A later run can continue from a saved state using `Restart_read`; see `sampleinput_restart.py`. The continuation preserves the restart state and velocities, but Nanoworks resets the timestep counter for the new segment and rebuilds the selected ensemble fixes and analyses. The geometry file remains required for the OpenKIM element/type mapping.
