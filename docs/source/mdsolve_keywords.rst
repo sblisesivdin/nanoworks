@@ -400,3 +400,34 @@ the new Nanoworks segment. ``Minimize = True`` cannot be combined with
 LAMMPS binary restart files are intended for continuation with a compatible
 LAMMPS executable and platform; they are not a portable archival structure
 format.
+
+
+Output Cadence
+--------------
+
+LAMMPS trajectory and thermodynamic output frequency can be reduced for
+long-running calculations.
+
+.. describe:: Trajectory_interval
+
+    :Type: ``int``
+    :Default: ``1``
+    :Unit: MD steps
+
+    Number of MD steps between trajectory dump frames. Nanoworks always
+    writes a separate final LAMMPS snapshot and appends the final state to
+    the ASE ``*-Results.traj`` output when the sampled trajectory does
+    not already contain it.
+
+.. describe:: Thermo_interval
+
+    :Type: ``int``
+    :Default: ``1``
+    :Unit: MD steps
+
+    LAMMPS thermodynamic print interval. Each Nanoworks MD cycle is a
+    separate LAMMPS ``run``, so cycle-end thermodynamic records remain
+    available for the common ``*-Energy.csv`` summary.
+
+Larger intervals substantially reduce disk and log volume during long MD
+runs without changing the integration timestep.
