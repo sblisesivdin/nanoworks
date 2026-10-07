@@ -72,6 +72,7 @@ Minimize_max_evaluations = 100000
 MSD_calc = False
 MSD_interval = 1
 MSD_remove_com = True
+MSD_species = []
 
 Diffusion_calc = False
 Diffusion_start_fraction = 0.5
@@ -472,6 +473,31 @@ def _write_lammps_input(
         ]
     )
 
+    requested_msd_species = [
+        str(symbol)
+        for symbol in msd_species
+    ]
+
+    if requested_msd_species:
+        unknown_species = [
+            symbol
+            for symbol in requested_msd_species
+            if symbol not in species
+        ]
+
+        if unknown_species:
+            raise ValueError(
+                'MSD_species contains elements not present '
+                'in the structure: '
+                + ', '.join(unknown_species)
+            )
+
+        if len(requested_msd_species) > 30:
+            raise ValueError(
+                'MSD_species supports at most 30 element '
+                'groups in one LAMMPS run.'
+            )
+
     if msd_calc:
         if int(msd_interval) <= 0:
             raise ValueError(
@@ -493,6 +519,40 @@ def _write_lammps_input(
                     f'c_nw_msd[1] c_nw_msd[2] '
                     f'c_nw_msd[3] c_nw_msd[4] '
                     f'file "{msd_file}" mode scalar'
+                ),
+                '',
+            ]
+        )
+
+    for symbol in requested_msd_species:
+        type_id = species.index(symbol) + 1
+        group_id = f'nw_msd_group_{type_id}'
+        compute_id = f'nw_msd_type_{type_id}'
+        fix_id = f'nw_msd_output_{type_id}'
+        species_file = (
+            struct_prefix
+            + f'-LAMMPS-MSD-{symbol}.dat'
+        )
+        com_option = 'yes' if msd_remove_com else 'no'
+
+        lines.extend(
+            [
+                f'group {group_id} type {type_id}',
+                (
+                    f'compute {compute_id} '
+                    f'{group_id} msd '
+                    f'com {com_option}'
+                ),
+                (
+                    f'fix {fix_id} {group_id} ave/time '
+                    f'{int(msd_interval)} 1 '
+                    f'{int(msd_interval)} '
+                    f'c_{compute_id}[1] '
+                    f'c_{compute_id}[2] '
+                    f'c_{compute_id}[3] '
+                    f'c_{compute_id}[4] '
+                    f'file "{species_file}" '
+                    f'mode scalar'
                 ),
                 '',
             ]
@@ -684,6 +744,20 @@ def _write_lammps_input(
             [
                 'unfix nw_msd_output',
                 'uncompute nw_msd',
+            ]
+        )
+
+    for symbol in requested_msd_species:
+        type_id = species.index(symbol) + 1
+        group_id = f'nw_msd_group_{type_id}'
+        compute_id = f'nw_msd_type_{type_id}'
+        fix_id = f'nw_msd_output_{type_id}'
+
+        lines.extend(
+            [
+                f'unfix {fix_id}',
+                f'uncompute {compute_id}',
+                f'group {group_id} delete',
             ]
         )
 
@@ -1458,6 +1532,7 @@ def _run_md_engine(
     msd_calc,
     msd_interval,
     msd_remove_com,
+    msd_species,
     rdf_calc,
     rdf_bins,
     rdf_interval,
