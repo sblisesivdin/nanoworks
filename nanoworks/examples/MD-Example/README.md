@@ -158,3 +158,16 @@ The same `Potential_file` interface is used for `EAM/alloy`, `EAM/fs`, and `SW`.
 ## Equilibration and production
 
 `Equilibration_steps` runs a separate equilibration segment before production MD. MSD/RDF/VACF references are created only after equilibration, so production analyses do not include the initial transient. See `sampleinput_equilibration.py`.
+
+
+## NVT thermostat selection
+
+LAMMPS NVT runs can use either the default Langevin thermostat or Nose–Hoover:
+
+    Thermostat = 'Langevin'
+
+or
+
+    Thermostat = 'Nose-Hoover'
+
+See `sampleinput_nvt_nose_hoover.py`. ASAP currently retains its Langevin NVT workflow.
