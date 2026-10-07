@@ -61,6 +61,13 @@ Pressure = 0.0 # GPa
 Pressure_damp = 1000.0 # fs
 Random_seed = 12345
 
+# Optional LAMMPS pre-MD minimization
+Minimize = False
+Minimize_energy_tolerance = 1.0e-10
+Minimize_force_tolerance = 1.0e-6 # eV/Angstrom
+Minimize_max_iterations = 10000
+Minimize_max_evaluations = 100000
+
 # Molecular dynamics loop configuration
 MD_cycles = 25
 MD_steps_per_cycle = 10
@@ -335,6 +342,11 @@ def _write_lammps_input(
     temperature_damp_profile,
     pressure_profile,
     pressure_damp_profile,
+    minimize,
+    minimize_energy_tolerance,
+    minimize_force_tolerance,
+    minimize_max_iterations,
+    minimize_max_evaluations,
     random_seed,
     md_cycles,
     md_steps_per_cycle,
@@ -384,6 +396,43 @@ def _write_lammps_input(
         '',
         f'kim interactions {species_string}',
         '',
+    ]
+
+    if minimize:
+        if minimize_energy_tolerance < 0.0:
+            raise ValueError(
+                'Minimize_energy_tolerance cannot be negative.'
+            )
+        if minimize_force_tolerance < 0.0:
+            raise ValueError(
+                'Minimize_force_tolerance cannot be negative.'
+            )
+        if minimize_max_iterations <= 0:
+            raise ValueError(
+                'Minimize_max_iterations must be positive.'
+            )
+        if minimize_max_evaluations <= 0:
+            raise ValueError(
+                'Minimize_max_evaluations must be positive.'
+            )
+
+        lines.extend(
+            [
+                '# Pre-MD energy minimization',
+                'min_style cg',
+                (
+                    f'minimize '
+                    f'{minimize_energy_tolerance:.12g} '
+                    f'{minimize_force_tolerance:.12g} '
+                    f'{int(minimize_max_iterations)} '
+                    f'{int(minimize_max_evaluations)}'
+                ),
+                '',
+            ]
+        )
+
+    lines.extend(
+        [
         (
             f'velocity all create '
             f'{initial_temperature:.8f} {int(random_seed)} '
@@ -399,7 +448,8 @@ def _write_lammps_input(
         'thermo 1',
         'thermo_style custom step atoms temp press pe ke etotal vol',
         '',
-    ]
+        ]
+    )
 
     if ensemble in ('NVT', 'NVE'):
         lines.extend(
@@ -897,6 +947,11 @@ def _run_md_engine(
     temperature_damp_profile,
     pressure_profile,
     pressure_damp_profile,
+    minimize,
+    minimize_energy_tolerance,
+    minimize_force_tolerance,
+    minimize_max_iterations,
+    minimize_max_evaluations,
     random_seed,
     md_cycles,
     md_steps_per_cycle,
@@ -933,6 +988,11 @@ def _run_md_engine(
             temperature_damp_profile=temperature_damp_profile,
             pressure_profile=pressure_profile,
             pressure_damp_profile=pressure_damp_profile,
+            minimize=minimize,
+            minimize_energy_tolerance=minimize_energy_tolerance,
+            minimize_force_tolerance=minimize_force_tolerance,
+            minimize_max_iterations=minimize_max_iterations,
+            minimize_max_evaluations=minimize_max_evaluations,
             random_seed=random_seed,
             md_cycles=md_cycles,
             md_steps_per_cycle=md_steps_per_cycle,
@@ -1090,6 +1150,15 @@ def main():
         )
     except ValueError as exc:
         print(str(exc))
+        sys.exit(1)
+
+    if Engine != 'LAMMPS' and bool(
+        namespace.get('Minimize', Minimize)
+    ):
+        print(
+            'Pre-MD minimization is currently supported '
+            'only by LAMMPS.'
+        )
         sys.exit(1)
 
     if Engine == 'LAMMPS':
@@ -1386,6 +1455,33 @@ def main():
             temperature_damp_profile=temperature_damp_profile,
             pressure_profile=pressure_profile,
             pressure_damp_profile=pressure_damp_profile,
+            minimize=bool(
+                namespace.get('Minimize', Minimize)
+            ),
+            minimize_energy_tolerance=float(
+                namespace.get(
+                    'Minimize_energy_tolerance',
+                    Minimize_energy_tolerance,
+                )
+            ),
+            minimize_force_tolerance=float(
+                namespace.get(
+                    'Minimize_force_tolerance',
+                    Minimize_force_tolerance,
+                )
+            ),
+            minimize_max_iterations=int(
+                namespace.get(
+                    'Minimize_max_iterations',
+                    Minimize_max_iterations,
+                )
+            ),
+            minimize_max_evaluations=int(
+                namespace.get(
+                    'Minimize_max_evaluations',
+                    Minimize_max_evaluations,
+                )
+            ),
             md_cycles=MD_cycles,
             random_seed=Random_seed,
             md_steps_per_cycle=MD_steps_per_cycle,
