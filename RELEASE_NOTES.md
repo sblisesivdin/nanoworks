@@ -16,6 +16,7 @@
 - LAMMPS trajectory and thermodynamic output cadence can be reduced for long runs while preserving the exact final frame.
 - `mdsolve` supports native LAMMPS EAM/alloy, EAM/fs, Tersoff, and Stillinger-Weber potential files in addition to OpenKIM.
 - LAMMPS MD can run a separate equilibration segment before production analyses.
+- LAMMPS NVT supports both Langevin and Nose-Hoover thermostats.
 
 - `mlsolve` adds bulk phonon bands, DOS and imaginary-mode diagnostics with ML potentials.
 
