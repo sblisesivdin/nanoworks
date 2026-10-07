@@ -3,6 +3,7 @@
 # See LICENSE.md in the project root for license terms.
 
 Engine = 'LAMMPS'
+Ensemble = 'NVT'
 
 OpenKIM_potential_alias = 'lj'
 
