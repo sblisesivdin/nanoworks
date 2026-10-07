@@ -21,5 +21,8 @@ Restart_write = True
 Restart_interval = 250
 Restart_final = True
 
+Trajectory_interval = 10
+Thermo_interval = 10
+
 Scaled = False
 Manual_PBC = False
