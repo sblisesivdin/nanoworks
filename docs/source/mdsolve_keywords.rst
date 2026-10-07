@@ -468,3 +468,25 @@ ASE/CIF structure to LAMMPS atom types and generates the corresponding
 The potential file must contain a compatible mapping for all elements in the
 structure. Native file-based potential styles are currently available only
 with the LAMMPS engine.
+
+
+Equilibration
+-------------
+
+LAMMPS calculations can perform an optional equilibration segment before the
+production MD trajectory and analyses.
+
+.. describe:: Equilibration_steps
+
+    :Type: ``int``
+    :Default: ``0``
+    :Unit: MD steps
+
+    Number of equilibration steps performed before production. The first
+    temperature, timestep, damping, and pressure values from the selected
+    ensemble are used for equilibration.
+
+When equilibration is enabled, Nanoworks performs a separate NVT, NVE, or NPT
+equilibration run, resets the LAMMPS timestep counter to zero, and only then
+creates the MSD, RDF, and VACF analysis computes. Production CSV outputs and
+diffusion fits therefore exclude the equilibration segment.
