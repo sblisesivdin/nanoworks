@@ -15,6 +15,7 @@
 - Long LAMMPS MD runs can write periodic/final restart checkpoints and continue from a saved restart state.
 - LAMMPS trajectory and thermodynamic output cadence can be reduced for long runs while preserving the exact final frame.
 - `mdsolve` supports native LAMMPS EAM/alloy, EAM/fs, Tersoff, and Stillinger-Weber potential files in addition to OpenKIM.
+- LAMMPS MD can run a separate equilibration segment before production analyses.
 
 - `mlsolve` adds bulk phonon bands, DOS and imaginary-mode diagnostics with ML potentials.
 
