@@ -100,6 +100,9 @@ Restart_read = ''
 Trajectory_interval = 1
 Thermo_interval = 1
 
+# Optional equilibration before production MD
+Equilibration_steps = 0
+
 # Molecular dynamics loop configuration
 MD_cycles = 25
 MD_steps_per_cycle = 10
@@ -443,6 +446,7 @@ def _write_lammps_input(
     restart_read,
     trajectory_interval,
     thermo_interval,
+    equilibration_steps,
     random_seed,
     md_cycles,
     md_steps_per_cycle,
@@ -624,6 +628,142 @@ def _write_lammps_input(
                     f'{initial_temperature:.8f} {int(random_seed)} '
                     'mom yes rot yes dist gaussian'
                 ),
+                '',
+            ]
+        )
+
+    equilibration_steps = int(
+        equilibration_steps
+    )
+
+    if equilibration_steps < 0:
+        raise ValueError(
+            'Equilibration_steps cannot be negative.'
+        )
+
+    if equilibration_steps > 0:
+        equil_timestep_fs = float(
+            timestep_profile[0]
+        )
+
+        if equil_timestep_fs <= 0.0:
+            raise ValueError(
+                'Time_step must be greater than zero.'
+            )
+
+        equil_timestep_ps = (
+            equil_timestep_fs / 1000.0
+        )
+
+        lines.extend(
+            [
+                '# Equilibration',
+                f'timestep {equil_timestep_ps:.10f}',
+            ]
+        )
+
+        if ensemble == 'NVT':
+            equil_temperature = float(
+                temperature_profile[0]
+            )
+            equil_damp_fs = float(
+                temperature_damp_profile[0]
+            )
+
+            if equil_damp_fs <= 0.0:
+                raise ValueError(
+                    'Temperature_damp must be greater '
+                    'than zero.'
+                )
+
+            equil_damp_ps = (
+                equil_damp_fs / 1000.0
+            )
+            equil_seed = int(random_seed) + 7919
+
+            lines.extend(
+                [
+                    'fix nw_equil_integrator all nve',
+                    (
+                        f'fix nw_equil_thermostat all langevin '
+                        f'{equil_temperature:.8f} '
+                        f'{equil_temperature:.8f} '
+                        f'{equil_damp_ps:.10f} '
+                        f'{equil_seed} zero yes'
+                    ),
+                    f'run {equilibration_steps}',
+                    'unfix nw_equil_thermostat',
+                    'unfix nw_equil_integrator',
+                    '',
+                ]
+            )
+
+        elif ensemble == 'NPT':
+            equil_temperature = float(
+                temperature_profile[0]
+            )
+            equil_damp_fs = float(
+                temperature_damp_profile[0]
+            )
+            equil_pressure_gpa = float(
+                pressure_profile[0]
+            )
+            equil_pressure_damp_fs = float(
+                pressure_damp_profile[0]
+            )
+
+            if equil_damp_fs <= 0.0:
+                raise ValueError(
+                    'Temperature_damp must be greater '
+                    'than zero.'
+                )
+
+            if equil_pressure_damp_fs <= 0.0:
+                raise ValueError(
+                    'Pressure_damp must be greater '
+                    'than zero.'
+                )
+
+            equil_damp_ps = (
+                equil_damp_fs / 1000.0
+            )
+            equil_pressure_damp_ps = (
+                equil_pressure_damp_fs / 1000.0
+            )
+            equil_pressure_bar = (
+                equil_pressure_gpa * 10000.0
+            )
+
+            lines.extend(
+                [
+                    (
+                        f'fix nw_equil_barostat all npt '
+                        f'temp {equil_temperature:.8f} '
+                        f'{equil_temperature:.8f} '
+                        f'{equil_damp_ps:.10f} '
+                        f'iso {equil_pressure_bar:.8f} '
+                        f'{equil_pressure_bar:.8f} '
+                        f'{equil_pressure_damp_ps:.10f}'
+                    ),
+                    f'run {equilibration_steps}',
+                    'unfix nw_equil_barostat',
+                    '',
+                ]
+            )
+
+        else:
+            lines.extend(
+                [
+                    'fix nw_equil_integrator all nve',
+                    f'run {equilibration_steps}',
+                    'unfix nw_equil_integrator',
+                    '',
+                ]
+            )
+
+        lines.extend(
+            [
+                'reset_timestep 0',
                 '',
             ]
         )
@@ -2181,6 +2321,7 @@ def _run_md_engine(
     restart_read,
     trajectory_interval,
     thermo_interval,
+    equilibration_steps,
     random_seed,
     md_cycles,
     md_steps_per_cycle,
@@ -2258,6 +2399,7 @@ def _run_md_engine(
             restart_read=restart_read,
             trajectory_interval=trajectory_interval,
             thermo_interval=thermo_interval,
+            equilibration_steps=equilibration_steps,
             random_seed=random_seed,
             md_cycles=md_cycles,
             md_steps_per_cycle=md_steps_per_cycle,
@@ -3142,6 +3284,12 @@ def main():
                 namespace.get(
                     'Thermo_interval',
                     Thermo_interval,
+                )
+            ),
+            equilibration_steps=int(
+                namespace.get(
+                    'Equilibration_steps',
+                    Equilibration_steps,
                 )
             ),
             md_cycles=MD_cycles,
