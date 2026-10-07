@@ -142,3 +142,14 @@ A later run can continue from a saved state using `Restart_read`; see `sampleinp
 ### Output cadence
 
 For long LAMMPS runs, `Trajectory_interval` and `Thermo_interval` can be increased to reduce dump and log size. Nanoworks still writes an exact final snapshot and preserves the final frame in `*-Results.traj`. The checkpoint examples use a reduced output cadence.
+
+
+## Native LAMMPS potentials
+
+OpenKIM remains the default potential source. LAMMPS can also use native EAM/alloy files:
+
+    Engine = 'LAMMPS'
+    Potential_style = 'EAM/alloy'
+    Potential_file = '/path/to/potential.eam.alloy'
+
+Nanoworks maps the elements in the structure to the EAM/alloy `pair_coeff` element list. The potential file itself is not distributed with this example.
