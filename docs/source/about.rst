@@ -8,8 +8,8 @@ calculations.
 
 Rather than replacing established scientific software, Nanoworks coordinates
 it. Scientific Python libraries and external simulation engines—including ASE,
-GPAW, Quantum ESPRESSO, Phonopy, Elastic, OpenKIM, ASAP3, MACE, CHGNet, and
-SevenNet—remain responsible for the underlying calculations.
+GPAW, Quantum ESPRESSO, LAMMPS, Phonopy, Elastic, OpenKIM, ASAP3, MACE,
+CHGNet, and SevenNet—remain responsible for the underlying calculations.
 
 Why Nanoworks Exists
 --------------------
@@ -58,8 +58,9 @@ phonon, and optical workflows are not supported yet.
 Molecular Dynamics
 ~~~~~~~~~~~~~~~~~~
 
-``mdsolve`` provides geometry-optimization and molecular-dynamics workflows
-using classical interatomic potentials through ASAP3 and OpenKIM.
+``mdsolve`` provides molecular-dynamics workflows using OpenKIM interatomic
+potentials through ASAP3 or LAMMPS. ASAP provides NVT Langevin dynamics;
+LAMMPS provides NVT Langevin and NVE dynamics.
 
 Machine-Learned Potentials
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
