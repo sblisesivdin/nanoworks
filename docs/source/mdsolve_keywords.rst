@@ -217,6 +217,16 @@ radial distribution functions (RDF), and velocity autocorrelation functions
 
     Remove center-of-mass drift when evaluating MSD.
 
+.. describe:: MSD_species
+
+    :Type: ``list``
+    :Default: ``[]``
+
+    Optional list of element symbols for element-resolved MSD analysis,
+    for example ``['Li', 'O']``. The selected elements must be present
+    in the structure. Nanoworks writes the combined result to
+    ``*-MSD-Species.csv``.
+
 When enabled, Nanoworks preserves the native LAMMPS MSD output and also writes
 ``*-MSD.csv`` containing the x, y, z and total MSD components in
 Angstrom squared.
