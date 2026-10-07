@@ -2,6 +2,9 @@
 
 ### Development Version
 
+- `mdsolve` adds LAMMPS NVE molecular dynamics while retaining the common NVT Langevin workflow with ASAP3 and LAMMPS.
+- The `mdsolve` examples and documentation are renewed for the ASAP3/LAMMPS backend workflow and ensemble selection.
+
 - `mlsolve` adds bulk phonon bands, DOS and imaginary-mode diagnostics with ML potentials.
 
 - `mlsolve` adds 3D/2D elastic tensors, internal relaxation, GPa/N/m outputs, derived moduli and stability diagnostics.
