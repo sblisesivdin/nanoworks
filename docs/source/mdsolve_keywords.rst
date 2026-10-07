@@ -187,3 +187,35 @@ are initialized and the MD run starts.
 
     :Type: ``int``
     :Default: ``100000``
+
+
+Trajectory Analysis
+-------------------
+
+LAMMPS calculations can optionally compute mean squared displacement (MSD)
+during the MD run.
+
+.. describe:: MSD_calc
+
+    :Type: ``boolean``
+    :Default: ``False``
+
+    Enable LAMMPS mean squared displacement analysis.
+
+.. describe:: MSD_interval
+
+    :Type: ``int``
+    :Default: ``1``
+
+    Number of MD steps between MSD samples.
+
+.. describe:: MSD_remove_com
+
+    :Type: ``boolean``
+    :Default: ``True``
+
+    Remove center-of-mass drift when evaluating MSD.
+
+When enabled, Nanoworks preserves the native LAMMPS MSD output and also writes
+``*-MSD.csv`` containing the x, y, z and total MSD components in
+Angstrom squared.
