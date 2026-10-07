@@ -20,7 +20,7 @@ It acts as a wrapper and orchestrator for several powerful scientific libraries,
 **Core Capabilities:**
 1.  **DFT (via GPAW, Quantum ESPRESSO & ASE):** The `dftsolve` tool provides the complete established workflow through GPAW and a native Quantum ESPRESSO backend. QE supports PBE ground-state, atomic and variable-cell geometry optimization, thermo_pw elasticity, DFT+U, spin-resolved DOS/PDOS, band, projected (fat) band, and pseudo-valence electron-density Cube calculations. Native QE `HSE06`, `HSE03`, and `PBE0` support ground-state, DOS/PDOS, band, projected-band, and density calculations.
 2. **MD (via ASAP3, LAMMPS & OpenKIM):** The `mdsolve` tool provides molecular dynamics calculations using either ASAP3 or LAMMPS with OpenKIM interatomic potentials.
-3.  **ML Potentials (New!):** The `mlsolve` tool enables geometry optimization, static, bulk EOS and 3D/2D elastic calculations using Machine Learning Force Fields (MLFF), including **MACE**, **CHGNet**, and **SevenNet**.
+3.  **ML Potentials (New!):** The `mlsolve` tool enables geometry optimization, static, bulk EOS, 3D/2D elastic and bulk phonon calculations using Machine Learning Force Fields (MLFF), including **MACE**, **CHGNet**, and **SevenNet**.
 
 ## Installation
 
@@ -160,7 +160,7 @@ mdsolve -g <geometry.cif> -i <input.py>
 *   `-i, --input`: Path to the input file overriding default parameters (e.g., potential selection).
 
 ### 3. mlsolve (New!)
-Run geometry optimizations, static, bulk EOS or 3D/2D elastic calculations using Machine Learning Force Fields.
+Run geometry optimizations, static, bulk EOS, 3D/2D elastic or bulk phonon calculations using Machine Learning Force Fields.
 
 **Usage:**
 ```bash
@@ -189,6 +189,12 @@ Set `task = 'elastic'` for stress-strain tensors, internal atomic relaxation and
 mechanical diagnostics. Results use GPa in 3D and vacuum-corrected N/m for the
 2D in-plane tensor. See `nanoworks/examples/Bulk-Cu-ML-Elastic` and the ML
 keyword guide for strain, dimensionality and reference-stress controls.
+
+Set `task = 'phonon'` for harmonic 3D bulk phonon bands and DOS from finite
+displacements. Signed THz frequencies, raw forces, force constants, JSON
+diagnostics and a PNG plot are saved. See `nanoworks/examples/Bulk-Cu-ML-Phonon`
+and the ML keyword guide. Start from a relaxed cell and converge the supercell
+and displacement amplitude; numerical success does not establish stability.
 
 ### 4. nanoworks
 A helper CLI to locate package resources, install examples, and install the

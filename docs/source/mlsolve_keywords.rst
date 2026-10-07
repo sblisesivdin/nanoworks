@@ -22,6 +22,9 @@ not establish convergence. For EOS, ``3`` means at least one sampled atomic
 relaxation did not converge; ``1`` also covers a failed or invalid fit. For elastic
 calculations, ``3`` means an internal relaxation did not converge and ``1`` means
 a calculation error. Elastic exit ``0`` does not assert mechanical stability.
+For phonons, ``3`` means reference forces exceed ``fmax``; relax the structure
+first. Phonon exit ``0`` means numerical completion, including when imaginary
+modes are found, and does not assert dynamical stability.
 
 General Parameters
 ------------------
@@ -42,7 +45,7 @@ General Parameters
 
     :Type: ``str``
     :Default: ``'optimize'``
-    :Options: ``'optimize'``, ``'static'``, ``'eos'``, ``'elastic'``
+    :Options: ``'optimize'``, ``'static'``, ``'eos'``, ``'elastic'``, ``'phonon'``
 
     Defines the type of calculation to perform.
 
@@ -50,6 +53,7 @@ General Parameters
     *   ``'static'``: Performs a single-point energy and force calculation without relaxing the structure.
     *   ``'eos'``: Samples bulk E(V) and fits equilibrium volume and bulk modulus.
     *   ``'elastic'``: Fits stress-strain elastic tensors using a stress-capable MLIP.
+    *   ``'phonon'``: Computes harmonic bulk phonon bands and DOS from MLIP forces.
 
 .. describe:: device
 
@@ -316,6 +320,104 @@ For example::
     optimizer = 'LBFGS'
     fmax = 0.005
     steps = 300
+
+Phonon Parameters
+-----------------
+
+Harmonic phonons use ASE central finite differences of MLIP forces for all
+atoms (six displacements per input-cell atom plus an equilibrium supercell).
+Start from an unconstrained, relaxed, fully periodic **3D bulk** structure.
+No relaxation is performed inside this task. The input geometry is preserved.
+``fmax`` is the maximum reference force in eV/Å allowed before displacements;
+``cell_relax``, ``optimizer`` and ``steps`` do not apply. Slabs, molecules and
+2D flexural-mode analysis are outside this workflow's supported scope, even if
+a slab file has three periodic flags. Nonanalytical LO-TO splitting is omitted.
+
+.. describe:: phonon_supercell
+
+    :Type: three positive ``int`` values
+    :Default: ``(3, 3, 3)``
+
+    Input-cell repetitions for the force calculations. Converge each direction
+    against the interaction range and phonon frequencies.
+
+.. describe:: phonon_delta
+
+    :Type: ``float``
+    :Default: ``0.01``
+    :Unit: Å
+
+    Positive and negative displacement amplitude, greater than zero and at most
+    ``0.1``. Converge this against force noise and anharmonic contamination.
+
+.. describe:: phonon_path
+
+    :Type: ``str`` or ``None``
+    :Default: ``None``
+
+    ASE reciprocal-space path string, for example ``'GX'`` if those special
+    points exist for the cell. ``None`` selects ASE's standard cell path.
+    Labels and special-point coordinates are recorded in JSON. A conventional
+    input cell gives folded bands; it is not converted to a primitive cell.
+
+.. describe:: phonon_npoints
+
+    :Type: ``int``
+    :Default: ``100``
+
+    Requested path interpolation count, at least two. ASE may include additional
+    points to preserve all path endpoints; the actual count is recorded.
+
+.. describe:: phonon_mesh
+
+    :Type: three positive ``int`` values
+    :Default: ``(8, 8, 8)``
+
+    Monkhorst-Pack q mesh for total DOS and imaginary-mode sampling. Gamma is
+    also checked separately, including when the mesh does not contain it.
+
+.. describe:: phonon_dos_bins
+
+    :Type: ``int``
+    :Default: ``200``
+
+    Histogram bins, at least two. DOS integrates to ``3 * natoms`` modes per
+    input cell over the saved bin edges. Negative-frequency bins retain imaginary
+    modes as signed diagnostics; they are not real vibrational energies.
+
+.. describe:: phonon_acoustic
+
+    :Type: ``bool``
+    :Default: ``True``
+
+    Apply ASE's acoustic sum rule with three force-constant symmetrization
+    iterations. Forces use ASE's ``standard`` central-difference method.
+    Newer ASE versions use mean minimum-image phases when supported; the JSON
+    records whether this option was available and enabled.
+
+.. describe:: phonon_imaginary_tolerance
+
+    :Type: ``float``
+    :Default: ``0.1``
+    :Unit: THz
+
+    Nonnegative reporting threshold. Signed frequencies below minus this value
+    count as imaginary modes. It does not clip or modify saved frequencies.
+    Absence of such modes on a finite path and mesh does not prove stability
+    everywhere in the Brillouin zone.
+
+Files use the prefix ``<structure>-ML-PHONON`` in the directory containing
+``out_file``: ``-Bands.dat`` (path distance in reciprocal Å, fractional q and
+signed branch frequencies in THz), ``-Mesh.dat`` (fractional q and signed THz
+branches), ``-DOS.dat`` (THz centers, modes/cell/THz and bin edges),
+``-ForceConstants.npz`` (force constants in eV/Å², array layout, reference cell,
+positions, masses and repetitions), ``-Reference.traj``, ``-Result.json`` and
+``-Graph.png``. The JSON includes Gamma frequencies, sampled imaginary-mode
+counts, settings and status. Every invocation keeps a unique ``-Forces-*``
+directory of ASE raw force-cache files, including after failure. Old caches
+are retained for inspection and never reused automatically. Derived outputs
+from a previous run are removed when a new run starts; available partial new
+outputs on failure are identified by the failed JSON status.
 
 Output Control
 --------------

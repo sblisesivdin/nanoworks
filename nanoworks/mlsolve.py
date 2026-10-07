@@ -76,6 +76,14 @@ class MLConfig:
     elastic_dimensionality: str = 'auto'
     elastic_normal_axis: str = 'z'
     elastic_reference_stress_tolerance: float = 0.1
+    phonon_supercell: Any = (3, 3, 3)
+    phonon_delta: float = 0.01
+    phonon_path: Optional[str] = None
+    phonon_npoints: int = 100
+    phonon_mesh: Any = (8, 8, 8)
+    phonon_dos_bins: int = 200
+    phonon_acoustic: bool = True
+    phonon_imaginary_tolerance: float = 0.1
     fmax: float = 0.05
     steps: int = 200
     cell_relax: bool = True
@@ -251,8 +259,14 @@ def main():
     # Load struct and config
     struct, config = config_from_file(inputfile=args.input, geometryfile=args.geometry)
 
-    if config.task not in ('static', 'optimize', 'eos', 'elastic'):
-        parser.error(f"Unknown task {config.task!r}. Choose static, optimize, eos, or elastic.")
+    if config.task not in ('static', 'optimize', 'eos', 'elastic', 'phonon'):
+        parser.error(f"Unknown task {config.task!r}. Choose static, optimize, eos, elastic, or phonon.")
+    if config.task == 'phonon':
+        from nanoworks.ml_phonon import run_phonon, validate_phonon
+        try:
+            validate_phonon(config.bulk_configuration, config)
+        except (ValueError, TypeError, KeyError) as exc:
+            parser.error(str(exc))
     if config.task == 'elastic':
         from nanoworks.ml_elastic import run_elastic, validate_elastic
         try:
@@ -303,7 +317,9 @@ def main():
 
     # 6. Execute task
     exit_code = 0
-    if config.task == 'elastic':
+    if config.task == 'phonon':
+        exit_code = run_phonon(atoms, config, struct)
+    elif config.task == 'elastic':
         exit_code = run_elastic(atoms, config, struct, optimizer_class)
     elif config.task == 'eos':
         exit_code = run_eos(atoms, config, struct, optimizer_class)

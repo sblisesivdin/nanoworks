@@ -313,7 +313,7 @@ Perform quick geometric optimizations or MD runs using classical potentials via 
 mlsolve (New!)
 -----------------
 
-Run geometry optimizations, static, bulk EOS or 3D/2D elastic calculations using Machine Learning Force Fields.
+Run geometry optimizations, static, bulk EOS, 3D/2D elastic or bulk phonon calculations using Machine Learning Force Fields.
 
 .. code-block:: console
 
@@ -343,6 +343,12 @@ structures, JSON metadata and a PNG graph. See :ref:`mlsolve_keywords` and the
 Set ``task = 'elastic'`` for a stress-strain tensor and mechanical diagnostics,
 with optional fixed-cell internal relaxation. 3D results use GPa; 2D in-plane
 results use N/m. See :ref:`mlsolve_keywords` and ``Bulk-Cu-ML-Elastic``.
+
+Set ``task = 'phonon'`` for harmonic 3D bulk phonon bands and DOS from MLIP
+finite-displacement forces. Signed THz frequencies, raw force caches, force
+constants, JSON diagnostics and a PNG plot are retained. Start from a relaxed
+cell; converge supercell size, displacement amplitude and q sampling. See
+:ref:`mlsolve_keywords` and ``Bulk-Cu-ML-Phonon``.
 
 nanoworks
 ------------
