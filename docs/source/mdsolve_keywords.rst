@@ -102,7 +102,7 @@ Parameter Sweeps
 ``Temperature_damp_values`` can be used to perform independent
 calculations for all combinations of the listed values. For NVE,
 ``Temperature_values`` changes the initial velocity temperature and
-``Temperature_damp_values`` is not used.
+``Temperature_damp_values`` and thermostat profiles are rejected because they do not apply to NVE.
 
 Structure Parameters
 --------------------
