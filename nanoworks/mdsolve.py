@@ -68,6 +68,11 @@ Minimize_force_tolerance = 1.0e-6 # eV/Angstrom
 Minimize_max_iterations = 10000
 Minimize_max_evaluations = 100000
 
+# Optional LAMMPS trajectory analysis
+MSD_calc = False
+MSD_interval = 1
+MSD_remove_com = True
+
 # Molecular dynamics loop configuration
 MD_cycles = 25
 MD_steps_per_cycle = 10
@@ -347,6 +352,9 @@ def _write_lammps_input(
     minimize_force_tolerance,
     minimize_max_iterations,
     minimize_max_evaluations,
+    msd_calc,
+    msd_interval,
+    msd_remove_com,
     random_seed,
     md_cycles,
     md_steps_per_cycle,
@@ -355,6 +363,7 @@ def _write_lammps_input(
 
     input_file = struct_prefix + '-LAMMPS.in'
     dump_file = struct_prefix + '-LAMMPS.dump'
+    msd_file = struct_prefix + '-LAMMPS-MSD.dat'
 
     species_string = ' '.join(species)
     
@@ -439,6 +448,37 @@ def _write_lammps_input(
             'mom yes rot yes dist gaussian'
         ),
         '',
+        ]
+    )
+
+    if msd_calc:
+        if int(msd_interval) <= 0:
+            raise ValueError(
+                'MSD_interval must be a positive integer.'
+            )
+
+        com_option = 'yes' if msd_remove_com else 'no'
+
+        lines.extend(
+            [
+                (
+                    f'compute nw_msd all msd '
+                    f'com {com_option}'
+                ),
+                (
+                    f'fix nw_msd_output all ave/time '
+                    f'{int(msd_interval)} 1 '
+                    f'{int(msd_interval)} '
+                    f'c_nw_msd[1] c_nw_msd[2] '
+                    f'c_nw_msd[3] c_nw_msd[4] '
+                    f'file "{msd_file}" mode scalar'
+                ),
+                '',
+            ]
+        )
+
+    lines.extend(
+        [
         (
             f'dump nw_dump all custom 1 "{dump_file}" '
             'id type x y z vx vy vz'
@@ -573,6 +613,14 @@ def _write_lammps_input(
     if ensemble in ('NVT', 'NVE'):
         lines.append('unfix nw_integrator')
 
+    if msd_calc:
+        lines.extend(
+            [
+                'unfix nw_msd_output',
+                'uncompute nw_msd',
+            ]
+        )
+
     lines.extend(
         [
             'undump nw_dump',
@@ -686,6 +734,67 @@ def _write_lammps_trajectory(
     )
 
     return trajectory_file
+
+def _write_lammps_msd_csv(struct_prefix):
+    """Convert LAMMPS MSD output to a Nanoworks CSV file."""
+
+    source_file = struct_prefix + '-LAMMPS-MSD.dat'
+    csv_file = struct_prefix + '-MSD.csv'
+
+    if not os.path.isfile(source_file):
+        raise FileNotFoundError(
+            f'LAMMPS MSD output was not found: {source_file}'
+        )
+
+    records = []
+
+    with open(source_file, 'r') as fd:
+        for line in fd:
+            stripped = line.strip()
+
+            if not stripped or stripped.startswith('#'):
+                continue
+
+            fields = stripped.split()
+
+            if len(fields) < 5:
+                continue
+
+            try:
+                step = int(float(fields[0]))
+                msd_x = float(fields[1])
+                msd_y = float(fields[2])
+                msd_z = float(fields[3])
+                msd_total = float(fields[4])
+            except ValueError:
+                continue
+
+            records.append(
+                (
+                    step,
+                    msd_x,
+                    msd_y,
+                    msd_z,
+                    msd_total,
+                )
+            )
+
+    with open(csv_file, 'w') as fd:
+        fd.write(
+            'Step,MSD_X(A^2),MSD_Y(A^2),'
+            'MSD_Z(A^2),MSD_Total(A^2)\n'
+        )
+
+        for record in records:
+            fd.write(
+                f'{record[0]},'
+                f'{record[1]:.10g},'
+                f'{record[2]:.10g},'
+                f'{record[3]:.10g},'
+                f'{record[4]:.10g}\n'
+            )
+
+    return csv_file
 
 def _parse_lammps_thermo(
     log_file,
@@ -952,6 +1061,9 @@ def _run_md_engine(
     minimize_force_tolerance,
     minimize_max_iterations,
     minimize_max_evaluations,
+    msd_calc,
+    msd_interval,
+    msd_remove_com,
     random_seed,
     md_cycles,
     md_steps_per_cycle,
@@ -993,6 +1105,9 @@ def _run_md_engine(
             minimize_force_tolerance=minimize_force_tolerance,
             minimize_max_iterations=minimize_max_iterations,
             minimize_max_evaluations=minimize_max_evaluations,
+            msd_calc=msd_calc,
+            msd_interval=msd_interval,
+            msd_remove_com=msd_remove_com,
             random_seed=random_seed,
             md_cycles=md_cycles,
             md_steps_per_cycle=md_steps_per_cycle,
@@ -1023,6 +1138,14 @@ def _run_md_engine(
             f'LAMMPS trajectory file written: '
             f'{trajectory_file}'
         )
+
+        if msd_calc:
+            msd_csv = _write_lammps_msd_csv(
+                struct_prefix=struct_prefix,
+            )
+            print(
+                f'LAMMPS MSD file written: {msd_csv}'
+            )
 
         energy_records = _parse_lammps_thermo(
             log_file=log_file,
@@ -1152,12 +1275,19 @@ def main():
         print(str(exc))
         sys.exit(1)
 
-    if Engine != 'LAMMPS' and bool(
-        namespace.get('Minimize', Minimize)
-    ):
+    lammps_only_features = []
+
+    if bool(namespace.get('Minimize', Minimize)):
+        lammps_only_features.append('Minimize')
+
+    if bool(namespace.get('MSD_calc', MSD_calc)):
+        lammps_only_features.append('MSD_calc')
+
+    if Engine != 'LAMMPS' and lammps_only_features:
         print(
-            'Pre-MD minimization is currently supported '
-            'only by LAMMPS.'
+            'These settings are currently supported only '
+            'by LAMMPS: '
+            + ', '.join(lammps_only_features)
         )
         sys.exit(1)
 
@@ -1480,6 +1610,21 @@ def main():
                 namespace.get(
                     'Minimize_max_evaluations',
                     Minimize_max_evaluations,
+                )
+            ),
+            msd_calc=bool(
+                namespace.get('MSD_calc', MSD_calc)
+            ),
+            msd_interval=int(
+                namespace.get(
+                    'MSD_interval',
+                    MSD_interval,
+                )
+            ),
+            msd_remove_com=bool(
+                namespace.get(
+                    'MSD_remove_com',
+                    MSD_remove_com,
                 )
             ),
             md_cycles=MD_cycles,
