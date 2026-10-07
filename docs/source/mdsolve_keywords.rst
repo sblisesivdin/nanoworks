@@ -266,3 +266,38 @@ When enabled, Nanoworks preserves the native LAMMPS VACF output and writes
 ``*-VACF.csv`` with the x, y, z and total VACF components. With LAMMPS
 metal units, the VACF values have units of Angstrom squared per picosecond
 squared.
+
+
+Diffusion Analysis
+------------------
+
+Nanoworks can estimate a diffusion coefficient from the linear region of the
+total MSD curve using the Einstein relation.
+
+.. describe:: Diffusion_calc
+
+    :Type: ``boolean``
+    :Default: ``False``
+
+    Estimate the diffusion coefficient from MSD. Requires
+    ``MSD_calc = True``.
+
+.. describe:: Diffusion_start_fraction
+
+    :Type: ``float``
+    :Default: ``0.5``
+
+    Fraction of the MSD samples to skip before fitting. The default fits the
+    final half of the sampled trajectory.
+
+.. describe:: Diffusion_dimensions
+
+    :Type: ``int``
+    :Default: ``3``
+
+    Diffusion dimensionality used in ``D = slope / (2 d)``. Supported
+    values are 1, 2, and 3.
+
+The result is written to ``*-Diffusion.csv`` with the fitted slope,
+diffusion coefficient in Angstrom squared per picosecond and square
+centimeters per second, and the linear-fit R-squared value.
