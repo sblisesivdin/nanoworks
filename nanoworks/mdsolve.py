@@ -1187,7 +1187,7 @@ def main():
         )
     ]
 
-    if Ensemble == 'NVT':
+    if Ensemble in ('NVT', 'NPT'):
         temperature_damp_options = [
             float(v)
             for v in _get_run_values(
@@ -1199,11 +1199,34 @@ def main():
     else:
         temperature_damp_options = [None]
 
+    if Ensemble == 'NPT':
+        pressure_options = [
+            float(v)
+            for v in _get_run_values(
+                'Pressure',
+                Pressure,
+                namespace,
+            )
+        ]
+        pressure_damp_options = [
+            float(v)
+            for v in _get_run_values(
+                'Pressure_damp',
+                Pressure_damp,
+                namespace,
+            )
+        ]
+    else:
+        pressure_options = [None]
+        pressure_damp_options = [None]
+
     combinations = list(
         product(
             temperature_options,
             timestep_options,
             temperature_damp_options,
+            pressure_options,
+            pressure_damp_options,
         )
     )
 
@@ -1211,6 +1234,8 @@ def main():
         'T': len(set(temperature_options)),
         'dt': len(set(timestep_options)),
         'Tdamp': len(set(temperature_damp_options)),
+        'P': len(set(pressure_options)),
+        'Pdamp': len(set(pressure_damp_options)),
     }
 
     original_temperature = namespace.get(
@@ -1228,10 +1253,22 @@ def main():
         Temperature_damp,
     )
 
+    original_pressure = namespace.get(
+        'Pressure',
+        Pressure,
+    )
+
+    original_pressure_damp = namespace.get(
+        'Pressure_damp',
+        Pressure_damp,
+    )
+
     for combo_index, (
         temperature_value,
         timestep_value,
         temperature_damp_value,
+        pressure_value,
+        pressure_damp_value,
     ) in enumerate(combinations, 1):
         asestruct = initial_structure.copy()
         if Manual_PBC:
@@ -1250,14 +1287,33 @@ def main():
                         temperature_damp_value,
                     )
                 )
+            if varying_lengths['P'] > 1:
+                suffix_parts.append(
+                    _format_suffix(
+                        'P',
+                        pressure_value,
+                    )
+                )
+            if varying_lengths['Pdamp'] > 1:
+                suffix_parts.append(
+                    _format_suffix(
+                        'Pdamp',
+                        pressure_damp_value,
+                    )
+                )
         run_struct = struct_base if not suffix_parts else struct_base + '_' + '_'.join(suffix_parts)
         struct_prefix = run_struct
 
         namespace['Temperature'] = temperature_value
         namespace['Time_step'] = timestep_value
-        if Ensemble == 'NVT':
+        if Ensemble in ('NVT', 'NPT'):
             namespace['Temperature_damp'] = (
                 temperature_damp_value
+            )
+        if Ensemble == 'NPT':
+            namespace['Pressure'] = pressure_value
+            namespace['Pressure_damp'] = (
+                pressure_damp_value
             )
 
         temperature_profile = _build_profile(
@@ -1274,7 +1330,7 @@ def main():
             namespace,
         )
 
-        if Ensemble == 'NVT':
+        if Ensemble in ('NVT', 'NPT'):
             temperature_damp_profile = _build_profile(
                 'Temperature_damp',
                 temperature_damp_value,
@@ -1284,6 +1340,23 @@ def main():
         else:
             temperature_damp_profile = None
 
+        if Ensemble == 'NPT':
+            pressure_profile = _build_profile(
+                'Pressure',
+                pressure_value,
+                MD_cycles,
+                namespace,
+            )
+            pressure_damp_profile = _build_profile(
+                'Pressure_damp',
+                pressure_damp_value,
+                MD_cycles,
+                namespace,
+            )
+        else:
+            pressure_profile = None
+            pressure_damp_profile = None
+
         if len(combinations) > 1:
             print("")
             message = (
@@ -1291,9 +1364,14 @@ def main():
                 f"T={temperature_value} K, "
                 f"dt={timestep_value} fs"
             )
-            if Ensemble == 'NVT':
+            if Ensemble in ('NVT', 'NPT'):
                 message += (
                     f", T-damp={temperature_damp_value} fs"
+                )
+            if Ensemble == 'NPT':
+                message += (
+                    f", P={pressure_value} GPa, "
+                    f"P-damp={pressure_damp_value} fs"
                 )
             print(message)
 
@@ -1306,6 +1384,8 @@ def main():
             temperature_profile=temperature_profile,
             timestep_profile=timestep_profile,
             temperature_damp_profile=temperature_damp_profile,
+            pressure_profile=pressure_profile,
+            pressure_damp_profile=pressure_damp_profile,
             md_cycles=MD_cycles,
             random_seed=Random_seed,
             md_steps_per_cycle=MD_steps_per_cycle,
@@ -1345,6 +1425,8 @@ def main():
     namespace['Temperature'] = original_temperature
     namespace['Time_step'] = original_timestep
     namespace['Temperature_damp'] = original_temperature_damp
+    namespace['Pressure'] = original_pressure
+    namespace['Pressure_damp'] = original_pressure_damp
 
 if __name__ == "__main__":
     main()
