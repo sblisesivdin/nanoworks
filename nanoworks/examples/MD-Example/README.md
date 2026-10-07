@@ -59,3 +59,10 @@ A compact LAMMPS NVE example is provided in `sampleinput_nve.py`:
 A compact 3D LAMMPS NPT example is provided in `sampleinput_npt.py`:
 
     mdsolve -i sampleinput_npt.py -g argon_fcc_4x4x4.cif
+
+
+## Pre-MD minimization
+
+LAMMPS can minimize the structure before velocities are initialized and MD starts. See `sampleinput_minimize.py`:
+
+    mdsolve -i sampleinput_minimize.py -g argon_fcc_4x4x4.cif
