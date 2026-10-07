@@ -75,3 +75,12 @@ LAMMPS can compute mean squared displacement during the MD run. See `sampleinput
     mdsolve -i sampleinput_msd.py -g argon_fcc_4x4x4.cif
 
 The analysis writes both the native LAMMPS MSD data file and a Nanoworks `*-MSD.csv` file.
+
+
+## RDF analysis
+
+LAMMPS can compute a total radial distribution function during the MD run. See `sampleinput_rdf.py`:
+
+    mdsolve -i sampleinput_rdf.py -g argon_fcc_4x4x4.cif
+
+The workflow writes both the native LAMMPS RDF data and a Nanoworks `*-RDF.csv` file.
