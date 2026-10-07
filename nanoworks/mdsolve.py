@@ -88,6 +88,11 @@ VACF_interval = 1
 VACF_diffusion_calc = False
 VACF_diffusion_dimensions = 3
 
+# Optional LAMMPS restart/checkpoint output
+Restart_write = False
+Restart_interval = 1000
+Restart_final = True
+
 # Molecular dynamics loop configuration
 MD_cycles = 25
 MD_steps_per_cycle = 10
@@ -382,6 +387,9 @@ def _write_lammps_input(
     vacf_interval,
     vacf_diffusion_calc,
     vacf_diffusion_dimensions,
+    restart_write,
+    restart_interval,
+    restart_final,
     random_seed,
     md_cycles,
     md_steps_per_cycle,
@@ -393,6 +401,12 @@ def _write_lammps_input(
     msd_file = struct_prefix + '-LAMMPS-MSD.dat'
     rdf_file = struct_prefix + '-LAMMPS-RDF.dat'
     vacf_file = struct_prefix + '-LAMMPS-VACF.dat'
+    restart_pattern = (
+        struct_prefix + '-LAMMPS.restart.*'
+    )
+    final_restart_file = (
+        struct_prefix + '-LAMMPS-Final.restart'
+    )
 
     species_string = ' '.join(species)
     
@@ -660,6 +674,22 @@ def _write_lammps_input(
             ]
         )
 
+    if restart_write:
+        if int(restart_interval) <= 0:
+            raise ValueError(
+                'Restart_interval must be a positive integer.'
+            )
+
+        lines.extend(
+            [
+                (
+                    f'restart {int(restart_interval)} '
+                    f'"{restart_pattern}"'
+                ),
+                '',
+            ]
+        )
+
     lines.extend(
         [
         (
@@ -831,6 +861,25 @@ def _write_lammps_input(
             [
                 'unfix nw_vacf_output',
                 'uncompute nw_vacf',
+            ]
+        )
+
+    if restart_final:
+        lines.extend(
+            [
+                (
+                    f'write_restart '
+                    f'"{final_restart_file}"'
+                ),
+                '',
+            ]
+        )
+
+    if restart_write:
+        lines.extend(
+            [
+                'restart 0',
+                '',
             ]
         )
 
@@ -1928,6 +1977,9 @@ def _run_md_engine(
     vacf_interval,
     vacf_diffusion_calc,
     vacf_diffusion_dimensions,
+    restart_write,
+    restart_interval,
+    restart_final,
     random_seed,
     md_cycles,
     md_steps_per_cycle,
@@ -1982,6 +2034,11 @@ def _run_md_engine(
             rdf_pairs=rdf_pairs,
             vacf_calc=vacf_calc,
             vacf_interval=vacf_interval,
+            vacf_diffusion_calc=vacf_diffusion_calc,
+            vacf_diffusion_dimensions=vacf_diffusion_dimensions,
+            restart_write=restart_write,
+            restart_interval=restart_interval,
+            restart_final=restart_final,
             random_seed=random_seed,
             md_cycles=md_cycles,
             md_steps_per_cycle=md_steps_per_cycle,
@@ -2725,6 +2782,24 @@ def main():
                 namespace.get(
                     'VACF_diffusion_dimensions',
                     VACF_diffusion_dimensions,
+                )
+            ),
+            restart_write=bool(
+                namespace.get(
+                    'Restart_write',
+                    Restart_write,
+                )
+            ),
+            restart_interval=int(
+                namespace.get(
+                    'Restart_interval',
+                    Restart_interval,
+                )
+            ),
+            restart_final=bool(
+                namespace.get(
+                    'Restart_final',
+                    Restart_final,
                 )
             ),
             md_cycles=MD_cycles,
