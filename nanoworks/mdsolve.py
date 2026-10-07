@@ -91,7 +91,7 @@ VACF_diffusion_dimensions = 3
 # Optional LAMMPS restart/checkpoint output
 Restart_write = False
 Restart_interval = 1000
-Restart_final = True
+Restart_final = False
 Restart_read = ''
 
 # Molecular dynamics loop configuration
@@ -2025,10 +2025,18 @@ def _run_md_engine(
         )
 
     if engine == 'LAMMPS':
-        data_file, species = _write_lammps_data(
-            atoms=atoms,
-            struct_prefix=struct_prefix,
-        )
+        if restart_read:
+            data_file = None
+            species = list(
+                dict.fromkeys(
+                    atoms.get_chemical_symbols()
+                )
+            )
+        else:
+            data_file, species = _write_lammps_data(
+                atoms=atoms,
+                struct_prefix=struct_prefix,
+            )
 
         input_file = _write_lammps_input(
             struct_prefix=struct_prefix,
@@ -2071,7 +2079,16 @@ def _run_md_engine(
             md_steps_per_cycle=md_steps_per_cycle,
         )
 
-        print(f'LAMMPS data file written: {data_file}')
+        if data_file is not None:
+            print(
+                f'LAMMPS data file written: {data_file}'
+            )
+        else:
+            print(
+                'LAMMPS restart file will provide '
+                'the simulation state.'
+            )
+
         print(f'LAMMPS input file written: {input_file}')
 
         log_file = _execute_lammps(
@@ -2352,6 +2369,22 @@ def main():
 
     if bool(namespace.get('VACF_calc', VACF_calc)):
         lammps_only_features.append('VACF_calc')
+
+    if bool(
+        namespace.get(
+            'Restart_write',
+            Restart_write,
+        )
+    ):
+        lammps_only_features.append('Restart_write')
+
+    if str(
+        namespace.get(
+            'Restart_read',
+            Restart_read,
+        )
+    ).strip():
+        lammps_only_features.append('Restart_read')
 
     if bool(
         namespace.get(
