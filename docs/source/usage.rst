@@ -299,7 +299,7 @@ See :doc:`dftconverge` for input keywords, task dependencies, and outputs.
 mdsolve (formerly asapsolve.py)
 ----------------------------------
 
-Perform quick geometric optimizations or MD runs using classical potentials via ASAP3 and OpenKIM.
+Perform molecular dynamics calculations using ASAP3 or LAMMPS with OpenKIM interatomic potentials. ASAP currently provides NVT Langevin dynamics. LAMMPS provides NVT Langevin and NVE dynamics through the same input workflow.
 
 .. code-block:: console
 
