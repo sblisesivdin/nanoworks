@@ -28,6 +28,11 @@ LAMMPS also supports microcanonical NVE dynamics:
     Engine = 'LAMMPS'
     Ensemble = 'NVE'
 
+and 3D isothermal-isobaric NPT dynamics:
+
+    Engine = 'LAMMPS'
+    Ensemble = 'NPT'
+
 The main MD parameters are:
 
     Temperature = 1.0
@@ -37,7 +42,7 @@ The main MD parameters are:
     MD_cycles = 25
     MD_steps_per_cycle = 10
 
-Temperature, time step and temperature damping can also be varied using profiles or value lists for NVT calculations. In NVE calculations, `Temperature` initializes the velocity distribution, while `Temperature_damp` is not used.
+Temperature, time step and temperature damping can also be varied using profiles or value lists for NVT calculations. In NVE calculations, `Temperature` initializes the velocity distribution, while `Temperature_damp` is not used. NPT additionally uses `Pressure` in GPa and `Pressure_damp` in fs, and currently requires periodic boundaries in all three directions.
 
 Both ASAP and LAMMPS workflows produce the common Nanoworks energy table, ASE trajectory, final CIF structure and reconstructed Atoms file. LAMMPS calculations also retain the generated LAMMPS input, data, dump and log files.
 
@@ -47,3 +52,10 @@ Both ASAP and LAMMPS workflows produce the common Nanoworks energy table, ASE tr
 A compact LAMMPS NVE example is provided in `sampleinput_nve.py`:
 
     mdsolve -i sampleinput_nve.py -g argon_fcc_4x4x4.cif
+
+
+## NPT run
+
+A compact 3D LAMMPS NPT example is provided in `sampleinput_npt.py`:
+
+    mdsolve -i sampleinput_npt.py -g argon_fcc_4x4x4.cif
