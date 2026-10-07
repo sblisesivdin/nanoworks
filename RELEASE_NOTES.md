@@ -12,6 +12,7 @@
 - Species-resolved diffusion coefficients can be obtained from the selected MSD groups.
 - Pair-resolved RDF is supported for selected element pairs.
 - Green-Kubo diffusion coefficients can be estimated from VACF integration.
+- Long LAMMPS MD runs can write periodic/final restart checkpoints and continue from a saved restart state.
 
 - `mlsolve` adds bulk phonon bands, DOS and imaginary-mode diagnostics with ML potentials.
 
