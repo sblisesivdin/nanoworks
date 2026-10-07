@@ -31,7 +31,7 @@ settings explicit and reusable.
      <article class="nw-card">
        <span class="nw-command">mdsolve</span>
        <h3>Molecular Dynamics with ASAP3 and LAMMPS</h3>
-       <p>Run NVT Langevin dynamics with ASAP3 or LAMMPS, and NVE dynamics with LAMMPS, using OpenKIM interatomic potentials.</p>
+       <p>Run NVT Langevin dynamics with ASAP3 or LAMMPS, plus NVE and fully periodic 3D NPT dynamics with LAMMPS, using OpenKIM interatomic potentials.</p>
        <a href="usage.html#mdsolve-formerly-asapsolve-py">Explore MD workflows →</a>
      </article>
      <article class="nw-card">
