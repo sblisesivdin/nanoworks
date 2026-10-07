@@ -31,6 +31,15 @@ Ensemble
     ``Temperature_damp`` is not used. NPT currently uses isotropic pressure
     coupling for fully periodic 3D cells.
 
+.. describe:: Thermostat
+
+    :Type: ``str``
+    :Default: ``'Langevin'``
+
+    Thermostat used by NVT dynamics. LAMMPS supports ``'Langevin'`` and
+    ``'Nose-Hoover'``. ASAP currently supports only Langevin NVT.
+    ``Temperature_damp`` is used as the damping time by either thermostat.
+
 OpenKIM Potential
 -----------------
 
