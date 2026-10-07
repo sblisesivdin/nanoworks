@@ -275,13 +275,20 @@ def _resolve_potential_style(namespace, engine):
         'KIM': 'OPENKIM',
         'EAM/ALLOY': 'EAM/ALLOY',
         'EAM_ALLOY': 'EAM/ALLOY',
+        'EAM/FS': 'EAM/FS',
+        'EAM_FS': 'EAM/FS',
+        'TERSOFF': 'TERSOFF',
+        'SW': 'SW',
+        'STILLINGER-WEBER': 'SW',
+        'STILLINGER_WEBER': 'SW',
     }
 
     if style not in aliases:
         raise ValueError(
             'Unsupported Potential_style: '
             f'{style}. Supported styles: '
-            'OpenKIM, EAM/alloy'
+            'OpenKIM, EAM/alloy, EAM/fs, '
+            'Tersoff, SW'
         )
 
     resolved = aliases[style]
@@ -521,7 +528,12 @@ def _write_lammps_input(
                 ]
             )
 
-    elif potential_style == 'EAM/ALLOY':
+    elif potential_style in (
+        'EAM/ALLOY',
+        'EAM/FS',
+        'TERSOFF',
+        'SW',
+    ):
         if restart_read:
             lines.extend(
                 [
@@ -543,9 +555,20 @@ def _write_lammps_input(
                 ]
             )
 
+        pair_styles = {
+            'EAM/ALLOY': 'eam/alloy',
+            'EAM/FS': 'eam/fs',
+            'TERSOFF': 'tersoff',
+            'SW': 'sw',
+        }
+
+        pair_style = pair_styles[
+            potential_style
+        ]
+
         lines.extend(
             [
-                'pair_style eam/alloy',
+                f'pair_style {pair_style}',
                 (
                     f'pair_coeff * * "{potential_file}" '
                     f'{species_string}'
@@ -2655,11 +2678,11 @@ def main():
         )
     ).strip()
 
-    if Potential_style == 'EAM/ALLOY':
+    if Potential_style != 'OPENKIM':
         if not Potential_file:
             print(
                 'Potential_file is required for '
-                'Potential_style = EAM/alloy.'
+                f'Potential_style = {Potential_style}.'
             )
             sys.exit(1)
 
