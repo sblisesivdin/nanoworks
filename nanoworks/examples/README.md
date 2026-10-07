@@ -29,7 +29,7 @@ There are some example calculations given with different usage scenarios. Please
 
 | Name              | Notes  | 
 | ----------------- | ------ |
-|MD-Example         | Molecular dynamics example using ASAP3 NVT or LAMMPS NVT/NVE with an OpenKIM potential. |
+|MD-Example         | Molecular dynamics example using ASAP3 NVT or LAMMPS NVT/NVE/NPT with an OpenKIM potential. |
 
 ## mlsolve.py Example List
 
