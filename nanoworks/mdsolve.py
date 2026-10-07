@@ -1028,9 +1028,12 @@ def _write_lammps_trajectory(
     struct_prefix,
     species,
 ):
-    """Convert the LAMMPS dump trajectory to ASE trajectory format."""
+    """Convert LAMMPS dump frames to ASE trajectory format."""
 
     dump_file = struct_prefix + '-LAMMPS.dump'
+    final_dump_file = (
+        struct_prefix + '-LAMMPS-Final.dump'
+    )
     trajectory_file = struct_prefix + '-Results.traj'
 
     frames = read(
@@ -1039,6 +1042,48 @@ def _write_lammps_trajectory(
         format='lammps-dump-text',
         specorder=species,
     )
+
+    if not isinstance(frames, list):
+        frames = [frames]
+
+    final_atoms = read(
+        final_dump_file,
+        index=-1,
+        format='lammps-dump-text',
+        specorder=species,
+    )
+
+    append_final = True
+
+    if frames:
+        last_atoms = frames[-1]
+
+        same_positions = (
+            len(last_atoms) == len(final_atoms)
+            and (
+                abs(
+                    last_atoms.get_positions()
+                    - final_atoms.get_positions()
+                ).max()
+                < 1.0e-10
+            )
+        )
+
+        same_cell = (
+            abs(
+                last_atoms.get_cell().array
+                - final_atoms.get_cell().array
+            ).max()
+            < 1.0e-10
+        )
+
+        append_final = not (
+            same_positions
+            and same_cell
+        )
+
+    if append_final:
+        frames.append(final_atoms)
 
     write(
         trajectory_file,
