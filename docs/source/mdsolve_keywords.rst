@@ -350,3 +350,53 @@ VACF with the Green-Kubo relation.
 
 The result is written to ``*-Diffusion-VACF.csv`` together with the
 directional VACF integrals and the total diffusion estimate.
+
+
+Restart and Checkpointing
+-------------------------
+
+LAMMPS calculations can write binary restart files for long-running MD jobs
+and can continue from a previously written restart state.
+
+.. describe:: Restart_write
+
+    :Type: ``boolean``
+    :Default: ``False``
+
+    Write periodic LAMMPS restart checkpoints during the MD run.
+
+.. describe:: Restart_interval
+
+    :Type: ``int``
+    :Default: ``1000``
+    :Unit: MD steps
+
+    Number of MD steps between periodic restart checkpoints.
+
+.. describe:: Restart_final
+
+    :Type: ``boolean``
+    :Default: ``False``
+
+    Write one final binary restart file after the MD run.
+
+.. describe:: Restart_read
+
+    :Type: ``str``
+    :Default: ``''``
+
+    Continue a LAMMPS calculation from the specified binary restart file.
+    The restart state provides the cell, positions, velocities, and stored
+    LAMMPS state. Nanoworks resets the continuation segment timestep to zero
+    so that profiles and output parsing start from the beginning of the new
+    segment. The geometry file is still required to preserve the OpenKIM
+    atom-type to element mapping.
+
+Restart continuation does not recreate initial velocities. Thermostat,
+barostat, integration, trajectory-analysis, and output fixes are rebuilt for
+the new Nanoworks segment. ``Minimize = True`` cannot be combined with
+``Restart_read``.
+
+LAMMPS binary restart files are intended for continuation with a compatible
+LAMMPS executable and platform; they are not a portable archival structure
+format.
