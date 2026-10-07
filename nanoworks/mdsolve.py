@@ -1982,8 +1982,6 @@ def _parse_lammps_thermo(
 def _run_asap_langevin(
     atoms,
     struct_prefix,
-    potential_style,
-    potential_file,
     openkim_potential,
     temperature_profile,
     timestep_profile,
@@ -2126,6 +2124,8 @@ def _run_md_engine(
     ensemble,
     atoms,
     struct_prefix,
+    potential_style,
+    potential_file,
     openkim_potential,
     temperature_profile,
     timestep_profile,
