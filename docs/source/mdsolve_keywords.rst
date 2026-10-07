@@ -148,3 +148,42 @@ Structure Parameters
 
     Periodicity along the X, Y and Z directions when
     ``Manual_PBC = True``.
+
+
+Pre-MD Minimization
+-------------------
+
+LAMMPS calculations can optionally minimize the structure before velocities
+are initialized and the MD run starts.
+
+.. describe:: Minimize
+
+    :Type: ``boolean``
+    :Default: ``False``
+
+    Enable LAMMPS conjugate-gradient minimization before molecular dynamics.
+
+.. describe:: Minimize_energy_tolerance
+
+    :Type: ``float``
+    :Default: ``1.0e-10``
+
+    Relative energy tolerance passed to the LAMMPS minimizer.
+
+.. describe:: Minimize_force_tolerance
+
+    :Type: ``float``
+    :Default: ``1.0e-6``
+    :Unit: eV/Angstrom
+
+    Force tolerance passed to the LAMMPS minimizer.
+
+.. describe:: Minimize_max_iterations
+
+    :Type: ``int``
+    :Default: ``10000``
+
+.. describe:: Minimize_max_evaluations
+
+    :Type: ``int``
+    :Default: ``100000``
