@@ -85,6 +85,8 @@ RDF_pairs = []
 
 VACF_calc = False
 VACF_interval = 1
+VACF_diffusion_calc = False
+VACF_diffusion_dimensions = 3
 
 # Molecular dynamics loop configuration
 MD_cycles = 25
@@ -378,6 +380,8 @@ def _write_lammps_input(
     rdf_pairs,
     vacf_calc,
     vacf_interval,
+    vacf_diffusion_calc,
+    vacf_diffusion_dimensions,
     random_seed,
     md_cycles,
     md_steps_per_cycle,
@@ -1457,7 +1461,11 @@ def _write_lammps_rdf_csv(
 
     return csv_file
 
-def _write_lammps_vacf_csv(struct_prefix):
+def _write_lammps_vacf_csv(
+    struct_prefix,
+    timestep_profile,
+    md_steps_per_cycle,
+):
     """Convert LAMMPS VACF output to a Nanoworks CSV file."""
 
     source_file = struct_prefix + '-LAMMPS-VACF.dat'
@@ -1491,9 +1499,16 @@ def _write_lammps_vacf_csv(struct_prefix):
             except ValueError:
                 continue
 
+            time_ps = _time_ps_for_step(
+                step,
+                timestep_profile,
+                md_steps_per_cycle,
+            )
+
             records.append(
                 (
                     step,
+                    time_ps,
                     vacf_x,
                     vacf_y,
                     vacf_z,
@@ -1503,7 +1518,8 @@ def _write_lammps_vacf_csv(struct_prefix):
 
     with open(csv_file, 'w') as fd:
         fd.write(
-            'Step,VACF_X(A^2/ps^2),'
+            'Step,Time(ps),'
+            'VACF_X(A^2/ps^2),'
             'VACF_Y(A^2/ps^2),'
             'VACF_Z(A^2/ps^2),'
             'VACF_Total(A^2/ps^2)\n'
@@ -1515,10 +1531,122 @@ def _write_lammps_vacf_csv(struct_prefix):
                 f'{record[1]:.10g},'
                 f'{record[2]:.10g},'
                 f'{record[3]:.10g},'
-                f'{record[4]:.10g}\n'
+                f'{record[4]:.10g},'
+                f'{record[5]:.10g}\n'
             )
 
-    return csv_file
+    return csv_file, records
+
+def _trapezoid_integral(
+    times,
+    values,
+):
+    """Integrate a time series with the trapezoidal rule."""
+
+    if len(times) < 2:
+        raise ValueError(
+            'At least two samples are required '
+            'for trapezoidal integration.'
+        )
+
+    integral = 0.0
+
+    for index in range(1, len(times)):
+        dt = times[index] - times[index - 1]
+
+        if dt <= 0.0:
+            raise ValueError(
+                'VACF integration requires strictly '
+                'increasing simulation times.'
+            )
+
+        integral += (
+            0.5
+            * (
+                values[index]
+                + values[index - 1]
+            )
+            * dt
+        )
+
+    return integral
+
+def _write_vacf_diffusion_summary(
+    struct_prefix,
+    vacf_records,
+    dimensions,
+):
+    """Estimate diffusion from the Green-Kubo VACF integral."""
+
+    dimensions = int(dimensions)
+
+    if dimensions not in (1, 2, 3):
+        raise ValueError(
+            'VACF_diffusion_dimensions must be '
+            '1, 2, or 3.'
+        )
+
+    times = [
+        float(record[1])
+        for record in vacf_records
+    ]
+
+    component_integrals = []
+
+    for column in (2, 3, 4):
+        component_integrals.append(
+            _trapezoid_integral(
+                times,
+                [
+                    float(record[column])
+                    for record in vacf_records
+                ],
+            )
+        )
+
+    total_integral = _trapezoid_integral(
+        times,
+        [
+            float(record[5])
+            for record in vacf_records
+        ],
+    )
+
+    diffusion_a2_per_ps = (
+        total_integral / dimensions
+    )
+    diffusion_cm2_per_s = (
+        diffusion_a2_per_ps * 1.0e-4
+    )
+
+    output_file = (
+        struct_prefix
+        + '-Diffusion-VACF.csv'
+    )
+
+    with open(output_file, 'w') as fd:
+        fd.write(
+            'Dimensions,EndTime(ps),Samples,'
+            'IntegralX(A^2/ps),'
+            'IntegralY(A^2/ps),'
+            'IntegralZ(A^2/ps),'
+            'IntegralTotal(A^2/ps),'
+            'Diffusion(A^2/ps),'
+            'Diffusion(cm^2/s)\n'
+        )
+        fd.write(
+            f'{dimensions},'
+            f'{times[-1]:.10g},'
+            f'{len(times)},'
+            f'{component_integrals[0]:.10g},'
+            f'{component_integrals[1]:.10g},'
+            f'{component_integrals[2]:.10g},'
+            f'{total_integral:.10g},'
+            f'{diffusion_a2_per_ps:.10g},'
+            f'{diffusion_cm2_per_s:.10g}\n'
+        )
+
+    return output_file
 
 def _parse_lammps_thermo(
     log_file,
@@ -1958,12 +2086,31 @@ def _run_md_engine(
             )
 
         if vacf_calc:
-            vacf_csv = _write_lammps_vacf_csv(
-                struct_prefix=struct_prefix,
+            vacf_csv, vacf_records = (
+                _write_lammps_vacf_csv(
+                    struct_prefix=struct_prefix,
+                    timestep_profile=timestep_profile,
+                    md_steps_per_cycle=md_steps_per_cycle,
+                )
             )
             print(
                 f'LAMMPS VACF file written: {vacf_csv}'
             )
+
+            if vacf_diffusion_calc:
+                vacf_diffusion_csv = (
+                    _write_vacf_diffusion_summary(
+                        struct_prefix=struct_prefix,
+                        vacf_records=vacf_records,
+                        dimensions=(
+                            vacf_diffusion_dimensions
+                        ),
+                    )
+                )
+                print(
+                    'VACF diffusion summary written: '
+                    f'{vacf_diffusion_csv}'
+                )
 
         energy_records = _parse_lammps_thermo(
             log_file=log_file,
@@ -2120,6 +2267,16 @@ def main():
     if bool(namespace.get('VACF_calc', VACF_calc)):
         lammps_only_features.append('VACF_calc')
 
+    if bool(
+        namespace.get(
+            'VACF_diffusion_calc',
+            VACF_diffusion_calc,
+        )
+    ):
+        lammps_only_features.append(
+            'VACF_diffusion_calc'
+        )
+
     if Engine != 'LAMMPS' and lammps_only_features:
         print(
             'These settings are currently supported only '
@@ -2149,6 +2306,20 @@ def main():
     ):
         print(
             'MSD_species requires MSD_calc = True.'
+        )
+        sys.exit(1)
+
+    if bool(
+        namespace.get(
+            'VACF_diffusion_calc',
+            VACF_diffusion_calc,
+        )
+    ) and not bool(
+        namespace.get('VACF_calc', VACF_calc)
+    ):
+        print(
+            'VACF_diffusion_calc requires '
+            'VACF_calc = True.'
         )
         sys.exit(1)
 
@@ -2540,6 +2711,18 @@ def main():
                 namespace.get(
                     'VACF_interval',
                     VACF_interval,
+                )
+            ),
+            vacf_diffusion_calc=bool(
+                namespace.get(
+                    'VACF_diffusion_calc',
+                    VACF_diffusion_calc,
+                )
+            ),
+            vacf_diffusion_dimensions=int(
+                namespace.get(
+                    'VACF_diffusion_dimensions',
+                    VACF_diffusion_dimensions,
                 )
             ),
             md_cycles=MD_cycles,
