@@ -153,3 +153,8 @@ OpenKIM remains the default potential source. LAMMPS can also use native EAM/all
     Potential_file = '/path/to/potential.tersoff'
 
 The same `Potential_file` interface is used for `EAM/alloy`, `EAM/fs`, and `SW`. Nanoworks maps the structure elements to the native LAMMPS `pair_coeff` element list. Potential files are not distributed with this example.
+
+
+## Equilibration and production
+
+`Equilibration_steps` runs a separate equilibration segment before production MD. MSD/RDF/VACF references are created only after equilibration, so production analyses do not include the initial transient. See `sampleinput_equilibration.py`.
