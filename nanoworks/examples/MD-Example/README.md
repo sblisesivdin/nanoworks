@@ -93,3 +93,12 @@ LAMMPS can compute the velocity autocorrelation function during the MD run. See 
     mdsolve -i sampleinput_vacf.py -g argon_fcc_4x4x4.cif
 
 The workflow writes both the native LAMMPS VACF data and a Nanoworks `*-VACF.csv` file.
+
+
+## Diffusion coefficient
+
+Nanoworks can estimate a diffusion coefficient from the linear part of the MSD curve. See `sampleinput_diffusion.py`:
+
+    mdsolve -i sampleinput_diffusion.py -g argon_fcc_4x4x4.cif
+
+The result is written to `*-Diffusion.csv`. The chosen fit window and diffusion dimensionality should be treated as scientific analysis parameters, not automatic convergence criteria.
