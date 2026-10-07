@@ -19,7 +19,7 @@ It acts as a wrapper and orchestrator for several powerful scientific libraries,
 
 **Core Capabilities:**
 1.  **DFT (via GPAW, Quantum ESPRESSO & ASE):** The `dftsolve` tool provides the complete established workflow through GPAW and a native Quantum ESPRESSO backend. QE supports PBE ground-state, atomic and variable-cell geometry optimization, thermo_pw elasticity, DFT+U, spin-resolved DOS/PDOS, band, projected (fat) band, and pseudo-valence electron-density Cube calculations. Native QE `HSE06`, `HSE03`, and `PBE0` support ground-state, DOS/PDOS, band, projected-band, and density calculations.
-2. **MD (via ASAP3, LAMMPS & OpenKIM):** The `mdsolve` tool provides molecular dynamics calculations using either ASAP3 or LAMMPS with OpenKIM interatomic potentials.
+2. **MD (via ASAP3, LAMMPS & OpenKIM):** The `mdsolve` tool provides a common molecular dynamics workflow with OpenKIM interatomic potentials. ASAP3 supports NVT Langevin dynamics; LAMMPS supports NVT Langevin and NVE dynamics.
 3.  **ML Potentials (New!):** The `mlsolve` tool enables geometry optimization, static, bulk EOS, 3D/2D elastic and bulk phonon calculations using Machine Learning Force Fields (MLFF), including **MACE**, **CHGNet**, and **SevenNet**.
 
 ## Installation
@@ -148,7 +148,7 @@ The profile supports `time`, `memory`, `partition`, `account`, `qos`,
 values. See `examples/slurm-profiles/truba-example.json`.
 
 ### 2. mdsolve (formerly asapsolve.py)
-Perform molecular dynamics calculations using ASAP3 or LAMMPS with OpenKIM interatomic potentials.
+Perform molecular dynamics calculations using ASAP3 or LAMMPS with OpenKIM interatomic potentials. Select `Ensemble = 'NVT'` for the common Langevin workflow or `Ensemble = 'NVE'` for LAMMPS microcanonical dynamics.
 
 **Usage:**
 ```bash
@@ -263,7 +263,7 @@ figures from saved JSON without rerunning GPAW or Quantum ESPRESSO.
 The package includes an `examples/` directory covering various scenarios. You can find the location of these examples by running the `nanoworks` command.
 
 ## Citing
-Please do not forget that Nanoworks is a wrapper/orchestrator software. For DFT calculations, it uses ASE together with GPAW or Quantum ESPRESSO, depending on the selected workflow and backend. GPAW elasticity uses the Elastic Python package; QE elasticity uses thermo_pw. It also uses ASAP with the KIM database for interatomic interaction calculations and Phonopy for the phonon calculations. Therefore, you must know what you use and cite them properly. Here, the basic citation information of each package is given.
+Please do not forget that Nanoworks is a wrapper/orchestrator software. For DFT calculations, it uses ASE together with GPAW or Quantum ESPRESSO, depending on the selected workflow and backend. GPAW elasticity uses the Elastic Python package; QE elasticity uses thermo_pw. It also uses ASAP3 or LAMMPS with the KIM database for interatomic interaction calculations and Phonopy for the phonon calculations. Therefore, you must know what you use and cite them properly. Here, the basic citation information of each package is given.
 
 ### ASE 
 * Ask Hjorth Larsen et al. "[The Atomic Simulation Environment—A Python library for working with atoms](https://doi.org/10.1088/1361-648X/aa680e)" J. Phys.: Condens. Matter Vol. 29 273002, 2017.
@@ -273,6 +273,9 @@ Please do not forget that Nanoworks is a wrapper/orchestrator software. For DFT 
 
 ### Quantum ESPRESSO
 * P. Giannozzi et al. "[QUANTUM ESPRESSO: a modular and open-source software project for quantum simulations of materials](https://doi.org/10.1088/0953-8984/21/39/395502)" J. Phys.: Condens. Matter 21, 395502 (2009) and P. Giannozzi et al. "[Advanced capabilities for materials modelling with Quantum ESPRESSO](https://doi.org/10.1088/1361-648X/aa8f79)" J. Phys.: Condens. Matter 29, 465901 (2017).
+
+### LAMMPS
+* A. P. Thompson et al. "[LAMMPS - a flexible simulation tool for particle-based materials modeling at the atomic, meso, and continuum scales](https://doi.org/10.1016/j.cpc.2021.108171)" Comput. Phys. Commun. 271, 108171 (2022).
 
 ### KIM
 * E. B. Tadmor, R. S. Elliott, J. P. Sethna, R. E. Miller, and C. A. Becker "[The Potential of Atomistic Simulations and the Knowledgebase of Interatomic Models](https://doi.org/10.1007/s11837-011-0102-6)" JOM, 63, 17 (2011).
