@@ -1074,15 +1074,15 @@ def _write_lammps_species_msd_csv(
                 f'{record[6]:.10g}\n'
             )
 
-    return csv_file
+    return csv_file, records
 
-def _write_diffusion_summary(
-    struct_prefix,
-    msd_records,
+def _write_diffusion_fit(
+    x_values,
+    y_values,
     start_fraction,
     dimensions,
 ):
-    """Estimate a diffusion coefficient from the linear MSD regime."""
+    """Fit MSD versus time and return diffusion diagnostics."""
 
     start_fraction = float(start_fraction)
     dimensions = int(dimensions)
@@ -1098,36 +1098,29 @@ def _write_diffusion_summary(
             'Diffusion_dimensions must be 1, 2, or 3.'
         )
 
-    if len(msd_records) < 2:
+    if len(x_values) < 2:
         raise ValueError(
             'At least two MSD samples are required '
             'for diffusion fitting.'
         )
 
     start_index = int(
-        len(msd_records) * start_fraction
+        len(x_values) * start_fraction
     )
 
-    fit_records = msd_records[start_index:]
+    x_fit = x_values[start_index:]
+    y_fit = y_values[start_index:]
 
-    if len(fit_records) < 2:
-        fit_records = msd_records[-2:]
+    if len(x_fit) < 2:
+        x_fit = x_values[-2:]
+        y_fit = y_values[-2:]
 
-    x_values = [
-        float(record[1])
-        for record in fit_records
-    ]
-    y_values = [
-        float(record[5])
-        for record in fit_records
-    ]
-
-    x_mean = sum(x_values) / len(x_values)
-    y_mean = sum(y_values) / len(y_values)
+    x_mean = sum(x_fit) / len(x_fit)
+    y_mean = sum(y_fit) / len(y_fit)
 
     denominator = sum(
         (x - x_mean) ** 2
-        for x in x_values
+        for x in x_fit
     )
 
     if denominator <= 0.0:
@@ -1140,8 +1133,8 @@ def _write_diffusion_summary(
         sum(
             (x - x_mean) * (y - y_mean)
             for x, y in zip(
-                x_values,
-                y_values,
+                x_fit,
+                y_fit,
             )
         )
         / denominator
@@ -1151,7 +1144,7 @@ def _write_diffusion_summary(
 
     ss_tot = sum(
         (y - y_mean) ** 2
-        for y in y_values
+        for y in y_fit
     )
     ss_res = sum(
         (
@@ -1160,8 +1153,8 @@ def _write_diffusion_summary(
             )
         ) ** 2
         for x, y in zip(
-            x_values,
-            y_values,
+            x_fit,
+            y_fit,
         )
     )
 
@@ -1178,6 +1171,44 @@ def _write_diffusion_summary(
         diffusion_a2_per_ps * 1.0e-4
     )
 
+    return {
+        'fit_start_time': x_fit[0],
+        'fit_end_time': x_fit[-1],
+        'samples': len(x_fit),
+        'slope': slope,
+        'diffusion_a2_per_ps': (
+            diffusion_a2_per_ps
+        ),
+        'diffusion_cm2_per_s': (
+            diffusion_cm2_per_s
+        ),
+        'r_squared': r_squared,
+    }
+
+def _write_diffusion_summary(
+    struct_prefix,
+    msd_records,
+    start_fraction,
+    dimensions,
+):
+    """Estimate a diffusion coefficient from the linear MSD regime."""
+
+    x_values = [
+        float(record[1])
+        for record in msd_records
+    ]
+    y_values = [
+        float(record[5])
+        for record in msd_records
+    ]
+
+    fit = _write_diffusion_fit(
+        x_values,
+        y_values,
+        start_fraction,
+        dimensions,
+    )
+
     output_file = (
         struct_prefix + '-Diffusion.csv'
     )
@@ -1191,16 +1222,78 @@ def _write_diffusion_summary(
             'Diffusion(cm^2/s),R_squared\n'
         )
         fd.write(
-            f'{dimensions},'
-            f'{start_fraction:.6f},'
-            f'{x_values[0]:.10g},'
-            f'{x_values[-1]:.10g},'
-            f'{len(x_values)},'
-            f'{slope:.10g},'
-            f'{diffusion_a2_per_ps:.10g},'
-            f'{diffusion_cm2_per_s:.10g},'
-            f'{r_squared:.10g}\n'
+            f'{int(dimensions)},'
+            f'{float(start_fraction):.6f},'
+            f"{fit['fit_start_time']:.10g},"
+            f"{fit['fit_end_time']:.10g},"
+            f"{fit['samples']},"
+            f"{fit['slope']:.10g},"
+            f"{fit['diffusion_a2_per_ps']:.10g},"
+            f"{fit['diffusion_cm2_per_s']:.10g},"
+            f"{fit['r_squared']:.10g}\n"
         )
+
+    return output_file
+
+def _write_species_diffusion_summary(
+    struct_prefix,
+    species_msd_records,
+    start_fraction,
+    dimensions,
+):
+    """Estimate element-resolved diffusion coefficients from MSD."""
+
+    output_file = (
+        struct_prefix + '-Diffusion-Species.csv'
+    )
+
+    grouped = {}
+
+    for record in species_msd_records:
+        grouped.setdefault(
+            record[0],
+            [],
+        ).append(record)
+
+    with open(output_file, 'w') as fd:
+        fd.write(
+            'Species,Dimensions,FitStartFraction,'
+            'FitStartTime(ps),FitEndTime(ps),'
+            'Samples,Slope(A^2/ps),'
+            'Diffusion(A^2/ps),'
+            'Diffusion(cm^2/s),R_squared\n'
+        )
+
+        for symbol in sorted(grouped):
+            records = grouped[symbol]
+            x_values = [
+                float(record[2])
+                for record in records
+            ]
+            y_values = [
+                float(record[6])
+                for record in records
+            ]
+
+            fit = _write_diffusion_fit(
+                x_values,
+                y_values,
+                start_fraction,
+                dimensions,
+            )
+
+            fd.write(
+                f'{symbol},'
+                f'{int(dimensions)},'
+                f'{float(start_fraction):.6f},'
+                f"{fit['fit_start_time']:.10g},"
+                f"{fit['fit_end_time']:.10g},"
+                f"{fit['samples']},"
+                f"{fit['slope']:.10g},"
+                f"{fit['diffusion_a2_per_ps']:.10g},"
+                f"{fit['diffusion_cm2_per_s']:.10g},"
+                f"{fit['r_squared']:.10g}\n"
+            )
 
     return output_file
 
@@ -1742,18 +1835,39 @@ def _run_md_engine(
                 )
 
         if msd_species:
-            species_msd_csv = (
-                _write_lammps_species_msd_csv(
-                    struct_prefix=struct_prefix,
-                    requested_species=msd_species,
-                    timestep_profile=timestep_profile,
-                    md_steps_per_cycle=md_steps_per_cycle,
-                )
+            (
+                species_msd_csv,
+                species_msd_records,
+            ) = _write_lammps_species_msd_csv(
+                struct_prefix=struct_prefix,
+                requested_species=msd_species,
+                timestep_profile=timestep_profile,
+                md_steps_per_cycle=md_steps_per_cycle,
             )
             print(
                 'Species MSD file written: '
                 f'{species_msd_csv}'
             )
+
+            if diffusion_calc:
+                species_diffusion_csv = (
+                    _write_species_diffusion_summary(
+                        struct_prefix=struct_prefix,
+                        species_msd_records=(
+                            species_msd_records
+                        ),
+                        start_fraction=(
+                            diffusion_start_fraction
+                        ),
+                        dimensions=(
+                            diffusion_dimensions
+                        ),
+                    )
+                )
+                print(
+                    'Species diffusion summary written: '
+                    f'{species_diffusion_csv}'
+                )
 
         if rdf_calc:
             rdf_csv = _write_lammps_rdf_csv(
