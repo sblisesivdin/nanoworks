@@ -121,3 +121,12 @@ If `Diffusion_calc = True` is combined with `MSD_species`, Nanoworks also estima
 ## Pair-resolved RDF
 
 For multicomponent systems, selected element pairs can be analyzed separately with `RDF_pairs`, for example `RDF_pairs = [('Li', 'O'), ('O', 'O')]`. See `sampleinput_rdf_pairs.py`.
+
+
+## VACF diffusion
+
+The total VACF can be integrated to estimate a Green-Kubo diffusion coefficient. See `sampleinput_vacf_diffusion.py`:
+
+    mdsolve -i sampleinput_vacf_diffusion.py -g argon_fcc_4x4x4.cif
+
+The result is written to `*-Diffusion-VACF.csv`.
