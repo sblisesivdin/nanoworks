@@ -7,6 +7,7 @@
 - Pressure and volume are included in common MD energy outputs.
 - LAMMPS `mdsolve` runs can optionally perform pre-MD energy minimization.
 - LAMMPS `mdsolve` can calculate mean squared displacement, radial distribution functions, and velocity autocorrelation functions and export them to CSV.
+- Diffusion coefficients can be estimated from the linear MSD region.
 
 - `mlsolve` adds bulk phonon bands, DOS and imaginary-mode diagnostics with ML potentials.
 
