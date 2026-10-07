@@ -101,7 +101,7 @@ Machine Learning & Molecular Dynamics
   Demonstrates the ``mlsolve`` capabilities of Nanoworks by optimizing pristine and vacancy-defect graphene structures using Machine Learning interatomic potentials. (Folder: ``Graphene-ML/``)
 
 * **Molecular Dynamics Example:**
-  Demonstrates the ``mdsolve`` workflow using ASAP3 NVT or LAMMPS NVT/NVE with an OpenKIM interatomic potential. (Folder: ``MD-Example/``)
+  Demonstrates the ``mdsolve`` workflow using ASAP3 NVT or LAMMPS NVT/NVE/NPT with an OpenKIM interatomic potential. (Folder: ``MD-Example/``)
 
 Interoperability with Other Codes
 ---------------------------------
