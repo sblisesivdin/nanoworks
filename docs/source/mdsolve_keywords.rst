@@ -192,8 +192,9 @@ are initialized and the MD run starts.
 Trajectory Analysis
 -------------------
 
-LAMMPS calculations can optionally compute mean squared displacement (MSD)
-and radial distribution functions (RDF) during the MD run.
+LAMMPS calculations can optionally compute mean squared displacement (MSD),
+radial distribution functions (RDF), and velocity autocorrelation functions
+(VACF) during the MD run.
 
 .. describe:: MSD_calc
 
@@ -245,3 +246,23 @@ Angstrom squared.
 When enabled, Nanoworks preserves the native LAMMPS RDF output and also writes
 ``*-RDF.csv`` with the radial coordinate, total ``g(r)``, and
 coordination number for each sampled step.
+
+
+.. describe:: VACF_calc
+
+    :Type: ``boolean``
+    :Default: ``False``
+
+    Enable total velocity autocorrelation function analysis with LAMMPS.
+
+.. describe:: VACF_interval
+
+    :Type: ``int``
+    :Default: ``1``
+
+    Number of MD steps between VACF samples.
+
+When enabled, Nanoworks preserves the native LAMMPS VACF output and writes
+``*-VACF.csv`` with the x, y, z and total VACF components. With LAMMPS
+metal units, the VACF values have units of Angstrom squared per picosecond
+squared.
