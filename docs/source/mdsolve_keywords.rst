@@ -310,4 +310,6 @@ total MSD curve using the Einstein relation.
 
 The result is written to ``*-Diffusion.csv`` with the fitted slope,
 diffusion coefficient in Angstrom squared per picosecond and square
-centimeters per second, and the linear-fit R-squared value.
+centimeters per second, and the linear-fit R-squared value. When
+``MSD_species`` is also set, Nanoworks writes element-resolved diffusion
+coefficients to ``*-Diffusion-Species.csv`` using the same fit settings.
