@@ -66,3 +66,12 @@ A compact 3D LAMMPS NPT example is provided in `sampleinput_npt.py`:
 LAMMPS can minimize the structure before velocities are initialized and MD starts. See `sampleinput_minimize.py`:
 
     mdsolve -i sampleinput_minimize.py -g argon_fcc_4x4x4.cif
+
+
+## MSD analysis
+
+LAMMPS can compute mean squared displacement during the MD run. See `sampleinput_msd.py`:
+
+    mdsolve -i sampleinput_msd.py -g argon_fcc_4x4x4.cif
+
+The analysis writes both the native LAMMPS MSD data file and a Nanoworks `*-MSD.csv` file.
