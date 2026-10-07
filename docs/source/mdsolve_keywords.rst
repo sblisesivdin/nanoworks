@@ -17,6 +17,19 @@ Engine
     Molecular dynamics engine. Supported values are ``'ASAP'`` and
     ``'LAMMPS'``.
 
+Ensemble
+--------
+
+.. describe:: Ensemble
+
+    :Type: ``str``
+    :Default: ``'NVT'``
+
+    Molecular dynamics ensemble. ASAP currently supports ``'NVT'``.
+    LAMMPS supports ``'NVT'`` and ``'NVE'``. In NVE calculations,
+    ``Temperature`` sets the initial velocity distribution and
+    ``Temperature_damp`` is not used.
+
 OpenKIM Potential
 -----------------
 
@@ -41,6 +54,9 @@ Molecular Dynamics Parameters
     :Default: ``1.0``
     :Unit: K
 
+    Target temperature for NVT calculations. For NVE calculations, this
+    sets the initial velocity distribution.
+
 .. describe:: Time_step
 
     :Type: ``float``
@@ -52,6 +68,9 @@ Molecular Dynamics Parameters
     :Type: ``float``
     :Default: ``200.0``
     :Unit: fs
+
+    Langevin thermostat damping time for NVT calculations. It is not used
+    by NVE calculations.
 
 .. describe:: Random_seed
 
@@ -73,14 +92,17 @@ Profiles
 
 ``Temperature_profile``, ``Time_step_profile`` and
 ``Temperature_damp_profile`` can be used to define cycle-dependent
-molecular dynamics parameters.
+molecular dynamics parameters for NVT calculations. NVE calculations use
+``Time_step_profile``; ``Temperature`` only initializes the velocities.
 
 Parameter Sweeps
 ----------------
 
 ``Temperature_values``, ``Time_step_values`` and
 ``Temperature_damp_values`` can be used to perform independent
-calculations for all combinations of the listed values.
+calculations for all combinations of the listed values. For NVE,
+``Temperature_values`` changes the initial velocity temperature and
+``Temperature_damp_values`` is not used.
 
 Structure Parameters
 --------------------
@@ -107,4 +129,3 @@ Structure Parameters
 
     Periodicity along the X, Y and Z directions when
     ``Manual_PBC = True``.
-
