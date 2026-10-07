@@ -324,3 +324,29 @@ diffusion coefficient in Angstrom squared per picosecond and square
 centimeters per second, and the linear-fit R-squared value. When
 ``MSD_species`` is also set, Nanoworks writes element-resolved diffusion
 coefficients to ``*-Diffusion-Species.csv`` using the same fit settings.
+
+
+VACF Diffusion Analysis
+-----------------------
+
+Nanoworks can also estimate a diffusion coefficient by integrating the total
+VACF with the Green-Kubo relation.
+
+.. describe:: VACF_diffusion_calc
+
+    :Type: ``boolean``
+    :Default: ``False``
+
+    Integrate the total VACF and report a diffusion coefficient. Requires
+    ``VACF_calc = True``.
+
+.. describe:: VACF_diffusion_dimensions
+
+    :Type: ``int``
+    :Default: ``3``
+
+    Diffusion dimensionality used to convert the integrated total VACF to
+    a diffusion coefficient. Supported values are 1, 2, and 3.
+
+The result is written to ``*-Diffusion-VACF.csv`` together with the
+directional VACF integrals and the total diffusion estimate.
