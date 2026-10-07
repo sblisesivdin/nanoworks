@@ -148,7 +148,7 @@ The profile supports `time`, `memory`, `partition`, `account`, `qos`,
 values. See `examples/slurm-profiles/truba-example.json`.
 
 ### 2. mdsolve (formerly asapsolve.py)
-Perform molecular dynamics calculations using ASAP3 or LAMMPS with OpenKIM interatomic potentials. Select `Ensemble = 'NVT'` for the common Langevin workflow, `Ensemble = 'NVE'` for LAMMPS microcanonical dynamics, or `Ensemble = 'NPT'` for fully periodic 3D isotropic pressure coupling. LAMMPS runs can optionally perform a conjugate-gradient energy minimization before MD and compute mean squared displacement and radial distribution functions during the trajectory.
+Perform molecular dynamics calculations using ASAP3 or LAMMPS with OpenKIM interatomic potentials. Select `Ensemble = 'NVT'` for the common Langevin workflow, `Ensemble = 'NVE'` for LAMMPS microcanonical dynamics, or `Ensemble = 'NPT'` for fully periodic 3D isotropic pressure coupling. LAMMPS runs can optionally perform a conjugate-gradient energy minimization before MD and compute mean squared displacement, radial distribution functions, and velocity autocorrelation functions during the trajectory.
 
 **Usage:**
 ```bash
