@@ -77,6 +77,9 @@ RDF_calc = False
 RDF_bins = 100
 RDF_interval = 10
 
+VACF_calc = False
+VACF_interval = 1
+
 # Molecular dynamics loop configuration
 MD_cycles = 25
 MD_steps_per_cycle = 10
@@ -362,6 +365,8 @@ def _write_lammps_input(
     rdf_calc,
     rdf_bins,
     rdf_interval,
+    vacf_calc,
+    vacf_interval,
     random_seed,
     md_cycles,
     md_steps_per_cycle,
@@ -372,6 +377,7 @@ def _write_lammps_input(
     dump_file = struct_prefix + '-LAMMPS.dump'
     msd_file = struct_prefix + '-LAMMPS-MSD.dat'
     rdf_file = struct_prefix + '-LAMMPS-RDF.dat'
+    vacf_file = struct_prefix + '-LAMMPS-VACF.dat'
 
     species_string = ' '.join(species)
     
@@ -504,6 +510,27 @@ def _write_lammps_input(
                     f'{int(rdf_interval)} '
                     f'c_nw_rdf[*] '
                     f'file "{rdf_file}" mode vector'
+                ),
+                '',
+            ]
+        )
+
+    if vacf_calc:
+        if int(vacf_interval) <= 0:
+            raise ValueError(
+                'VACF_interval must be a positive integer.'
+            )
+
+        lines.extend(
+            [
+                'compute nw_vacf all vacf',
+                (
+                    f'fix nw_vacf_output all ave/time '
+                    f'{int(vacf_interval)} 1 '
+                    f'{int(vacf_interval)} '
+                    f'c_nw_vacf[1] c_nw_vacf[2] '
+                    f'c_nw_vacf[3] c_nw_vacf[4] '
+                    f'file "{vacf_file}" mode scalar'
                 ),
                 '',
             ]
@@ -658,6 +685,14 @@ def _write_lammps_input(
             [
                 'unfix nw_rdf_output',
                 'uncompute nw_rdf',
+            ]
+        )
+
+    if vacf_calc:
+        lines.extend(
+            [
+                'unfix nw_vacf_output',
+                'uncompute nw_vacf',
             ]
         )
 
@@ -912,6 +947,69 @@ def _write_lammps_rdf_csv(struct_prefix):
             fd.write(
                 f'{record[0]},'
                 f'{record[1]},'
+                f'{record[2]:.10g},'
+                f'{record[3]:.10g},'
+                f'{record[4]:.10g}\n'
+            )
+
+    return csv_file
+
+def _write_lammps_vacf_csv(struct_prefix):
+    """Convert LAMMPS VACF output to a Nanoworks CSV file."""
+
+    source_file = struct_prefix + '-LAMMPS-VACF.dat'
+    csv_file = struct_prefix + '-VACF.csv'
+
+    if not os.path.isfile(source_file):
+        raise FileNotFoundError(
+            f'LAMMPS VACF output was not found: {source_file}'
+        )
+
+    records = []
+
+    with open(source_file, 'r') as fd:
+        for line in fd:
+            stripped = line.strip()
+
+            if not stripped or stripped.startswith('#'):
+                continue
+
+            fields = stripped.split()
+
+            if len(fields) < 5:
+                continue
+
+            try:
+                step = int(float(fields[0]))
+                vacf_x = float(fields[1])
+                vacf_y = float(fields[2])
+                vacf_z = float(fields[3])
+                vacf_total = float(fields[4])
+            except ValueError:
+                continue
+
+            records.append(
+                (
+                    step,
+                    vacf_x,
+                    vacf_y,
+                    vacf_z,
+                    vacf_total,
+                )
+            )
+
+    with open(csv_file, 'w') as fd:
+        fd.write(
+            'Step,VACF_X(A^2/ps^2),'
+            'VACF_Y(A^2/ps^2),'
+            'VACF_Z(A^2/ps^2),'
+            'VACF_Total(A^2/ps^2)\n'
+        )
+
+        for record in records:
+            fd.write(
+                f'{record[0]},'
+                f'{record[1]:.10g},'
                 f'{record[2]:.10g},'
                 f'{record[3]:.10g},'
                 f'{record[4]:.10g}\n'
@@ -1190,6 +1288,8 @@ def _run_md_engine(
     rdf_calc,
     rdf_bins,
     rdf_interval,
+    vacf_calc,
+    vacf_interval,
     random_seed,
     md_cycles,
     md_steps_per_cycle,
@@ -1237,6 +1337,8 @@ def _run_md_engine(
             rdf_calc=rdf_calc,
             rdf_bins=rdf_bins,
             rdf_interval=rdf_interval,
+            vacf_calc=vacf_calc,
+            vacf_interval=vacf_interval,
             random_seed=random_seed,
             md_cycles=md_cycles,
             md_steps_per_cycle=md_steps_per_cycle,
@@ -1282,6 +1384,14 @@ def _run_md_engine(
             )
             print(
                 f'LAMMPS RDF file written: {rdf_csv}'
+            )
+
+        if vacf_calc:
+            vacf_csv = _write_lammps_vacf_csv(
+                struct_prefix=struct_prefix,
+            )
+            print(
+                f'LAMMPS VACF file written: {vacf_csv}'
             )
 
         energy_records = _parse_lammps_thermo(
@@ -1422,6 +1532,9 @@ def main():
 
     if bool(namespace.get('RDF_calc', RDF_calc)):
         lammps_only_features.append('RDF_calc')
+
+    if bool(namespace.get('VACF_calc', VACF_calc)):
+        lammps_only_features.append('VACF_calc')
 
     if Engine != 'LAMMPS' and lammps_only_features:
         print(
@@ -1780,6 +1893,15 @@ def main():
                 namespace.get(
                     'RDF_interval',
                     RDF_interval,
+                )
+            ),
+            vacf_calc=bool(
+                namespace.get('VACF_calc', VACF_calc)
+            ),
+            vacf_interval=int(
+                namespace.get(
+                    'VACF_interval',
+                    VACF_interval,
                 )
             ),
             md_cycles=MD_cycles,
