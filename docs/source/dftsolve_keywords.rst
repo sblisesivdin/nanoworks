@@ -244,6 +244,20 @@ or:
 
     Controls execution of phonon calculations.
 
+    GPAW finite-displacement forces inherit the saved ground-state XC,
+    Hubbard-U, spin, charge, occupations and SCF settings. Converged local
+    magnetic moments seed the displaced supercells and are preserved in
+    Phonopy's symmetry analysis. Initial moments do not constrain the final
+    magnetization. Force caches without matching provenance are recomputed.
+    Total charge and explicitly fixed band counts scale with the number of
+    unit cells in the supercell.
+
+    QE uses native DFPT and reads the saved ground state. With the current
+    ``ortho-atomic`` Hubbard projectors, ``Hubbard_U`` together with
+    ``Phonon_calc`` is rejected: QE 7.4.1 ``ph.x`` only supports ``atomic``
+    projectors for DFPT+U. Nanoworks does not silently change the projector
+    or remove U. SOC and hybrid QE phonons remain unsupported.
+
 .. code-block:: python
 
     Phonon_calc = True

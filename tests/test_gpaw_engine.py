@@ -43,6 +43,26 @@ from ase.units import Hartree
 class TestGPAWEngine(unittest.TestCase):
     """Verify GPAW calculator creation and hybrid detection."""
 
+    def test_phonon_calc_inherits_ground_electronic_model(self):
+        ground = MagicMock()
+        ground.parameters = {'nbands': '200%'}
+        result = create_phonon_calc(400, (2, 2, 1), 'forces.txt', ground_calc=ground)
+        self.assertIs(result, ground.new.return_value)
+        kwargs = ground.new.call_args.kwargs
+        self.assertEqual(set(kwargs), {'mode', 'kpts', 'txt'})
+        self.assertEqual(kwargs['kpts'], {'size': (2, 2, 1)})
+        # Leaving these keys untouched retains spin, U, XC and occupations.
+        for name in ('spinpol', 'setups', 'xc', 'charge', 'occupations'):
+            self.assertNotIn(name, kwargs)
+
+    def test_phonon_calc_scales_absolute_band_count(self):
+        ground = MagicMock()
+        ground.parameters = {'nbands': 20, 'charge': 1.0}
+        create_phonon_calc(400, (2, 2, 1), 'forces.txt',
+                           ground_calc=ground, supercell_multiplier=4)
+        self.assertEqual(ground.new.call_args.kwargs['nbands'], 80)
+        self.assertEqual(ground.new.call_args.kwargs['charge'], 4.0)
+
     def test_hybrid_string_is_detected(self):
         self.assertTrue(is_hybrid('HSE06'))
         self.assertTrue(is_hybrid('HSE-06'))

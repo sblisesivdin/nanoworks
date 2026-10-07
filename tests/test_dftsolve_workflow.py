@@ -23,6 +23,8 @@ with patch.object(
 ):
     from nanoworks.dftsolve import (
         DFTConfig,
+        convert_atoms_to_ase,
+        convert_atoms_to_phonopy,
         GPAW_STAGE_GROUP_ENV,
         ase_scalar_pressure_from_gpa,
         build_gpaw_process_command,
@@ -47,6 +49,37 @@ with patch.object(
 
 
 class TestDFTSolveWorkflow(unittest.TestCase):
+
+    def test_qe_hubbard_phonons_fail_before_execution(self):
+        with self.assertRaisesRegex(NotImplementedError, 'ortho-atomic'):
+            DFTConfig(Engine='QE', Phonon_calc=True, Hubbard_U={'Ni-3d': 6.0})
+
+    def test_phonon_atom_conversion_preserves_antiferromagnetic_moments(self):
+        try:
+            from phonopy import Phonopy
+        except ModuleNotFoundError:
+            self.skipTest('phonopy is optional')
+        atoms = Atoms('Ni2', positions=[[0, 0, 0], [1, 1, 1]],
+                      cell=[3, 3, 3], pbc=True, magmoms=[2, -2])
+        unitcell = convert_atoms_to_phonopy(atoms)
+        phonon = Phonopy(unitcell, [[2, 0, 0], [0, 1, 0], [0, 0, 1]])
+        phonon.generate_displacements(distance=0.01)
+        for supercell in phonon.supercells_with_displacements:
+            restored = convert_atoms_to_ase(supercell)
+            self.assertEqual(sorted(restored.get_initial_magnetic_moments()), [-2, -2, 2, 2])
+
+    def test_force_cache_can_be_explicitly_invalidated(self):
+        import numpy as np
+        with tempfile.TemporaryDirectory() as tmpdir:
+            solver = object.__new__(DFTSolver)
+            solver.struct = str(Path(tmpdir) / 'sample')
+            path = Path(tmpdir) / 'forces.npy'
+            np.save(path, [[99, 99, 99]])
+            solver.run_gpaw = Mock(return_value=np.array([[1., 2., 3.]]))
+            result = solver.load_or_compute_force(path, object(), object(), reuse_cache=False)
+            np.testing.assert_array_equal(result, [[1, 2, 3]])
+            solver.run_gpaw.assert_called_once()
+            np.testing.assert_array_equal(np.load(path), result)
 
     def test_cli_overrides_parse_literals_and_last_value_wins(self):
         result = parse_dft_overrides([

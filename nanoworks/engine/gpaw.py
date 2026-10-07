@@ -6,6 +6,7 @@
 
 from gpaw import GPAW, PW, MixerSum, FermiDirac
 from gpaw.eigensolvers import Davidson
+from numbers import Integral
 from nanoworks.hubbard import resolve_gpaw_hubbard
 from nanoworks.hybrids import (
     is_hybrid_functional,
@@ -352,8 +353,31 @@ def create_phonon_calc(
     cutoff,
     kpoint_size,
     txt,
+    ground_calc=None,
+    supercell_multiplier=1,
 ):
-    """Create a GPAW calculator for finite-displacement phonons."""
+    """Create forces on the ground-state electronic energy surface.
+
+    ``new`` retains XC, Hubbard setups, spin, charge, occupations,
+    convergence, and mixer settings without reusing the unit-cell density.
+    Extensive quantities (charge and absolute band count) scale with the
+    number of repeated unit cells.
+    """
+    if ground_calc is not None:
+        kwargs = {
+            'mode': PW(cutoff),
+            'kpts': {'size': tuple(kpoint_size)},
+            'txt': txt,
+        }
+        # Absolute band counts belong to the unit cell. Relative counts
+        # such as '200%' already adjust to the displaced supercell.
+        nbands = ground_calc.parameters.get('nbands')
+        if isinstance(nbands, Integral):
+            kwargs['nbands'] = int(nbands) * int(supercell_multiplier)
+        charge = ground_calc.parameters.get('charge', 0.0)
+        if charge:
+            kwargs['charge'] = charge * int(supercell_multiplier)
+        return ground_calc.new(**kwargs)
     return create_gpaw_calc(
         mode=PW(cutoff),
         kpts={

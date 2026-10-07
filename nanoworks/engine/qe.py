@@ -7945,6 +7945,21 @@ def run_ph(
             f"for ph.x: {state_dir}"
         )
 
+    # Check the actual restart as well as the input configuration. A user
+    # can disable Hubbard_U in the input while retaining an older U state.
+    schema_file = state_dir / f'{prefix}.save' / 'data-file-schema.xml'
+    try:
+        root = ET.parse(schema_file).getroot()
+    except ET.ParseError as exc:
+        raise ValueError(f'QE state schema is not valid XML: {schema_file}') from exc
+    for element in root.iter():
+        if str(element.tag).rsplit('}', 1)[-1].lower() == 'dftu':
+            raise NotImplementedError(
+                'Nanoworks QE phonons do not support Hubbard-U saved states: '
+                'QE 7.4.1 ph.x requires atomic projectors, while Nanoworks '
+                'uses ortho-atomic projectors. Use GPAW phonons with U.'
+            )
+
     input_text = render_ph_input(
         prefix=prefix,
         outdir=state_dir,

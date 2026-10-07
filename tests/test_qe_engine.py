@@ -122,6 +122,24 @@ from nanoworks.engine.qe import (
 
 
 class TestQEEngine(unittest.TestCase):
+    def test_run_ph_rejects_saved_hubbard_state_before_launch(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_dir = Path(tmpdir)
+            save_dir = state_dir / 'nanoworks.save'
+            save_dir.mkdir()
+            (save_dir / 'data-file-schema.xml').write_text(
+                '<espresso xmlns="urn:qe"><output><dft><dftU>'
+                '<U_projection_type>ortho-atomic</U_projection_type>'
+                '<Hubbard_U>6.0</Hubbard_U>'
+                '</dftU></dft></output></espresso>', encoding='utf-8',
+            )
+            with patch('nanoworks.engine.qe.run_qe_program') as launch:
+                with self.assertRaisesRegex(NotImplementedError, 'projectors'):
+                    run_ph(input_file=state_dir / 'ph.in',
+                           output_file=state_dir / 'ph.out',
+                           state_dir=state_dir, fildyn=state_dir / 'dyn',
+                           qpoint_grid=(2, 2, 2))
+                launch.assert_not_called()
 
     def test_supported_versions_are_exact(self):
         self.assertEqual(QE_REFERENCE_VERSION, (7, 4, 1))

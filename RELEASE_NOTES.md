@@ -2,6 +2,9 @@
 
 ### Development Version
 
+- GPAW phonon forces retain the ground-state electronic settings and magnetic moments; incompatible force caches are recomputed.
+- QE Hubbard-U phonons are rejected before execution because the current ortho-atomic projectors are unsupported by QE 7.4.1 DFPT+U.
+
 - `mdsolve` adds LAMMPS NVE and NPT molecular dynamics while retaining the common NVT Langevin workflow with ASAP3 and LAMMPS.
 - The `mdsolve` examples and documentation are renewed for the ASAP3/LAMMPS backend workflow and ensemble selection.
 - Pressure and volume are included in common MD energy outputs.

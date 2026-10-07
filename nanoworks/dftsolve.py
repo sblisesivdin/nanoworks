@@ -713,6 +713,15 @@ class DFTConfig:
         ).strip().lower()
         self.Pseudo_accuracy = str(self.Pseudo_accuracy).strip().lower()
 
+        if self.Engine == 'QE' and self.Phonon_calc and self.Hubbard_U:
+            raise NotImplementedError(
+                'QE 7.4.1 ph.x supports DFPT+U only with atomic Hubbard '
+                'projectors; Nanoworks uses ortho-atomic projectors. '
+                'QE Hubbard_U + Phonon_calc is therefore unsupported. '
+                'Use the GPAW phonon workflow or disable Phonon_calc; '
+                'do not remove U to obtain phonons of a DFT+U system.'
+            )
+
         for name in ('Pseudo_family', 'Pseudo_xc', 'Pseudo_accuracy'):
             if not getattr(self, name):
                 raise ValueError(f'{name} cannot be empty.')
@@ -5929,8 +5938,18 @@ class dftsolve:
             parprint("It is recommended to compute phonons with PBE and use hybrids only for the electronic structure.")
             sys.exit(1)
 
-        calc = self.engine.load_gpaw_calc(self.struct+'-GROUND-GPAW-Result-State.gpw')
+        ground_path = Path(self.struct+'-GROUND-GPAW-Result-State.gpw')
+        calc = self.engine.load_gpaw_calc(str(ground_path))
         self.bulk_configuration.calc = calc
+        # Use the converged magnetic ordering as the supercell SCF seed.
+        if self.Spin_calc:
+            if calc.get_number_of_spins() != 2:
+                raise ValueError('GPAW phonons require a spin-polarized ground state when Spin_calc=True.')
+            self.bulk_configuration.set_initial_magnetic_moments(
+                calc.get_magnetic_moments()
+            )
+        elif calc.get_number_of_spins() != 1:
+            raise ValueError('GPAW ground-state spin does not match Spin_calc=False.')
 
         # Pre-process
         bulk_configuration_ph = convert_atoms_to_phonopy(self.bulk_configuration)
@@ -5950,6 +5969,8 @@ class dftsolve:
                 self.Phonon_kpts_z,
             ),
             txt=self.struct+'-PHONON-GPAW-Log-Calculation.txt',
+            ground_calc=calc,
+            supercell_multiplier=int(round(abs(np.linalg.det(self.Phonon_supercell)))),
         )
 
         self.bulk_configuration.calc = calc
@@ -5959,7 +5980,34 @@ class dftsolve:
         phonon_path = self.struct+'-PHONON-GPAW-Result-Force-Constants.npy'
         sum_rule=self.Phonon_acoustic_sum_rule
 
-        if os.path.exists(phonon_path):
+        # Old caches without provenance are deliberately recomputed.
+        cache_path = Path(self.struct+'-PHONON-GPAW-Result-Cache.json')
+        cache_settings = {
+            'schema': 1,
+            'ground_state': [ground_path.stat().st_size, ground_path.stat().st_mtime_ns],
+            'phonopy_version': phonopy.__version__,
+            'cutoff': self.Phonon_PW_cutoff,
+            'kpoints': [self.Phonon_kpts_x, self.Phonon_kpts_y, self.Phonon_kpts_z],
+            'symbols': self.bulk_configuration.get_chemical_symbols(),
+            'cell': self.bulk_configuration.cell.tolist(),
+            'positions': self.bulk_configuration.get_positions().tolist(),
+            'magmoms': self.bulk_configuration.get_initial_magnetic_moments().tolist(),
+            'supercell': np.asarray(self.Phonon_supercell).tolist(),
+            'displacement': self.Phonon_displacement,
+            'acoustic_sum_rule': bool(sum_rule),
+        }
+        reuse_cache = False
+        try:
+            reuse_cache = json.loads(cache_path.read_text(encoding='utf-8')) == cache_settings
+        except (OSError, ValueError):
+            pass
+        if not reuse_cache:
+            parprint('Phonon force cache settings changed or are missing; recomputing forces.')
+            # Invalidate before writing any forces, including interrupted runs.
+            with paropen(str(cache_path), 'w') as cache_file:
+                cache_file.write('{}\n')
+
+        if reuse_cache and os.path.exists(phonon_path):
             with paropen(self.struct+'-PHONON-GPAW-Log-Phonopy.txt', 'a') as f2:
                 print('Reading FCs from {!r}'.format(phonon_path), end="\n", file=f2)
             phonon.force_constants = np.load(phonon_path)
@@ -5971,7 +6019,7 @@ class dftsolve:
             supercells = list(phonon.supercells_with_displacements)
             fnames = [self.struct+'-PHONON-GPAW-Result-Supercell-{:04}.npy'.format(i) for i in range(len(supercells))]
             set_of_forces = [
-                self.load_or_compute_force(fname, calc, supercell)
+                self.load_or_compute_force(fname, calc, supercell, reuse_cache=reuse_cache)
                 for (fname, supercell) in zip(fnames, supercells)
             ]
             with paropen(self.struct+'-PHONON-GPAW-Log-Phonopy.txt', 'a') as f2:
@@ -5981,7 +6029,10 @@ class dftsolve:
                 phonon.symmetrize_force_constants()
             with paropen(self.struct+'-PHONON-GPAW-Log-Phonopy.txt', 'a') as f2:
                 print('Writing FCs to {!r}'.format(phonon_path), end="\n", file=f2)
-            np.save(phonon_path, phonon.force_constants)
+            with paropen(phonon_path, 'wb') as force_file:
+                np.save(force_file, phonon.force_constants)
+            with paropen(str(cache_path), 'w') as cache_file:
+                json.dump(cache_settings, cache_file, indent=2)
             #shutil.rmtree('force-sets')
 
         with paropen(self.struct+'-PHONON-GPAW-Log-Phonopy.txt', 'a') as f2:
@@ -6836,8 +6887,8 @@ class dftsolve:
             force -= drift_force / forces.shape[0]
         return forces
 
-    def load_or_compute_force(self, path, calc, atoms):
-        if os.path.exists(path):
+    def load_or_compute_force(self, path, calc, atoms, reuse_cache=True):
+        if reuse_cache and os.path.exists(path):
             with paropen(self.struct+'-PHONON-GPAW-Log-Phonopy.txt', 'a') as f2:
                 print('Reading {!r}'.format(path), end="\n", file=f2)
             return np.load(path)
@@ -6846,7 +6897,8 @@ class dftsolve:
             with paropen(self.struct+'-PHONON-GPAW-Log-Phonopy.txt', 'a') as f2:
                 print('Computing {!r}'.format(path), end="\n", file=f2)
             force_set = self.run_gpaw(calc, atoms)
-            np.save(path, force_set)
+            with paropen(path, 'wb') as force_file:
+                np.save(force_file, force_set)
             return force_set
 
 # Elastic related functions
@@ -6956,19 +7008,24 @@ def get_band_path(atoms, path_str, npoints, path_frac=None, labels=None):
     return qpoints, labels, connections
 
 def convert_atoms_to_ase(atoms):
+    moments = getattr(atoms, 'magnetic_moments', None)
+    if hasattr(atoms, 'get_initial_magnetic_moments'):
+        moments = atoms.get_initial_magnetic_moments()
     if hasattr(atoms, 'get_chemical_symbols'):
         return Atoms(
             symbols=atoms.get_chemical_symbols(),
             scaled_positions=atoms.get_scaled_positions(),
             cell=atoms.get_cell(),
-            pbc=True
+            pbc=True,
+            magmoms=moments,
         )
     else:
         return Atoms(
             symbols=atoms.symbols,
             scaled_positions=atoms.scaled_positions,
             cell=atoms.cell,
-            pbc=True
+            pbc=True,
+            magmoms=moments,
         )
 
 def convert_atoms_to_phonopy(atoms):
@@ -6977,7 +7034,11 @@ def convert_atoms_to_phonopy(atoms):
     return PhonopyAtoms(
         symbols=atoms.get_chemical_symbols(),
         scaled_positions=atoms.get_scaled_positions(),
-        cell=atoms.get_cell()
+        cell=atoms.get_cell(),
+        magnetic_moments=(
+            atoms.get_initial_magnetic_moments()
+            if atoms.has('initial_magmoms') else None
+        ),
     )
 
 
