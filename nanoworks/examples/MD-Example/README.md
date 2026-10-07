@@ -116,3 +116,8 @@ For example, a Li-containing oxide could use `MSD_species = ['Li', 'O']`. The co
 ### Species-resolved diffusion
 
 If `Diffusion_calc = True` is combined with `MSD_species`, Nanoworks also estimates a diffusion coefficient for each selected element and writes `*-Diffusion-Species.csv` using the same fit window and dimensionality as the total diffusion analysis.
+
+
+## Pair-resolved RDF
+
+For multicomponent systems, selected element pairs can be analyzed separately with `RDF_pairs`, for example `RDF_pairs = [('Li', 'O'), ('O', 'O')]`. See `sampleinput_rdf_pairs.py`.
