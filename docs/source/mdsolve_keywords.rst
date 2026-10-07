@@ -431,3 +431,38 @@ long-running calculations.
 
 Larger intervals substantially reduce disk and log volume during long MD
 runs without changing the integration timestep.
+
+
+Interatomic Potential
+---------------------
+
+``mdsolve`` uses an engine-neutral potential-style selector. OpenKIM remains
+the default for both ASAP3 and LAMMPS, while LAMMPS can also use native
+EAM/alloy files.
+
+.. describe:: Potential_style
+
+    :Type: ``str``
+    :Default: ``'OpenKIM'``
+
+    Supported values are ``'OpenKIM'`` and ``'EAM/alloy'``.
+    ASAP3 currently supports only ``'OpenKIM'``.
+
+.. describe:: Potential_file
+
+    :Type: ``str``
+    :Default: ``''``
+
+    Path to the native potential file. It is required for
+    ``Potential_style = 'EAM/alloy'``. Relative paths are resolved from
+    the input-file directory.
+
+For EAM/alloy, Nanoworks maps the element order in the ASE/CIF structure to
+LAMMPS atom types and generates the equivalent of::
+
+    pair_style eam/alloy
+    pair_coeff * * potential.eam.alloy Element1 Element2 ...
+
+The EAM/alloy file must contain a compatible mapping for all elements in the
+structure. Native EAM/alloy is currently available only with the LAMMPS
+engine.
