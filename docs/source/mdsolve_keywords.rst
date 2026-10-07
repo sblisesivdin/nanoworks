@@ -193,7 +193,7 @@ Trajectory Analysis
 -------------------
 
 LAMMPS calculations can optionally compute mean squared displacement (MSD)
-during the MD run.
+and radial distribution functions (RDF) during the MD run.
 
 .. describe:: MSD_calc
 
@@ -219,3 +219,29 @@ during the MD run.
 When enabled, Nanoworks preserves the native LAMMPS MSD output and also writes
 ``*-MSD.csv`` containing the x, y, z and total MSD components in
 Angstrom squared.
+
+
+.. describe:: RDF_calc
+
+    :Type: ``boolean``
+    :Default: ``False``
+
+    Enable total radial distribution function analysis with LAMMPS.
+
+.. describe:: RDF_bins
+
+    :Type: ``int``
+    :Default: ``100``
+
+    Number of radial bins used by the RDF calculation.
+
+.. describe:: RDF_interval
+
+    :Type: ``int``
+    :Default: ``10``
+
+    Number of MD steps between RDF samples.
+
+When enabled, Nanoworks preserves the native LAMMPS RDF output and also writes
+``*-RDF.csv`` with the radial coordinate, total ``g(r)``, and
+coordination number for each sampled step.
