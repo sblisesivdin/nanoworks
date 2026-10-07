@@ -111,3 +111,8 @@ For multicomponent systems, MSD can be calculated separately for selected elemen
     mdsolve -i sampleinput_species_msd.py -g argon_fcc_4x4x4.cif
 
 For example, a Li-containing oxide could use `MSD_species = ['Li', 'O']`. The combined output is written to `*-MSD-Species.csv`.
+
+
+### Species-resolved diffusion
+
+If `Diffusion_calc = True` is combined with `MSD_species`, Nanoworks also estimates a diffusion coefficient for each selected element and writes `*-Diffusion-Species.csv` using the same fit window and dimensionality as the total diffusion analysis.
