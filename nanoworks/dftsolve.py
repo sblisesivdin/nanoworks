@@ -8550,6 +8550,11 @@ def prepare_qe_dry_run(
                     force_job['input_file'], force_job['output_file'],
                     force_job['input_text'], depends_on=ground_dependency,
                     metadata={'method': 'finite-displacement', 'natoms': force_job['natoms']})
+            jobs[-1]['completion_command'] = [sys.executable, '-m', 'nanoworks.qe_phonon',
+                force_plan['manifest_file'], '--record-force', force_job['id']]
+            if len(force_ids) == 1:
+                jobs[-1]['preparation_command'] = [sys.executable, '-m', 'nanoworks.qe_phonon',
+                    force_plan['manifest_file'], '--begin']
         command = [sys.executable, '-m', 'nanoworks.qe_phonon', force_plan['manifest_file']]
         jobs.append({'id': 'phonon-postprocess', 'stage': 'phonon',
             'executable': sys.executable, 'input_file': force_plan['manifest_file'],
@@ -8759,6 +8764,8 @@ def prepare_qe_dry_run(
     script_lines.append('')
 
     for job in jobs:
+        if job.get('preparation_command'):
+            script_lines.append(shlex.join(job['preparation_command']))
         command = shlex.join(job['command'])
         output_file = shlex.quote(job['output_file'])
         input_redirect = (
@@ -8782,6 +8789,9 @@ def prepare_qe_dry_run(
                 + output_file
                 + ')'
             )
+
+        if job.get('completion_command'):
+            script_lines.append(shlex.join(job['completion_command']))
 
     script_file.write_text(
         '\n'.join(script_lines) + '\n',
@@ -9131,6 +9141,8 @@ def write_qe_slurm_script(
         lines.append('')
 
     for job in jobs:
+        if job.get('preparation_command'):
+            lines.append(shlex.join(job['preparation_command']))
         command_parts = [
             'srun',
             '-n',
@@ -9177,6 +9189,9 @@ def write_qe_slurm_script(
                 + output_file
                 + ')'
             )
+
+        if job.get('completion_command'):
+            lines.append(shlex.join(job['completion_command']))
 
     slurm_script.write_text(
         '\n'.join(lines) + '\n',

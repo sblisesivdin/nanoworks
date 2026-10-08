@@ -81,10 +81,22 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             self.assertIn('nanoworks.qe_phonon', post['command'])
             self.assertNotIn('ph.x', [job['executable'] for job in plan['jobs']])
             slurm = write_qe_slurm_script(plan)
-            # Slurm launches the force SCFs with MPI and the postprocessor once.
-            script = slurm.read_text()
-            post_line = next(line for line in script.splitlines() if 'nanoworks.qe_phonon' in line)
-            self.assertFalse(post_line.startswith('srun'))
+            # Both decks verify each force immediately after its SCF; Python runs once.
+            for script_path in (Path(plan['script_file']), slurm):
+                script = script_path.read_text()
+                python_lines = [line for line in script.splitlines() if 'nanoworks.qe_phonon' in line]
+                self.assertTrue(all(not line.startswith('srun') for line in python_lines))
+                self.assertEqual(sum('--begin' in line for line in python_lines), 1)
+                self.assertEqual(sum('--record-force' in line for line in python_lines), len(force_jobs))
+                self.assertIn('--begin', python_lines[0])
+                self.assertNotIn('--record-force', python_lines[-1])
+                for job in force_jobs:
+                    force_line = next(line for line in script.splitlines()
+                                      if job['input_file'] in line and 'pw.x' in line)
+                    record_line = next(line for line in python_lines
+                                       if '--record-force ' + job['id'] in line)
+                    self.assertLess(script.index(force_line), script.index(record_line))
+                    self.assertLess(script.index(record_line), script.index(python_lines[-1]))
 
     def test_phonon_atom_conversion_preserves_antiferromagnetic_moments(self):
         try:

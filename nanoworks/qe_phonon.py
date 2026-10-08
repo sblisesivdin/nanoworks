@@ -187,44 +187,103 @@ def _cached_force(job):
 
 
 def _save_force(job, force):
+    force = np.asarray(force, dtype=float)
+    if force.shape != (job['natoms'], 3) or not np.isfinite(force).all():
+        raise ValueError('QE force records require a complete finite atom-by-coordinate array.')
     path = Path(job['cache_file'])
     temporary = path.with_suffix('.json.tmp')
     temporary.write_text(json.dumps({'signature': job['signature'],
-        'forces_ev_angstrom': np.asarray(force).tolist()}, indent=2) + '\n', encoding='utf-8')
+        'forces_ev_angstrom': force.tolist()}, indent=2, allow_nan=False) + '\n', encoding='utf-8')
     temporary.replace(path)
 
 
-def run_force_plan(plan, parallel_cores=1):
-    """Resume only forces with matching electronic inputs and UPF content."""
-    for job in plan['jobs']:
-        if _cached_force(job) is not None:
-            print(f"Reading cached QE forces: {job['cache_file']}")
-            continue
-        print(f"Computing QE forces: {job['id']}")
-        force = qe.run_pw_forces(job['input_file'], job['output_file'], job['input_text'],
-                                 job['natoms'], parallel_cores=parallel_cores)
-        _save_force(job, force)
-    return postprocess(plan)
-
-
-def postprocess(plan, prefer_outputs=False):
-    """Build force constants, bands, DOS and optional thermal properties."""
+def _validate_plan_resources(plan):
     import phonopy
     if phonopy.__version__ != plan['phonopy_version']:
         raise ValueError('Phonopy version changed; regenerate the QE force plan on this host.')
     for symbol, filename in plan['pseudopotential_paths'].items():
         if hashlib.sha256(Path(filename).read_bytes()).hexdigest() != plan['pseudopotential_hashes'][symbol]:
             raise ValueError('Pseudopotential content changed; regenerate the QE force plan.')
+
+
+def record_force_result(plan, job_id):
+    """Register a just-completed shell/Slurm SCF under its input signature."""
+    _validate_plan_resources(plan)
+    job = next((job for job in plan['jobs'] if job['id'] == job_id), None)
+    if job is None:
+        raise ValueError(f'Unknown QE force job: {job_id}')
+    if Path(job['input_file']).read_text(encoding='utf-8') != job['input_text']:
+        raise ValueError('QE force input changed; regenerate the finite-displacement plan.')
+    manifest = Path(plan['manifest_file'])
+    output = Path(job['output_file'])
+    if output.stat().st_mtime_ns < manifest.stat().st_mtime_ns:
+        raise ValueError('QE force output predates this plan; rerun the force SCF before recording it.')
+    force = qe.read_pw_force_result(output, job['natoms'])
+    _save_force(job, force)
+
+
+def _write_report(plan, report):
+    path = Path(plan['struct'] + '-PHONON-QE-Result-Summary.json')
+    temporary = path.with_suffix('.json.tmp')
+    temporary.write_text(json.dumps(report, indent=2, allow_nan=False) + '\n', encoding='utf-8')
+    temporary.replace(path)
+
+
+def _failure_report(plan, error):
+    _write_report(plan, {'status': 'interrupted' if isinstance(error, KeyboardInterrupt) else 'failed',
+        'method': 'finite-displacement', 'engine': 'QE', 'error': str(error) or 'Interrupted',
+        'completed_force_jobs': sum(_cached_force(job) is not None for job in plan['jobs']),
+        'total_force_jobs': len(plan['jobs'])})
+
+
+def begin_force_plan(plan):
+    """Invalidate the previous completion status before shell/Slurm execution."""
+    _write_report(plan, {'status': 'running', 'method': 'finite-displacement', 'engine': 'QE'})
+    try:
+        _validate_plan_resources(plan)
+    except (Exception, KeyboardInterrupt) as exc:
+        _failure_report(plan, exc)
+        raise
+
+
+def run_force_plan(plan, parallel_cores=1):
+    """Resume only forces with matching electronic inputs and UPF content."""
+    begin_force_plan(plan)
+    try:
+        for job in plan['jobs']:
+            if _cached_force(job) is not None:
+                print(f"Reading cached QE forces: {job['cache_file']}")
+                continue
+            print(f"Computing QE forces: {job['id']}")
+            force = qe.run_pw_forces(job['input_file'], job['output_file'], job['input_text'],
+                                     job['natoms'], parallel_cores=parallel_cores)
+            _save_force(job, force)
+        return postprocess(plan)
+    except (Exception, KeyboardInterrupt) as exc:
+        _failure_report(plan, exc)
+        raise
+
+
+def postprocess(plan):
+    """Repeat only the analysis using verified forces, without executing QE."""
+    _write_report(plan, {'status': 'postprocessing', 'method': 'finite-displacement', 'engine': 'QE'})
+    try:
+        return _postprocess(plan)
+    except (Exception, KeyboardInterrupt) as exc:
+        _failure_report(plan, exc)
+        raise
+
+
+def _postprocess(plan):
+    """Build force constants, bands, DOS and optional thermal properties."""
+    _validate_plan_resources(plan)
     phonon = make_phonon(plan['unitcell'], plan['supercell'], plan['displacement'])
     forces = []
     for job in plan['jobs']:
-        if prefer_outputs and Path(job['input_file']).read_text(encoding='utf-8') != job['input_text']:
-            raise ValueError('QE force input changed; regenerate the finite-displacement plan.')
-        force = None if prefer_outputs else _cached_force(job)
+        force = _cached_force(job)
         if force is None:
-            # Used by generated shell/Slurm decks after their pw.x jobs.
-            force = qe.read_pw_force_result(job['output_file'], job['natoms'])
-            _save_force(job, force)
+            raise ValueError(f"No matching verified forces for {job['id']}; rerun dftsolve "
+                             'or regenerate and execute the dry-run/Slurm deck.')
         forces.append(force)
     if len(forces) != len(phonon.supercells_with_displacements) + 1:
         raise ValueError('The QE force plan does not match the Phonopy displacements.')
@@ -245,6 +304,9 @@ def postprocess(plan, prefer_outputs=False):
         'nmodes': 3 * len(plan['unitcell']['symbols']),
         'frequencies_thz': [phonon.get_frequencies(q).tolist() for q in qpoints]}
     phonon.run_mesh(plan['dos_mesh'], with_eigenvectors=True, is_mesh_symmetry=False)
+    mesh_data = phonon.mesh
+    mesh_file, mesh_diagnostics = write_mesh_data(prefix, mesh_data.qpoints,
+                                                 mesh_data.weights, mesh_data.frequencies)
     phonon.run_projected_dos(sigma=0.1)
     partial = phonon.projected_dos
     projected = np.asarray(partial.projected_dos)
@@ -263,17 +325,48 @@ def postprocess(plan, prefer_outputs=False):
             t_min=plan['temperature'][0], t_max=plan['temperature'][1], t_step=plan['temperature'][2])
         thermal_file = qe.write_phonon_thermal_properties(
             prefix + '-Result-Thermal-Properties.csv', thermal_data)
-    report = {'method': 'finite-displacement', 'engine': 'QE',
+    report = {'status': 'complete', 'method': 'finite-displacement', 'engine': 'QE',
         'xc': plan['xc'], 'hubbard_u': plan['hubbard_u'], 'spin_polarized': plan['spin_polarized'],
         'force_units': 'eV/Angstrom', 'frequency_units': 'THz',
         'electronic_kpoints': plan['electronic_kpoints'],
         'residual_force_max_ev_angstrom': float(np.linalg.norm(forces[0], axis=1).max()),
         'minimum_band_frequency_thz': float(np.min(frequencies['frequencies_thz'])),
+        **mesh_diagnostics, 'mesh_data_file': str(mesh_file),
+        'completed_force_jobs': len(forces), 'total_force_jobs': len(plan['jobs']),
         'force_constants_file': str(constants_file), 'band_data_file': str(band_file),
         'dos_data_file': str(dos_file), 'graph_file': str(graph_file),
         'thermal_data_file': str(thermal_file) if thermal_file else None}
-    Path(prefix + '-Result-Summary.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
+    _write_report(plan, report)
     return {**report, 'frequencies': frequencies, 'dos': dos_data, 'thermal_data': thermal_data}
+
+
+def write_mesh_data(prefix, qpoints, weights, frequencies):
+    """Retain signed mesh frequencies; report counts without declaring stability."""
+    qpoints, weights, frequencies = (np.asarray(value, dtype=float)
+                                     for value in (qpoints, weights, frequencies))
+    if (frequencies.ndim != 2 or not frequencies.size or qpoints.shape != (len(frequencies), 3)
+            or weights.shape != (len(frequencies),) or np.any(weights <= 0)
+            or not all(np.isfinite(value).all() for value in (qpoints, weights, frequencies))):
+        raise ValueError('Phonon mesh arrays must have finite, consistent dimensions and positive weights.')
+    minimum = np.unravel_index(np.argmin(frequencies), frequencies.shape)
+    threshold = 0.1  # Reporting threshold only; raw negative frequencies are retained.
+    below_threshold = frequencies < -threshold
+    report = {
+        'minimum_mesh_frequency_thz': float(frequencies[minimum]),
+        'minimum_mesh_qpoint': qpoints[minimum[0]].tolist(),
+        'minimum_mesh_mode_index': int(minimum[1] + 1),
+        'mesh_sampled_qpoints': len(qpoints), 'mesh_weight_sum': float(weights.sum()),
+        'negative_mesh_mode_count': int(np.count_nonzero(frequencies < 0)),
+        'imaginary_reporting_threshold_thz': threshold,
+        'mesh_modes_below_reporting_threshold': int(np.count_nonzero(below_threshold)),
+        'weighted_mesh_fraction_below_reporting_threshold': float(
+            np.sum(weights[:, None] * below_threshold) / (weights.sum() * frequencies.shape[1])),
+    }
+    path = Path(prefix + '-Result-Mesh-THz.dat')
+    header = 'qx qy qz Weight ' + ' '.join(
+        f'Frequency_{index + 1}(THz)' for index in range(frequencies.shape[1]))
+    np.savetxt(path, np.column_stack([qpoints, weights, frequencies]), header=header, fmt='%.10f')
+    return path, report
 
 
 def _plot(prefix, band_path, frequencies, dos):
@@ -303,5 +396,20 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='Postprocess a Nanoworks QE force plan.')
     parser.add_argument('manifest')
+    action = parser.add_mutually_exclusive_group()
+    action.add_argument('--record-force', metavar='JOB_ID',
+                        help='Verify and record a just-completed force SCF before postprocessing.')
+    action.add_argument('--begin', action='store_true', help='Mark the force workflow as running.')
     args = parser.parse_args()
-    postprocess(json.loads(Path(args.manifest).read_text(encoding='utf-8')), prefer_outputs=True)
+    plan = json.loads(Path(args.manifest).read_text(encoding='utf-8'))
+    plan['manifest_file'] = str(Path(args.manifest).resolve())
+    if args.begin:
+        begin_force_plan(plan)
+    elif args.record_force:
+        try:
+            record_force_result(plan, args.record_force)
+        except (Exception, KeyboardInterrupt) as exc:
+            _failure_report(plan, exc)
+            raise
+    else:
+        postprocess(plan)

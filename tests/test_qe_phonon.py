@@ -5,6 +5,7 @@
 """Regression coverage for spin/U finite-displacement QE phonons."""
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -17,10 +18,23 @@ from ase.units import Bohr
 from nanoworks.engine import qe
 from nanoworks.qe_phonon import (
     prepare_force_plan, run_force_plan, supercell_kpoints, make_phonon, _save_force, postprocess,
+    record_force_result, write_mesh_data,
 )
 
 
 class TestQEForceParser(unittest.TestCase):
+    def test_mesh_report_retains_negative_modes_and_weights(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            frequencies = np.array([[-.05, .3, 1], [-.2, -.11, 2]])
+            path, report = write_mesh_data(str(Path(tmpdir) / 'Ni'),
+                [[0, 0, 0], [.5, 0, 0]], [1, 3], frequencies)
+            self.assertEqual(report['minimum_mesh_qpoint'], [.5, 0, 0])
+            self.assertEqual(report['minimum_mesh_mode_index'], 1)
+            self.assertEqual(report['negative_mesh_mode_count'], 3)
+            self.assertEqual(report['mesh_modes_below_reporting_threshold'], 2)
+            self.assertAlmostEqual(report['weighted_mesh_fraction_below_reporting_threshold'], .5)
+            np.testing.assert_allclose(np.loadtxt(path)[:, 4:], frequencies)
+
     def test_last_force_block_units_and_fortran_exponents(self):
         text = '''Forces acting on atoms (cartesian axes, Ry/au):
         atom 1 type 1 force = 99 99 99
@@ -129,6 +143,54 @@ class TestQEFiniteDisplacements(unittest.TestCase):
             self.assertEqual(record['signature'], job['signature'])
             self.assertEqual(len(record['forces_ev_angstrom']), 4)
 
+    def test_postprocess_rejects_unverified_output_without_running_qe(self):
+        plan = self.plan()
+        Path(plan['jobs'][0]['output_file']).write_text('old SCF output')
+        with patch('nanoworks.qe_phonon.qe.read_pw_force_result') as read:
+            with patch('nanoworks.qe_phonon.qe.run_pw_forces') as run:
+                with self.assertRaisesRegex(ValueError, 'No matching verified forces'):
+                    postprocess(plan)
+        read.assert_not_called()
+        run.assert_not_called()
+        report = json.loads(Path(plan['struct'] + '-PHONON-QE-Result-Summary.json').read_text())
+        self.assertEqual(report['status'], 'failed')
+        self.assertEqual(report['completed_force_jobs'], 0)
+
+    def test_record_requires_current_input_and_fresh_converged_output(self):
+        plan = self.plan()
+        job = plan['jobs'][0]
+        Path(job['input_file']).write_text(job['input_text'])
+        output = Path(job['output_file'])
+        output.write_text('Program PWSCF v.7.4.1 starts\n'
+            '! total energy = -10 Ry\nconvergence has been achieved\n'
+            'Forces acting on atoms (cartesian axes, Ry/au):\n' +
+            '\n'.join(f'atom {index} type 1 force = 0 0 0' for index in range(1, 5)) +
+            '\nJOB DONE.\n')
+        manifest_time = Path(plan['manifest_file']).stat().st_mtime_ns
+        os.utime(output, ns=(manifest_time - 1_000_000_000, manifest_time - 1_000_000_000))
+        with self.assertRaisesRegex(ValueError, 'predates'):
+            record_force_result(plan, job['id'])
+        os.utime(output, ns=(manifest_time + 1_000_000_000, manifest_time + 1_000_000_000))
+        record_force_result(plan, job['id'])
+        self.assertTrue(Path(job['cache_file']).is_file())
+        Path(job['input_file']).write_text(job['input_text'] + '\n! changed\n')
+        with self.assertRaisesRegex(ValueError, 'input changed'):
+            record_force_result(plan, job['id'])
+
+    def test_scf_failure_preserves_completed_force_for_resume(self):
+        plan = self.plan()
+        with patch('nanoworks.qe_phonon.qe.run_pw_forces',
+                   side_effect=[np.zeros((4, 3)), RuntimeError('SCF failed')]):
+            with self.assertRaisesRegex(RuntimeError, 'SCF failed'):
+                run_force_plan(plan)
+        report = json.loads(Path(plan['struct'] + '-PHONON-QE-Result-Summary.json').read_text())
+        self.assertEqual(report['status'], 'failed')
+        self.assertEqual(report['completed_force_jobs'], 1)
+        with patch('nanoworks.qe_phonon.qe.run_pw_forces', return_value=np.zeros((4, 3))) as run:
+            with patch('nanoworks.qe_phonon.postprocess', return_value={}):
+                run_force_plan(plan)
+        self.assertEqual(run.call_count, len(plan['jobs']) - 1)
+
     def test_harmonic_forces_produce_band_dos_and_force_constants(self):
         plan = self.plan()
         phonon = make_phonon(plan['unitcell'], plan['supercell'], plan['displacement'])
@@ -145,4 +207,6 @@ class TestQEFiniteDisplacements(unittest.TestCase):
         self.assertGreater(np.max(result['frequencies']['frequencies_thz']), 0)
         self.assertTrue(Path(result['band_data_file']).is_file())
         self.assertTrue(Path(result['dos_data_file']).is_file())
+        self.assertTrue(Path(result['mesh_data_file']).is_file())
+        self.assertEqual(result['status'], 'complete')
         self.assertGreater(np.linalg.norm(np.load(result['force_constants_file'])), 0)

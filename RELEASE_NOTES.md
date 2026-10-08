@@ -4,6 +4,7 @@
 
 - GPAW phonon forces retain the ground-state electronic settings and magnetic moments; incompatible force caches are recomputed.
 - QE Hubbard-U phonons use Phonopy finite displacements and native pw.x forces, with spin/U settings, resumable forces and dry-run/Slurm support.
+- QE finite-displacement postprocessing requires verified force records, supports analysis-only retries, and reports signed q-mesh frequencies, imaginary-mode diagnostics and workflow status.
 
 - `mdsolve` adds LAMMPS NVE and NPT molecular dynamics while retaining the common NVT Langevin workflow with ASAP3 and LAMMPS.
 - The `mdsolve` examples and documentation are renewed for the ASAP3/LAMMPS backend workflow and ensemble selection.

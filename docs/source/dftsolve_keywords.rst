@@ -262,9 +262,23 @@ or:
     Initial moments seed the SCF; they do not constrain the converged state.
     Inspect force logs to verify the intended magnetic state.
 
+    Generated dry-run/Slurm decks verify and record each completed force SCF.
+    Postprocessing accepts matching force records only, never unverified old
+    log files. Regenerate decks made before this recording step was introduced.
+    To repeat analysis without rerunning QE, use
+    ``python -m nanoworks.qe_phonon <struct>-PHONON-QE-Input-Finite-Displacement.json``.
+    The summary records running, postprocessing, complete or failed states
+    (interrupted for a Python keyboard interrupt). A shell job that terminates
+    before recording can leave the status running; only complete confirms
+    successful postprocessing.
+
     Both QE routes produce THz band/DOS tables, a PNG and optional thermal
     properties. The finite-displacement route also writes force constants
-    as NumPy, Phonopy YAML and a JSON summary; it does not add a non-analytical
+    as NumPy, Phonopy YAML, signed q-mesh frequencies and a JSON summary.
+    Mesh diagnostics include the minimum frequency and its q-point, negative
+    mode counts and a weighted fraction below -0.1 THz. This is a reporting
+    threshold, not a physical stability criterion; raw negative frequencies
+    remain in the mesh table. This route does not add a non-analytical
     LO-TO correction. SOC and hybrid QE phonons remain unsupported.
 
 .. code-block:: python
