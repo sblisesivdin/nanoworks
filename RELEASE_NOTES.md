@@ -22,6 +22,7 @@
 - LAMMPS MD can run a separate equilibration segment before production analyses.
 - LAMMPS NVT supports both Langevin and Nose-Hoover thermostats.
 - LAMMPS NPT supports isotropic, anisotropic, and selected-axis pressure coupling modes.
+- LAMMPS NPH ensemble is available with the same pressure-coupling controls.
 
 - `mlsolve` adds bulk phonon bands, DOS and imaginary-mode diagnostics with ML potentials.
 
