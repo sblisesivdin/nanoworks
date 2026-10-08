@@ -111,10 +111,26 @@ Molecular Dynamics Parameters
 
     ``iso`` (and ``xyz``) couples all three diagonal pressure
     components and box dimensions. ``aniso`` controls x, y, and z
-    independently with the same scalar target pressure. Single-axis modes
-    vary only that box dimension. The ``xy``, ``xz``, and ``yz``
-    modes couple the corresponding diagonal box dimensions. These modes do
-    not activate triclinic shear/tilt stress control.
+    independently. Single-axis modes vary only that box dimension. The
+    ``xy``, ``xz``, and ``yz`` modes couple the corresponding
+    diagonal box dimensions. These modes do not activate triclinic
+    shear/tilt stress control.
+
+.. describe:: Pressure_components
+
+    :Type: ``dict``
+    :Default: ``{}``
+    :Unit: GPa
+
+    Optional per-axis target pressures for x, y, and z. Unspecified axes
+    fall back to the scalar ``Pressure`` value. For example::
+
+        Pressure_coupling = 'aniso'
+        Pressure = 0.0
+        Pressure_components = {'y': 0.1, 'z': 0.2}
+
+    Coupled dimensions must have identical target pressures, matching the
+    LAMMPS pressure-coupling requirement.
 
 .. describe:: Random_seed
 
