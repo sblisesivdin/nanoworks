@@ -21,6 +21,7 @@
 - `mdsolve` supports native LAMMPS EAM/alloy, EAM/fs, Tersoff, and Stillinger-Weber potential files in addition to OpenKIM.
 - LAMMPS MD can run a separate equilibration segment before production analyses.
 - LAMMPS NVT supports both Langevin and Nose-Hoover thermostats.
+- LAMMPS NPT supports isotropic, anisotropic, and selected-axis pressure coupling modes.
 
 - `mlsolve` adds bulk phonon bands, DOS and imaginary-mode diagnostics with ML potentials.
 
