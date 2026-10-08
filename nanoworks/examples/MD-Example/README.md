@@ -181,3 +181,8 @@ LAMMPS NPT can use `Pressure_coupling = 'iso'` (default), `'aniso'`, individual 
 ## NPH run
 
 LAMMPS also supports NPH dynamics, where pressure is controlled without a thermostat. `Temperature` is used only to initialize velocities, while `Pressure`, `Pressure_damp`, and `Pressure_coupling` control the barostat. See `sampleinput_nph.py`.
+
+
+### Independent pressure targets
+
+`Pressure_components` can override the scalar `Pressure` independently along x, y, and z. This is most useful with `Pressure_coupling = 'aniso'`; see `sampleinput_npt_components.py`. Axes that are coupled together must use identical target pressures.
