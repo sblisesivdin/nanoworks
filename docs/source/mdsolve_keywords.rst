@@ -98,6 +98,22 @@ Molecular Dynamics Parameters
 
     Barostat damping time for LAMMPS NPT calculations.
 
+.. describe:: Pressure_coupling
+
+    :Type: ``str``
+    :Default: ``'iso'``
+
+    Pressure-control mode for LAMMPS NPT. Supported values are
+    ``'iso'``, ``'aniso'``, ``'x'``, ``'y'``, ``'z'``,
+    ``'xy'``, ``'xz'``, ``'yz'``, and ``'xyz'``.
+
+    ``iso`` (and ``xyz``) couples all three diagonal pressure
+    components and box dimensions. ``aniso`` controls x, y, and z
+    independently with the same scalar target pressure. Single-axis modes
+    vary only that box dimension. The ``xy``, ``xz``, and ``yz``
+    modes couple the corresponding diagonal box dimensions. These modes do
+    not activate triclinic shear/tilt stress control.
+
 .. describe:: Random_seed
 
     :Type: ``int``
