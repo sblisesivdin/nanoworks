@@ -154,6 +154,44 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             solver.run_gpaw.assert_called_once()
             np.testing.assert_array_equal(np.load(path), result)
 
+    def test_partial_gpaw_phonon_run_resumes_only_missing_displacements(self):
+        import numpy as np
+        with tempfile.TemporaryDirectory() as tmpdir:
+            solver = object.__new__(DFTSolver)
+            solver.struct = str(Path(tmpdir) / 'Ni')
+            atoms = Atoms('Ni2')
+            first, second = Path(tmpdir) / 'force-0.npy', Path(tmpdir) / 'force-1.npy'
+            expected = np.array([[.1, 0, 0], [-.1, 0, 0]])
+            solver.run_gpaw = Mock(side_effect=[expected, RuntimeError('interrupted SCF')])
+            solver.load_or_compute_force(first, object(), atoms, cache_signature='displacement-0')
+            with self.assertRaisesRegex(RuntimeError, 'interrupted SCF'):
+                solver.load_or_compute_force(second, object(), atoms, cache_signature='displacement-1')
+            solver.run_gpaw = Mock(return_value=expected * 2)
+            # Global completion is still false, but individual provenance is sufficient.
+            reused = solver.load_or_compute_force(first, object(), atoms,
+                reuse_cache=False, cache_signature='displacement-0')
+            solver.run_gpaw.assert_not_called()
+            calculated = solver.load_or_compute_force(second, object(), atoms,
+                reuse_cache=False, cache_signature='displacement-1')
+            solver.run_gpaw.assert_called_once()
+            np.testing.assert_array_equal(reused, expected)
+            np.testing.assert_array_equal(calculated, expected * 2)
+
+    def test_altered_gpaw_force_record_recomputes_only_that_displacement(self):
+        import numpy as np
+        with tempfile.TemporaryDirectory() as tmpdir:
+            solver = object.__new__(DFTSolver)
+            solver.struct = str(Path(tmpdir) / 'Ni')
+            atoms = Atoms('Ni2')
+            path = Path(tmpdir) / 'force.npy'
+            solver.run_gpaw = Mock(return_value=np.zeros((2, 3)))
+            solver.load_or_compute_force(path, object(), atoms, cache_signature='settings-A')
+            np.save(path, np.ones((2, 3)))
+            solver.run_gpaw.reset_mock()
+            result = solver.load_or_compute_force(path, object(), atoms, cache_signature='settings-A')
+            solver.run_gpaw.assert_called_once()
+            np.testing.assert_array_equal(result, np.zeros((2, 3)))
+
     def test_cli_overrides_parse_literals_and_last_value_wins(self):
         result = parse_dft_overrides([
             'Wavefunction_cutoff=450', 'Wavefunction_cutoff=600',

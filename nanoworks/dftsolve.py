@@ -298,6 +298,11 @@ from ase.constraints import FixSymmetry
 from ase.filters import FrechetCellFilter
 from ase.io.cif import write_cif
 from pathlib import Path
+from nanoworks.phonon_cache import (
+    collective_cache_call, force_signature, load_verified_force,
+    load_force_constants, matching_settings,
+    save_verified_force, write_array_atomic, write_json_atomic,
+)
 import numpy as np
 from numpy import genfromtxt
 
@@ -5986,8 +5991,9 @@ class dftsolve:
         # Old caches without provenance are deliberately recomputed.
         cache_path = Path(self.struct+'-PHONON-GPAW-Result-Cache.json')
         cache_settings = {
-            'schema': 1,
+            'schema': 2,
             'ground_state': [ground_path.stat().st_size, ground_path.stat().st_mtime_ns],
+            'gpaw_version': getattr(sys.modules.get('gpaw'), '__version__', None),
             'phonopy_version': phonopy.__version__,
             'cutoff': self.Phonon_PW_cutoff,
             'kpoints': [self.Phonon_kpts_x, self.Phonon_kpts_y, self.Phonon_kpts_z],
@@ -5999,21 +6005,21 @@ class dftsolve:
             'displacement': self.Phonon_displacement,
             'acoustic_sum_rule': bool(sum_rule),
         }
-        reuse_cache = False
-        try:
-            reuse_cache = json.loads(cache_path.read_text(encoding='utf-8')) == cache_settings
-        except (OSError, ValueError):
-            pass
+        reuse_cache = collective_cache_call(matching_settings, cache_path, cache_settings)
         if not reuse_cache:
-            parprint('Phonon force cache settings changed or are missing; recomputing forces.')
+            parprint('Phonon cache settings changed or are missing; rebuilding force constants.')
             # Invalidate before writing any forces, including interrupted runs.
-            with paropen(str(cache_path), 'w') as cache_file:
-                cache_file.write('{}\n')
+            collective_cache_call(write_json_atomic, cache_path, {})
 
-        if reuse_cache and os.path.exists(phonon_path):
+        cached_constants = None
+        if reuse_cache:
+            cached_constants = collective_cache_call(load_force_constants, phonon_path,
+                len(phonon.primitive), len(phonon.supercell))
+
+        if cached_constants is not None:
             with paropen(self.struct+'-PHONON-GPAW-Log-Phonopy.txt', 'a') as f2:
                 print('Reading FCs from {!r}'.format(phonon_path), end="\n", file=f2)
-            phonon.force_constants = np.load(phonon_path)
+            phonon.force_constants = cached_constants
 
         else:
             with paropen(self.struct+'-PHONON-GPAW-Log-Phonopy.txt', 'a') as f2:
@@ -6021,8 +6027,12 @@ class dftsolve:
                 #os.makedirs('force-sets', exist_ok=True)
             supercells = list(phonon.supercells_with_displacements)
             fnames = [self.struct+'-PHONON-GPAW-Result-Supercell-{:04}.npy'.format(i) for i in range(len(supercells))]
+            # ASR changes only the force-constant analysis, not the SCFs.
+            force_settings = {key: value for key, value in cache_settings.items()
+                              if key != 'acoustic_sum_rule'}
             set_of_forces = [
-                self.load_or_compute_force(fname, calc, supercell, reuse_cache=reuse_cache)
+                self.load_or_compute_force(fname, calc, supercell,
+                    cache_signature=force_signature(force_settings, supercell))
                 for (fname, supercell) in zip(fnames, supercells)
             ]
             with paropen(self.struct+'-PHONON-GPAW-Log-Phonopy.txt', 'a') as f2:
@@ -6032,10 +6042,8 @@ class dftsolve:
                 phonon.symmetrize_force_constants()
             with paropen(self.struct+'-PHONON-GPAW-Log-Phonopy.txt', 'a') as f2:
                 print('Writing FCs to {!r}'.format(phonon_path), end="\n", file=f2)
-            with paropen(phonon_path, 'wb') as force_file:
-                np.save(force_file, phonon.force_constants)
-            with paropen(str(cache_path), 'w') as cache_file:
-                json.dump(cache_settings, cache_file, indent=2)
+            collective_cache_call(write_array_atomic, phonon_path, phonon.force_constants)
+            collective_cache_call(write_json_atomic, cache_path, cache_settings)
             #shutil.rmtree('force-sets')
 
         with paropen(self.struct+'-PHONON-GPAW-Log-Phonopy.txt', 'a') as f2:
@@ -6890,18 +6898,28 @@ class dftsolve:
             force -= drift_force / forces.shape[0]
         return forces
 
-    def load_or_compute_force(self, path, calc, atoms, reuse_cache=True):
-        if reuse_cache and os.path.exists(path):
+    def load_or_compute_force(self, path, calc, atoms, reuse_cache=True, cache_signature=None):
+        if cache_signature is not None:
+            # Individual provenance permits resuming before the global force
+            # constants are complete. Legacy arrays alone are not sufficient.
+            cached = collective_cache_call(load_verified_force, path, cache_signature, len(atoms))
+        elif reuse_cache and os.path.exists(path):
+            cached = collective_cache_call(np.load, path)
+        else:
+            cached = None
+        if cached is not None:
             with paropen(self.struct+'-PHONON-GPAW-Log-Phonopy.txt', 'a') as f2:
                 print('Reading {!r}'.format(path), end="\n", file=f2)
-            return np.load(path)
+            return cached
 
         else:
             with paropen(self.struct+'-PHONON-GPAW-Log-Phonopy.txt', 'a') as f2:
                 print('Computing {!r}'.format(path), end="\n", file=f2)
             force_set = self.run_gpaw(calc, atoms)
-            with paropen(path, 'wb') as force_file:
-                np.save(force_file, force_set)
+            if cache_signature is None:
+                collective_cache_call(write_array_atomic, path, force_set)
+            else:
+                collective_cache_call(save_verified_force, path, force_set, cache_signature, len(atoms))
             return force_set
 
 # Elastic related functions

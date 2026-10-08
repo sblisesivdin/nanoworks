@@ -249,6 +249,17 @@ or:
     magnetic moments seed the displaced supercells and are preserved in
     Phonopy's symmetry analysis. Initial moments do not constrain the final
     magnetization. Force caches without matching provenance are recomputed.
+    Each displaced-supercell force array has a separate metadata record that
+    identifies the calculation settings, geometry and force-content hash.
+    Completed displacements can be reused after an interrupted run even if
+    the force constants were never completed. Missing, truncated, altered or
+    nonfinite force records are recomputed individually. Changing only
+    ``Phonon_acoustic_sum_rule`` rebuilds force constants from the existing
+    verified forces without repeating their SCFs. Force-constant caches are
+    also checked for finite values and compatible compact/full dimensions.
+    Cache I/O runs on the MPI root and its result or error is shared with
+    all ranks. Earlier GPAW force arrays without individual metadata are
+    recomputed once.
     Total charge and explicitly fixed band counts scale with the number of
     unit cells in the supercell.
 
