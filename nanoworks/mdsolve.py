@@ -63,6 +63,7 @@ Temperature_damp = 200.0 # fs
 Pressure = 0.0 # GPa
 Pressure_damp = 1000.0 # fs
 Pressure_coupling = 'iso'
+Pressure_components = {}
 Random_seed = 12345
 
 # Optional LAMMPS pre-MD minimization
@@ -284,35 +285,120 @@ def _resolve_pressure_coupling(namespace, ensemble):
 
     return aliases[coupling]
 
+def _resolve_pressure_components(namespace):
+    """Resolve optional x/y/z target pressures in GPa."""
+
+    raw = namespace.get(
+        'Pressure_components',
+        Pressure_components,
+    )
+
+    if raw in (None, {}):
+        return {}
+
+    if not isinstance(raw, dict):
+        raise ValueError(
+            'Pressure_components must be a dictionary '
+            'with optional x, y, and z keys.'
+        )
+
+    resolved = {}
+
+    for key, value in raw.items():
+        axis = str(key).strip().lower()
+
+        if axis not in ('x', 'y', 'z'):
+            raise ValueError(
+                'Pressure_components supports only '
+                'x, y, and z keys.'
+            )
+
+        if not isinstance(value, Number):
+            raise ValueError(
+                'Pressure_components values must be numeric.'
+            )
+
+        resolved[axis] = float(value)
+
+    return resolved
+
 def _pressure_control_text(
     coupling,
     pressure_bar,
     pressure_damp_ps,
+    pressure_components,
 ):
     """Return LAMMPS diagonal pressure-control keywords."""
 
-    pressure_text = (
-        f'{pressure_bar:.8f} '
-        f'{pressure_bar:.8f} '
-        f'{pressure_damp_ps:.10f}'
-    )
+    component_bar = {
+        axis: float(value) * 10000.0
+        for axis, value in pressure_components.items()
+    }
+
+    def target(axis):
+        return component_bar.get(
+            axis,
+            pressure_bar,
+        )
+
+    def text(value):
+        return (
+            f'{value:.8f} '
+            f'{value:.8f} '
+            f'{pressure_damp_ps:.10f}'
+        )
+
+    def require_equal(axes):
+        values = [
+            target(axis)
+            for axis in axes
+        ]
+
+        reference = values[0]
+
+        if any(
+            abs(value - reference) > 1.0e-10
+            for value in values[1:]
+        ):
+            raise ValueError(
+                'Coupled pressure dimensions require '
+                'identical target pressures: '
+                + ', '.join(axes)
+            )
+
+        return reference
 
     if coupling in ('ISO', 'XYZ'):
-        return f'iso {pressure_text}'
+        value = require_equal(
+            ('x', 'y', 'z')
+        )
+        return f'iso {text(value)}'
 
     if coupling == 'ANISO':
-        return f'aniso {pressure_text}'
+        if not component_bar:
+            return f'aniso {text(pressure_bar)}'
+
+        return ' '.join(
+            [
+                f'x {text(target("x"))}',
+                f'y {text(target("y"))}',
+                f'z {text(target("z"))}',
+                'couple none',
+            ]
+        )
 
     if coupling in ('X', 'Y', 'Z'):
+        axis = coupling.lower()
         return (
-            f'{coupling.lower()} '
-            f'{pressure_text}'
+            f'{axis} '
+            f'{text(target(axis))}'
         )
 
     axes = list(coupling.lower())
+    value = require_equal(axes)
 
     parts = [
-        f'{axis} {pressure_text}'
+        f'{axis} {text(value)}'
         for axis in axes
     ]
 
@@ -535,6 +621,7 @@ def _write_lammps_input(
     ensemble,
     thermostat,
     pressure_coupling,
+    pressure_components,
     potential_style,
     potential_file,
     openkim_potential,
@@ -878,6 +965,7 @@ def _write_lammps_input(
                     pressure_coupling,
                     equil_pressure_bar,
                     equil_pressure_damp_ps,
+                    pressure_components,
                 )
             )
 
@@ -1295,6 +1383,7 @@ def _write_lammps_input(
                     pressure_coupling,
                     pressure_bar,
                     pressure_damp_ps,
+                    pressure_components,
                 )
             )
 
@@ -2543,6 +2632,7 @@ def _run_md_engine(
     ensemble,
     thermostat,
     pressure_coupling,
+    pressure_components,
     atoms,
     struct_prefix,
     potential_style,
@@ -2625,6 +2715,7 @@ def _run_md_engine(
             ensemble=ensemble,
             thermostat=thermostat,
             pressure_coupling=pressure_coupling,
+            pressure_components=pressure_components,
             potential_style=potential_style,
             potential_file=potential_file,
             openkim_potential=openkim_potential,
@@ -2949,6 +3040,23 @@ def main():
     )
     namespace['Pressure_coupling'] = (
         Pressure_coupling
+    )
+
+    try:
+        resolved_pressure_components = (
+            _resolve_pressure_components(
+                namespace
+            )
+        )
+    except ValueError as exc:
+        print(str(exc))
+        sys.exit(1)
+
+    Pressure_components = (
+        resolved_pressure_components
+    )
+    namespace['Pressure_components'] = (
+        Pressure_components
     )
 
     try:
@@ -3425,6 +3533,7 @@ def main():
             ensemble=Ensemble,
             thermostat=Thermostat,
             pressure_coupling=Pressure_coupling,
+            pressure_components=Pressure_components,
             atoms=asestruct,
             struct_prefix=struct_prefix,
             potential_style=Potential_style,
