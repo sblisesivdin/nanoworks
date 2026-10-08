@@ -62,6 +62,7 @@ Time_step = 5.0 # fs
 Temperature_damp = 200.0 # fs
 Pressure = 0.0 # GPa
 Pressure_damp = 1000.0 # fs
+Pressure_coupling = 'iso'
 Random_seed = 12345
 
 # Optional LAMMPS pre-MD minimization
@@ -248,6 +249,78 @@ def _resolve_thermostat(namespace, engine, ensemble):
         )
 
     return resolved
+
+def _resolve_pressure_coupling(namespace, ensemble):
+    """Resolve the NPT pressure-coupling mode."""
+
+    coupling = str(
+        namespace.get(
+            'Pressure_coupling',
+            Pressure_coupling,
+        )
+    ).strip().upper()
+
+    aliases = {
+        'ISO': 'ISO',
+        'ANISO': 'ANISO',
+        'X': 'X',
+        'Y': 'Y',
+        'Z': 'Z',
+        'XY': 'XY',
+        'XZ': 'XZ',
+        'YZ': 'YZ',
+        'XYZ': 'XYZ',
+    }
+
+    if coupling not in aliases:
+        raise ValueError(
+            'Unsupported Pressure_coupling: '
+            f'{coupling}. Supported values: '
+            'iso, aniso, x, y, z, xy, xz, yz, xyz'
+        )
+
+    if ensemble != 'NPT':
+        return 'ISO'
+
+    return aliases[coupling]
+
+def _pressure_control_text(
+    coupling,
+    pressure_bar,
+    pressure_damp_ps,
+):
+    """Return LAMMPS diagonal pressure-control keywords."""
+
+    pressure_text = (
+        f'{pressure_bar:.8f} '
+        f'{pressure_bar:.8f} '
+        f'{pressure_damp_ps:.10f}'
+    )
+
+    if coupling in ('ISO', 'XYZ'):
+        return f'iso {pressure_text}'
+
+    if coupling == 'ANISO':
+        return f'aniso {pressure_text}'
+
+    if coupling in ('X', 'Y', 'Z'):
+        return (
+            f'{coupling.lower()} '
+            f'{pressure_text}'
+        )
+
+    axes = list(coupling.lower())
+
+    parts = [
+        f'{axis} {pressure_text}'
+        for axis in axes
+    ]
+
+    parts.append(
+        f'couple {coupling.lower()}'
+    )
+
+    return ' '.join(parts)
 
 def _validate_ensemble_settings(namespace, ensemble):
     """Validate ensemble-specific molecular dynamics settings."""
@@ -452,6 +525,7 @@ def _write_lammps_input(
     pbc,
     ensemble,
     thermostat,
+    pressure_coupling,
     potential_style,
     potential_file,
     openkim_potential,
@@ -790,6 +864,14 @@ def _write_lammps_input(
                 equil_pressure_gpa * 10000.0
             )
 
+            equil_pressure_control = (
+                _pressure_control_text(
+                    pressure_coupling,
+                    equil_pressure_bar,
+                    equil_pressure_damp_ps,
+                )
+            )
+
             lines.extend(
                 [
                     (
@@ -797,9 +879,7 @@ def _write_lammps_input(
                         f'temp {equil_temperature:.8f} '
                         f'{equil_temperature:.8f} '
                         f'{equil_damp_ps:.10f} '
-                        f'iso {equil_pressure_bar:.8f} '
-                        f'{equil_pressure_bar:.8f} '
-                        f'{equil_pressure_damp_ps:.10f}'
+                        f'{equil_pressure_control}'
                     ),
                     f'run {equilibration_steps}',
                     'unfix nw_equil_barostat',
@@ -1161,6 +1241,14 @@ def _write_lammps_input(
             # LAMMPS metal pressure units are bar.
             pressure_bar = pressure_gpa * 10000.0
 
+            pressure_control = (
+                _pressure_control_text(
+                    pressure_coupling,
+                    pressure_bar,
+                    pressure_damp_ps,
+                )
+            )
+
             lines.extend(
                 [
                     (
@@ -1168,9 +1256,7 @@ def _write_lammps_input(
                         f'temp {temperature:.8f} '
                         f'{temperature:.8f} '
                         f'{temperature_damp_ps:.10f} '
-                        f'iso {pressure_bar:.8f} '
-                        f'{pressure_bar:.8f} '
-                        f'{pressure_damp_ps:.10f}'
+                        f'{pressure_control}'
                     ),
                     f'run {int(md_steps_per_cycle)}',
                     'unfix nw_barostat',
@@ -2370,6 +2456,7 @@ def _run_md_engine(
     engine,
     ensemble,
     thermostat,
+    pressure_coupling,
     atoms,
     struct_prefix,
     potential_style,
@@ -2451,6 +2538,7 @@ def _run_md_engine(
             pbc=atoms.get_pbc(),
             ensemble=ensemble,
             thermostat=thermostat,
+            pressure_coupling=pressure_coupling,
             potential_style=potential_style,
             potential_file=potential_file,
             openkim_potential=openkim_potential,
@@ -2758,6 +2846,24 @@ def main():
 
     Thermostat = resolved_thermostat
     namespace['Thermostat'] = Thermostat
+
+    try:
+        resolved_pressure_coupling = (
+            _resolve_pressure_coupling(
+                namespace,
+                Ensemble,
+            )
+        )
+    except ValueError as exc:
+        print(str(exc))
+        sys.exit(1)
+
+    Pressure_coupling = (
+        resolved_pressure_coupling
+    )
+    namespace['Pressure_coupling'] = (
+        Pressure_coupling
+    )
 
     try:
         _validate_ensemble_settings(
@@ -3232,6 +3338,7 @@ def main():
             engine=Engine,
             ensemble=Ensemble,
             thermostat=Thermostat,
+            pressure_coupling=Pressure_coupling,
             atoms=asestruct,
             struct_prefix=struct_prefix,
             potential_style=Potential_style,
