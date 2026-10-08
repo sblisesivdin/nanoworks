@@ -176,3 +176,8 @@ See `sampleinput_nvt_nose_hoover.py`. ASAP currently retains its Langevin NVT wo
 ## NPT pressure coupling
 
 LAMMPS NPT can use `Pressure_coupling = 'iso'` (default), `'aniso'`, individual axes (`'x'`, `'y'`, `'z'`), or coupled diagonal axis sets (`'xy'`, `'xz'`, `'yz'`, `'xyz'`). See `sampleinput_npt_aniso.py`. The coupled-axis names refer to diagonal box dimensions, not triclinic shear components.
+
+
+## NPH run
+
+LAMMPS also supports NPH dynamics, where pressure is controlled without a thermostat. `Temperature` is used only to initialize velocities, while `Pressure`, `Pressure_damp`, and `Pressure_coupling` control the barostat. See `sampleinput_nph.py`.
