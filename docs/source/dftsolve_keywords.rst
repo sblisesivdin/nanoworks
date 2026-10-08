@@ -252,11 +252,20 @@ or:
     Total charge and explicitly fixed band counts scale with the number of
     unit cells in the supercell.
 
-    QE uses native DFPT and reads the saved ground state. With the current
-    ``ortho-atomic`` Hubbard projectors, ``Hubbard_U`` together with
-    ``Phonon_calc`` is rejected: QE 7.4.1 ``ph.x`` only supports ``atomic``
-    projectors for DFPT+U. Nanoworks does not silently change the projector
-    or remove U. SOC and hybrid QE phonons remain unsupported.
+    QE uses native DFPT for systems without ``Hubbard_U``. With Hubbard U,
+    Nanoworks automatically uses Phonopy finite displacements and ``pw.x``
+    force SCFs, preserving the ``ortho-atomic`` projectors, XC, collinear
+    magnetic ordering seeds, charge, occupations, electrostatics and SCF
+    controls. Phonopy is required for this route. Each supercell has its own
+    state directory; matching force results can be resumed. Undisplaced
+    residual forces are subtracted before building force constants.
+    Initial moments seed the SCF; they do not constrain the converged state.
+    Inspect force logs to verify the intended magnetic state.
+
+    Both QE routes produce THz band/DOS tables, a PNG and optional thermal
+    properties. The finite-displacement route also writes force constants
+    as NumPy, Phonopy YAML and a JSON summary; it does not add a non-analytical
+    LO-TO correction. SOC and hybrid QE phonons remain unsupported.
 
 .. code-block:: python
 
@@ -1479,6 +1488,10 @@ Phonon Calculations Keywords
 
     Cut-off energy for phonon calculations.
 
+    GPAW defaults to 400 eV. QE defaults to ``None``: native DFPT uses
+    the ground-state cutoff, while Hubbard-U finite displacements inherit
+    ``Wavefunction_cutoff`` unless this keyword overrides it.
+
 .. code-block:: python
 
     Phonon_PW_cutoff = 350  # eV
@@ -1489,6 +1502,11 @@ Phonon Calculations Keywords
     :Default: ``3``
     
     Number of k-points in x / y / z directions for phonon calculations.
+
+    GPAW defaults to 3 in each direction. For QE Hubbard-U phonons,
+    omitted values are derived from the ground-state reciprocal-space
+    resolution and the supercell dimensions. Explicit values refer to the
+    supercell electronic mesh. Native QE DFPT ignores these overrides.
 
 .. code-block:: python
 
@@ -1503,6 +1521,10 @@ Phonon Calculations Keywords
     
     Supercell used in phonon calculations.
 
+    QE without U interprets the diagonal entries as the DFPT q-point grid.
+    QE with U uses the full integer matrix as a finite-displacement
+    supercell, including replication of atom-resolved magnetic moments.
+
 .. code-block:: python
 
     Phonon_supercell = np.diag([3, 2, 2])  # 3 units in x, 2 in y and z
@@ -1514,6 +1536,9 @@ Phonon Calculations Keywords
     :Unit: Å
 
     Displacement introduced to the supercell.
+
+    Used by GPAW and QE Hubbard-U phonons; ignored by native QE DFPT.
+    Converge this value together with force SCF accuracy and supercell size.
 
 .. code-block:: python
 

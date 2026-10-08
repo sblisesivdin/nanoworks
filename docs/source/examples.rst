@@ -83,6 +83,12 @@ Phonon & Thermal Properties
 * **Silicon Phonons:**
   Similar to the aluminum example, but applied to a semiconductor (Si), showcasing the acoustic and optical phonon branches. (Folder: ``Si-phonon/``)
 
+**QE Hubbard-U Phonons (NiO):**
+  Collinear AFM NiO using Phonopy finite displacements and QE force SCFs with
+  spin/U settings. Includes dry-run preparation and resumable force results.
+  Parameters are starting values requiring convergence and magnetic-state
+  validation. (Folder: ``NiO-QE-Hubbard-phonon/``)
+
 Optical Properties
 ------------------
 

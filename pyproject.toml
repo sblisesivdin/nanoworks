@@ -45,6 +45,7 @@ gpaw = [
 ]
 
 qe = [
+    "phonopy",
 ]
 
 dft = [

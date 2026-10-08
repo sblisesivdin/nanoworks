@@ -84,6 +84,7 @@ def build_control_settings(
     pseudo_dir=None,
     outdir=None,
     calculate_stress=False,
+    calculate_forces=False,
 ):
     """Build the QE &CONTROL namelist settings."""
     calculation = str(
@@ -100,6 +101,8 @@ def build_control_settings(
 
     if calculate_stress:
         settings['tstress'] = True
+    if calculate_forces:
+        settings['tprnfor'] = True
 
     if pseudo_dir is not None:
         settings['pseudo_dir'] = str(pseudo_dir)
@@ -2314,6 +2317,7 @@ def render_pw_input(
     dipole_correction=False,
     vdw_calc='None',
     calculate_stress=False,
+    calculate_forces=False,
 ):
     """Render a complete QE pw.x input."""
 
@@ -2513,6 +2517,7 @@ def render_pw_input(
         pseudo_dir=pseudo_dir,
         outdir=outdir,
         calculate_stress=calculate_stress,
+        calculate_forces=calculate_forces,
     )
 
     system = build_system_settings(
@@ -2736,6 +2741,7 @@ def render_scf_input(
     dipole_correction=False,
     vdw_calc='None',
     calculate_stress=False,
+    calculate_forces=False,
 ):
     """Render a complete QE pw.x SCF input."""
     return render_pw_input(
@@ -2751,6 +2757,7 @@ def render_scf_input(
         dipole_correction=dipole_correction,
         vdw_calc=vdw_calc,
         calculate_stress=calculate_stress,
+        calculate_forces=calculate_forces,
         kpoint_size=kpoint_size,
         gamma=gamma,
         total_charge=total_charge,
@@ -5172,6 +5179,49 @@ def parse_pw_stress(text):
         return None
 
     return stress_results[-1]
+
+
+def parse_pw_forces(text, natoms):
+    """Read the final complete force block and convert Ry/Bohr to eV/Å."""
+    blocks = re.split(r'Forces acting on atoms[^\n]*', text, flags=re.IGNORECASE)
+    if len(blocks) < 2:
+        raise ValueError('QE output does not contain atomic forces.')
+    headers = re.findall(r'Forces acting on atoms[^\n]*', text, flags=re.IGNORECASE)
+    if not re.search(r'Ry\s*/\s*(?:au|Bohr)', headers[-1], re.IGNORECASE):
+        raise ValueError('QE atomic force units must be Ry/Bohr (Ry/au).')
+    number = r'[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[EeDd][-+]?\d+)?'
+    pattern = rf'atom\s+(\d+)\s+type\s+\d+\s+force\s*=\s*({number})\s+({number})\s+({number})'
+    rows = re.findall(pattern, blocks[-1], flags=re.IGNORECASE)
+    if len(rows) != natoms or [int(row[0]) for row in rows] != list(range(1, natoms + 1)):
+        raise ValueError('The final QE force block is incomplete or has invalid atom indices.')
+    forces = np.array([[float(v.replace('D', 'E').replace('d', 'e'))
+                        for v in row[1:]] for row in rows])
+    if not np.isfinite(forces).all():
+        raise ValueError('QE forces must be finite.')
+    return forces * EV_PER_RYDBERG / Bohr
+
+
+def read_pw_force_result(output_file, natoms):
+    """Require a completed, converged SCF before accepting its forces."""
+    result = parse_pw_output(output_file)
+    validate_qe_version(result['qe_version'])
+    text = Path(output_file).read_text(encoding='utf-8', errors='replace')
+    if (not result['job_done'] or result['total_energy_ev'] is None
+            or not re.search(r'convergence has been achieved', text, re.IGNORECASE)
+            or re.search(r'convergence NOT achieved', text, re.IGNORECASE)):
+        raise RuntimeError(f'QE force SCF did not converge and finish successfully: {output_file}')
+    return parse_pw_forces(text, natoms)
+
+
+def run_pw_forces(input_file, output_file, input_text, natoms, parallel_cores=1):
+    """Execute a rendered force SCF in an isolated supercell state directory."""
+    input_file, output_file = Path(input_file), Path(output_file)
+    input_file.parent.mkdir(parents=True, exist_ok=True)
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    input_file.write_text(input_text, encoding='utf-8')
+    run_qe_program(input_file=input_file, output_file=output_file,
+                   executable='pw.x', launcher=build_qe_launcher(parallel_cores=parallel_cores))
+    return read_pw_force_result(output_file, natoms)
 
 
 def parse_pw_output(output):

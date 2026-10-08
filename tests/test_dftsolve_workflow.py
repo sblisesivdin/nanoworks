@@ -50,9 +50,41 @@ with patch.object(
 
 class TestDFTSolveWorkflow(unittest.TestCase):
 
-    def test_qe_hubbard_phonons_fail_before_execution(self):
-        with self.assertRaisesRegex(NotImplementedError, 'ortho-atomic'):
-            DFTConfig(Engine='QE', Phonon_calc=True, Hubbard_U={'Ni-3d': 6.0})
+    def test_qe_hubbard_phonons_use_force_executable(self):
+        config = DFTConfig(Engine='QE', Phonon_calc=True, Hubbard_U={'Ni-3d': 6.0},
+                           DOS_calc=False, Band_calc=False, Density_calc=False)
+        self.assertEqual(required_dft_executables(config), ('pw.x',))
+
+    def test_qe_hubbard_phonon_dry_run_and_slurm_include_serial_postprocessor(self):
+        try:
+            import phonopy
+        except ModuleNotFoundError:
+            self.skipTest('phonopy is optional')
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / 'Ni.upf').write_text(
+                '<UPF><PP_HEADER element="Ni" z_valence="10.0"/>'
+                '<PP_PSWFC><PP_CHI.1 label="3D"/></PP_PSWFC></UPF>', encoding='utf-8')
+            config = DFTConfig(Engine='QE', Phonon_calc=True, Hubbard_U={'Ni-3d': 6.0},
+                DOS_calc=False, Band_calc=False, Density_calc=False,
+                Spin_calc=True, Magmom_per_atom=[2, -2], Pseudo_dir=str(root),
+                Pseudopotentials={'Ni': 'Ni.upf'}, Phonon_supercell=[[2, 0, 0], [0, 1, 0], [0, 0, 1]],
+                Phonon_path='GX', Phonon_npoints=5,
+                bulk_configuration=Atoms('Ni2', cell=[4, 4, 4],
+                    positions=[[0, 0, 0], [2, 2, 2]], pbc=True))
+            plan = prepare_qe_dry_run(config, root / 'Ni', parallel_cores=4)
+            force_jobs = [job for job in plan['jobs'] if job['id'].startswith('phonon-force-')]
+            self.assertGreater(len(force_jobs), 1)
+            self.assertTrue(all(job['executable'] == 'pw.x' for job in force_jobs))
+            post = next(job for job in plan['jobs'] if job['id'] == 'phonon-postprocess')
+            self.assertEqual(post['depends_on'], [job['id'] for job in force_jobs])
+            self.assertIn('nanoworks.qe_phonon', post['command'])
+            self.assertNotIn('ph.x', [job['executable'] for job in plan['jobs']])
+            slurm = write_qe_slurm_script(plan)
+            # Slurm launches the force SCFs with MPI and the postprocessor once.
+            script = slurm.read_text()
+            post_line = next(line for line in script.splitlines() if 'nanoworks.qe_phonon' in line)
+            self.assertFalse(post_line.startswith('srun'))
 
     def test_phonon_atom_conversion_preserves_antiferromagnetic_moments(self):
         try:

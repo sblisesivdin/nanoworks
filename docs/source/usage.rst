@@ -26,7 +26,12 @@ GPAW currently provides the complete Nanoworks DFT workflow. Native QE
 support includes PBE plane-wave ground-state calculations, atomic and
 variable-cell geometry optimization, DFT+U, spin-resolved DOS/PDOS and band
 structures, projected (fat) bands, and pseudo-valence electron-density Cube
-output, DFPT phonons, and ``epsilon.x`` RPA optical properties. Native QE
+output, DFPT phonons, and ``epsilon.x`` RPA optical properties. With
+``Hubbard_U``, ``Phonon_calc=True`` automatically selects Phonopy finite
+displacements and ``pw.x`` force SCFs preserving collinear spin/U settings.
+Matching forces can be resumed. Dry-run and Slurm decks include a serial
+Python postprocessor; Nanoworks and the same Phonopy version must be available
+on the execution host. Without U, the native QE DFPT route is retained. Native QE
 ``HSE06``, ``HSE03``, and ``PBE0`` support ground-state,
 DOS/PDOS, band, projected-band, and density calculations. QE hybrid DOS/PDOS
 uses a dedicated SCF state; hybrid bands use a native SCF plus ``bands.x``

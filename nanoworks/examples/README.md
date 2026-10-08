@@ -16,6 +16,7 @@ There are some example calculations given with different usage scenarios. Please
 | Si-2atoms-optical | Combined GPAW and native QE RPA smoke workflows, plus focused GPAW RPA and BSE calculations. Structure is given with a CIF file. |
 | Al-phonon         | Phonon dispersion calculation of bulk Aluminum |
 | Si-phonon         | Phonon dispersion calculation of bulk Silicon |
+| NiO-QE-Hubbard-phonon | Collinear AFM NiO with QE spin/U finite-displacement phonons |
 | ZnO with DFT+U    | Wurtzite ZnO calculation with DFT+U. Positions are given with the Bulk object. Hubbard params are: O-p: 7eV, Zn-d: 10eV|
 | TiC-elastic-electronic | Elastic (EoS and Elastic Tensor) and Electronic Properties of Rocksalt TiC |
 | Si-with-HSE | Ground state, DOS, and band structure of Si with HSE06 Hybrid XC |

@@ -1,0 +1,307 @@
+# SPDX-FileCopyrightText: Sefer Bora Lisesivdin and Beyza Lisesivdin
+# SPDX-License-Identifier: MIT
+# See LICENSE.md in the project root for license terms.
+
+"""Finite-displacement QE phonons with the portable electronic settings."""
+
+import hashlib
+import json
+import shutil
+from numbers import Integral
+from pathlib import Path
+
+import numpy as np
+from ase import Atoms
+from nanoworks.engine import resolve_initial_magnetic_moments
+from nanoworks.engine import qe
+from nanoworks.occupations import resolve_engine_occupation
+from nanoworks.scf import resolve_qe_scf_settings
+
+
+def make_phonon(unitcell, supercell, displacement):
+    """Use Angstrom and eV/Angstrom throughout, with THz frequencies."""
+    from phonopy import Phonopy
+    from phonopy.structure.atoms import PhonopyAtoms
+
+    matrix = np.asarray(supercell, dtype=float)
+    if matrix.shape == (3,):
+        matrix = np.diag(matrix)
+    if (matrix.shape != (3, 3) or not np.isfinite(matrix).all()
+            or not np.equal(matrix, np.rint(matrix)).all()
+            or np.linalg.det(matrix) <= 0):
+        raise ValueError('Phonon_supercell must be an integer 3x3 matrix with positive determinant.')
+    if not np.isfinite(displacement) or displacement <= 0:
+        raise ValueError('Phonon_displacement must be finite and positive.')
+    cell = PhonopyAtoms(symbols=unitcell['symbols'], cell=unitcell['cell'],
+                        scaled_positions=unitcell['scaled_positions'],
+                        magnetic_moments=unitcell.get('magnetic_moments'))
+    # The force parser converts QE's Ry/Bohr to eV/Angstrom. The default
+    # Phonopy unit system matches those converted forces (not QE raw units).
+    # Identity primitive_matrix preserves the input magnetic cell and q path.
+    phonon = Phonopy(cell, matrix.astype(int), primitive_matrix=np.eye(3))
+    phonon.generate_displacements(distance=float(displacement), is_plusminus=True)
+    return phonon
+
+
+def supercell_kpoints(atoms, supercell_atoms, ground_mesh):
+    """Keep at least the ground-state reciprocal-space resolution."""
+    ground_lengths = np.linalg.norm(atoms.cell.reciprocal(), axis=1)
+    spacing = np.min(ground_lengths / np.asarray(ground_mesh))
+    lengths = np.linalg.norm(supercell_atoms.cell.reciprocal(), axis=1)
+    return tuple(np.maximum(1, np.ceil(lengths / spacing - 1e-10)).astype(int))
+
+
+def _plain(value):
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, dict):
+        return {k: _plain(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_plain(v) for v in value]
+    if isinstance(value, Path):
+        return str(value)
+    return value
+
+
+def prepare_force_plan(config, atoms, struct, pseudo_dir, pseudopotentials):
+    """Render the undisplaced and displaced SCFs without executing QE."""
+    import phonopy
+
+    if getattr(config, 'SOC_calc', False) or getattr(config, 'Mode', 'PW') != 'PW':
+        raise NotImplementedError('QE finite-displacement phonons require PW mode without SOC.')
+    qe.validate_qe_xc(config.XC_calc, pseudo_xc=config.Pseudo_xc)
+
+    struct = str(Path(struct).expanduser().resolve())
+    moments = None
+    if config.Spin_calc:
+        moments = resolve_initial_magnetic_moments(
+            atoms=atoms, magmom_per_atom=config.Magmom_per_atom,
+            magmom_single_atom=config.Magmom_single_atom,
+        )
+    unitcell = {
+        'symbols': atoms.get_chemical_symbols(), 'cell': atoms.cell.tolist(),
+        'scaled_positions': atoms.get_scaled_positions().tolist(),
+        'magnetic_moments': _plain(moments),
+    }
+    phonon = make_phonon(unitcell, config.Phonon_supercell, config.Phonon_displacement)
+    cells = [phonon.supercell, *phonon.supercells_with_displacements]
+    multiplier = len(cells[0]) // len(atoms)
+    ground_mesh = qe.resolve_qe_kpoint_size(
+        atoms, density=config.Ground_kpts_density,
+        size=(config.Ground_kpts_x, config.Ground_kpts_y, config.Ground_kpts_z),
+    )
+    first = Atoms(symbols=cells[0].symbols, cell=cells[0].cell,
+                  scaled_positions=cells[0].scaled_positions, pbc=True)
+    inherited_mesh = supercell_kpoints(atoms, first, ground_mesh)
+    mesh = tuple(inherited_mesh[i] if val is None else int(val)
+                 for i, val in enumerate((config.Phonon_kpts_x, config.Phonon_kpts_y, config.Phonon_kpts_z)))
+    if any(val <= 0 for val in mesh):
+        raise ValueError('Phonon electronic k-point counts must be positive.')
+    occupation = qe.resolve_qe_occupation(resolve_engine_occupation(
+        'QE', scheme=config.Occupation_scheme, width=config.Smearing_width))
+    scf = resolve_qe_scf_settings(accuracy=config.SCF_accuracy,
+        max_steps=config.SCF_max_steps, mixing=config.SCF_mixing, solver=config.Electronic_solver)
+    nbands = config.Ground_num_of_bands
+    if isinstance(nbands, Integral):
+        nbands = int(nbands) * multiplier
+
+    # Pseudopotential changes must invalidate resumed forces, even when
+    # filenames stay unchanged. Hash the bytes, rather than their path.
+    pseudo_hashes = {}
+    pseudo_paths = {}
+    for symbol, filename in pseudopotentials.items():
+        path = Path(filename)
+        if not path.is_absolute():
+            path = Path(pseudo_dir) / path
+        pseudo_hashes[symbol] = hashlib.sha256(path.read_bytes()).hexdigest()
+        pseudo_paths[symbol] = str(path.resolve())
+    executable = shutil.which('pw.x')
+    binary = None
+    if executable:
+        stat = Path(executable).stat()
+        binary = [executable, stat.st_size, stat.st_mtime_ns]
+
+    jobs = []
+    for index, cell in enumerate(cells):
+        prefix = f'{struct}-PHONON-QE'
+        state_dir = Path(f'{prefix}-Result-State-{index:04d}')
+        force_atoms = Atoms(symbols=cell.symbols, cell=cell.cell,
+                            scaled_positions=cell.scaled_positions, pbc=True)
+        state_dir.mkdir(parents=True, exist_ok=True)
+        text = qe.render_pw_input(
+            calculation='scf', atoms=force_atoms, pseudopotentials=pseudopotentials,
+            pseudo_dir=pseudo_dir, outdir=state_dir, prefix='nanoworks',
+            cutoff_ev=(config.Wavefunction_cutoff if config.Phonon_PW_cutoff is None
+                       else config.Phonon_PW_cutoff),
+            density_cutoff_ratio=config.Density_cutoff_ratio,
+            kpoint_size=mesh, gamma=config.Gamma if config.Ground_gamma is None else config.Ground_gamma,
+            total_charge=config.Total_charge * multiplier, nbands=nbands,
+            spinpol=config.Spin_calc, magnetic_moments=cell.magnetic_moments,
+            hubbard_u=config.Hubbard_U, xc_calc=config.XC_calc, pseudo_xc=config.Pseudo_xc,
+            occupations=occupation['occupations'], smearing=occupation['smearing'],
+            width_ev=occupation['width_ev'], calculate_forces=True, nosym=True,
+            electrostatic_boundary=config.Electrostatic_boundary,
+            electrostatic_normal_axis=config.Electrostatic_normal_axis,
+            dipole_correction=config.Dipole_correction, vdw_calc=config.vdW_calc, **scf,
+        )
+        signature = hashlib.sha256(json.dumps(
+            {'input': text, 'pseudos': pseudo_hashes, 'binary': binary, 'schema': 1},
+            sort_keys=True).encode()).hexdigest()
+        jobs.append({'id': f'phonon-force-{index:04d}', 'natoms': len(cell),
+            'input_file': f'{prefix}-Input-Force-{index:04d}.in',
+            'output_file': f'{prefix}-Log-Force-{index:04d}.txt',
+            'cache_file': f'{prefix}-Result-Force-{index:04d}.json',
+            'state_dir': str(state_dir), 'input_text': text, 'signature': signature})
+    plan = _plain({
+        'schema': 1, 'method': 'finite-displacement', 'struct': struct,
+        'xc': config.XC_calc, 'hubbard_u': config.Hubbard_U, 'spin_polarized': config.Spin_calc,
+        'phonopy_version': phonopy.__version__, 'unitcell': unitcell,
+        'pseudopotential_hashes': pseudo_hashes, 'pseudopotential_paths': pseudo_paths,
+        'supercell': config.Phonon_supercell, 'displacement': config.Phonon_displacement,
+        'electronic_kpoints': mesh,
+        'dos_mesh': [config.Phonon_qpts_x, config.Phonon_qpts_y, config.Phonon_qpts_z],
+        'band_path': qe.build_band_path(atoms, config.Phonon_path, config.Phonon_npoints),
+        'acoustic_sum_rule': config.Phonon_acoustic_sum_rule,
+        'thermal': config.Phonon_thermal_calc,
+        'temperature': [config.Phonon_T_min, config.Phonon_T_max, config.Phonon_T_step],
+        'jobs': jobs,
+    })
+    manifest = Path(f'{struct}-PHONON-QE-Input-Finite-Displacement.json')
+    manifest.write_text(json.dumps(plan, indent=2) + '\n', encoding='utf-8')
+    plan['manifest_file'] = str(manifest)
+    return plan
+
+
+def _cached_force(job):
+    try:
+        record = json.loads(Path(job['cache_file']).read_text(encoding='utf-8'))
+        force = np.asarray(record['forces_ev_angstrom'], dtype=float)
+        if (record['signature'] == job['signature']
+                and force.shape == (job['natoms'], 3) and np.isfinite(force).all()):
+            return force
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    return None
+
+
+def _save_force(job, force):
+    path = Path(job['cache_file'])
+    temporary = path.with_suffix('.json.tmp')
+    temporary.write_text(json.dumps({'signature': job['signature'],
+        'forces_ev_angstrom': np.asarray(force).tolist()}, indent=2) + '\n', encoding='utf-8')
+    temporary.replace(path)
+
+
+def run_force_plan(plan, parallel_cores=1):
+    """Resume only forces with matching electronic inputs and UPF content."""
+    for job in plan['jobs']:
+        if _cached_force(job) is not None:
+            print(f"Reading cached QE forces: {job['cache_file']}")
+            continue
+        print(f"Computing QE forces: {job['id']}")
+        force = qe.run_pw_forces(job['input_file'], job['output_file'], job['input_text'],
+                                 job['natoms'], parallel_cores=parallel_cores)
+        _save_force(job, force)
+    return postprocess(plan)
+
+
+def postprocess(plan, prefer_outputs=False):
+    """Build force constants, bands, DOS and optional thermal properties."""
+    import phonopy
+    if phonopy.__version__ != plan['phonopy_version']:
+        raise ValueError('Phonopy version changed; regenerate the QE force plan on this host.')
+    for symbol, filename in plan['pseudopotential_paths'].items():
+        if hashlib.sha256(Path(filename).read_bytes()).hexdigest() != plan['pseudopotential_hashes'][symbol]:
+            raise ValueError('Pseudopotential content changed; regenerate the QE force plan.')
+    phonon = make_phonon(plan['unitcell'], plan['supercell'], plan['displacement'])
+    forces = []
+    for job in plan['jobs']:
+        if prefer_outputs and Path(job['input_file']).read_text(encoding='utf-8') != job['input_text']:
+            raise ValueError('QE force input changed; regenerate the finite-displacement plan.')
+        force = None if prefer_outputs else _cached_force(job)
+        if force is None:
+            # Used by generated shell/Slurm decks after their pw.x jobs.
+            force = qe.read_pw_force_result(job['output_file'], job['natoms'])
+            _save_force(job, force)
+        forces.append(force)
+    if len(forces) != len(phonon.supercells_with_displacements) + 1:
+        raise ValueError('The QE force plan does not match the Phonopy displacements.')
+    corrected = np.array(forces[1:]) - forces[0]
+    corrected -= corrected.mean(axis=1, keepdims=True)
+    phonon.forces = corrected
+    phonon.produce_force_constants()
+    if plan['acoustic_sum_rule']:
+        phonon.symmetrize_force_constants()
+    prefix = plan['struct'] + '-PHONON-QE'
+    constants_file = Path(prefix + '-Result-Force-Constants.npy')
+    np.save(constants_file, phonon.force_constants)
+    phonon.save(prefix + '-Result-Phonopy.yaml', settings={'force_constants': True})
+    band_path = plan['band_path']
+    # QE band paths provide fractional reciprocal coordinates as kpoints.
+    qpoints = np.asarray(band_path['kpoints'], dtype=float)
+    frequencies = {'qpoints': qpoints.tolist(), 'nqpoints': len(qpoints),
+        'nmodes': 3 * len(plan['unitcell']['symbols']),
+        'frequencies_thz': [phonon.get_frequencies(q).tolist() for q in qpoints]}
+    phonon.run_mesh(plan['dos_mesh'], with_eigenvectors=True, is_mesh_symmetry=False)
+    phonon.run_projected_dos(sigma=0.1)
+    partial = phonon.projected_dos
+    projected = np.asarray(partial.projected_dos)
+    frequency_grid = np.asarray(partial.frequency_points)
+    dos_data = {'frequencies_thz': frequency_grid.tolist(),
+        'frequencies_cm1': (frequency_grid / qe.THZ_PER_CM_MINUS_ONE).tolist(),
+        'dos': (projected.sum(axis=0) * qe.THZ_PER_CM_MINUS_ONE).tolist(),
+        'atom_projected_dos': (projected * qe.THZ_PER_CM_MINUS_ONE).tolist(),
+        'npoints': len(frequency_grid), 'natoms': len(projected)}
+    band_file = qe.write_matdyn_band_data(prefix + '-Result-Band-THz.dat', band_path, frequencies)
+    dos_file = qe.write_matdyn_dos_data(prefix + '-Result-DOS-THz.dat', dos_data)
+    graph_file = _plot(prefix, band_path, frequencies, dos_data)
+    thermal_data, thermal_file = None, None
+    if plan['thermal']:
+        thermal_data = qe.calculate_phonon_thermal_properties(dos_data,
+            t_min=plan['temperature'][0], t_max=plan['temperature'][1], t_step=plan['temperature'][2])
+        thermal_file = qe.write_phonon_thermal_properties(
+            prefix + '-Result-Thermal-Properties.csv', thermal_data)
+    report = {'method': 'finite-displacement', 'engine': 'QE',
+        'xc': plan['xc'], 'hubbard_u': plan['hubbard_u'], 'spin_polarized': plan['spin_polarized'],
+        'force_units': 'eV/Angstrom', 'frequency_units': 'THz',
+        'electronic_kpoints': plan['electronic_kpoints'],
+        'residual_force_max_ev_angstrom': float(np.linalg.norm(forces[0], axis=1).max()),
+        'minimum_band_frequency_thz': float(np.min(frequencies['frequencies_thz'])),
+        'force_constants_file': str(constants_file), 'band_data_file': str(band_file),
+        'dos_data_file': str(dos_file), 'graph_file': str(graph_file),
+        'thermal_data_file': str(thermal_file) if thermal_file else None}
+    Path(prefix + '-Result-Summary.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
+    return {**report, 'frequencies': frequencies, 'dos': dos_data, 'thermal_data': thermal_data}
+
+
+def _plot(prefix, band_path, frequencies, dos):
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    fig, (band_ax, dos_ax) = plt.subplots(1, 2, sharey=True, figsize=(9, 6),
+        gridspec_kw={'width_ratios': [3, 1], 'wspace': 0.08})
+    try:
+        band_ax.plot(band_path['distances'], frequencies['frequencies_thz'], color='tab:blue', lw=1)
+        band_ax.axhline(0, color='black', lw=0.8)
+        band_ax.set_xticks(band_path['special_distances'])
+        band_ax.set_xticklabels([r'$\Gamma$' if x == 'G' else x for x in band_path['labels']])
+        band_ax.set_ylabel('Frequency (THz)')
+        band_ax.set_xlabel('Wave vector')
+        dos_ax.plot(np.asarray(dos['dos']) / qe.THZ_PER_CM_MINUS_ONE,
+                    dos['frequencies_thz'], color='tab:red')
+        dos_ax.set_xlabel('DOS (1/THz)')
+        path = Path(prefix + '-Graph-Phonon.png')
+        fig.savefig(path, dpi=300, bbox_inches='tight')
+        return path
+    finally:
+        plt.close(fig)
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description='Postprocess a Nanoworks QE force plan.')
+    parser.add_argument('manifest')
+    args = parser.parse_args()
+    postprocess(json.loads(Path(args.manifest).read_text(encoding='utf-8')), prefer_outputs=True)

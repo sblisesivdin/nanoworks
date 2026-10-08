@@ -713,15 +713,6 @@ class DFTConfig:
         ).strip().lower()
         self.Pseudo_accuracy = str(self.Pseudo_accuracy).strip().lower()
 
-        if self.Engine == 'QE' and self.Phonon_calc and self.Hubbard_U:
-            raise NotImplementedError(
-                'QE 7.4.1 ph.x supports DFPT+U only with atomic Hubbard '
-                'projectors; Nanoworks uses ortho-atomic projectors. '
-                'QE Hubbard_U + Phonon_calc is therefore unsupported. '
-                'Use the GPAW phonon workflow or disable Phonon_calc; '
-                'do not remove U to obtain phonons of a DFT+U system.'
-            )
-
         for name in ('Pseudo_family', 'Pseudo_xc', 'Pseudo_accuracy'):
             if not getattr(self, name):
                 raise ValueError(f'{name} cannot be empty.')
@@ -5647,6 +5638,18 @@ class dftsolve:
 
     def _phononcalc_qe(self):
         """Run the native Quantum ESPRESSO DFPT phonon workflow."""
+        if getattr(self, 'Hubbard_U', {}):
+            from nanoworks.qe_phonon import prepare_force_plan, run_force_plan
+            started = time.time()
+            parprint('Starting QE Hubbard-U finite-displacement phonons...')
+            pseudo_dir, pseudopotentials = self._qe_pseudo_configuration()
+            plan = prepare_force_plan(self.config, self.bulk_configuration,
+                                      self.struct, pseudo_dir, pseudopotentials)
+            workflow = run_force_plan(plan, parallel_cores=self.parallel_cores)
+            with paropen(self.struct + '-TIMINGS-QE-Log-Timings.txt', 'a') as fd:
+                print('Phonon calculation: ', round(time.time() - started, 2), file=fd)
+            parprint('QE finite-displacement phonon calculations finished.')
+            return workflow
         time51 = time.time()
 
         parprint(
@@ -7251,11 +7254,10 @@ def required_dft_executables(config):
         executables.add('pp.x')
 
     if config.Phonon_calc:
-        executables.update({
-            'ph.x',
-            'q2r.x',
-            'matdyn.x',
-        })
+        if config.Hubbard_U:
+            executables.add('pw.x')
+        else:
+            executables.update({'ph.x', 'q2r.x', 'matdyn.x'})
 
     if config.Optical_calc:
         executables.update({
@@ -7428,6 +7430,11 @@ def check_dft_configuration(
         )
 
     if config.Engine == 'QE':
+        if config.Phonon_calc and config.Hubbard_U:
+            if importlib.util.find_spec('phonopy') is None:
+                add('error', 'python:phonopy', 'phonopy is required for QE Hubbard-U phonons.')
+            else:
+                add('ok', 'phonon-method', 'finite-displacement (Phonopy + pw.x, with Hubbard U)')
         if config.Mode != 'PW':
             add(
                 'error',
@@ -7554,6 +7561,7 @@ def check_dft_configuration(
             config.DOS_calc,
             config.Band_calc,
             config.Optical_calc,
+            config.Phonon_calc and bool(config.Hubbard_U),
         ))
 
         if pseudo_required and config.bulk_configuration is not None:
@@ -7953,6 +7961,7 @@ def prepare_qe_dry_run(
         config.DOS_calc,
         config.Band_calc,
         config.Optical_calc,
+        config.Phonon_calc and bool(config.Hubbard_U),
     ))
 
     if needs_pw_input:
@@ -8530,7 +8539,28 @@ def prepare_qe_dry_run(
                 depends_on=ground_dependency,
             )
 
-    if config.Phonon_calc:
+    if config.Phonon_calc and config.Hubbard_U:
+        from nanoworks.qe_phonon import prepare_force_plan
+        force_plan = prepare_force_plan(config, atoms, struct, pseudo_dir, pseudopotentials)
+        force_ids = []
+        for force_job in force_plan['jobs']:
+            force_ids.append(force_job['id'])
+            setup_directories.add(force_job['state_dir'])
+            add_job(force_job['id'], 'phonon', 'pw.x',
+                    force_job['input_file'], force_job['output_file'],
+                    force_job['input_text'], depends_on=ground_dependency,
+                    metadata={'method': 'finite-displacement', 'natoms': force_job['natoms']})
+        command = [sys.executable, '-m', 'nanoworks.qe_phonon', force_plan['manifest_file']]
+        jobs.append({'id': 'phonon-postprocess', 'stage': 'phonon',
+            'executable': sys.executable, 'input_file': force_plan['manifest_file'],
+            'output_file': str(struct) + '-PHONON-QE-Log-Phonopy.txt',
+            'working_directory': None, 'command': command, 'serial_command': command,
+            'input_from_stdin': False, 'depends_on': force_ids,
+            'metadata': {'method': 'finite-displacement'}})
+        notes.append('QE Hubbard-U phonons use Phonopy and pw.x forces. The generated '
+                     'postprocessor requires Nanoworks and Phonopy on the execution host.')
+
+    if config.Phonon_calc and not config.Hubbard_U:
         qpoint_grid = engine.resolve_qe_phonon_qpoint_grid(
             config.Phonon_supercell
         )
@@ -9117,6 +9147,8 @@ def write_qe_slurm_script(
                 str(job['input_file']),
             ])
 
+        if job.get('serial_command'):
+            command_parts = job['serial_command']
         command = shlex.join(command_parts)
         input_redirect = (
             ' < ' + shlex.quote(str(job['input_file']))
