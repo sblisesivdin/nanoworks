@@ -19,10 +19,27 @@ from nanoworks.engine import qe
 from nanoworks.qe_phonon import (
     prepare_force_plan, run_force_plan, supercell_kpoints, make_phonon, _save_force, postprocess,
     record_force_result, write_mesh_data, has_verified_force,
+    pw_executable_identity, begin_force_plan,
 )
 
 
 class TestQEForceParser(unittest.TestCase):
+    def test_executable_identity_tracks_content_not_path_or_timestamp(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            first, second = Path(tmpdir) / 'pw.x', Path(tmpdir) / 'pw-copy.x'
+            first.write_bytes(b'QE build A')
+            second.write_bytes(first.read_bytes())
+            stamp = first.stat().st_mtime_ns
+            with patch('nanoworks.qe_phonon.shutil.which', return_value=str(first)):
+                initial = pw_executable_identity()
+                first.write_bytes(b'QE build B')
+                os.utime(first, ns=(stamp, stamp))
+                changed = pw_executable_identity()
+            with patch('nanoworks.qe_phonon.shutil.which', return_value=str(second)):
+                copied = pw_executable_identity()
+            self.assertEqual(initial['sha256'], copied['sha256'])
+            self.assertNotEqual(initial['sha256'], changed['sha256'])
+
     def test_mesh_report_retains_negative_modes_and_weights(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             frequencies = np.array([[-.05, .3, 1], [-.2, -.11, 2]])
@@ -80,6 +97,10 @@ class TestQEFiniteDisplacements(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
+        self.binary = {'path': '/mock/qe/pw.x', 'sha256': 'mock-QE-build-A'}
+        identity = patch('nanoworks.qe_phonon.pw_executable_identity', return_value=self.binary)
+        identity.start()
+        self.addCleanup(identity.stop)
         self.pseudo = self.root / 'Ni.upf'
         self.pseudo.write_text('''<UPF version="2.0.1"><PP_HEADER element="Ni" z_valence="10.0"/>
         <PP_PSWFC><PP_CHI.1 label="3D"/></PP_PSWFC></UPF>''', encoding='utf-8')
@@ -161,7 +182,7 @@ class TestQEFiniteDisplacements(unittest.TestCase):
         job = plan['jobs'][0]
         Path(job['input_file']).write_text(job['input_text'])
         self.assertFalse(has_verified_force(plan, job['id']))
-        _save_force(job, np.zeros((4, 3)))
+        _save_force(job, np.zeros((4, 3)), binary_identity=self.binary)
         self.assertTrue(has_verified_force(plan, job['id']))
         cache = Path(job['cache_file'])
         record = json.loads(cache.read_text())
@@ -174,7 +195,7 @@ class TestQEFiniteDisplacements(unittest.TestCase):
         self.assertFalse(has_verified_force(plan, job['id']))
         cache.write_text('{ interrupted write')
         self.assertFalse(has_verified_force(plan, job['id']))
-        _save_force(job, np.zeros((4, 3)))
+        _save_force(job, np.zeros((4, 3)), binary_identity=self.binary)
         Path(job['input_file']).write_text(job['input_text'] + '\n! altered input\n')
         with self.assertRaisesRegex(ValueError, 'input changed'):
             has_verified_force(plan, job['id'])
@@ -183,10 +204,51 @@ class TestQEFiniteDisplacements(unittest.TestCase):
         plan = self.plan()
         job = plan['jobs'][0]
         Path(job['input_file']).write_text(job['input_text'])
-        _save_force(job, np.zeros((4, 3)))
+        _save_force(job, np.zeros((4, 3)), binary_identity=self.binary)
         self.pseudo.write_text(self.pseudo.read_text() + '\n<!-- changed -->\n')
         with self.assertRaisesRegex(ValueError, 'Pseudopotential content changed'):
             has_verified_force(plan, job['id'])
+
+    def test_changed_executable_stops_before_reusing_or_launching_forces(self):
+        plan = self.plan()
+        other = {'path': '/mock/qe/pw.x', 'sha256': 'mock-QE-build-B'}
+        with patch('nanoworks.qe_phonon.pw_executable_identity', return_value=other):
+            with patch('nanoworks.qe_phonon.qe.run_pw_forces') as run:
+                with self.assertRaisesRegex(ValueError, 'pw.x content changed'):
+                    run_force_plan(plan)
+        run.assert_not_called()
+
+    def test_deck_prepared_without_qe_binds_on_execution_host(self):
+        with patch('nanoworks.qe_phonon.pw_executable_identity', return_value=None):
+            plan = self.plan()
+        self.assertIsNone(plan['pw_executable'])
+        begin_force_plan(plan)
+        stored = json.loads(Path(plan['manifest_file']).read_text())
+        self.assertEqual(stored['pw_executable'], self.binary)
+        with patch('nanoworks.qe_phonon.pw_executable_identity',
+                   return_value={'path': '/other/pw.x', 'sha256': 'other-build'}):
+            with self.assertRaisesRegex(ValueError, 'pw.x content changed'):
+                begin_force_plan(stored)
+
+    def test_executable_change_during_scf_never_records_result(self):
+        plan = self.plan()
+        other = {'path': '/mock/qe/pw.x', 'sha256': 'mock-QE-build-B'}
+        with patch('nanoworks.qe_phonon.pw_executable_identity',
+                   side_effect=[self.binary, self.binary, other]):
+            with patch('nanoworks.qe_phonon.qe.run_pw_forces', return_value=np.zeros((4, 3))):
+                with self.assertRaisesRegex(ValueError, 'changed during'):
+                    run_force_plan(plan)
+        self.assertFalse(Path(plan['jobs'][0]['cache_file']).exists())
+
+    def test_mixed_executable_forces_are_rejected_without_requiring_qe(self):
+        plan = self.plan()
+        for index, job in enumerate(plan['jobs']):
+            binary = self.binary if index == 0 else {'sha256': 'other-QE-build'}
+            _save_force(job, np.zeros((4, 3)), binary_identity=binary)
+        with patch('nanoworks.qe_phonon.pw_executable_identity', return_value=None) as identity:
+            with self.assertRaisesRegex(ValueError, 'inconsistent pw.x'):
+                postprocess(plan)
+        identity.assert_not_called()
 
     def test_record_requires_current_input_and_fresh_converged_output(self):
         plan = self.plan()
@@ -230,9 +292,11 @@ class TestQEFiniteDisplacements(unittest.TestCase):
         positions = cells[0].positions
         residual = np.array([[.01, 0, 0], [-.01, 0, 0], [.01, 0, 0], [-.01, 0, 0]])
         for job, cell in zip(plan['jobs'], cells):
-            _save_force(job, residual - 5.0 * (cell.positions - positions))
+            _save_force(job, residual - 5.0 * (cell.positions - positions), binary_identity=self.binary)
         with patch('nanoworks.qe_phonon._plot', return_value=Path('phonon.png')):
-            result = postprocess(plan)
+            with patch('nanoworks.qe_phonon.pw_executable_identity', return_value=None) as identity:
+                result = postprocess(plan)
+        identity.assert_not_called()
         self.assertEqual(result['frequencies']['nmodes'], 6)
         self.assertEqual(result['dos']['natoms'], 2)
         self.assertAlmostEqual(result['residual_force_max_ev_angstrom'], .01)
@@ -241,4 +305,5 @@ class TestQEFiniteDisplacements(unittest.TestCase):
         self.assertTrue(Path(result['dos_data_file']).is_file())
         self.assertTrue(Path(result['mesh_data_file']).is_file())
         self.assertEqual(result['status'], 'complete')
+        self.assertEqual(result['pw_executable_sha256'], self.binary['sha256'])
         self.assertGreater(np.linalg.norm(np.load(result['force_constants_file'])), 0)

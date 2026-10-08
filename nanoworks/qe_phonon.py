@@ -65,6 +65,34 @@ def _plain(value):
     return value
 
 
+def pw_executable_identity():
+    """Identify the selected pw.x by content, independent of installation path."""
+    executable = shutil.which('pw.x')
+    if executable is None:
+        return None
+    path = Path(executable).resolve()
+    digest = hashlib.sha256()
+    with path.open('rb') as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+            digest.update(chunk)
+    return {'path': str(path), 'sha256': digest.hexdigest()}
+
+
+def _validate_execution_binary(plan):
+    """Check the execution host; planning without QE remains supported."""
+    if plan.get('schema', 1) < 2:
+        raise ValueError('This QE force plan lacks executable provenance; regenerate it before execution.')
+    current = pw_executable_identity()
+    if current is None:
+        raise RuntimeError('QE pw.x is unavailable; load the QE execution environment, '
+                           'or use analysis-only postprocessing.')
+    expected = plan.get('pw_executable')
+    if expected is not None and current['sha256'] != expected['sha256']:
+        raise ValueError('QE pw.x content changed or is unavailable; regenerate the force plan '
+                         'in the execution environment, or use analysis-only postprocessing.')
+    return current
+
+
 def prepare_force_plan(config, atoms, struct, pseudo_dir, pseudopotentials):
     """Render the undisplaced and displaced SCFs without executing QE."""
     import phonopy
@@ -117,11 +145,7 @@ def prepare_force_plan(config, atoms, struct, pseudo_dir, pseudopotentials):
             path = Path(pseudo_dir) / path
         pseudo_hashes[symbol] = hashlib.sha256(path.read_bytes()).hexdigest()
         pseudo_paths[symbol] = str(path.resolve())
-    executable = shutil.which('pw.x')
-    binary = None
-    if executable:
-        stat = Path(executable).stat()
-        binary = [executable, stat.st_size, stat.st_mtime_ns]
+    binary = pw_executable_identity()
 
     jobs = []
     for index, cell in enumerate(cells):
@@ -147,7 +171,8 @@ def prepare_force_plan(config, atoms, struct, pseudo_dir, pseudopotentials):
             dipole_correction=config.Dipole_correction, vdw_calc=config.vdW_calc, **scf,
         )
         signature = hashlib.sha256(json.dumps(
-            {'input': text, 'pseudos': pseudo_hashes, 'binary': binary, 'schema': 1},
+            {'input': text, 'pseudos': pseudo_hashes,
+             'binary_sha256': binary['sha256'] if binary else None, 'schema': 2},
             sort_keys=True).encode()).hexdigest()
         jobs.append({'id': f'phonon-force-{index:04d}', 'natoms': len(cell),
             'input_file': f'{prefix}-Input-Force-{index:04d}.in',
@@ -155,7 +180,8 @@ def prepare_force_plan(config, atoms, struct, pseudo_dir, pseudopotentials):
             'cache_file': f'{prefix}-Result-Force-{index:04d}.json',
             'state_dir': str(state_dir), 'input_text': text, 'signature': signature})
     plan = _plain({
-        'schema': 1, 'method': 'finite-displacement', 'struct': struct,
+        'schema': 2, 'method': 'finite-displacement', 'struct': struct,
+        'pw_executable': binary,
         'xc': config.XC_calc, 'hubbard_u': config.Hubbard_U, 'spin_polarized': config.Spin_calc,
         'phonopy_version': phonopy.__version__, 'unitcell': unitcell,
         'pseudopotential_hashes': pseudo_hashes, 'pseudopotential_paths': pseudo_paths,
@@ -174,11 +200,13 @@ def prepare_force_plan(config, atoms, struct, pseudo_dir, pseudopotentials):
     return plan
 
 
-def _cached_force(job):
+def _cached_force(job, binary_identity=None):
     try:
         record = json.loads(Path(job['cache_file']).read_text(encoding='utf-8'))
         force = np.asarray(record['forces_ev_angstrom'], dtype=float)
         if (record['signature'] == job['signature']
+                and (binary_identity is None or
+                     record.get('pw_executable_sha256') == binary_identity['sha256'])
                 and force.shape == (job['natoms'], 3) and np.isfinite(force).all()):
             return force
     except (OSError, ValueError, KeyError, TypeError):
@@ -186,13 +214,14 @@ def _cached_force(job):
     return None
 
 
-def _save_force(job, force):
+def _save_force(job, force, binary_identity=None):
     force = np.asarray(force, dtype=float)
     if force.shape != (job['natoms'], 3) or not np.isfinite(force).all():
         raise ValueError('QE force records require a complete finite atom-by-coordinate array.')
     path = Path(job['cache_file'])
     temporary = path.with_suffix('.json.tmp')
     temporary.write_text(json.dumps({'signature': job['signature'],
+        'pw_executable_sha256': binary_identity['sha256'] if binary_identity else None,
         'forces_ev_angstrom': force.tolist()}, indent=2, allow_nan=False) + '\n', encoding='utf-8')
     temporary.replace(path)
 
@@ -209,6 +238,7 @@ def _validate_plan_resources(plan):
 def record_force_result(plan, job_id):
     """Register a just-completed shell/Slurm SCF under its input signature."""
     _validate_plan_resources(plan)
+    binary = _validate_execution_binary(plan)
     job = next((job for job in plan['jobs'] if job['id'] == job_id), None)
     if job is None:
         raise ValueError(f'Unknown QE force job: {job_id}')
@@ -219,12 +249,13 @@ def record_force_result(plan, job_id):
     if output.stat().st_mtime_ns < manifest.stat().st_mtime_ns:
         raise ValueError('QE force output predates this plan; rerun the force SCF before recording it.')
     force = qe.read_pw_force_result(output, job['natoms'])
-    _save_force(job, force)
+    _save_force(job, force, binary_identity=binary)
 
 
 def has_verified_force(plan, job_id):
     """Check resume eligibility without reading SCF logs or launching QE."""
     _validate_plan_resources(plan)
+    binary = _validate_execution_binary(plan)
     job = next((job for job in plan['jobs'] if job['id'] == job_id), None)
     if job is None:
         raise ValueError(f'Unknown QE force job: {job_id}')
@@ -232,7 +263,7 @@ def has_verified_force(plan, job_id):
     # never silently reuse the force associated with the original input.
     if Path(job['input_file']).read_text(encoding='utf-8') != job['input_text']:
         raise ValueError('QE force input changed; regenerate the finite-displacement plan.')
-    return _cached_force(job) is not None
+    return _cached_force(job, binary_identity=binary) is not None
 
 
 def _write_report(plan, report):
@@ -245,7 +276,8 @@ def _write_report(plan, report):
 def _failure_report(plan, error):
     _write_report(plan, {'status': 'interrupted' if isinstance(error, KeyboardInterrupt) else 'failed',
         'method': 'finite-displacement', 'engine': 'QE', 'error': str(error) or 'Interrupted',
-        'completed_force_jobs': sum(_cached_force(job) is not None for job in plan['jobs']),
+        'completed_force_jobs': sum(_cached_force(job, binary_identity=plan.get('pw_executable'))
+                                    is not None for job in plan['jobs']),
         'total_force_jobs': len(plan['jobs'])})
 
 
@@ -254,6 +286,16 @@ def begin_force_plan(plan):
     _write_report(plan, {'status': 'running', 'method': 'finite-displacement', 'engine': 'QE'})
     try:
         _validate_plan_resources(plan)
+        binary = _validate_execution_binary(plan)
+        if plan.get('pw_executable') is None:
+            # A deck prepared on a host without QE binds to the execution
+            # binary before any force SCF. Later CLI processes read this value.
+            plan['pw_executable'] = binary
+            manifest = Path(plan['manifest_file'])
+            temporary = manifest.with_suffix('.json.tmp')
+            temporary.write_text(json.dumps({key: value for key, value in plan.items()
+                if key != 'manifest_file'}, indent=2, allow_nan=False) + '\n', encoding='utf-8')
+            temporary.replace(manifest)
     except (Exception, KeyboardInterrupt) as exc:
         _failure_report(plan, exc)
         raise
@@ -264,13 +306,18 @@ def run_force_plan(plan, parallel_cores=1):
     begin_force_plan(plan)
     try:
         for job in plan['jobs']:
-            if _cached_force(job) is not None:
+            binary = _validate_execution_binary(plan)
+            if _cached_force(job, binary_identity=binary) is not None:
                 print(f"Reading cached QE forces: {job['cache_file']}")
                 continue
             print(f"Computing QE forces: {job['id']}")
             force = qe.run_pw_forces(job['input_file'], job['output_file'], job['input_text'],
                                      job['natoms'], parallel_cores=parallel_cores)
-            _save_force(job, force)
+            # Do not attach the old identity to a result after an executable
+            # change during SCF, including plans prepared without QE installed.
+            if pw_executable_identity() != binary:
+                raise ValueError('QE pw.x changed during the force SCF; regenerate the force plan.')
+            _save_force(job, force, binary_identity=binary)
         return postprocess(plan)
     except (Exception, KeyboardInterrupt) as exc:
         _failure_report(plan, exc)
@@ -292,12 +339,20 @@ def _postprocess(plan):
     _validate_plan_resources(plan)
     phonon = make_phonon(plan['unitcell'], plan['supercell'], plan['displacement'])
     forces = []
+    binary_hashes = set()
     for job in plan['jobs']:
         force = _cached_force(job)
         if force is None:
             raise ValueError(f"No matching verified forces for {job['id']}; rerun dftsolve "
                              'or regenerate and execute the dry-run/Slurm deck.')
         forces.append(force)
+        record = json.loads(Path(job['cache_file']).read_text(encoding='utf-8'))
+        binary_hashes.add(record.get('pw_executable_sha256'))
+    expected_binary = plan.get('pw_executable')
+    if (len(binary_hashes) != 1 or (plan.get('schema', 1) >= 2 and None in binary_hashes)
+            or (expected_binary is not None and
+                binary_hashes != {expected_binary['sha256']})):
+        raise ValueError('QE force records use inconsistent pw.x executables; rerun the force workflow.')
     if len(forces) != len(phonon.supercells_with_displacements) + 1:
         raise ValueError('The QE force plan does not match the Phonopy displacements.')
     corrected = np.array(forces[1:]) - forces[0]
@@ -340,6 +395,7 @@ def _postprocess(plan):
             prefix + '-Result-Thermal-Properties.csv', thermal_data)
     report = {'status': 'complete', 'method': 'finite-displacement', 'engine': 'QE',
         'xc': plan['xc'], 'hubbard_u': plan['hubbard_u'], 'spin_polarized': plan['spin_polarized'],
+        'pw_executable_sha256': next(iter(binary_hashes)),
         'force_units': 'eV/Angstrom', 'frequency_units': 'THz',
         'electronic_kpoints': plan['electronic_kpoints'],
         'residual_force_max_ev_angstrom': float(np.linalg.norm(forces[0], axis=1).max()),

@@ -267,10 +267,20 @@ or:
     each completed force SCF. Edited input decks or changed pseudopotentials
     stop execution and require regenerating the plan; these errors are not
     treated as cache misses. Earlier ground-state jobs in a deck still run.
+    Force plans and records also identify ``pw.x`` by its SHA-256 content
+    hash. An executable change requires regenerating the plan, even if its
+    filename and version remain unchanged. Identical executables at different
+    installation paths are accepted. Plans prepared without QE installed
+    bind to the execution host's executable at the beginning of the force
+    workflow; load the intended QE environment before running the deck.
+    Older force plans must be regenerated before executing force jobs.
     Postprocessing accepts matching force records only, never unverified old
     log files. Regenerate decks made before this recording step was introduced.
     To repeat analysis without rerunning QE, use
     ``python -m nanoworks.qe_phonon <struct>-PHONON-QE-Input-Finite-Displacement.json``.
+    Analysis-only postprocessing does not require ``pw.x`` on PATH. It checks
+    that the recorded executable identities agree before combining forces,
+    and includes their hash in the result summary.
     The summary records running, postprocessing, complete or failed states
     (interrupted for a Python keyboard interrupt). A shell job that terminates
     before recording can leave the status running; only complete confirms
