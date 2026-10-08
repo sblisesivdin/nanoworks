@@ -452,7 +452,48 @@ def _validate_ensemble_settings(namespace, ensemble):
         if name in namespace
     ]
 
+    if (
+        ensemble not in ('NPT', 'NPH')
+        and namespace.get(
+            'Pressure_components',
+            Pressure_components,
+        )
+    ):
+        present.append(
+            'Pressure_components'
+        )
+
+    if (
+        ensemble not in ('NPT', 'NPH')
+        and str(
+            namespace.get(
+                'Pressure_coupling',
+                Pressure_coupling,
+            )
+        ).strip().upper()
+        not in ('ISO', '')
+    ):
+        present.append(
+            'Pressure_coupling'
+        )
+
+    if (
+        ensemble != 'NVT'
+        and str(
+            namespace.get(
+                'Thermostat',
+                Thermostat,
+            )
+        ).strip().upper().replace('_', '-')
+        not in ('LANGEVIN', '')
+    ):
+        present.append(
+            'Thermostat'
+        )
+
     if present:
+        present = sorted(set(present))
+
         raise ValueError(
             f'{ensemble} does not use these settings: '
             + ', '.join(present)
