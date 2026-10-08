@@ -200,7 +200,7 @@ def _resolve_ensemble(namespace, engine):
 
     supported = {
         'ASAP': ('NVT',),
-        'LAMMPS': ('NVT', 'NVE', 'NPT'),
+        'LAMMPS': ('NVT', 'NVE', 'NPT', 'NPH'),
     }
 
     if ensemble not in supported[engine]:
@@ -279,7 +279,7 @@ def _resolve_pressure_coupling(namespace, ensemble):
             'iso, aniso, x, y, z, xy, xz, yz, xyz'
         )
 
-    if ensemble != 'NPT':
+    if ensemble not in ('NPT', 'NPH'):
         return 'ISO'
 
     return aliases[coupling]
@@ -350,6 +350,15 @@ def _validate_ensemble_settings(namespace, ensemble):
             'Pressure_damp_profile',
             'Pressure_damp_range',
             'Pressure_damp_values',
+        )
+
+    elif ensemble == 'NPH':
+        unsupported = (
+            'Temperature_profile',
+            'Temperature_range',
+            'Temperature_damp_profile',
+            'Temperature_damp_range',
+            'Temperature_damp_values',
         )
 
     present = [
@@ -603,9 +612,9 @@ def _write_lammps_input(
         temperature_profile[0]
     )
 
-    if ensemble == 'NPT' and not all(pbc):
+    if ensemble in ('NPT', 'NPH') and not all(pbc):
         raise ValueError(
-            'LAMMPS NPT currently requires periodic boundary '
+            'LAMMPS NPT/NPH currently requires periodic boundary '
             'conditions in all three directions.'
         )
 
@@ -879,6 +888,46 @@ def _write_lammps_input(
                         f'temp {equil_temperature:.8f} '
                         f'{equil_temperature:.8f} '
                         f'{equil_damp_ps:.10f} '
+                        f'{equil_pressure_control}'
+                    ),
+                    f'run {equilibration_steps}',
+                    'unfix nw_equil_barostat',
+                    '',
+                ]
+            )
+
+        elif ensemble == 'NPH':
+            equil_pressure_gpa = float(
+                pressure_profile[0]
+            )
+            equil_pressure_damp_fs = float(
+                pressure_damp_profile[0]
+            )
+
+            if equil_pressure_damp_fs <= 0.0:
+                raise ValueError(
+                    'Pressure_damp must be greater '
+                    'than zero.'
+                )
+
+            equil_pressure_damp_ps = (
+                equil_pressure_damp_fs / 1000.0
+            )
+            equil_pressure_bar = (
+                equil_pressure_gpa * 10000.0
+            )
+            equil_pressure_control = (
+                _pressure_control_text(
+                    pressure_coupling,
+                    equil_pressure_bar,
+                    equil_pressure_damp_ps,
+                )
+            )
+
+            lines.extend(
+                [
+                    (
+                        f'fix nw_equil_barostat all nph '
                         f'{equil_pressure_control}'
                     ),
                     f'run {equilibration_steps}',
@@ -1256,6 +1305,43 @@ def _write_lammps_input(
                         f'temp {temperature:.8f} '
                         f'{temperature:.8f} '
                         f'{temperature_damp_ps:.10f} '
+                        f'{pressure_control}'
+                    ),
+                    f'run {int(md_steps_per_cycle)}',
+                    'unfix nw_barostat',
+                    '',
+                ]
+            )
+
+        elif ensemble == 'NPH':
+            pressure_gpa = float(
+                pressure_profile[cycle]
+            )
+            pressure_damp_fs = float(
+                pressure_damp_profile[cycle]
+            )
+
+            if pressure_damp_fs <= 0.0:
+                raise ValueError(
+                    'Pressure_damp must be greater than zero.'
+                )
+
+            pressure_damp_ps = (
+                pressure_damp_fs / 1000.0
+            )
+            pressure_bar = pressure_gpa * 10000.0
+            pressure_control = (
+                _pressure_control_text(
+                    pressure_coupling,
+                    pressure_bar,
+                    pressure_damp_ps,
+                )
+            )
+
+            lines.extend(
+                [
+                    (
+                        f'fix nw_barostat all nph '
                         f'{pressure_control}'
                     ),
                     f'run {int(md_steps_per_cycle)}',
@@ -2274,7 +2360,7 @@ def _parse_lammps_thermo(
             if profile_index >= len(temperature_profile):
                 continue
 
-            if ensemble == 'NVE':
+            if ensemble in ('NVE', 'NPH'):
                 recorded_temperature = (
                     instantaneous_temperature
                 )
@@ -3158,7 +3244,7 @@ def main():
     else:
         temperature_damp_options = [None]
 
-    if Ensemble == 'NPT':
+    if Ensemble in ('NPT', 'NPH'):
         pressure_options = [
             float(v)
             for v in _get_run_values(
@@ -3269,7 +3355,7 @@ def main():
             namespace['Temperature_damp'] = (
                 temperature_damp_value
             )
-        if Ensemble == 'NPT':
+        if Ensemble in ('NPT', 'NPH'):
             namespace['Pressure'] = pressure_value
             namespace['Pressure_damp'] = (
                 pressure_damp_value
@@ -3299,7 +3385,7 @@ def main():
         else:
             temperature_damp_profile = None
 
-        if Ensemble == 'NPT':
+        if Ensemble in ('NPT', 'NPH'):
             pressure_profile = _build_profile(
                 'Pressure',
                 pressure_value,
@@ -3327,7 +3413,7 @@ def main():
                 message += (
                     f", T-damp={temperature_damp_value} fs"
                 )
-            if Ensemble == 'NPT':
+            if Ensemble in ('NPT', 'NPH'):
                 message += (
                     f", P={pressure_value} GPa, "
                     f"P-damp={pressure_damp_value} fs"
