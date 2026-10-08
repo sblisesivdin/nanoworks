@@ -262,7 +262,11 @@ or:
     Initial moments seed the SCF; they do not constrain the converged state.
     Inspect force logs to verify the intended magnetic state.
 
-    Generated dry-run/Slurm decks verify and record each completed force SCF.
+    Generated dry-run/Slurm decks reuse matching verified force records and
+    execute only missing or incompatible force jobs. They verify and record
+    each completed force SCF. Edited input decks or changed pseudopotentials
+    stop execution and require regenerating the plan; these errors are not
+    treated as cache misses. Earlier ground-state jobs in a deck still run.
     Postprocessing accepts matching force records only, never unverified old
     log files. Regenerate decks made before this recording step was introduced.
     To repeat analysis without rerunning QE, use

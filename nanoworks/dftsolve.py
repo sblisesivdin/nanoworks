@@ -8552,6 +8552,8 @@ def prepare_qe_dry_run(
                     metadata={'method': 'finite-displacement', 'natoms': force_job['natoms']})
             jobs[-1]['completion_command'] = [sys.executable, '-m', 'nanoworks.qe_phonon',
                 force_plan['manifest_file'], '--record-force', force_job['id']]
+            jobs[-1]['cache_check_command'] = [sys.executable, '-m', 'nanoworks.qe_phonon',
+                force_plan['manifest_file'], '--check-force', force_job['id']]
             if len(force_ids) == 1:
                 jobs[-1]['preparation_command'] = [sys.executable, '-m', 'nanoworks.qe_phonon',
                     force_plan['manifest_file'], '--begin']
@@ -8766,6 +8768,7 @@ def prepare_qe_dry_run(
     for job in jobs:
         if job.get('preparation_command'):
             script_lines.append(shlex.join(job['preparation_command']))
+        job_start = len(script_lines)
         command = shlex.join(job['command'])
         output_file = shlex.quote(job['output_file'])
         input_redirect = (
@@ -8792,6 +8795,7 @@ def prepare_qe_dry_run(
 
         if job.get('completion_command'):
             script_lines.append(shlex.join(job['completion_command']))
+        script_lines[job_start:] = guard_qe_force_commands(job, script_lines[job_start:])
 
     script_file.write_text(
         '\n'.join(script_lines) + '\n',
@@ -8802,6 +8806,24 @@ def prepare_qe_dry_run(
     )
 
     return plan
+
+
+def guard_qe_force_commands(job, commands):
+    """Skip matching force records and stop on errors distinct from cache misses."""
+    check = job.get('cache_check_command')
+    if not check:
+        return commands
+    return [
+        'if ' + shlex.join(check) + '; then',
+        '  : # Verified force already exists.',
+        'else',
+        '  nanoworks_force_cache_status=$?',
+        '  if [ "$nanoworks_force_cache_status" -ne 3 ]; then',
+        '    exit "$nanoworks_force_cache_status"',
+        '  fi',
+        *['  ' + command for command in commands],
+        'fi',
+    ]
 
 
 SLURM_PROFILE_KEYS = {
@@ -9143,6 +9165,7 @@ def write_qe_slurm_script(
     for job in jobs:
         if job.get('preparation_command'):
             lines.append(shlex.join(job['preparation_command']))
+        job_start = len(lines)
         command_parts = [
             'srun',
             '-n',
@@ -9192,6 +9215,7 @@ def write_qe_slurm_script(
 
         if job.get('completion_command'):
             lines.append(shlex.join(job['completion_command']))
+        lines[job_start:] = guard_qe_force_commands(job, lines[job_start:])
 
     slurm_script.write_text(
         '\n'.join(lines) + '\n',

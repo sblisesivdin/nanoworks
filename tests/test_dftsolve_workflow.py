@@ -32,6 +32,7 @@ with patch.object(
         dftsolve as DFTSolver,
         format_dft_preflight_json,
         format_dft_preflight_report,
+        guard_qe_force_commands,
         load_slurm_profile,
         main,
         parse_dft_overrides,
@@ -49,6 +50,33 @@ with patch.object(
 
 
 class TestDFTSolveWorkflow(unittest.TestCase):
+
+    def test_force_resume_shell_skips_hits_runs_misses_and_aborts_invalid_plans(self):
+        for check_status in (0, 1, 2, 3):
+            with self.subTest(check_status=check_status):
+                commands = guard_qe_force_commands(
+                    {'cache_check_command': ['bash', '-c', f'exit {check_status}']},
+                    ['echo force-scf', 'echo record-force'])
+                result = subprocess.run(['bash', '-c', '\n'.join([
+                    'set -euo pipefail', *commands, 'echo postprocess'])],
+                    capture_output=True, text=True, check=False)
+                self.assertEqual(result.returncode, check_status if check_status in (1, 2) else 0)
+                self.assertEqual(result.stdout.splitlines(), {
+                    0: ['postprocess'],
+                    1: [],
+                    2: [],
+                    3: ['force-scf', 'record-force', 'postprocess'],
+                }[check_status])
+
+    def test_force_resume_shell_stops_before_recording_failed_scf(self):
+        commands = guard_qe_force_commands(
+            {'cache_check_command': ['bash', '-c', 'exit 3']},
+            ['exit 7', 'echo record-force'])
+        result = subprocess.run(['bash', '-c', '\n'.join([
+            'set -euo pipefail', *commands, 'echo postprocess'])],
+            capture_output=True, text=True, check=False)
+        self.assertEqual(result.returncode, 7)
+        self.assertEqual(result.stdout, '')
 
     def test_qe_hubbard_phonons_use_force_executable(self):
         config = DFTConfig(Engine='QE', Phonon_calc=True, Hubbard_U={'Ni-3d': 6.0},
@@ -88,6 +116,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 self.assertTrue(all(not line.startswith('srun') for line in python_lines))
                 self.assertEqual(sum('--begin' in line for line in python_lines), 1)
                 self.assertEqual(sum('--record-force' in line for line in python_lines), len(force_jobs))
+                self.assertEqual(sum('--check-force' in line for line in python_lines), len(force_jobs))
                 self.assertIn('--begin', python_lines[0])
                 self.assertNotIn('--record-force', python_lines[-1])
                 for job in force_jobs:

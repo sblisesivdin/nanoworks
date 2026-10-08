@@ -222,6 +222,19 @@ def record_force_result(plan, job_id):
     _save_force(job, force)
 
 
+def has_verified_force(plan, job_id):
+    """Check resume eligibility without reading SCF logs or launching QE."""
+    _validate_plan_resources(plan)
+    job = next((job for job in plan['jobs'] if job['id'] == job_id), None)
+    if job is None:
+        raise ValueError(f'Unknown QE force job: {job_id}')
+    # Generated decks execute files on disk, so altered input decks must
+    # never silently reuse the force associated with the original input.
+    if Path(job['input_file']).read_text(encoding='utf-8') != job['input_text']:
+        raise ValueError('QE force input changed; regenerate the finite-displacement plan.')
+    return _cached_force(job) is not None
+
+
 def _write_report(plan, report):
     path = Path(plan['struct'] + '-PHONON-QE-Result-Summary.json')
     temporary = path.with_suffix('.json.tmp')
@@ -400,10 +413,25 @@ if __name__ == '__main__':
     action.add_argument('--record-force', metavar='JOB_ID',
                         help='Verify and record a just-completed force SCF before postprocessing.')
     action.add_argument('--begin', action='store_true', help='Mark the force workflow as running.')
+    action.add_argument('--check-force', metavar='JOB_ID',
+                        help='Exit 0 for a verified force, 3 for a cache miss, 2 for invalid resources/input.')
     args = parser.parse_args()
     plan = json.loads(Path(args.manifest).read_text(encoding='utf-8'))
     plan['manifest_file'] = str(Path(args.manifest).resolve())
-    if args.begin:
+    if args.check_force:
+        import sys
+        try:
+            available = has_verified_force(plan, args.check_force)
+        except Exception as exc:
+            _failure_report(plan, exc)
+            print(str(exc), file=sys.stderr)
+            raise SystemExit(2)
+        if available:
+            print(f'Reading cached QE forces: {args.check_force}')
+        # A distinct cache-miss code keeps import/JSON/I/O failures (usually
+        # exit 1) from being interpreted by shell decks as permission to run.
+        raise SystemExit(0 if available else 3)
+    elif args.begin:
         begin_force_plan(plan)
     elif args.record_force:
         try:

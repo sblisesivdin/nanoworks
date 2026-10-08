@@ -18,7 +18,7 @@ from ase.units import Bohr
 from nanoworks.engine import qe
 from nanoworks.qe_phonon import (
     prepare_force_plan, run_force_plan, supercell_kpoints, make_phonon, _save_force, postprocess,
-    record_force_result, write_mesh_data,
+    record_force_result, write_mesh_data, has_verified_force,
 )
 
 
@@ -155,6 +155,38 @@ class TestQEFiniteDisplacements(unittest.TestCase):
         report = json.loads(Path(plan['struct'] + '-PHONON-QE-Result-Summary.json').read_text())
         self.assertEqual(report['status'], 'failed')
         self.assertEqual(report['completed_force_jobs'], 0)
+
+    def test_shell_resume_checks_signature_shape_and_current_input(self):
+        plan = self.plan()
+        job = plan['jobs'][0]
+        Path(job['input_file']).write_text(job['input_text'])
+        self.assertFalse(has_verified_force(plan, job['id']))
+        _save_force(job, np.zeros((4, 3)))
+        self.assertTrue(has_verified_force(plan, job['id']))
+        cache = Path(job['cache_file'])
+        record = json.loads(cache.read_text())
+        record['signature'] = 'stale'
+        cache.write_text(json.dumps(record))
+        self.assertFalse(has_verified_force(plan, job['id']))
+        record['signature'] = job['signature']
+        record['forces_ev_angstrom'] = [[0, 0, 0]]
+        cache.write_text(json.dumps(record))
+        self.assertFalse(has_verified_force(plan, job['id']))
+        cache.write_text('{ interrupted write')
+        self.assertFalse(has_verified_force(plan, job['id']))
+        _save_force(job, np.zeros((4, 3)))
+        Path(job['input_file']).write_text(job['input_text'] + '\n! altered input\n')
+        with self.assertRaisesRegex(ValueError, 'input changed'):
+            has_verified_force(plan, job['id'])
+
+    def test_shell_resume_refuses_changed_pseudopotential(self):
+        plan = self.plan()
+        job = plan['jobs'][0]
+        Path(job['input_file']).write_text(job['input_text'])
+        _save_force(job, np.zeros((4, 3)))
+        self.pseudo.write_text(self.pseudo.read_text() + '\n<!-- changed -->\n')
+        with self.assertRaisesRegex(ValueError, 'Pseudopotential content changed'):
+            has_verified_force(plan, job['id'])
 
     def test_record_requires_current_input_and_fresh_converged_output(self):
         plan = self.plan()
