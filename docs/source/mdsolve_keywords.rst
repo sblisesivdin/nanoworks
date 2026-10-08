@@ -26,10 +26,12 @@ Ensemble
     :Default: ``'NVT'``
 
     Molecular dynamics ensemble. ASAP currently supports ``'NVT'``.
-    LAMMPS supports ``'NVT'``, ``'NVE'`` and ``'NPT'``. In NVE calculations,
+    LAMMPS supports ``'NVT'``, ``'NVE'``, ``'NPT'`` and ``'NPH'``. In NVE calculations,
     ``Temperature`` sets the initial velocity distribution and
     ``Temperature_damp`` is not used. NPT currently uses isotropic pressure
-    coupling for fully periodic 3D cells.
+    coupling for fully periodic 3D cells. NPH uses the same pressure-control
+    settings without a thermostat; ``Temperature`` only initializes the
+    starting velocities.
 
 .. describe:: Thermostat
 
@@ -96,14 +98,14 @@ Molecular Dynamics Parameters
     :Default: ``1000.0``
     :Unit: fs
 
-    Barostat damping time for LAMMPS NPT calculations.
+    Barostat damping time for LAMMPS NPT and NPH calculations.
 
 .. describe:: Pressure_coupling
 
     :Type: ``str``
     :Default: ``'iso'``
 
-    Pressure-control mode for LAMMPS NPT. Supported values are
+    Pressure-control mode for LAMMPS NPT and NPH. Supported values are
     ``'iso'``, ``'aniso'``, ``'x'``, ``'y'``, ``'z'``,
     ``'xy'``, ``'xz'``, ``'yz'``, and ``'xyz'``.
 
