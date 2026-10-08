@@ -23,6 +23,7 @@
 - LAMMPS NVT supports both Langevin and Nose-Hoover thermostats.
 - LAMMPS NPT supports isotropic, anisotropic, and selected-axis pressure coupling modes.
 - LAMMPS NPH ensemble is available with the same pressure-coupling controls.
+- NPT/NPH can use independent x/y/z target pressures.
 
 - `mlsolve` adds bulk phonon bands, DOS and imaginary-mode diagnostics with ML potentials.
 
