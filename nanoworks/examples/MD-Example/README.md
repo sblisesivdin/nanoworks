@@ -171,3 +171,8 @@ or
     Thermostat = 'Nose-Hoover'
 
 See `sampleinput_nvt_nose_hoover.py`. ASAP currently retains its Langevin NVT workflow.
+
+
+## NPT pressure coupling
+
+LAMMPS NPT can use `Pressure_coupling = 'iso'` (default), `'aniso'`, individual axes (`'x'`, `'y'`, `'z'`), or coupled diagonal axis sets (`'xy'`, `'xz'`, `'yz'`, `'xyz'`). See `sampleinput_npt_aniso.py`. The coupled-axis names refer to diagonal box dimensions, not triclinic shear components.
