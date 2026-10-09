@@ -14,6 +14,7 @@ import numpy as np
 from ase import Atoms
 from nanoworks.engine import resolve_initial_magnetic_moments
 from nanoworks.engine import qe
+from nanoworks.phonon_cache import force_digest
 from nanoworks.phonon_results import qpoint_frequencies, write_mesh_data
 from nanoworks.phonon_settings import validate_phonon_settings
 from nanoworks.occupations import resolve_engine_occupation
@@ -207,12 +208,14 @@ def _cached_force(job, binary_identity=None):
     try:
         record = json.loads(Path(job['cache_file']).read_text(encoding='utf-8'))
         force = np.asarray(record['forces_ev_angstrom'], dtype=float)
-        if (record['signature'] == job['signature']
+        if (record['schema'] == 1 and record['units'] == 'eV/Angstrom'
+                and record['signature'] == job['signature']
                 and (binary_identity is None or
                      record.get('pw_executable_sha256') == binary_identity['sha256'])
-                and force.shape == (job['natoms'], 3) and np.isfinite(force).all()):
+                and force.shape == (job['natoms'], 3) and np.isfinite(force).all()
+                and record['force_sha256'] == force_digest(force)):
             return force
-    except (OSError, ValueError, KeyError, TypeError):
+    except (OSError, ValueError, KeyError, TypeError, OverflowError):
         pass
     return None
 
@@ -223,7 +226,8 @@ def _save_force(job, force, binary_identity=None):
         raise ValueError('QE force records require a complete finite atom-by-coordinate array.')
     path = Path(job['cache_file'])
     temporary = path.with_suffix('.json.tmp')
-    temporary.write_text(json.dumps({'signature': job['signature'],
+    temporary.write_text(json.dumps({'schema': 1, 'units': 'eV/Angstrom',
+        'signature': job['signature'], 'force_sha256': force_digest(force),
         'pw_executable_sha256': binary_identity['sha256'] if binary_identity else None,
         'forces_ev_angstrom': force.tolist()}, indent=2, allow_nan=False) + '\n', encoding='utf-8')
     temporary.replace(path)

@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- QE phonon force caches validate numerical content hashes and units; altered or older unhashed records are recomputed individually and rejected by analysis-only retries.
+
 - The legacy installer URL preserves the 26.8 workflow and package pin; development installation uses a separate script and the current source branch.
 
 - Debian installation separates QE/GPAW engine and MD/ML component choices, installs QE pseudopotentials when selected and provides an installation-plan dry run.

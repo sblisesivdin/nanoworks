@@ -320,6 +320,13 @@ or:
     each completed force SCF. Edited input decks or changed pseudopotentials
     stop execution and require regenerating the plan; these errors are not
     treated as cache misses. Earlier ground-state jobs in a deck still run.
+    Force records also validate their schema, eV/Angstrom units and a SHA-256
+    digest of the numerical force array. JSON formatting changes preserve the
+    digest; altered finite force values invalidate the affected record.
+    Normal and generated workflows recompute invalid records individually.
+    Analysis-only postprocessing rejects them without running QE. Earlier
+    records without a force-content digest need one force workflow run to
+    recreate verified records before analysis-only reuse.
     Force plans and records also identify ``pw.x`` by its SHA-256 content
     hash. An executable change requires regenerating the plan, even if its
     filename and version remain unchanged. Identical executables at different

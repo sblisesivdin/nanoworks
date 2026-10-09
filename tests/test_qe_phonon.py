@@ -16,6 +16,7 @@ import numpy as np
 from ase import Atoms
 from ase.units import Bohr
 from nanoworks.engine import qe
+from nanoworks.phonon_cache import force_digest
 from nanoworks.phonon_results import qpoint_frequencies
 from nanoworks.qe_phonon import (
     prepare_force_plan, run_force_plan, supercell_kpoints, make_phonon, _save_force, postprocess,
@@ -171,6 +172,9 @@ class TestQEFiniteDisplacements(unittest.TestCase):
             record = json.loads(Path(job['cache_file']).read_text())
             self.assertEqual(record['signature'], job['signature'])
             self.assertEqual(len(record['forces_ev_angstrom']), 4)
+            self.assertEqual(record['schema'], 1)
+            self.assertEqual(record['units'], 'eV/Angstrom')
+            self.assertEqual(record['force_sha256'], force_digest(record['forces_ev_angstrom']))
 
     def test_postprocess_rejects_unverified_output_without_running_qe(self):
         plan = self.plan()
@@ -207,6 +211,62 @@ class TestQEFiniteDisplacements(unittest.TestCase):
         Path(job['input_file']).write_text(job['input_text'] + '\n! altered input\n')
         with self.assertRaisesRegex(ValueError, 'input changed'):
             has_verified_force(plan, job['id'])
+
+    def test_changed_finite_force_is_recomputed_individually(self):
+        plan = self.plan()
+        expected = np.arange(12, dtype=float).reshape(4, 3) / 10
+        with patch('nanoworks.qe_phonon.qe.run_pw_forces', return_value=expected) as run:
+            with patch('nanoworks.qe_phonon.postprocess', return_value={}):
+                run_force_plan(plan)
+                count = run.call_count
+                job = plan['jobs'][0]
+                Path(job['input_file']).write_text(job['input_text'])
+                cache = Path(job['cache_file'])
+                record = json.loads(cache.read_text())
+                # JSON formatting has no effect on the numerical content hash.
+                cache.write_text(json.dumps(record, sort_keys=True, separators=(',', ':')))
+                self.assertTrue(has_verified_force(plan, job['id']))
+                record['forces_ev_angstrom'][0][0] += .1
+                cache.write_text(json.dumps(record))
+                self.assertFalse(has_verified_force(plan, job['id']))
+                run_force_plan(plan)
+                self.assertEqual(run.call_count, count + 1)
+                self.assertEqual(run.call_args.args[0], job['input_file'])
+                self.assertTrue(has_verified_force(plan, job['id']))
+                np.testing.assert_array_equal(
+                    json.loads(cache.read_text())['forces_ev_angstrom'], expected)
+
+    def test_postprocess_rejects_altered_force_content_without_running_qe(self):
+        plan = self.plan()
+        for job in plan['jobs']:
+            _save_force(job, np.zeros((4, 3)), binary_identity=self.binary)
+        cache = Path(plan['jobs'][0]['cache_file'])
+        record = json.loads(cache.read_text())
+        record['forces_ev_angstrom'][0][0] = 1
+        cache.write_text(json.dumps(record))
+        with patch('nanoworks.qe_phonon.qe.run_pw_forces') as run:
+            with self.assertRaisesRegex(ValueError, 'No matching verified forces'):
+                postprocess(plan)
+        run.assert_not_called()
+        report = json.loads(Path(plan['struct'] + '-PHONON-QE-Result-Summary.json').read_text())
+        self.assertEqual(report['status'], 'failed')
+        self.assertEqual(report['completed_force_jobs'], len(plan['jobs']) - 1)
+
+    def test_shell_resume_rejects_old_or_invalid_integrity_metadata(self):
+        plan = self.plan()
+        job = plan['jobs'][0]
+        Path(job['input_file']).write_text(job['input_text'])
+        cache = Path(job['cache_file'])
+        for field, value in (('force_sha256', None), ('schema', 99), ('units', 'Ry/Bohr')):
+            with self.subTest(field=field):
+                _save_force(job, np.zeros((4, 3)), binary_identity=self.binary)
+                record = json.loads(cache.read_text())
+                if value is None:
+                    del record[field]
+                else:
+                    record[field] = value
+                cache.write_text(json.dumps(record))
+                self.assertFalse(has_verified_force(plan, job['id']))
 
     def test_shell_resume_refuses_changed_pseudopotential(self):
         plan = self.plan()

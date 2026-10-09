@@ -36,7 +36,8 @@ def write_json_atomic(path, record):
     temporary.replace(path)
 
 
-def _force_digest(forces):
+def force_digest(forces):
+    """Hash canonical float64 values independently of array/file serialization."""
     # Canonical dtype/order makes the digest independent of npy serialization.
     return hashlib.sha256(np.asarray(forces, dtype='<f8').tobytes(order='C')).hexdigest()
 
@@ -49,7 +50,7 @@ def load_verified_force(path, signature, natoms):
             return None
         forces = np.asarray(np.load(path, allow_pickle=False), dtype=float)
         if (forces.shape == (natoms, 3) and np.isfinite(forces).all()
-                and record['force_sha256'] == _force_digest(forces)):
+                and record['force_sha256'] == force_digest(forces)):
             return forces
     except (OSError, ValueError, TypeError, KeyError, EOFError):
         pass
@@ -64,7 +65,7 @@ def save_verified_force(path, forces, signature, natoms):
     write_array_atomic(path, forces)
     write_json_atomic(str(path) + '.json', {
         'schema': 1, 'signature': signature, 'units': 'eV/Angstrom',
-        'force_sha256': _force_digest(forces),
+        'force_sha256': force_digest(forces),
     })
 
 
