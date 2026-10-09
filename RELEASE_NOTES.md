@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- GPAW/QE phonon analysis validates edited meshes and thermal ranges; QE also checks band-path dimensions and boolean switches before force execution or exports.
+
 - QE phonon plans bind physical geometry and ordered force jobs to a signature; altered or older unsigned plans require regeneration before reuse.
 
 - GPAW phonon analysis validates editable band q-point segments before result exports; invalid paths retain archived force constants for retry.

@@ -315,6 +315,9 @@ or:
     Regenerate older unsigned QE plans through the normal workflow; compatible
     verified force records can still be reused. DOS mesh, band path, acoustic
     sum rule and thermal settings remain editable analysis choices.
+    QE checks the edited mesh, thermal range and band-path coordinate/distance/label
+    counts before force execution or analysis. Thermal and acoustic-sum-rule
+    switches in JSON must be booleans, not strings such as ``"False"``.
     Older calculations without an analysis plan need one normal phonon
     workflow run to create it, reusing matching caches where available.
     Finite-displacement GPAW/QE workflows preserve ASE atomic masses in

@@ -169,6 +169,32 @@ class TestQEFiniteDisplacements(unittest.TestCase):
         self.assertEqual(_physical_signature(plan), original)
         _validate_plan_resources(plan)
 
+    def test_invalid_analysis_settings_stop_before_scf_or_reconstruction(self):
+        changes = (
+            lambda plan: plan.__setitem__('dos_mesh', [2.5, 2, 2]),
+            lambda plan: plan.__setitem__('dos_mesh', [2, 0, 2]),
+            lambda plan: plan.__setitem__('acoustic_sum_rule', 'False'),
+            lambda plan: plan.__setitem__('thermal', 'False'),
+            lambda plan: plan.update(thermal=True, temperature=[0, 300, 0]),
+            lambda plan: plan.update(thermal=True, temperature=None),
+            lambda plan: plan['band_path'].__setitem__('kpoints', [[0, 0, 0]]),
+            lambda plan: plan['band_path']['kpoints'][0].__setitem__(0, float('inf')),
+            lambda plan: plan['band_path'].__setitem__('distances', [0]),
+            lambda plan: plan['band_path'].__setitem__('labels', []),
+        )
+        for change in changes:
+            with self.subTest(change=change):
+                plan = self.plan()
+                change(plan)
+                with patch('nanoworks.qe_phonon.qe.run_pw_forces') as run:
+                    with self.assertRaises(ValueError):
+                        run_force_plan(plan)
+                run.assert_not_called()
+                with patch('nanoworks.qe_phonon.make_phonon') as build:
+                    with self.assertRaises(ValueError):
+                        postprocess(plan)
+                build.assert_not_called()
+
     def test_force_inputs_preserve_spin_u_and_extensive_settings(self):
         plan = self.plan()
         self.assertGreater(len(plan['jobs']), 1)

@@ -46,6 +46,33 @@ def finite_number(value, name, minimum=0., strict=False):
     return result
 
 
+def validate_dos_mesh(mesh):
+    """Normalize an editable phonon analysis mesh without truncating counts."""
+    try:
+        if len(mesh) != 3:
+            raise ValueError
+    except (TypeError, ValueError) as exc:
+        raise ValueError('The phonon DOS mesh requires three positive integer counts.') from exc
+    return [positive_integer(count, 'Phonon_qpts') for count in mesh]
+
+
+def validate_temperature_range(temperature):
+    """Validate an enabled thermal range; None means no thermal analysis."""
+    if temperature is None:
+        return None
+    try:
+        if len(temperature) != 3:
+            raise ValueError
+    except (TypeError, ValueError) as exc:
+        raise ValueError('The thermal range requires minimum, maximum and step.') from exc
+    low, high, step = [finite_number(value, name, strict=index == 2)
+        for index, (value, name) in enumerate(zip(temperature,
+            ('Phonon_T_min', 'Phonon_T_max', 'Phonon_T_step')))]
+    if high < low:
+        raise ValueError('Phonon_T_max must be >= Phonon_T_min.')
+    return [low, high, step]
+
+
 def normalize_supercell(value):
     try:
         matrix = np.asarray(value, dtype=object)

@@ -103,7 +103,7 @@ def prepare_gpaw_postprocess_plan(phonon, prefix, supercell, band_path, mesh, te
 def postprocess_gpaw_plan(plan, phonon=None):
     """Repeat GPAW phonon analysis without importing GPAW or running force SCFs."""
     from nanoworks.phonon_cache import load_force_constants, write_json_atomic
-    from nanoworks.phonon_settings import positive_integer, finite_number
+    from nanoworks.phonon_settings import validate_dos_mesh, validate_temperature_range
     summary = plan['prefix'] + '-Result-Summary.json'
     write_json_atomic(summary, {'status': 'postprocessing', 'engine': 'GPAW',
                                 'method': 'finite-displacement'})
@@ -119,18 +119,8 @@ def postprocess_gpaw_plan(plan, phonon=None):
         if _file_hash(plan['force_constants_file']) != plan['force_constants_sha256']:
             raise ValueError('Archived force constants changed; regenerate the postprocessing plan.')
         band_path = validate_band_path(plan['band_path'])
-        if len(plan['dos_mesh']) != 3:
-            raise ValueError('The phonon DOS mesh requires three positive integer counts.')
-        mesh = [positive_integer(count, 'Phonon_qpts') for count in plan['dos_mesh']]
-        temperature = plan['temperature']
-        if temperature is not None:
-            if len(temperature) != 3:
-                raise ValueError('The thermal range requires minimum, maximum and step.')
-            low, high, step = [finite_number(value, name, strict=index == 2) for index, (value, name)
-                in enumerate(zip(temperature, ('Phonon_T_min', 'Phonon_T_max', 'Phonon_T_step')))]
-            if high < low:
-                raise ValueError('Phonon_T_max must be >= Phonon_T_min.')
-            temperature = [low, high, step]
+        mesh = validate_dos_mesh(plan['dos_mesh'])
+        temperature = validate_temperature_range(plan['temperature'])
         if phonon is None:
             from phonopy import Phonopy
             from phonopy.structure.atoms import PhonopyAtoms
@@ -189,7 +179,10 @@ def write_mesh_data(prefix, qpoints, weights, frequencies):
 
 def write_gpaw_phonon_results(phonon, prefix, band_path, mesh, temperature=None):
     """Run on MPI root; required result-export failures propagate to the caller."""
+    from nanoworks.phonon_settings import validate_dos_mesh, validate_temperature_range
     qpoints, labels, connections = validate_band_path(band_path)
+    mesh = validate_dos_mesh(mesh)
+    temperature = validate_temperature_range(temperature)
 
     import matplotlib
     matplotlib.use('Agg')

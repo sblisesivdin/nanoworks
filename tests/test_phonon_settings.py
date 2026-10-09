@@ -84,3 +84,21 @@ class TestPhononAtomicMasses(unittest.TestCase):
         for masses in ([0, 60], [-1, 60], [np.nan, 60], [np.inf, 60], [60], [[60, 60]]):
             with self.subTest(masses=masses), self.assertRaisesRegex(ValueError, 'atomic masses'):
                 validate_atomic_masses(masses, 2)
+
+
+class TestEditableAnalysisSettings(unittest.TestCase):
+    def test_mesh_rejects_fractional_boolean_and_wrong_dimensions(self):
+        from nanoworks.phonon_settings import validate_dos_mesh
+        self.assertEqual(validate_dos_mesh([2, 3, 4]), [2, 3, 4])
+        for mesh in (None, [], [2, 2], [2, 2, 0], [2, 2.5, 2], [True, 2, 2], '222'):
+            with self.subTest(mesh=mesh), self.assertRaises(ValueError):
+                validate_dos_mesh(mesh)
+
+    def test_thermal_range_rejects_disabled_like_strings_and_invalid_ranges(self):
+        from nanoworks.phonon_settings import validate_temperature_range
+        self.assertIsNone(validate_temperature_range(None))
+        self.assertEqual(validate_temperature_range([0, 300, 100]), [0., 300., 100.])
+        for temperature in ([], [0, 300], [0, 300, 0], [300, 0, 10],
+                            [0, float('nan'), 10], [False, 300, 10], '123'):
+            with self.subTest(temperature=temperature), self.assertRaises(ValueError):
+                validate_temperature_range(temperature)

@@ -16,7 +16,9 @@ from nanoworks.engine import resolve_initial_magnetic_moments
 from nanoworks.engine import qe
 from nanoworks.phonon_cache import force_digest
 from nanoworks.phonon_results import qpoint_frequencies, write_mesh_data
-from nanoworks.phonon_settings import validate_atomic_masses, validate_phonon_settings
+from nanoworks.phonon_settings import (
+    validate_atomic_masses, validate_phonon_settings, validate_dos_mesh, validate_temperature_range,
+)
 from nanoworks.occupations import resolve_engine_occupation
 from nanoworks.scf import resolve_qe_scf_settings
 
@@ -305,11 +307,44 @@ def _failure_report(plan, error):
         'total_force_jobs': len(plan['jobs'])})
 
 
+def _validate_analysis_settings(plan):
+    """Reject malformed editable analysis settings before SCFs or exports."""
+    mesh = validate_dos_mesh(plan['dos_mesh'])
+    for name in ('thermal', 'acoustic_sum_rule'):
+        if not isinstance(plan[name], (bool, np.bool_)):
+            raise ValueError(f'QE phonon {name} must be a boolean.')
+    temperature = None
+    if plan['thermal']:
+        temperature = validate_temperature_range(plan['temperature'])
+        if temperature is None:
+            raise ValueError('Enabled QE phonon thermal analysis requires a temperature range.')
+    path = plan['band_path']
+    if not isinstance(path, dict):
+        raise ValueError('QE phonon band path must be a mapping.')
+    try:
+        points = np.asarray(path['kpoints'], dtype=float)
+        distances = np.asarray(path['distances'], dtype=float)
+        special = np.asarray(path['special_distances'], dtype=float)
+        labels = path['labels']
+    except (KeyError, TypeError, ValueError, OverflowError) as exc:
+        raise ValueError('QE phonon band path requires finite q-points, distances and labels.') from exc
+    if (points.ndim != 2 or points.shape[1] != 3 or len(points) < 2
+            or distances.shape != (len(points),) or special.ndim != 1
+            or not all(np.isfinite(array).all() for array in (points, distances, special))
+            or np.any(distances < 0) or np.any(np.diff(distances) < 0)
+            or not isinstance(labels, (list, tuple)) or not len(labels)
+            or len(labels) != len(special)
+            or any(not isinstance(label, str) or not label for label in labels)):
+        raise ValueError('QE phonon band path requires matching finite q-points, distances and labels.')
+    return mesh, temperature
+
+
 def begin_force_plan(plan):
     """Invalidate the previous completion status before shell/Slurm execution."""
     _write_report(plan, {'status': 'running', 'method': 'finite-displacement', 'engine': 'QE'})
     try:
         _validate_plan_resources(plan)
+        _validate_analysis_settings(plan)
         binary = _validate_execution_binary(plan)
         if plan.get('pw_executable') is None:
             # A deck prepared on a host without QE binds to the execution
@@ -361,6 +396,7 @@ def postprocess(plan):
 def _postprocess(plan):
     """Build force constants, bands, DOS and optional thermal properties."""
     _validate_plan_resources(plan)
+    mesh, temperature = _validate_analysis_settings(plan)
     phonon = make_phonon(plan['unitcell'], plan['supercell'], plan['displacement'])
     forces = []
     binary_hashes = set()
@@ -398,7 +434,7 @@ def _postprocess(plan):
         raise ValueError('QE phonon mode count does not match the magnetic unit cell.')
     frequencies = {'qpoints': qpoints.tolist(), 'nqpoints': len(qpoints),
         'nmodes': nmodes, 'frequencies_thz': modes.tolist()}
-    phonon.run_mesh(plan['dos_mesh'], with_eigenvectors=True, is_mesh_symmetry=False)
+    phonon.run_mesh(mesh, with_eigenvectors=True, is_mesh_symmetry=False)
     mesh_data = phonon.mesh
     mesh_file, mesh_diagnostics = write_mesh_data(prefix, mesh_data.qpoints,
                                                  mesh_data.weights, mesh_data.frequencies)
@@ -417,7 +453,7 @@ def _postprocess(plan):
     thermal_data, thermal_file = None, None
     if plan['thermal']:
         thermal_data = qe.calculate_phonon_thermal_properties(dos_data,
-            t_min=plan['temperature'][0], t_max=plan['temperature'][1], t_step=plan['temperature'][2])
+            t_min=temperature[0], t_max=temperature[1], t_step=temperature[2])
         thermal_file = qe.write_phonon_thermal_properties(
             prefix + '-Result-Thermal-Properties.csv', thermal_data)
     report = {'status': 'complete', 'method': 'finite-displacement', 'engine': 'QE',
