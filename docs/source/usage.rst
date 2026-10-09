@@ -50,6 +50,50 @@ two sequential processes. The electronic stages finish first; optical then
 starts in a fresh process so the earlier GPAW wave-function memory has been
 released. With ``-p``, both processes use the requested MPI process count.
 
+.. _phonon-recovery:
+
+Phonon recovery and analysis
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For GPAW and QE Hubbard-U finite-displacement phonons, keep the output
+directory and repeat the original command to resume compatible force records.
+This only reuses work within the phonon stage: ground-state and geometry
+stages still follow the input flags. Changed electronic settings, geometry,
+pseudopotentials or execution provenance can require new force calculations.
+Native QE DFPT uses a different workflow; the commands below apply only to
+finite-displacement results.
+
+Once the required data are available, repeat analysis serially without force
+SCFs. Replace ``<struct>`` with the full output prefix, including its directory:
+
+.. code-block:: bash
+
+    python -m nanoworks.phonon_results <struct>-PHONON-GPAW-Input-Postprocess.json
+    python -m nanoworks.qe_phonon <struct>-PHONON-QE-Input-Finite-Displacement.json
+
+The GPAW command needs its archived force constants and checks their content
+hash and the exact Phonopy version. Its plan stores absolute paths. The QE
+command needs all matching verified force records, the manifest, generated
+inputs and referenced UPF files; raw SCF logs alone are insufficient. Neither
+command needs its DFT engine installed for analysis. Keep the associated files
+at their referenced paths. Analysis replaces results for the same prefix.
+
+For a GPAW plan, ``dos_mesh``, ``band_path`` and ``temperature`` can be edited
+without repeating force calculations. The archived ``band_path`` is
+``[qpoint_segments, labels, connections]``, rather than an input path string.
+The temperature field is ``[minimum_K, maximum_K, step_K]`` or ``null``.
+Geometry, masses, electronic provenance and force-constant identity are
+checked. Earlier GPAW results without a plan need a normal phonon run to
+create one. Regenerate older QE execution decks that lack verified force
+recording or executable provenance before running force jobs.
+
+Both routes write ``<struct>-PHONON-<engine>-Result-Summary.json`` with status
+and result paths, and ``-Result-Mesh-THz.dat`` with signed mesh frequencies.
+Only ``complete`` confirms successful exports. The -0.1 THz imaginary-mode
+reporting threshold is not a physical stability criterion; assess convergence
+before interpreting negative modes. Al, Si and QE NiO example READMEs provide
+concrete commands and cache requirements.
+
 Workflow support
 ~~~~~~~~~~~~~~~~
 

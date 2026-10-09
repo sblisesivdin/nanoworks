@@ -5,6 +5,7 @@
 import numpy as np
 
 # -------------------------------------------------------------
+Engine = 'GPAW'
 Mode = 'PW'             # Use PW, PW-GW, LCAO, FD  (PW is more accurate, LCAO is quicker mostly.)
 # -------------------------------------------------------------
 Ground_calc = True     # Ground state calculations

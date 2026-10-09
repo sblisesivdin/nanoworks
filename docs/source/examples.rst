@@ -137,20 +137,16 @@ Alternatively, you can navigate into any specific folder and read the README.md 
     (.venv_nw) $ cd ~/.nanoworks/examples/Si-phonon
     (.venv_nw) $ cat README.md
 
-You will see the file contents as follows:
+The silicon input uses GPAW with a 500 eV cutoff, an 11x11x11 ground-state
+k-point grid and a 3x3x3 phonon supercell. Its force SCFs use a separate
+4x4x4 electronic grid. Check the input, then run it with four MPI processes:
 
 .. code-block:: bash
 
-    # Example: Phonon dispersion of Bulk Silicon
-    
-    Phonon dispersion calculation of Bulk Silicon. Ground state calculations will be done with PW, 500 eV cutoff, 11x11x11 kpoints. Phonon calculations are done with a 3x3x3 supercells. To run the calculation with MPI on 4 cores please execute the following command in this folder.
-    
-    dftsolve -p 4 -i Si-phonon.py -g Si_mp-149_primitive.cif
-    
-    **NOTE:** This is the example done in Nanoworks article.
+    (.venv_nw) $ dftsolve -E GPAW -p 4 -i Si-phonon.py -g Si_mp-149_primitive.cif --check
+    (.venv_nw) $ dftsolve -E GPAW -p 4 -i Si-phonon.py -g Si_mp-149_primitive.cif
 
-Then you can run the command in this readme file. You can change -p argument if you want. If your computer allows 8 MPI cores, the command will be:
-
-.. code-block:: bash
-
-    (.venv_nw) $ dftsolve -p 8 -i Si-phonon.py -g Si_mp-149_primitive.cif
+Change ``-p 4`` to ``-p 8`` to request eight MPI processes. The example README
+also explains force-cache recovery and the serial command for repeating
+analysis from completed force constants. See :ref:`phonon-recovery` for the
+shared GPAW/QE recovery workflow.

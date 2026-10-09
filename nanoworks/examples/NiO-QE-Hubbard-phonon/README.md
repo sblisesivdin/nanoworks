@@ -25,5 +25,30 @@ inputs from the final geometry; generated decks contain the supplied geometry.
 THz band/DOS tables, a PNG, NumPy force constants, Phonopy YAML, a summary
 JSON, and thermal CSV are written with `PHONON-QE` names. Undisplaced residual
 forces are subtracted. Each SCF has an independent state directory. Repeating
-the normal command reuses force caches only when inputs and UPF content match.
+the normal command reuses force caches only when inputs, UPF content and the `pw.x` binary content match.
 No non-analytical LO-TO correction is added.
+
+## Repeat analysis without force SCFs
+
+After every force job has a verified record, run from this example directory:
+
+```bash
+python -m nanoworks.qe_phonon NiO-QE-phonon-results/NiO-QE-phonon-results-PHONON-QE-Input-Finite-Displacement.json
+```
+
+This serial command requires Nanoworks and the archived Phonopy version,
+but not `pw.x` on PATH. Keep the output directory, manifest, generated force
+inputs, UPF files and verified force JSON records in their original locations.
+Unverified SCF logs alone cannot be postprocessed. Missing force records need
+a normal run or a regenerated execution deck to finish those SCFs.
+
+Dry-run/Slurm decks also reuse verified forces, but earlier ground-state jobs
+still run. If inputs, UPF files or the QE binary change, regenerate the deck
+instead of editing its generated force inputs. Plans made before executable
+provenance and verified recording were added need regeneration for execution.
+
+Read `-Result-Summary.json` for result paths and workflow status. Only
+`complete` confirms successful postprocessing; a terminated shell job may
+leave `running`. `-Result-Mesh-THz.dat` preserves signed frequencies. The
+-0.1 THz imaginary-mode reporting threshold is not a physical stability
+criterion. Analysis overwrites the result files for the same prefix.
