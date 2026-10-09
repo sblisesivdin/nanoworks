@@ -123,6 +123,18 @@ class TestGPAWPhononResults(unittest.TestCase):
             write_gpaw_phonon_results(self.phonon, self.prefix, self.band_path, [2, 2, 2])
         self.phonon.run_band_structure.assert_not_called()
 
+    def test_invalid_band_path_stops_before_frequency_work_and_exports(self):
+        invalid = (None, [], ([], [], []), ([[[0, 0, 0]]], [], []),
+                   ([[[0, 0, 0], [0.5, 0]]], [], []),
+                   ([[[0, 0, 0], [np.nan, 0, 0]]], [], []))
+        for path in invalid:
+            with self.subTest(path=path):
+                with self.assertRaisesRegex(ValueError, 'band'):
+                    write_gpaw_phonon_results(self.phonon, self.prefix, path, [2, 2, 2])
+                self.phonon.run_qpoints.assert_not_called()
+                self.phonon.run_mesh.assert_not_called()
+                self.assertEqual(list(Path(self.prefix).parent.iterdir()), [])
+
     def test_thermal_output_is_optional(self):
         report = write_gpaw_phonon_results(self.phonon, self.prefix, self.band_path, [2, 2, 2])
         self.assertIsNone(report['thermal_data_file'])
@@ -205,6 +217,24 @@ class TestGPAWPostprocessPlan(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'Phonon_qpts'):
                 postprocess_gpaw_plan(self.plan)
         export.assert_not_called()
+
+    def test_invalid_edited_band_path_is_rejected_before_exports(self):
+        self.plan['band_path'] = ([[[0, 0, 0], [float('inf'), 0, 0]]], ['G', 'X'], [False])
+        with patch('nanoworks.phonon_results.write_gpaw_phonon_results') as export:
+            with self.assertRaisesRegex(ValueError, 'band segment'):
+                postprocess_gpaw_plan(self.plan)
+        export.assert_not_called()
+        self.assertEqual(self.report()['status'], 'failed')
+        self.assertTrue(Path(self.plan['force_constants_file']).is_file())
+
+    def test_edited_band_path_can_change_without_altering_physical_snapshot(self):
+        self.plan['band_path'] = ([[[0, 0, 0], [.25, .25, 0], [.5, .5, 0]]], ['G', 'M'], [False])
+        with patch('nanoworks.phonon_results.write_gpaw_phonon_results',
+                   return_value={'status': 'complete', 'engine': 'GPAW'}) as export:
+            postprocess_gpaw_plan(self.plan)
+        np.testing.assert_array_equal(export.call_args.args[2][0][0],
+                                      [[0, 0, 0], [.25, .25, 0], [.5, .5, 0]])
+        self.assertEqual(self.report()['status'], 'complete')
 
     def test_export_failure_preserves_the_archived_retry_plan(self):
         with patch('nanoworks.phonon_results.write_gpaw_phonon_results', side_effect=OSError('disk full')):

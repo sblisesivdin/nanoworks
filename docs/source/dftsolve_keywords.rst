@@ -306,6 +306,9 @@ or:
     absolute paths and may be executed from another working directory.
     DOS mesh, band path and temperature range may be edited for new analysis;
     physical snapshot/provenance changes require regenerating the plan.
+    Each edited band-path segment must contain at least two finite fractional
+    q-points with three coordinates. Invalid segments stop analysis before
+    result exports and leave the archived force constants available for retry.
     Older calculations without an analysis plan need one normal phonon
     workflow run to create it, reusing matching caches where available.
     Finite-displacement GPAW/QE workflows preserve ASE atomic masses in

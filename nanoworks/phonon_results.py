@@ -31,6 +31,26 @@ def qpoint_frequencies(phonon, qpoints):
     return frequencies.copy()
 
 
+def validate_band_path(band_path):
+    """Validate editable q-point segments before any phonon result exports."""
+    if not isinstance(band_path, (list, tuple)) or len(band_path) != 3:
+        raise ValueError('The phonon band path requires q-point segments, labels and connections.')
+    segments, labels, connections = band_path
+    if not isinstance(segments, (list, tuple)) or not len(segments):
+        raise ValueError('The phonon band path requires at least one q-point segment.')
+    validated = []
+    for index, segment in enumerate(segments, 1):
+        try:
+            points = np.asarray(segment, dtype=float)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError(f'Phonon band segment {index} must contain finite N x 3 q-points (N >= 2).') from exc
+        if (points.ndim != 2 or points.shape[1] != 3 or len(points) < 2
+                or not np.isfinite(points).all()):
+            raise ValueError(f'Phonon band segment {index} must contain finite N x 3 q-points (N >= 2).')
+        validated.append(points.copy())
+    return validated, labels, connections
+
+
 def _plain(value):
     if isinstance(value, (np.ndarray, np.generic)):
         return value.tolist()
@@ -98,6 +118,7 @@ def postprocess_gpaw_plan(plan, phonon=None):
             raise ValueError('Phonopy version changed; regenerate the postprocessing plan.')
         if _file_hash(plan['force_constants_file']) != plan['force_constants_sha256']:
             raise ValueError('Archived force constants changed; regenerate the postprocessing plan.')
+        band_path = validate_band_path(plan['band_path'])
         if len(plan['dos_mesh']) != 3:
             raise ValueError('The phonon DOS mesh requires three positive integer counts.')
         mesh = [positive_integer(count, 'Phonon_qpts') for count in plan['dos_mesh']]
@@ -121,7 +142,7 @@ def postprocess_gpaw_plan(plan, phonon=None):
             if constants is None:
                 raise ValueError('Archived force constants have invalid dimensions or values.')
             phonon.force_constants = constants
-        report = write_gpaw_phonon_results(phonon, plan['prefix'], plan['band_path'], mesh, temperature)
+        report = write_gpaw_phonon_results(phonon, plan['prefix'], band_path, mesh, temperature)
         report.update(plan['provenance'])
         report.update({'analysis_only': analysis_only,
             'force_constants_sha256': plan['force_constants_sha256'],
@@ -168,6 +189,8 @@ def write_mesh_data(prefix, qpoints, weights, frequencies):
 
 def write_gpaw_phonon_results(phonon, prefix, band_path, mesh, temperature=None):
     """Run on MPI root; required result-export failures propagate to the caller."""
+    qpoints, labels, connections = validate_band_path(band_path)
+
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
@@ -193,7 +216,6 @@ def write_gpaw_phonon_results(phonon, prefix, band_path, mesh, temperature=None)
     np.savetxt(dos_file, np.column_stack([frequencies, values]),
         header='Frequency(THz) DOS(1/THz)', fmt='%.10f')
 
-    qpoints, labels, connections = band_path
     phonon.run_band_structure(qpoints, path_connections=connections, labels=labels)
     band = phonon.get_band_structure_dict()
     distances, band_frequencies = band['distances'], band['frequencies']

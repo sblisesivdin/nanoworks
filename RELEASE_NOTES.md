@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- GPAW phonon analysis validates editable band q-point segments before result exports; invalid paths retain archived force constants for retry.
+
 - Saved final-geometry reuse checks atom count and element ordering even with default masses, protecting per-site electronic settings from mismatched structures.
 
 - Saved final-geometry reuse preserves explicit ASE masses for GPAW/QE and rejects mismatched atom counts or element ordering.
