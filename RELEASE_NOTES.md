@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- QE phonon manifests, force records and summaries share the atomic JSON writer.
+
 - GPAW/QE phonon summaries retain physical signatures, Phonopy versions and analysis settings; QE also records the numerical force-constant hash.
 
 - Phonon exports reject inconsistent mode counts and malformed DOS/thermal arrays; QE force constants are written atomically.

@@ -14,7 +14,7 @@ import numpy as np
 from ase import Atoms
 from nanoworks.engine import resolve_initial_magnetic_moments
 from nanoworks.engine import qe
-from nanoworks.phonon_cache import force_digest, write_array_atomic
+from nanoworks.phonon_cache import force_digest, write_array_atomic, write_json_atomic
 from nanoworks.phonon_results import qpoint_frequencies, write_mesh_data, validate_projected_dos
 from nanoworks.phonon_settings import (
     validate_atomic_masses, validate_phonon_settings, validate_dos_mesh, validate_temperature_range,
@@ -214,7 +214,7 @@ def prepare_force_plan(config, atoms, struct, pseudo_dir, pseudopotentials):
     })
     plan['physical_signature'] = _physical_signature(plan)
     manifest = Path(f'{struct}-PHONON-QE-Input-Finite-Displacement.json')
-    manifest.write_text(json.dumps(plan, indent=2) + '\n', encoding='utf-8')
+    write_json_atomic(manifest, plan)
     plan['manifest_file'] = str(manifest)
     return plan
 
@@ -239,13 +239,10 @@ def _save_force(job, force, binary_identity=None):
     force = np.asarray(force, dtype=float)
     if force.shape != (job['natoms'], 3) or not np.isfinite(force).all():
         raise ValueError('QE force records require a complete finite atom-by-coordinate array.')
-    path = Path(job['cache_file'])
-    temporary = path.with_suffix('.json.tmp')
-    temporary.write_text(json.dumps({'schema': 1, 'units': 'eV/Angstrom',
+    write_json_atomic(job['cache_file'], {'schema': 1, 'units': 'eV/Angstrom',
         'signature': job['signature'], 'force_sha256': force_digest(force),
         'pw_executable_sha256': binary_identity['sha256'] if binary_identity else None,
-        'forces_ev_angstrom': force.tolist()}, indent=2, allow_nan=False) + '\n', encoding='utf-8')
-    temporary.replace(path)
+        'forces_ev_angstrom': force.tolist()})
 
 
 def _validate_plan_resources(plan):
@@ -293,10 +290,7 @@ def has_verified_force(plan, job_id):
 
 
 def _write_report(plan, report):
-    path = Path(plan['struct'] + '-PHONON-QE-Result-Summary.json')
-    temporary = path.with_suffix('.json.tmp')
-    temporary.write_text(json.dumps(report, indent=2, allow_nan=False) + '\n', encoding='utf-8')
-    temporary.replace(path)
+    write_json_atomic(plan['struct'] + '-PHONON-QE-Result-Summary.json', report)
 
 
 def _failure_report(plan, error):
@@ -350,11 +344,8 @@ def begin_force_plan(plan):
             # A deck prepared on a host without QE binds to the execution
             # binary before any force SCF. Later CLI processes read this value.
             plan['pw_executable'] = binary
-            manifest = Path(plan['manifest_file'])
-            temporary = manifest.with_suffix('.json.tmp')
-            temporary.write_text(json.dumps({key: value for key, value in plan.items()
-                if key != 'manifest_file'}, indent=2, allow_nan=False) + '\n', encoding='utf-8')
-            temporary.replace(manifest)
+            write_json_atomic(plan['manifest_file'], {key: value for key, value in plan.items()
+                if key != 'manifest_file'})
     except (Exception, KeyboardInterrupt) as exc:
         _failure_report(plan, exc)
         raise
