@@ -287,6 +287,19 @@ or:
     stability criterion. Rerunning the same workflow after an export failure
     reuses matching force constants or individual force records before
     repeating postprocessing.
+    Once force constants are ready, GPAW writes an analysis plan before
+    exporting results. Repeat only the analysis with
+    ``python -m nanoworks.phonon_results <struct>-PHONON-GPAW-Input-Postprocess.json``.
+    This command requires Phonopy but does not import GPAW, read the ground
+    state or execute force SCFs. The plan preserves the magnetic cell,
+    masses, geometry and electronic provenance, and checks the force-constant
+    content hash and exact Phonopy version. The summary records
+    ``analysis_only`` and the archived force-constant hash. The plan uses
+    absolute paths and may be executed from another working directory.
+    DOS mesh, band path and temperature range may be edited for new analysis;
+    physical snapshot/provenance changes require regenerating the plan.
+    Older calculations without an analysis plan need one normal phonon
+    workflow run to create it, reusing matching caches where available.
     Total charge and explicitly fixed band counts scale with the number of
     unit cells in the supercell.
 

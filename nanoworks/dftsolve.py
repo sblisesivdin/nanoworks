@@ -298,7 +298,7 @@ from ase.constraints import FixSymmetry
 from ase.filters import FrechetCellFilter
 from ase.io.cif import write_cif
 from pathlib import Path
-from nanoworks.phonon_results import write_gpaw_phonon_results
+from nanoworks.phonon_results import prepare_gpaw_postprocess_plan, postprocess_gpaw_plan
 from nanoworks.phonon_settings import validate_phonon_settings
 from nanoworks.phonon_cache import (
     collective_cache_call, force_signature, load_verified_force,
@@ -6069,12 +6069,13 @@ class dftsolve:
             {'status': 'postprocessing', 'engine': 'GPAW', 'method': 'finite-displacement'})
         temperature = ((self.Phonon_T_min, self.Phonon_T_max, self.Phonon_T_step)
                        if self.Phonon_thermal_calc else None)
-        report = collective_cache_call(write_gpaw_phonon_results, phonon,
-            self.struct + '-PHONON-GPAW', path,
-            (self.Phonon_qpts_x, self.Phonon_qpts_y, self.Phonon_qpts_z), temperature)
-        report.update({'xc': self.XC_calc, 'spin_polarized': self.Spin_calc,
+        provenance = {'xc': self.XC_calc, 'spin_polarized': self.Spin_calc,
             'hubbard_u': getattr(self, 'Hubbard_U', None), 'cache_settings': cache_settings,
-            'reused_force_constants': cached_constants is not None})
+            'reused_force_constants': cached_constants is not None}
+        plan = collective_cache_call(prepare_gpaw_postprocess_plan, phonon,
+            self.struct + '-PHONON-GPAW', self.Phonon_supercell, path,
+            (self.Phonon_qpts_x, self.Phonon_qpts_y, self.Phonon_qpts_z), temperature, provenance)
+        report = collective_cache_call(postprocess_gpaw_plan, plan, phonon)
         time52 = time.time()
         # Write timings of calculation
         def write_timings():

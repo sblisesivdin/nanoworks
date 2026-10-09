@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- GPAW phonon analysis can be repeated from an archived plan without GPAW or force SCFs; geometry, provenance, force-constant hashes and Phonopy versions are checked.
+
 - Phonon parameters are validated before calculations; preflight reports the method, mesh and finite-displacement supercell size or native DFPT q-point grid.
 
 - GPAW phonon forces retain the ground-state electronic settings and magnetic moments; incompatible force caches are recomputed.

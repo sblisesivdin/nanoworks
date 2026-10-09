@@ -5,14 +5,17 @@
 """Regression coverage for phonon tables, diagnostics and required exports."""
 
 import tempfile
+import json
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import numpy as np
 
-from nanoworks.phonon_results import write_gpaw_phonon_results
+from nanoworks.phonon_results import (
+    write_gpaw_phonon_results, prepare_gpaw_postprocess_plan, postprocess_gpaw_plan,
+)
 
 
 class TestGPAWPhononResults(unittest.TestCase):
@@ -76,3 +79,88 @@ class TestGPAWPhononResults(unittest.TestCase):
         self.assertIsNone(report['thermal_data_file'])
         self.assertIsNone(report['thermal_yaml_file'])
         self.phonon.run_thermal_properties.assert_not_called()
+
+
+class TestGPAWPostprocessPlan(unittest.TestCase):
+    def setUp(self):
+        try:
+            from phonopy import Phonopy
+            from phonopy.structure.atoms import PhonopyAtoms
+        except ModuleNotFoundError:
+            self.skipTest('phonopy is optional')
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.prefix = str(Path(temporary.name) / 'Ni-PHONON-GPAW')
+        cell = PhonopyAtoms(symbols=['Ni', 'Ni'], cell=np.eye(3) * 4,
+            scaled_positions=[[0, 0, 0], [.5, .5, .5]], magnetic_moments=[2, -2])
+        self.matrix = np.diag([2, 1, 1])
+        self.phonon = Phonopy(cell, self.matrix)
+        count = len(self.phonon.supercell)
+        constants = np.zeros((count, count, 3, 3))
+        for index in range(count):
+            constants[index, index] = np.eye(3) * 2
+        self.phonon.force_constants = constants
+        np.save(self.prefix + '-Result-Force-Constants.npy', constants)
+        self.path = ([np.array([[0, 0, 0], [.5, 0, 0]])], ['G', 'X'], [False])
+        self.plan = prepare_gpaw_postprocess_plan(self.phonon, self.prefix, self.matrix,
+            self.path, [2, 2, 2], None, {'xc': 'PBE', 'spin_polarized': True,
+                                       'reused_force_constants': False})
+
+    def report(self):
+        return json.loads(Path(self.prefix + '-Result-Summary.json').read_text())
+
+    def test_archived_geometry_and_constants_reconstruct_without_gpaw(self):
+        filename = self.prefix + '-Input-Postprocess.json'
+        stored = json.loads(Path(filename).read_text())
+        with patch.dict('sys.modules', {'gpaw': None}):
+            with patch('nanoworks.phonon_results.write_gpaw_phonon_results',
+                       return_value={'status': 'complete', 'engine': 'GPAW'}) as export:
+                result = postprocess_gpaw_plan(stored)
+        reconstructed = export.call_args.args[0]
+        np.testing.assert_array_equal(reconstructed.force_constants, self.phonon.force_constants)
+        np.testing.assert_allclose(reconstructed.get_frequencies([.2, 0, 0]),
+                                   self.phonon.get_frequencies([.2, 0, 0]))
+        np.testing.assert_array_equal(reconstructed.unitcell.masses, self.phonon.unitcell.masses)
+        self.assertTrue(result['analysis_only'])
+        self.assertTrue(result['reused_force_constants'])
+        self.assertEqual(self.report()['status'], 'complete')
+
+    def test_changed_force_constants_are_rejected_before_exports(self):
+        np.save(self.plan['force_constants_file'], self.phonon.force_constants * 2)
+        with patch('nanoworks.phonon_results.write_gpaw_phonon_results') as export:
+            with self.assertRaisesRegex(ValueError, 'force constants changed'):
+                postprocess_gpaw_plan(self.plan)
+        export.assert_not_called()
+        self.assertEqual(self.report()['status'], 'failed')
+
+    def test_changed_geometry_is_rejected(self):
+        self.plan['unitcell']['cell'][0][0] += 1
+        with self.assertRaisesRegex(ValueError, 'geometry or provenance changed'):
+            postprocess_gpaw_plan(self.plan)
+
+    def test_changed_phonopy_version_is_rejected(self):
+        with patch('phonopy.__version__', 'different-version'):
+            with self.assertRaisesRegex(ValueError, 'Phonopy version changed'):
+                postprocess_gpaw_plan(self.plan)
+
+    def test_analysis_mesh_can_change_without_altering_physical_snapshot(self):
+        self.plan['dos_mesh'] = [4, 4, 4]
+        with patch('nanoworks.phonon_results.write_gpaw_phonon_results',
+                   return_value={'status': 'complete', 'engine': 'GPAW'}) as export:
+            postprocess_gpaw_plan(self.plan)
+        self.assertEqual(export.call_args.args[3], [4, 4, 4])
+
+    def test_invalid_analysis_mesh_is_rejected_without_exports(self):
+        self.plan['dos_mesh'] = [2.5, 2, 2]
+        with patch('nanoworks.phonon_results.write_gpaw_phonon_results') as export:
+            with self.assertRaisesRegex(ValueError, 'Phonon_qpts'):
+                postprocess_gpaw_plan(self.plan)
+        export.assert_not_called()
+
+    def test_export_failure_preserves_the_archived_retry_plan(self):
+        with patch('nanoworks.phonon_results.write_gpaw_phonon_results', side_effect=OSError('disk full')):
+            with self.assertRaisesRegex(OSError, 'disk full'):
+                postprocess_gpaw_plan(self.plan)
+        self.assertEqual(self.report()['status'], 'failed')
+        self.assertTrue(Path(self.prefix + '-Input-Postprocess.json').is_file())
+        self.assertTrue(Path(self.plan['force_constants_file']).is_file())

@@ -5,8 +5,116 @@
 """Shared signed-frequency reporting and GPAW Phonopy result exports."""
 
 from pathlib import Path
+import hashlib
+import json
 
 import numpy as np
+
+
+def _plain(value):
+    if isinstance(value, (np.ndarray, np.generic)):
+        return value.tolist()
+    if isinstance(value, Path):
+        return str(value)
+    if isinstance(value, dict):
+        return {key: _plain(item) for key, item in value.items()}
+    if isinstance(value, (tuple, list)):
+        return [_plain(item) for item in value]
+    return value
+
+
+def _file_hash(path):
+    digest = hashlib.sha256()
+    with Path(path).open('rb') as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b''):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _physical_signature(plan):
+    fields = ('schema', 'engine', 'unitcell', 'supercell', 'phonopy_version',
+              'force_constants_file', 'force_constants_sha256', 'provenance')
+    return hashlib.sha256(json.dumps({key: plan[key] for key in fields},
+        sort_keys=True, allow_nan=False).encode()).hexdigest()
+
+
+def prepare_gpaw_postprocess_plan(phonon, prefix, supercell, band_path, mesh, temperature, provenance):
+    """Archive the completed force-constant calculation before required exports."""
+    import phonopy
+    from nanoworks.phonon_cache import write_json_atomic
+
+    prefix = str(Path(prefix).resolve())
+    cell = phonon.unitcell
+    constants = prefix + '-Result-Force-Constants.npy'
+    plan = _plain({'schema': 1, 'engine': 'GPAW', 'prefix': prefix,
+        'phonopy_version': phonopy.__version__, 'supercell': supercell,
+        'unitcell': {'symbols': cell.symbols, 'cell': cell.cell,
+                    'scaled_positions': cell.scaled_positions, 'masses': cell.masses,
+                    'magnetic_moments': cell.magnetic_moments},
+        'force_constants_file': constants, 'force_constants_sha256': _file_hash(constants),
+        'band_path': band_path, 'dos_mesh': mesh, 'temperature': temperature,
+        'provenance': provenance})
+    plan['physical_signature'] = _physical_signature(plan)
+    filename = prefix + '-Input-Postprocess.json'
+    write_json_atomic(filename, plan)
+    return plan
+
+
+def postprocess_gpaw_plan(plan, phonon=None):
+    """Repeat GPAW phonon analysis without importing GPAW or running force SCFs."""
+    from nanoworks.phonon_cache import load_force_constants, write_json_atomic
+    from nanoworks.phonon_settings import positive_integer, finite_number
+    summary = plan['prefix'] + '-Result-Summary.json'
+    write_json_atomic(summary, {'status': 'postprocessing', 'engine': 'GPAW',
+                                'method': 'finite-displacement'})
+    analysis_only = phonon is None
+    try:
+        import phonopy
+        if plan['engine'] != 'GPAW' or plan['schema'] != 1:
+            raise ValueError('Unsupported GPAW phonon postprocessing plan.')
+        if plan['physical_signature'] != _physical_signature(plan):
+            raise ValueError('The archived phonon geometry or provenance changed; regenerate the plan.')
+        if phonopy.__version__ != plan['phonopy_version']:
+            raise ValueError('Phonopy version changed; regenerate the postprocessing plan.')
+        if _file_hash(plan['force_constants_file']) != plan['force_constants_sha256']:
+            raise ValueError('Archived force constants changed; regenerate the postprocessing plan.')
+        if len(plan['dos_mesh']) != 3:
+            raise ValueError('The phonon DOS mesh requires three positive integer counts.')
+        mesh = [positive_integer(count, 'Phonon_qpts') for count in plan['dos_mesh']]
+        temperature = plan['temperature']
+        if temperature is not None:
+            if len(temperature) != 3:
+                raise ValueError('The thermal range requires minimum, maximum and step.')
+            low, high, step = [finite_number(value, name, strict=index == 2) for index, (value, name)
+                in enumerate(zip(temperature, ('Phonon_T_min', 'Phonon_T_max', 'Phonon_T_step')))]
+            if high < low:
+                raise ValueError('Phonon_T_max must be >= Phonon_T_min.')
+            temperature = [low, high, step]
+        if phonon is None:
+            from phonopy import Phonopy
+            from phonopy.structure.atoms import PhonopyAtoms
+            # Recreate the same default primitive mapping under the exact
+            # archived Phonopy version; no NAC or force calculations are added.
+            phonon = Phonopy(PhonopyAtoms(**plan['unitcell']), plan['supercell'])
+            constants = load_force_constants(plan['force_constants_file'],
+                len(phonon.primitive), len(phonon.supercell))
+            if constants is None:
+                raise ValueError('Archived force constants have invalid dimensions or values.')
+            phonon.force_constants = constants
+        report = write_gpaw_phonon_results(phonon, plan['prefix'], plan['band_path'], mesh, temperature)
+        report.update(plan['provenance'])
+        report.update({'analysis_only': analysis_only,
+            'force_constants_sha256': plan['force_constants_sha256'],
+            'postprocess_plan_file': plan['prefix'] + '-Input-Postprocess.json'})
+        if analysis_only:
+            report['reused_force_constants'] = True
+        write_json_atomic(summary, report)
+        return report
+    except (Exception, KeyboardInterrupt) as exc:
+        write_json_atomic(summary, {'status': 'interrupted' if isinstance(exc, KeyboardInterrupt) else 'failed',
+            'engine': 'GPAW', 'method': 'finite-displacement', 'analysis_only': analysis_only,
+            'error': str(exc) or 'Interrupted'})
+        raise
 
 
 def write_mesh_data(prefix, qpoints, weights, frequencies):
@@ -119,3 +227,11 @@ def write_gpaw_phonon_results(phonon, prefix, band_path, mesh, temperature=None)
         'thermal_data_file': thermal_file, 'thermal_yaml_file': thermal_yaml}
     # The caller adds electronic provenance and publishes the final summary.
     return report
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description='Repeat GPAW phonon analysis using archived force constants.')
+    parser.add_argument('manifest', help='The <struct>-PHONON-GPAW-Input-Postprocess.json file.')
+    arguments = parser.parse_args()
+    postprocess_gpaw_plan(json.loads(Path(arguments.manifest).read_text(encoding='utf-8')))
