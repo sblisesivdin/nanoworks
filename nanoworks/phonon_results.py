@@ -51,6 +51,32 @@ def validate_band_path(band_path):
     return validated, labels, connections
 
 
+def validate_projected_dos(frequencies, projected, natoms):
+    """Require a finite ordered frequency grid and one DOS row per cell atom."""
+    grid = np.asarray(frequencies, dtype=float)
+    values = np.asarray(projected, dtype=float)
+    if (grid.ndim != 1 or not grid.size or values.shape != (natoms, len(grid))
+            or not np.isfinite(grid).all() or not np.isfinite(values).all()
+            or np.any(np.diff(grid) <= 0)):
+        raise ValueError('Phonopy projected DOS must contain a finite increasing grid and one matching row per atom.')
+    return grid, values
+
+
+def validate_thermal_table(thermal):
+    """Require exactly four matching finite columns for thermal CSV output."""
+    keys = ('temperatures', 'free_energy', 'entropy', 'heat_capacity')
+    try:
+        columns = [np.asarray(thermal[key], dtype=float) for key in keys]
+    except (KeyError, TypeError, ValueError, OverflowError) as exc:
+        raise ValueError('Phonopy thermal properties must contain four matching finite arrays.') from exc
+    if (any(column.ndim != 1 or not column.size for column in columns)
+            or any(column.shape != columns[0].shape for column in columns)
+            or not all(np.isfinite(column).all() for column in columns)
+            or np.any(columns[0] < 0) or np.any(np.diff(columns[0]) <= 0)):
+        raise ValueError('Phonopy thermal properties must contain four matching finite arrays and increasing temperatures.')
+    return np.column_stack(columns)
+
+
 def _plain(value):
     if isinstance(value, (np.ndarray, np.generic)):
         return value.tolist()
@@ -197,13 +223,17 @@ def write_gpaw_phonon_results(phonon, prefix, band_path, mesh, temperature=None)
             stream.write(f'[Phonopy] {index:3d}: {frequency:10.5f} THz\n')
 
     phonon.run_mesh(mesh)
+    mesh_modes = np.asarray(phonon.mesh.frequencies)
+    if mesh_modes.ndim != 2 or mesh_modes.shape[1] != len(gamma):
+        raise ValueError('Phonopy mesh mode count does not match Gamma frequencies.')
     mesh_file, diagnostics = write_mesh_data(prefix, phonon.mesh.qpoints,
         phonon.mesh.weights, phonon.mesh.frequencies)
     phonon.run_total_dos()
     dos = phonon.total_dos
     frequencies, values = np.asarray(dos.frequency_points), np.asarray(dos.dos)
     if (frequencies.ndim != 1 or not frequencies.size or values.shape != frequencies.shape
-            or not np.isfinite(frequencies).all() or not np.isfinite(values).all()):
+            or not np.isfinite(frequencies).all() or not np.isfinite(values).all()
+            or np.any(np.diff(frequencies) <= 0)):
         raise ValueError('Phonopy total DOS must contain matching finite frequency and DOS arrays.')
     dos_file = Path(prefix + '-Result-DOS.dat')
     np.savetxt(dos_file, np.column_stack([frequencies, values]),
@@ -214,18 +244,22 @@ def write_gpaw_phonon_results(phonon, prefix, band_path, mesh, temperature=None)
     distances, band_frequencies = band['distances'], band['frequencies']
     if not len(distances) or len(distances) != len(band_frequencies):
         raise ValueError('Phonopy band distances and frequency segments must match.')
-    band_file = Path(prefix + '-Result-Band.dat')
+    if len(distances) != len(qpoints):
+        raise ValueError('Phonopy band segment count does not match the requested q-point path.')
+    tables = []
     minimum_band_frequency = float('inf')
+    for points, distance, frequency in zip(qpoints, distances, band_frequencies):
+        distance, frequency = np.asarray(distance), np.asarray(frequency)
+        if (distance.shape != (len(points),) or frequency.shape != (len(points), len(gamma))
+                or not np.isfinite(distance).all() or not np.isfinite(frequency).all()):
+            raise ValueError('Phonopy band segments must contain matching finite distances and modes.')
+        minimum_band_frequency = min(minimum_band_frequency, float(frequency.min()))
+        tables.append(np.column_stack([distance, frequency]))
+    band_file = Path(prefix + '-Result-Band.dat')
     with band_file.open('w', encoding='utf-8') as stream:
         stream.write('Distance(1/A)    Frequencies(THz)...\n')
-        for distance, frequency in zip(distances, band_frequencies):
-            distance, frequency = np.asarray(distance), np.asarray(frequency)
-            if (distance.ndim != 1 or frequency.ndim != 2 or not frequency.size
-                    or len(distance) != len(frequency) or not np.isfinite(distance).all()
-                    or not np.isfinite(frequency).all()):
-                raise ValueError('Phonopy band segments must contain matching finite distances and modes.')
-            minimum_band_frequency = min(minimum_band_frequency, float(frequency.min()))
-            np.savetxt(stream, np.column_stack([distance, frequency]), fmt='%.6f', delimiter='    ')
+        for table in tables:
+            np.savetxt(stream, table, fmt='%.6f', delimiter='    ')
             stream.write('\n')
     band_yaml = prefix + '-Result-Band.yaml'
     phonon.write_yaml_band_structure(filename=band_yaml)
@@ -242,10 +276,7 @@ def write_gpaw_phonon_results(phonon, prefix, band_path, mesh, temperature=None)
     if temperature is not None:
         phonon.run_thermal_properties(t_min=temperature[0], t_max=temperature[1], t_step=temperature[2])
         thermal = phonon.get_thermal_properties_dict()
-        table = np.column_stack([thermal[key] for key in
-            ('temperatures', 'free_energy', 'entropy', 'heat_capacity')])
-        if not table.size or not np.isfinite(table).all():
-            raise ValueError('Phonopy thermal properties must contain finite, nonempty arrays.')
+        table = validate_thermal_table(thermal)
         thermal_file = prefix + '-Result-Thermal-Properties.csv'
         np.savetxt(thermal_file, table, delimiter=',', fmt='%.6f', comments='',
             header='T(K),Free_Energy(kJ/mol),Entropy(J/K/mol),Cv(J/K/mol)')

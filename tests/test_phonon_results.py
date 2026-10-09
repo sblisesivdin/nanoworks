@@ -135,6 +135,29 @@ class TestGPAWPhononResults(unittest.TestCase):
                 self.phonon.run_mesh.assert_not_called()
                 self.assertEqual(list(Path(self.prefix).parent.iterdir()), [])
 
+    def test_mesh_mode_count_must_match_gamma_before_mesh_export(self):
+        self.phonon.mesh.frequencies = np.ones((2, 2))
+        with self.assertRaisesRegex(ValueError, 'mesh mode count'):
+            write_gpaw_phonon_results(self.phonon, self.prefix, self.band_path, [2, 2, 2])
+        self.assertFalse(Path(self.prefix + '-Result-Mesh-THz.dat').exists())
+        self.phonon.run_total_dos.assert_not_called()
+
+    def test_invalid_band_results_preserve_previous_band_table(self):
+        target = Path(self.prefix + '-Result-Band.dat')
+        target.write_text('previous completed band table')
+        self.phonon.get_band_structure_dict.return_value['frequencies'][0] = np.ones((2, 2))
+        with self.assertRaisesRegex(ValueError, 'matching finite distances and modes'):
+            write_gpaw_phonon_results(self.phonon, self.prefix, self.band_path, [2, 2, 2])
+        self.assertEqual(target.read_text(), 'previous completed band table')
+        self.phonon.write_yaml_band_structure.assert_not_called()
+
+    def test_two_dimensional_thermal_column_is_rejected_before_thermal_csv(self):
+        self.phonon.get_thermal_properties_dict.return_value['free_energy'] = [[.1, .2], [.3, .4]]
+        with self.assertRaisesRegex(ValueError, 'four matching finite arrays'):
+            write_gpaw_phonon_results(self.phonon, self.prefix, self.band_path, [2, 2, 2], [0, 100, 100])
+        self.assertFalse(Path(self.prefix + '-Result-Thermal-Properties.csv').exists())
+        self.phonon.write_yaml_thermal_properties.assert_not_called()
+
     def test_thermal_output_is_optional(self):
         report = write_gpaw_phonon_results(self.phonon, self.prefix, self.band_path, [2, 2, 2])
         self.assertIsNone(report['thermal_data_file'])
@@ -243,3 +266,30 @@ class TestGPAWPostprocessPlan(unittest.TestCase):
         self.assertEqual(self.report()['status'], 'failed')
         self.assertTrue(Path(self.prefix + '-Input-Postprocess.json').is_file())
         self.assertTrue(Path(self.plan['force_constants_file']).is_file())
+
+
+class TestPhononNumericalTables(unittest.TestCase):
+    def test_projected_dos_keeps_signed_grid_and_atom_rows(self):
+        from nanoworks.phonon_results import validate_projected_dos
+        grid, values = validate_projected_dos([-.2, 0, .2], [[1, 2, 3], [4, 5, 6]], 2)
+        np.testing.assert_array_equal(grid, [-.2, 0, .2])
+        np.testing.assert_array_equal(values.sum(axis=0), [5, 7, 9])
+
+    def test_invalid_projected_dos_cannot_be_exported_as_complete(self):
+        from nanoworks.phonon_results import validate_projected_dos
+        invalid = (([0, 1], [[1, 2]], 2), ([0, 1], [[1, 2, 3]], 1),
+                   ([0, 0], [[1, 2]], 1), ([1, 0], [[1, 2]], 1),
+                   ([0, np.inf], [[1, 2]], 1), ([0, 1], [[1, np.nan]], 1))
+        for grid, values, count in invalid:
+            with self.subTest(grid=grid, values=values), self.assertRaisesRegex(ValueError, 'projected DOS'):
+                validate_projected_dos(grid, values, count)
+
+    def test_thermal_columns_require_matching_finite_one_dimensional_arrays(self):
+        from nanoworks.phonon_results import validate_thermal_table
+        valid = dict(temperatures=[0, 100], free_energy=[.1, .2], entropy=[0, 1], heat_capacity=[0, 2])
+        self.assertEqual(validate_thermal_table(valid).shape, (2, 4))
+        for changes in (dict(free_energy=[[1, 2], [3, 4]]), dict(entropy=[0]),
+                        dict(heat_capacity=[0, np.nan]), dict(temperatures=[100, 0]),
+                        dict(temperatures=[0, 0]), dict(temperatures=[-1, 100])):
+            with self.subTest(changes=changes), self.assertRaisesRegex(ValueError, 'thermal properties'):
+                validate_thermal_table({**valid, **changes})

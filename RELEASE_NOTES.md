@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- Phonon exports reject inconsistent mode counts and malformed DOS/thermal arrays; QE force constants are written atomically.
+
 - GPAW/QE phonon analysis validates edited meshes and thermal ranges; QE also checks band-path dimensions and boolean switches before force execution or exports.
 
 - QE phonon plans bind physical geometry and ordered force jobs to a signature; altered or older unsigned plans require regeneration before reuse.

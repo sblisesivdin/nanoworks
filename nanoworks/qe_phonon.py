@@ -14,8 +14,8 @@ import numpy as np
 from ase import Atoms
 from nanoworks.engine import resolve_initial_magnetic_moments
 from nanoworks.engine import qe
-from nanoworks.phonon_cache import force_digest
-from nanoworks.phonon_results import qpoint_frequencies, write_mesh_data
+from nanoworks.phonon_cache import force_digest, write_array_atomic
+from nanoworks.phonon_results import qpoint_frequencies, write_mesh_data, validate_projected_dos
 from nanoworks.phonon_settings import (
     validate_atomic_masses, validate_phonon_settings, validate_dos_mesh, validate_temperature_range,
 )
@@ -423,7 +423,12 @@ def _postprocess(plan):
         phonon.symmetrize_force_constants()
     prefix = plan['struct'] + '-PHONON-QE'
     constants_file = Path(prefix + '-Result-Force-Constants.npy')
-    np.save(constants_file, phonon.force_constants)
+    constants = np.asarray(phonon.force_constants)
+    count = len(phonon.supercell)
+    if (constants.shape not in ((len(phonon.primitive), count, 3, 3), (count, count, 3, 3))
+            or not np.isfinite(constants).all()):
+        raise ValueError('QE phonon force constants require matching finite atom-by-atom arrays.')
+    write_array_atomic(constants_file, constants)
     phonon.save(prefix + '-Result-Phonopy.yaml', settings={'force_constants': True})
     band_path = plan['band_path']
     # QE band paths provide fractional reciprocal coordinates as kpoints.
@@ -436,12 +441,15 @@ def _postprocess(plan):
         'nmodes': nmodes, 'frequencies_thz': modes.tolist()}
     phonon.run_mesh(mesh, with_eigenvectors=True, is_mesh_symmetry=False)
     mesh_data = phonon.mesh
+    mesh_modes = np.asarray(mesh_data.frequencies)
+    if mesh_modes.ndim != 2 or mesh_modes.shape[1] != nmodes:
+        raise ValueError('QE phonon mesh mode count does not match the magnetic unit cell.')
     mesh_file, mesh_diagnostics = write_mesh_data(prefix, mesh_data.qpoints,
                                                  mesh_data.weights, mesh_data.frequencies)
     phonon.run_projected_dos(sigma=0.1)
     partial = phonon.projected_dos
-    projected = np.asarray(partial.projected_dos)
-    frequency_grid = np.asarray(partial.frequency_points)
+    frequency_grid, projected = validate_projected_dos(
+        partial.frequency_points, partial.projected_dos, len(plan['unitcell']['symbols']))
     dos_data = {'frequencies_thz': frequency_grid.tolist(),
         'frequencies_cm1': (frequency_grid / qe.THZ_PER_CM_MINUS_ONE).tolist(),
         'dos': (projected.sum(axis=0) * qe.THZ_PER_CM_MINUS_ONE).tolist(),

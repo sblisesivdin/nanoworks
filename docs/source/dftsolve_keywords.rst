@@ -341,6 +341,11 @@ or:
     plans through the normal workflow after changing masses. Old QE plans
     without masses retain Phonopy defaults. This does not alter native QE DFPT
     species-mass handling.
+    GPAW/QE verify consistent band/mesh mode counts and finite numerical DOS
+    tables before reporting completion. QE atom-projected DOS must contain one
+    row per magnetic unit-cell atom. GPAW thermal CSV output requires four
+    matching one-dimensional columns. QE force-constant files are replaced
+    atomically, preserving a previous file if writing is interrupted.
     Total charge and explicitly fixed band counts scale with the number of
     unit cells in the supercell.
 

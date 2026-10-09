@@ -459,6 +459,26 @@ class TestQEFiniteDisplacements(unittest.TestCase):
                 run_force_plan(plan)
         self.assertEqual(run.call_count, len(plan['jobs']) - 1)
 
+    def test_failed_force_constant_write_preserves_previous_file_and_force_records(self):
+        plan = self.plan()
+        phonon = make_phonon(plan['unitcell'], plan['supercell'], plan['displacement'])
+        cells = [phonon.supercell, *phonon.supercells_with_displacements]
+        positions = cells[0].positions
+        for job, cell in zip(plan['jobs'], cells):
+            _save_force(job, -5.0 * (cell.positions - positions), binary_identity=self.binary)
+        target = Path(plan['struct'] + '-PHONON-QE-Result-Force-Constants.npy')
+        np.save(target, np.array([17., 23.]))
+        original = target.read_bytes()
+        with patch('nanoworks.phonon_cache.np.save', side_effect=OSError('disk full')):
+            with patch('nanoworks.qe_phonon.qe.run_pw_forces') as run:
+                with self.assertRaisesRegex(OSError, 'disk full'):
+                    postprocess(plan)
+        run.assert_not_called()
+        self.assertEqual(target.read_bytes(), original)
+        report = json.loads(Path(plan['struct'] + '-PHONON-QE-Result-Summary.json').read_text())
+        self.assertEqual(report['status'], 'failed')
+        self.assertEqual(report['completed_force_jobs'], len(plan['jobs']))
+
     def test_harmonic_forces_produce_band_dos_and_force_constants(self):
         plan = self.plan()
         phonon = make_phonon(plan['unitcell'], plan['supercell'], plan['displacement'])
