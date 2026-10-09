@@ -17,13 +17,74 @@ The release installer pins the Python package to the same Nanoworks version as
 the GitHub release. For example, the exact-version URL for v26.8.0 is
 ``https://github.com/sblisesivdin/nanoworks/releases/download/v26.8.0/install-all-Debian-based.sh``.
 
+Choose the DFT engine and optional components
+---------------------------------------------
+
+The development installer offers independent selections for the DFT engine
+(QE, GPAW or both) and components (DFT only, DFT + MD, DFT + ML or all).
+Defaults are both engines and all components. These selections will be
+included in the next release installer; older release assets retain their
+original menus. From a checkout of the current development branch:
+
+.. code-block:: console
+
+    $ NANOWORKS_ENGINE=qe NANOWORKS_COMPONENTS=dft bash install_scripts/install-all-Debian-based.sh --dry-run
+    $ NANOWORKS_ENGINE=qe NANOWORKS_COMPONENTS=dft bash install_scripts/install-all-Debian-based.sh
+
+``--dry-run`` prints the selected Python extras, system packages and resource
+installation steps without creating a virtual environment, invoking sudo,
+or downloading packages. Valid environment values are ``qe``, ``gpaw`` or
+``both`` for ``NANOWORKS_ENGINE``, and ``dft``, ``md``, ``ml`` or ``all`` for
+``NANOWORKS_COMPONENTS``. Invalid selections stop before installation.
+``NANOWORKS_VERSION`` optionally pins the package version; the selected version
+must provide the requested extras. Without a pin, pip installs the newest
+available PyPI package, not the development checkout itself.
+
+QE-only installation skips GPAW and its build configuration. KIM/ASAP3 and
+LAMMPS dependencies are added only for MD; ML Python dependencies are added
+only for ML. When QE is selected, the installer also installs the PseudoDojo
+PBE scalar- and fully-relativistic sets under ``~/.nanoworks/pseudos/qe/``.
+Existing GPAW build configuration is preserved. Selecting QE in an existing
+virtual environment does not uninstall previously installed GPAW or other
+components. Use a fresh environment when you need strict dependency isolation.
+
+QE-only Python installation
+---------------------------
+
+For an externally managed QE installation, GPAW and its build libraries are
+not required. Create a virtual environment and select only the QE extra:
+
+.. code-block:: console
+
+    $ python3 -m venv ~/.venv_nw_qe
+    $ source ~/.venv_nw_qe/bin/activate
+    (.venv_nw_qe) $ python -m pip install "nanoworks[qe]"
+    (.venv_nw_qe) $ nanoworks --install-qe-pseudos
+    (.venv_nw_qe) $ nanoworks --install-examples
+
+To install the development checkout instead of the published package, run
+``python -m pip install ".[qe]"`` from the repository directory. Set
+``Engine = 'QE'`` in the input, or override it for one run:
+
+.. code-block:: console
+
+    (.venv_nw_qe) $ dftsolve -E QE -i input.py -g geometry.cif --check
+    (.venv_nw_qe) $ dftsolve -E QE -i input.py -g geometry.cif
+
+Engine selection during installation chooses dependencies; it does not change
+the input's engine or the default calculation backend. QE executes its own
+SCFs and postprocessors. Shared ASE/Phonopy utilities do not require GPAW.
+QE 7.4.1 must be available separately; elasticity also needs thermo_pw 2.1.0.
+Only the executables needed by the selected calculation stages are required.
+
 Detailed Installation of Nanoworks to Linux Systems 
 ---------------------------------------------------
 
 Installation of system libraries to Debian-based distributions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-You can also use the same commands on a pure Debian-based Linux system or Windows systems with WSL. If you do not know how to install Linux on Windows 11 with WSL, you can view `this video <https://www.youtube.com/watch?v=zZf4YH4WiZo>`_. On the WSL system, you can use either Debian or Ubuntu. We recommend Ubuntu due to the support provided by Microsoft. First, install the required system files:
+You can also use the same commands on a pure Debian-based Linux system or Windows systems with WSL. If you do not know how to install Linux on Windows 11 with WSL, you can view `this video <https://www.youtube.com/watch?v=zZf4YH4WiZo>`_. On the WSL system, you can use either Debian or Ubuntu. We recommend Ubuntu due to the support provided by Microsoft. For a full GPAW + MD installation, install the following system files.
+QE-only users can follow the minimal Python installation above:
 
 .. code-block:: console
 
@@ -36,7 +97,8 @@ You can also use the same commands on a pure Debian-based Linux system or Window
 Installation of system libraries to Fedora-based distributions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-First, install the required system files:
+For a full GPAW + MD installation, install the following system files.
+QE-only users can follow the minimal Python installation above:
 
 .. code-block:: console
 
@@ -61,10 +123,10 @@ Also on Fedora-bades systems, we may need to specify g++ as the C and C++ compil
    (.venv_nw) $ export CC=g++
    (.venv_nw) $ export CXX=g++
 
-Creation of GPAW configuration file (Required for high-performance DFT calculations)
+Creation of GPAW configuration file (GPAW installations only)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Although Nanoworks automatically installs all necessary Python libraries, GPAW need some configuration inputs for its compilation. For this, a configuration file must be created before installing Nanoworks. Therefore, creating a config file called `siteconfig.py` file is important. You can use any text editor. Here, we are creating a file with the cat command, writing necessary information inside it, then closing it with the Ctrl-D command (^D).
+When installing the GPAW extra, GPAW needs configuration inputs for its compilation. QE-only installations skip this section. For this, a configuration file must be created before installing Nanoworks. Therefore, creating a config file called `siteconfig.py` file is important. You can use any text editor. Here, we are creating a file with the cat command, writing necessary information inside it, then closing it with the Ctrl-D command (^D).
 
 .. code-block:: console
 
@@ -151,8 +213,8 @@ UPF pseudopotential sets under:
 Native QE workflows use the scalar-relativistic PBE set by default. Set
 ``Pseudo_relativistic = 'full'`` in a ``dftsolve`` or ``dftconverge`` input
 to select the fully-relativistic set consistently. This resource selection
-does not itself enable spin-orbit coupling; native QE SOC workflows are not
-supported yet.
+does not itself enable spin-orbit coupling. Enable supported nonmagnetic
+semilocal QE SOC calculations separately with ``SOC_calc=True``.
 
 Quantum ESPRESSO 7.4.1 is the supported version. The supported thermo_pw
 version is 2.1.0.
@@ -160,35 +222,38 @@ version is 2.1.0.
 Installation of Nanoworks and Python Modules
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-There are many Python packages needed to be installed. Nanoworks handles the dependencies automatically.
+The base ``nanoworks`` package installs common utilities. Choose engine extras
+explicitly; GPAW is optional:
 
-If you want to perform DFT calculations only, (which includes `ASE <https://wiki.fysik.dtu.dk/ase/install.html>`_ and all necessary background libraries for `dftsolve`):
+.. list-table:: Python dependency selections
+   :header-rows: 1
+   :widths: 35 65
 
-.. code-block:: console
+   * - Selection
+     - Install command
+   * - QE only
+     - ``python -m pip install "nanoworks[qe]"``
+   * - GPAW only
+     - ``python -m pip install "nanoworks[gpaw]"``
+   * - Both DFT engines
+     - ``python -m pip install "nanoworks[gpaw,qe]"``
+   * - QE + MD
+     - ``python -m pip install "nanoworks[qe,md]"``
+   * - QE + ML
+     - ``python -m pip install "nanoworks[qe,ml]"``
+   * - QE + MD + ML
+     - ``python -m pip install "nanoworks[qe,md,ml]"``
+   * - All components including GPAW
+     - ``python -m pip install "nanoworks[all]"``
 
-   (.venv_nw) $ pip3 install nanoworks
+``[dft]`` remains an alias for the GPAW dependency selection. ``[all]`` includes
+GPAW and should not be used for a QE-only environment. Quote extras to prevent
+shell glob expansion. Add ``--no-cache-dir`` if you need to bypass pip's cache.
 
-To prevent potential past faulty installations from being retrieved from the cache, you can add `--no-cache-dir` to the end. If you also want to perform Molecular Dynamics (`mdsolve`) or Machine Learning calculations (`mlsolve`), you can install the optional dependencies. Note the use of quotes to prevent terminal parsing errors.
-
-**For Molecular Dynamics:**
-Installs the Python dependencies for `ASAP3 <https://wiki.fysik.dtu.dk/asap/>`_ and `KIM <https://openkim.org/kim-api/>`_ (`kimpy <https://github.com/openkim/kimpy>`_). The Debian/Ubuntu installer also installs the system-wide LAMMPS package used by the LAMMPS backend.
-
-.. code-block:: console
-
-   (.venv_nw) $ pip3 install "nanoworks[md]"
-
-**For Machine Learning Potentials:**
-Installs `PyTorch <https://pytorch.org/>`_, `MACE (Multi-Atomic Cluster Expansion) <https://github.com/ACEsuit/mace>`_, `CHGNet (Charge-Informed Graph Neural Network) <https://github.com/CederGroupHub/chgnet>`_, and `SevenNet (Scalable Equivariance Enabled Neural Network) <https://github.com/MDIL-SNU/SevenNet>`_.
-
-.. code-block:: console
-
-   (.venv_nw) $ pip3 install "nanoworks[ml]"
-
-**To install everything (DFT base, MD, and ML):**
-
-.. code-block:: console
-
-   (.venv_nw) $ pip3 install "nanoworks[all]"
+The MD extra installs ASAP3 and kimpy. Its LAMMPS backend also requires the
+LAMMPS executable; the Debian/Ubuntu installer includes it when MD is selected.
+The ML extra installs PyTorch, MACE, CHGNet and SevenNet. Engine extras do not
+install Quantum ESPRESSO or thermo_pw themselves.
 
 Installation of Examples
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -196,6 +261,6 @@ Nanoworks software has an examples directory containing numerous examples in the
 
 .. code-block:: console
 
-   (.venv_nw) $ nanoworks --install-examples"
+   (.venv_nw) $ nanoworks --install-examples
 
 Each example contains `README.md` files. You can run the related example with a single command in each example.

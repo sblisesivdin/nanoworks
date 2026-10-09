@@ -39,6 +39,28 @@ The installer does not download or compile Quantum ESPRESSO or thermo_pw.
 QE users should provide the supported QE 7.4.1 and thermo_pw 2.1.0 installation
 through their operating system, local build, environment module, or HPC site.
 
+The development installer separates **QE / GPAW / both** from **DFT / MD / ML**
+component selection. For a QE-only installation, inspect and run it from a
+checkout of the development branch:
+
+```bash
+NANOWORKS_ENGINE=qe NANOWORKS_COMPONENTS=dft bash install_scripts/install-all-Debian-based.sh --dry-run
+NANOWORKS_ENGINE=qe NANOWORKS_COMPONENTS=dft bash install_scripts/install-all-Debian-based.sh
+```
+
+QE selection installs its PseudoDojo resources and skips GPAW configuration;
+MD system dependencies are included only when MD is selected. Existing release
+installers retain their older menus until the next release. The script installs
+the selected package from PyPI; to install the current code instead, use
+`python -m pip install ".[qe]"` from the repository directory.
+
+For a fresh Python environment, `python -m pip install "nanoworks[qe]"`
+selects QE dependencies without GPAW. Use `[gpaw]` for GPAW, `[gpaw,qe]` for
+both engines, or append `md` and/or `ml` to the selected extras. `[all]`
+includes GPAW. Installation selection does not change the default backend;
+set `Engine='QE'` or pass `dftsolve -E QE`. Selecting QE does not remove
+GPAW from an existing environment.
+
 ### Detailed Installation
 
 Prefer a proper and controlled setup? Nanoworks is a Python package. You can install it with pip. However, because you need many other system and Python libraries installed, it is better to refer to the [Nanoworks Installation](https://nanoworks.readthedocs.io/en/latest/installation.html) webpage for more detailed installation and usage instructions.

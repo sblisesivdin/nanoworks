@@ -3,110 +3,133 @@
 # SPDX-License-Identifier: MIT
 # See LICENSE.md in the project root for license terms.
 
+set -euo pipefail
 
-# Define environment and paths
-ENV_NAME=".venv_nw"
-INSTALL_DIR="$HOME/$ENV_NAME"
-USERNAME=$(whoami)
-
-# Release assets set this value before running the installer.  Leaving it empty
-# keeps the script on the development channel and installs the newest package.
+# Release assets set this before invoking the installer.
 NANOWORKS_VERSION="${NANOWORKS_VERSION:-}"
-
+INSTALL_DIR="$HOME/.venv_nw"
+dry_run=false
+case "${1:-}" in
+    --dry-run) dry_run=true ;;
+    --help)
+        echo "Usage: bash install-all-Debian-based.sh [--dry-run]"
+        echo "NANOWORKS_ENGINE=qe|gpaw|both (default: both)"
+        echo "NANOWORKS_COMPONENTS=dft|md|ml|all (default: all)"
+        echo "NANOWORKS_VERSION optionally pins the Python package version."
+        exit 0 ;;
+    '') ;;
+    *) echo "Unknown option: $1" >&2; exit 2 ;;
+esac
+if (( $# > 1 )); then
+    echo "Only one installer option is accepted." >&2
+    exit 2
+fi
 if [[ -n "$NANOWORKS_VERSION" && ! "$NANOWORKS_VERSION" =~ ^[0-9]+(\.[0-9]+){2}([A-Za-z0-9.-]+)?$ ]]; then
     echo "Invalid NANOWORKS_VERSION: $NANOWORKS_VERSION" >&2
     exit 2
 fi
 
-echo "Starting installation script for GPAW and related tools..."
-echo ""
+echo "Starting Nanoworks installation..."
+if [[ -z "${NANOWORKS_ENGINE:-}" ]]; then
+    echo "DFT engine: 1) QE  2) GPAW  3) Both [default]"
+    engine_choice="3"
+    if [[ -t 2 ]]; then
+        read -r -p "Choose engine [1-3, default=3]: " engine_choice < /dev/tty || engine_choice="3"
+    fi
+    case "$engine_choice" in
+        1) NANOWORKS_ENGINE=qe ;;
+        2) NANOWORKS_ENGINE=gpaw ;;
+        3|'') NANOWORKS_ENGINE=both ;;
+        *) echo "Invalid engine choice: $engine_choice" >&2; exit 2 ;;
+    esac
+fi
+if [[ -z "${NANOWORKS_COMPONENTS:-}" ]]; then
+    echo "Components: 1) DFT only  2) DFT + MD  3) DFT + ML  4) DFT + MD + ML [default]"
+    component_choice="4"
+    if [[ -t 2 ]]; then
+        read -r -p "Choose components [1-4, default=4]: " component_choice < /dev/tty || component_choice="4"
+    fi
+    case "$component_choice" in
+        1) NANOWORKS_COMPONENTS=dft ;;
+        2) NANOWORKS_COMPONENTS=md ;;
+        3) NANOWORKS_COMPONENTS=ml ;;
+        4|'') NANOWORKS_COMPONENTS=all ;;
+        *) echo "Invalid component choice: $component_choice" >&2; exit 2 ;;
+    esac
+fi
 
-# ---------------------------------------------------------
-# INTERACTIVE INSTALLATION MENU
-# ---------------------------------------------------------
-echo "================================================="
-echo " Select the Nanoworks installation mode: "
-echo "================================================="
-echo "  1) DFT only        (pip install nanoworks)"
-echo "  2) DFT + MD        (pip install nanoworks[md])"
-echo "  3) DFT + ML        (pip install nanoworks[ml])"
-echo "  4) DFT + MD + ML   (pip install nanoworks[all]) [Default]"
-echo "================================================="
-
-# Read input directly from the terminal to prevent curl piping issues
-read -r -p "Enter your choice [1-4, default=4]: " choice < /dev/tty || choice="4"
-
-case "$choice" in
-    1)
-        NW_EXTRA=""
-        MODE_NAME="DFT only"
-        ;;
-    2)
-        NW_EXTRA="[md]"
-        MODE_NAME="DFT + MD"
-        ;;
-    3)
-        NW_EXTRA="[ml]"
-        MODE_NAME="DFT + ML"
-        ;;
-    *)
-        NW_EXTRA="[all]"
-        MODE_NAME="DFT + MD + ML"
-        ;;
+# Build the package extras independently: [all] would always pull in GPAW.
+extras=()
+system_packages=(python3-venv python3-pip unzip python-is-python3 task-spooler)
+use_gpaw=false
+use_qe=false
+case "$NANOWORKS_ENGINE" in
+    qe) extras+=(qe); use_qe=true ;;
+    gpaw) extras+=(gpaw); use_gpaw=true ;;
+    both) extras+=(gpaw qe); use_gpaw=true; use_qe=true ;;
+    *) echo "Invalid NANOWORKS_ENGINE: $NANOWORKS_ENGINE" >&2; exit 2 ;;
 esac
-
-NW_PACKAGE="nanoworks${NW_EXTRA}"
+if "$use_gpaw"; then
+    system_packages+=(python3-dev build-essential libopenblas-dev libxc-dev
+                      libscalapack-mpi-dev libfftw3-dev pkg-config)
+fi
+case "$NANOWORKS_COMPONENTS" in
+    dft) ;;
+    md|ml|all)
+        if [[ "$NANOWORKS_COMPONENTS" == md || "$NANOWORKS_COMPONENTS" == all ]]; then
+            extras+=(md)
+            system_packages+=(python3-dev build-essential libopenblas-dev pkg-config
+                              libkim-api-dev openkim-models libkim-api2 lammps)
+        fi
+        if [[ "$NANOWORKS_COMPONENTS" == ml || "$NANOWORKS_COMPONENTS" == all ]]; then
+            extras+=(ml)
+            system_packages+=(python3-dev build-essential)
+        fi ;;
+    *) echo "Invalid NANOWORKS_COMPONENTS: $NANOWORKS_COMPONENTS" >&2; exit 2 ;;
+esac
+extra_list=$(IFS=,; echo "${extras[*]}")
+NW_PACKAGE="nanoworks[${extra_list}]"
 if [[ -n "$NANOWORKS_VERSION" ]]; then
     NW_PACKAGE="${NW_PACKAGE}==${NANOWORKS_VERSION}"
 fi
 
-echo ""
-echo "-> You selected: $MODE_NAME ($NW_PACKAGE)"
-if [[ -n "$NANOWORKS_VERSION" ]]; then
-    echo "-> Stable release pin: $NANOWORKS_VERSION"
-else
-    echo "-> Development channel: newest package from PyPI"
+echo "Engine: $NANOWORKS_ENGINE; components: $NANOWORKS_COMPONENTS"
+echo "Python package: $NW_PACKAGE"
+echo "System packages: ${system_packages[*]}"
+echo "Virtual environment: $INSTALL_DIR"
+echo "GPAW configuration: $use_gpaw"
+echo "QE pseudopotential installation: $use_qe"
+echo "QE calculations use externally installed Quantum ESPRESSO; elasticity also needs thermo_pw."
+if "$dry_run"; then
+    echo "Dry run complete; no installation commands executed."
+    exit 0
 fi
-echo "-> Proceeding with system setup..."
-echo "-> External DFT engines are not installed by this script."
-echo "   Install supported QE 7.4.1 and thermo_pw 2.1.0 separately if needed."
-echo ""
-# ---------------------------------------------------------
 
-# Update and upgrade system packages
-echo "Updating and upgrading system packages..."
-sudo apt update && sudo apt upgrade -y
-
-# Install required system packages
-echo "Installing required system packages..."
-sudo apt install -y python3-venv python3-pip unzip python-is-python3 \
-                    python3-dev libopenblas-dev libxc-dev libscalapack-mpi-dev \
-                    libfftw3-dev libkim-api-dev openkim-models libkim-api2 pkg-config \
-                    task-spooler build-essential lammps
-
-# Create and activate the Python virtual environment
-echo "Creating Python virtual environment..."
+sudo apt update
+sudo apt install -y "${system_packages[@]}"
 python3 -m venv "$INSTALL_DIR"
 source "$INSTALL_DIR/bin/activate"
 
-# Set up GPAW configurations
-echo "Setting up GPAW configurations..."
-mkdir -p ~/.gpaw
-cat > ~/.gpaw/siteconfig.py <<EOL
+if "$use_gpaw"; then
+    mkdir -p "$HOME/.gpaw"
+    # Preserve an existing, potentially site-specific build configuration.
+    if [[ ! -e "$HOME/.gpaw/siteconfig.py" ]]; then
+        cat > "$HOME/.gpaw/siteconfig.py" <<'CONFIG'
 fftw = True
 scalapack = True
 libraries = ['xc', 'blas', 'fftw3', 'scalapack-openmpi']
-EOL
-
-# Install Nanoworks using the user's selected package
-echo "Installing $NW_PACKAGE..."
-pip install "$NW_PACKAGE" --no-cache-dir
-
-echo "Creating examples folder..."
+CONFIG
+    fi
+fi
+python -m pip install "$NW_PACKAGE" --no-cache-dir
 nanoworks --install-examples
-echo "Examples folder is installed to ~/.nanoworks/examples ..."
+if "$use_qe"; then
+    nanoworks --install-qe-pseudos
+fi
 
-# Final message
-echo "Installation complete!"
-echo "Note: Nanoworks does not install Quantum ESPRESSO or thermo_pw."
-echo "For QE workflows, provide QE 7.4.1 and thermo_pw 2.1.0 in PATH."
+echo "Installation complete. Activate with: source $INSTALL_DIR/bin/activate"
+echo "Examples: ~/.nanoworks/examples"
+if "$use_qe"; then
+    echo "QE pseudopotentials: ~/.nanoworks/pseudos/qe/pseudodojo/pbe/"
+    echo "Provide QE 7.4.1 in PATH; elasticity also requires thermo_pw 2.1.0."
+fi
