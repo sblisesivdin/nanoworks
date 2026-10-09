@@ -1511,6 +1511,18 @@ class dftsolve:
                 f"from '{final_structure_file}': {exc}"
             ) from exc
 
+        # CIF preserves geometry but does not preserve custom ASE masses.
+        # The current input remains authoritative for per-site isotope masses.
+        if self.bulk_configuration.has('masses'):
+            if (self.bulk_configuration.get_chemical_symbols()
+                    != final_structure.get_chemical_symbols()):
+                raise ValueError(
+                    'Cannot restore custom atomic masses: the saved final structure atom count '
+                    'or element order differs from the current input. Use the matching ASE '
+                    'structure and per-site masses, or regenerate the ground-state geometry.'
+                )
+            final_structure.set_masses(self.bulk_configuration.get_masses())
+
         self.bulk_configuration = final_structure
         self.config.bulk_configuration = final_structure
 

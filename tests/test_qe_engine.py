@@ -5366,6 +5366,8 @@ class TestQEEngine(unittest.TestCase):
             a=5.43,
         )
 
+        atoms.set_masses([28, 30])
+
         output_text = """
         Begin final coordinates
         ATOMIC_POSITIONS (angstrom)
@@ -5406,6 +5408,8 @@ class TestQEEngine(unittest.TestCase):
             relaxed.cell.array,
             atoms.cell.array,
         )
+        np.testing.assert_array_equal(relaxed.get_masses(), [28, 30])
+        np.testing.assert_array_equal(atoms.get_masses(), [28, 30])
 
     def test_parse_pw_relaxed_cell_and_crystal_positions(self):
         atoms = bulk(

@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- Saved final-geometry reuse preserves explicit ASE masses for GPAW/QE and rejects mismatched atom counts or element ordering.
+
 - Finite-displacement preflight reports ASE masses and rejects invalid final-structure masses before engine execution or output-directory creation.
 
 - GPAW phonon force-constant caches verify content hashes, units and completion metadata; invalid constants are rebuilt from compatible verified displacement forces.

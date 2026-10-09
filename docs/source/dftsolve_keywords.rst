@@ -316,7 +316,13 @@ or:
     imported structure and stops invalid masses before engine execution.
     CIF geometry import replaces ``bulk_configuration``; use a structure format
     that preserves masses or provide the ASE structure directly without ``-g``
-    when custom masses are required. Mass-only changes retain compatible
+    when custom masses are required. QE relaxation preserves these input
+    masses in memory. When ``Ground_calc=False`` reloads a saved final CIF,
+    GPAW/QE restore explicit masses from the current ASE input after checking
+    atom count and element order. Keep the original per-site ordering; a
+    differing count/order stops reuse rather than assigning masses to unrelated
+    sites. The CIF itself is not an isotope-mass archive. Mass-only changes
+    retain compatible
     electronic force records but refresh the dynamical analysis. Regenerate
     plans through the normal workflow after changing masses. Old QE plans
     without masses retain Phonopy defaults. This does not alter native QE DFPT

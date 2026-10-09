@@ -2808,6 +2808,43 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 warning.call_args.args[0],
             )
 
+    def test_saved_final_geometry_restores_current_input_custom_masses(self):
+        import numpy as np
+        for engine in ('GPAW', 'QE'):
+            with self.subTest(engine=engine), tempfile.TemporaryDirectory() as tmpdir:
+                initial = Atoms('Si2', cell=[4, 4, 4], pbc=True, masses=[28, 30])
+                final = Atoms('Si2', positions=[[0, 0, 0], [1.5, 1.5, 1.5]],
+                              cell=[6, 6, 6], pbc=True)
+                solver = object.__new__(DFTSolver)
+                solver.struct = str(Path(tmpdir) / 'silicon')
+                solver.Engine = engine
+                solver.bulk_configuration = initial
+                solver.config = SimpleNamespace(bulk_configuration=initial)
+                write(solver.struct + f'-GROUND-{engine}-Result-Final.cif', final)
+                self.assertTrue(solver._load_existing_final_structure())
+                np.testing.assert_array_equal(solver.bulk_configuration.get_masses(), [28, 30])
+                np.testing.assert_allclose(solver.bulk_configuration.positions, final.positions)
+                np.testing.assert_allclose(solver.bulk_configuration.cell, final.cell)
+                self.assertIs(solver.config.bulk_configuration, solver.bulk_configuration)
+                np.testing.assert_array_equal(initial.get_masses(), [28, 30])
+
+    def test_saved_geometry_rejects_ambiguous_custom_mass_assignment(self):
+        initial = Atoms('SiO', cell=[4, 4, 4], pbc=True, masses=[30, 18])
+        for symbols in ('OSi', 'Si'):
+            with self.subTest(symbols=symbols), tempfile.TemporaryDirectory() as tmpdir:
+                solver = object.__new__(DFTSolver)
+                solver.struct = str(Path(tmpdir) / 'sample')
+                solver.Engine = 'QE'
+                solver.bulk_configuration = initial
+                solver.config = SimpleNamespace(bulk_configuration=initial)
+                final = Atoms(symbols, cell=[6, 6, 6], pbc=True)
+                final.positions = [[index, index, index] for index in range(len(final))]
+                write(solver.struct + '-GROUND-QE-Result-Final.cif', final)
+                with self.assertRaisesRegex(ValueError, 'Cannot restore custom atomic masses'):
+                    solver._load_existing_final_structure()
+                self.assertIs(solver.bulk_configuration, initial)
+                self.assertIs(solver.config.bulk_configuration, initial)
+
     def test_load_existing_final_structure_when_missing(self):
         initial = Atoms(
             'Si',
