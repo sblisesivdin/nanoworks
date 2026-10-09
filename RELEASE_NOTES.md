@@ -4,6 +4,7 @@
 
 - GPAW phonon forces retain the ground-state electronic settings and magnetic moments; incompatible force caches are recomputed.
 - GPAW phonons resume individually verified displacement forces after interruptions, recover corrupt caches and reuse forces when only the acoustic sum rule changes.
+- GPAW phonon exports run on MPI root, report workflow status and signed mesh diagnostics, and write separate DOS tables; required export failures stop the workflow.
 - QE Hubbard-U phonons use Phonopy finite displacements and native pw.x forces, with spin/U settings, resumable forces and dry-run/Slurm support.
 - QE finite-displacement postprocessing requires verified force records, supports analysis-only retries, and reports signed q-mesh frequencies, imaginary-mode diagnostics and workflow status.
 - QE finite-displacement dry-run/Slurm decks resume matching force records and stop on altered inputs or pseudopotentials.

@@ -298,6 +298,7 @@ from ase.constraints import FixSymmetry
 from ase.filters import FrechetCellFilter
 from ase.io.cif import write_cif
 from pathlib import Path
+from nanoworks.phonon_results import write_gpaw_phonon_results
 from nanoworks.phonon_cache import (
     collective_cache_call, force_signature, load_verified_force,
     load_force_constants, matching_settings,
@@ -5924,14 +5925,26 @@ class dftsolve:
         }
 
     def _phononcalc_gpaw(self):
+        summary = self.struct + '-PHONON-GPAW-Result-Summary.json'
+        collective_cache_call(write_json_atomic, summary,
+            {'status': 'running', 'engine': 'GPAW', 'method': 'finite-displacement'})
+        try:
+            return self._run_phononcalc_gpaw()
+        except (Exception, KeyboardInterrupt) as exc:
+            collective_cache_call(write_json_atomic, summary,
+                {'status': 'interrupted' if isinstance(exc, KeyboardInterrupt) else 'failed',
+                 'engine': 'GPAW', 'method': 'finite-displacement',
+                 'error': str(exc) or 'Interrupted'})
+            raise
+
+    def _run_phononcalc_gpaw(self):
         """
         This method performs a phonon calculation for the given structure using the ground state results. 
         It generates atomic displacements, computes force constants, and calculates phonon dispersion and phonon DOS.
-        The results are saved as PNG file for now.
+        Export bands, DOS, mesh diagnostics, thermal properties and a result summary.
         """
         
         from phonopy import Phonopy
-        from phonopy.phonon.band_structure import get_band_qpoints_and_path_connections
         import phonopy
         
         # -------------------------------------------------------------
@@ -5944,7 +5957,7 @@ class dftsolve:
         if self.engine.is_hybrid(self.XC_calc):
             parprint("\033[93mWARNING:\033[0m Phonon calculations use finite-difference forces; hybrid ("+self.XC_calc+") forces are expensive and unreliable in plane-wave GPAW.")
             parprint("It is recommended to compute phonons with PBE and use hybrids only for the electronic structure.")
-            sys.exit(1)
+            raise NotImplementedError('GPAW hybrid phonons are not supported.')
 
         ground_path = Path(self.struct+'-GROUND-GPAW-Result-State.gpw')
         calc = self.engine.load_gpaw_calc(str(ground_path))
@@ -6046,131 +6059,25 @@ class dftsolve:
             collective_cache_call(write_json_atomic, cache_path, cache_settings)
             #shutil.rmtree('force-sets')
 
-        with paropen(self.struct+'-PHONON-GPAW-Log-Phonopy.txt', 'a') as f2:
-            print('', end="\n", file=f2)
-            print("[Phonopy] Phonon frequencies at Gamma:", end="\n", file=f2)
-            for i, freq in enumerate(phonon.get_frequencies((0, 0, 0))):
-                print("[Phonopy] %3d: %10.5f THz" %  (i + 1, freq), end="\n", file=f2) # THz
-
-            # DOS
-            print("[Phonopy] Initializing mesh...", end="\n", file=f2)
-            phonon.init_mesh([self.Phonon_qpts_x, self.Phonon_qpts_y, self.Phonon_qpts_z])
-            print("[Phonopy] Running total DOS calculation...", end="\n", file=f2)
-            phonon.run_total_dos()
-            print("[Phonopy] DOS calculation completed. Type of total_dos:", type(phonon.total_dos), end="\n", file=f2)
-            if phonon.total_dos is not None:
-                dos_array = np.array(phonon.total_dos)
-                print("[Phonopy] DOS array shape:", dos_array.shape, "ndim:", dos_array.ndim, end="\n", file=f2)
-            print('', end="\n", file=f2)
-            print("[Phonopy] Phonon DOS:", end="\n", file=f2)
-            
-            # Check if total_dos is properly calculated and has the expected structure
-            try:
-                if phonon.total_dos is not None:
-                    # Check if total_dos is a TotalDos object (new Phonopy format)
-                    if hasattr(phonon.total_dos, 'frequency_points') and hasattr(phonon.total_dos, 'dos'):
-                        frequencies = phonon.total_dos.frequency_points
-                        dos_values = phonon.total_dos.dos
-                        print("[Phonopy] Found TotalDos object with %d frequency points" % len(frequencies), end="\n", file=f2)
-                        for omega, dos in zip(frequencies, dos_values):
-                            print("%15.7f%15.7f" % (omega, dos), end="\n", file=f2)
-                    # Check if total_dos is a tuple (freq, dos) as in older Phonopy versions
-                    elif isinstance(phonon.total_dos, (tuple, list)) and len(phonon.total_dos) == 2:
-                        frequencies, dos_values = phonon.total_dos
-                        freq_array = np.array(frequencies)
-                        dos_array = np.array(dos_values)
-                        if freq_array.ndim == 1 and dos_array.ndim == 1 and len(freq_array) == len(dos_array):
-                            for omega, dos in zip(freq_array, dos_array):
-                                print("%15.7f%15.7f" % (omega, dos), end="\n", file=f2)
-                        else:
-                            print("[Phonopy] Warning: DOS frequency/values arrays have incompatible shapes", end="\n", file=f2)
-                            print("[Phonopy] freq shape: %s, dos shape: %s" % (freq_array.shape, dos_array.shape), end="\n", file=f2)
-                    else:
-                        # Try the old method in case the format is different
-                        dos_array = np.array(phonon.total_dos)
-                        print("[Phonopy] DOS array shape:", dos_array.shape, "ndim:", dos_array.ndim, end="\n", file=f2)
-                        if dos_array.ndim >= 2:  # Check if it's at least 2D
-                            for omega, dos in dos_array.T:
-                                print("%15.7f%15.7f" % (omega, dos), end="\n", file=f2)
-                        else:
-                            print("[Phonopy] Warning: DOS data has unexpected structure (ndim=%d)" % dos_array.ndim, end="\n", file=f2)
-                            print("[Phonopy] DOS calculation may have failed or incomplete", end="\n", file=f2)
-                            print("[Phonopy] Available attributes: %s" % [attr for attr in dir(phonon.total_dos) if not attr.startswith('_')], end="\n", file=f2)
-                else:
-                    print("[Phonopy] Warning: DOS data is None, calculation may have failed", end="\n", file=f2)
-            except Exception as e:
-                print("[Phonopy] Error processing DOS data: %s" % str(e), end="\n", file=f2)
-                print("[Phonopy] Skipping DOS output to log file", end="\n", file=f2)
-
-        qpoints, labels, connections = path
-        phonon.run_band_structure(qpoints, path_connections=connections, labels=labels)
-
-        # without DOS
-        # fig = phonon.plot_band_structure()
-
-        # with DOS
-        #phonon.run_mesh([self.Phonon_qpts_x, self.Phonon_qpts_y, self.Phonon_qpts_z])
-        phonon.run_total_dos()
-        fig = phonon.plot_band_structure_and_dos()
-
-        # with PDOS
-        # phonon.run_mesh([20, 20, 20], with_eigenvectors=True, is_mesh_symmetry=False)
-        # fig = phonon.plot_band_structure_and_dos(pdoc_indices=[[0], [1]])
-
-        fig.savefig(self.struct+'-PHONON-GPAW-Graph-Phonon.png', dpi=300)
-        # Standard Phonopy YAML format export
-        try:
-            phonon.write_yaml_band_structure(filename=self.struct+'-PHONON-GPAW-Result-Band.yaml')
-        except Exception as e:
-            parprint("YAML band data can not be saved:", e)
-
-        # Saving in .dat format
-        try:
-            band_dict = phonon.get_band_structure_dict()
-            distances = band_dict['distances']
-            frequencies = band_dict['frequencies']
-            
-            with paropen(self.struct+'-PHONON-GPAW-Result-Band.dat', 'w') as f_band:
-                f_band.write("Distance(1/A)    Frequencies(THz)...\n")
-                # Return for every k-way segment
-                for dist_path, freq_path in zip(distances, frequencies):
-                    for d, f in zip(dist_path, freq_path):
-                        # Write all frequency branches at the same q point
-                        freq_str = "    ".join([f"{x:.6f}" for x in f])
-                        f_band.write(f"{d:.6f}    {freq_str}\n")
-                    f_band.write("\n") # Give space between segments
-        except Exception as e:
-            parprint("DAT band data can not be saved:", e)
-        #Thermodynamic calculations
-        if self.Phonon_thermal_calc:
-            parprint(f"Thermal properties calculation (T: {self.Phonon_T_min}K - {self.Phonon_T_max}K)...")
-                      
-            # Termal properties calc
-            phonon.run_thermal_properties(t_min=self.Phonon_T_min, 
-                                          t_max=self.Phonon_T_max, 
-                                          t_step=self.Phonon_T_step)
-            
-            # Phonopy standard YAML output
-            phonon.write_yaml_thermal_properties(filename=self.struct+'-PHONON-GPAW-Result-Thermal-Properties.yaml')
-            
-            # convert to CSV format
-            tp_dict = phonon.get_thermal_properties_dict()
-            temperatures = tp_dict['temperatures']
-            free_energy = tp_dict['free_energy']
-            entropy = tp_dict['entropy']
-            heat_capacity = tp_dict['heat_capacity']
-            
-            with paropen(self.struct+"-PHONON-GPAW-Result-Thermal-Properties.csv", "w") as f:
-                f.write("T(K),Free_Energy(kJ/mol),Entropy(J/K/mol),Cv(J/K/mol)\n")
-                for i in range(len(temperatures)):
-                    f.write(f"{temperatures[i]:.2f},{free_energy[i]:.6f},{entropy[i]:.6f},{heat_capacity[i]:.6f}\n")
-                    
-            parprint(f"Thermal calculations finished!")
-        
+        summary = self.struct + '-PHONON-GPAW-Result-Summary.json'
+        collective_cache_call(write_json_atomic, summary,
+            {'status': 'postprocessing', 'engine': 'GPAW', 'method': 'finite-displacement'})
+        temperature = ((self.Phonon_T_min, self.Phonon_T_max, self.Phonon_T_step)
+                       if self.Phonon_thermal_calc else None)
+        report = collective_cache_call(write_gpaw_phonon_results, phonon,
+            self.struct + '-PHONON-GPAW', path,
+            (self.Phonon_qpts_x, self.Phonon_qpts_y, self.Phonon_qpts_z), temperature)
+        report.update({'xc': self.XC_calc, 'spin_polarized': self.Spin_calc,
+            'hubbard_u': getattr(self, 'Hubbard_U', None), 'cache_settings': cache_settings,
+            'reused_force_constants': cached_constants is not None})
         time52 = time.time()
         # Write timings of calculation
-        with paropen(self.struct+f'-TIMINGS-{self.Engine}-Log-Timings.txt', 'a') as f1:
-            print('Phonon calculation: ', round((time52-time51),2), end="\n", file=f1)
+        def write_timings():
+            with open(self.struct + f'-TIMINGS-{self.Engine}-Log-Timings.txt', 'a', encoding='utf-8') as stream:
+                print('Phonon calculation: ', round(time52 - time51, 2), file=stream)
+        collective_cache_call(write_timings)
+        collective_cache_call(write_json_atomic, summary, report)
+        return report
 
     def opticalcalc(self):
         """Run the optical workflow using the selected DFT engine."""

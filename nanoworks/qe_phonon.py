@@ -14,6 +14,7 @@ import numpy as np
 from ase import Atoms
 from nanoworks.engine import resolve_initial_magnetic_moments
 from nanoworks.engine import qe
+from nanoworks.phonon_results import write_mesh_data
 from nanoworks.occupations import resolve_engine_occupation
 from nanoworks.scf import resolve_qe_scf_settings
 
@@ -407,35 +408,6 @@ def _postprocess(plan):
         'thermal_data_file': str(thermal_file) if thermal_file else None}
     _write_report(plan, report)
     return {**report, 'frequencies': frequencies, 'dos': dos_data, 'thermal_data': thermal_data}
-
-
-def write_mesh_data(prefix, qpoints, weights, frequencies):
-    """Retain signed mesh frequencies; report counts without declaring stability."""
-    qpoints, weights, frequencies = (np.asarray(value, dtype=float)
-                                     for value in (qpoints, weights, frequencies))
-    if (frequencies.ndim != 2 or not frequencies.size or qpoints.shape != (len(frequencies), 3)
-            or weights.shape != (len(frequencies),) or np.any(weights <= 0)
-            or not all(np.isfinite(value).all() for value in (qpoints, weights, frequencies))):
-        raise ValueError('Phonon mesh arrays must have finite, consistent dimensions and positive weights.')
-    minimum = np.unravel_index(np.argmin(frequencies), frequencies.shape)
-    threshold = 0.1  # Reporting threshold only; raw negative frequencies are retained.
-    below_threshold = frequencies < -threshold
-    report = {
-        'minimum_mesh_frequency_thz': float(frequencies[minimum]),
-        'minimum_mesh_qpoint': qpoints[minimum[0]].tolist(),
-        'minimum_mesh_mode_index': int(minimum[1] + 1),
-        'mesh_sampled_qpoints': len(qpoints), 'mesh_weight_sum': float(weights.sum()),
-        'negative_mesh_mode_count': int(np.count_nonzero(frequencies < 0)),
-        'imaginary_reporting_threshold_thz': threshold,
-        'mesh_modes_below_reporting_threshold': int(np.count_nonzero(below_threshold)),
-        'weighted_mesh_fraction_below_reporting_threshold': float(
-            np.sum(weights[:, None] * below_threshold) / (weights.sum() * frequencies.shape[1])),
-    }
-    path = Path(prefix + '-Result-Mesh-THz.dat')
-    header = 'qx qy qz Weight ' + ' '.join(
-        f'Frequency_{index + 1}(THz)' for index in range(frequencies.shape[1]))
-    np.savetxt(path, np.column_stack([qpoints, weights, frequencies]), header=header, fmt='%.10f')
-    return path, report
 
 
 def _plot(prefix, band_path, frequencies, dos):

@@ -2995,6 +2995,29 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             (1.0, 12.0, 221),
         )
 
+    def test_gpaw_phonon_failure_replaces_previous_success_summary(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            solver = object.__new__(DFTSolver)
+            solver.struct = str(Path(tmpdir) / 'Ni')
+            summary = Path(solver.struct + '-PHONON-GPAW-Result-Summary.json')
+            summary.write_text(json.dumps({'status': 'complete'}))
+            solver._run_phononcalc_gpaw = Mock(side_effect=RuntimeError('export failed'))
+            with self.assertRaisesRegex(RuntimeError, 'export failed'):
+                solver._phononcalc_gpaw()
+            report = json.loads(summary.read_text())
+            self.assertEqual(report['status'], 'failed')
+            self.assertEqual(report['error'], 'export failed')
+
+    def test_gpaw_phonon_keyboard_interrupt_is_recorded(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            solver = object.__new__(DFTSolver)
+            solver.struct = str(Path(tmpdir) / 'Ni')
+            solver._run_phononcalc_gpaw = Mock(side_effect=KeyboardInterrupt())
+            with self.assertRaises(KeyboardInterrupt):
+                solver._phononcalc_gpaw()
+            report = json.loads(Path(solver.struct + '-PHONON-GPAW-Result-Summary.json').read_text())
+            self.assertEqual(report['status'], 'interrupted')
+
     def test_phononcalc_dispatches_to_gpaw(self):
         solver = object.__new__(
             DFTSolver

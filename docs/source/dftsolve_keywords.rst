@@ -260,6 +260,16 @@ or:
     Cache I/O runs on the MPI root and its result or error is shared with
     all ranks. Earlier GPAW force arrays without individual metadata are
     recomputed once.
+    GPAW postprocessing and result exports run on MPI root. Required export
+    failures stop the workflow and are recorded in
+    ``<struct>-PHONON-GPAW-Result-Summary.json``. The summary records running,
+    postprocessing, complete, failed or interrupted status, electronic/cache
+    settings, Gamma frequencies and band/mesh diagnostics. Signed mesh
+    frequencies and total DOS are also written to separate THz tables.
+    The -0.1 THz imaginary-mode reporting threshold is not a physical
+    stability criterion. Rerunning the same workflow after an export failure
+    reuses matching force constants or individual force records before
+    repeating postprocessing.
     Total charge and explicitly fixed band counts scale with the number of
     unit cells in the supercell.
 
