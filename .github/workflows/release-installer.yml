@@ -13,10 +13,6 @@ on:
         description: Release tag to receive the installer asset
         required: true
         type: string
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/release-installer.yml
 
 permissions:
   contents: write
@@ -52,6 +48,11 @@ jobs:
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
 
+      - name: Check out the release source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.release.outputs.tag }}
+
       - name: Build version-pinned installer
         env:
           VERSION: ${{ steps.release.outputs.version }}
@@ -60,7 +61,14 @@ jobs:
           {
             printf '#!/bin/bash\n'
             printf 'export NANOWORKS_VERSION=%q\n' "$VERSION"
-            tail -n +2 install_scripts/install-all-Debian-based.sh
+            if [[ -f install_scripts/install-development-Debian-based.sh ]]; then
+              tail -n +2 install_scripts/install-development-Debian-based.sh
+            else
+              # Older tags predate NANOWORKS_VERSION support. Preserve their
+              # own installation flow, adding only the package version pin.
+              tail -n +2 install_scripts/install-all-Debian-based.sh |
+                sed 's/pip install "$NW_PACKAGE"/pip install "${NW_PACKAGE}==${NANOWORKS_VERSION}"/'
+            fi
           } > dist/install-all-Debian-based.sh
           chmod +x dist/install-all-Debian-based.sh
           bash -n dist/install-all-Debian-based.sh
@@ -70,4 +78,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.release.outputs.tag }}
-        run: gh release upload "$TAG" dist/install-all-Debian-based.sh --clobber
+        run: |
+          if gh release view "$TAG" --json assets --jq '.assets[].name' |
+              grep -Fxq 'install-all-Debian-based.sh'; then
+            echo "Installer already published for $TAG; leaving it unchanged."
+            exit 0
+          fi
+          gh release upload "$TAG" dist/install-all-Debian-based.sh

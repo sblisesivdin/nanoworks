@@ -17,6 +17,13 @@ The release installer pins the Python package to the same Nanoworks version as
 the GitHub release. For example, the exact-version URL for v26.8.0 is
 ``https://github.com/sblisesivdin/nanoworks/releases/download/v26.8.0/install-all-Debian-based.sh``.
 
+The raw ``main/install_scripts/install-all-Debian-based.sh`` URL used by
+older 26.8 documentation remains a compatibility entry point. It preserves
+the 26.8 installation menu and pins the Python package to ``26.8.0``.
+Development engine/component changes use the separate
+``install-development-Debian-based.sh`` file. Stable users should use the
+version-specific release asset above.
+
 Choose the DFT engine and optional components
 ---------------------------------------------
 
@@ -28,8 +35,8 @@ original menus. From a checkout of the current development branch:
 
 .. code-block:: console
 
-    $ NANOWORKS_ENGINE=qe NANOWORKS_COMPONENTS=dft bash install_scripts/install-all-Debian-based.sh --dry-run
-    $ NANOWORKS_ENGINE=qe NANOWORKS_COMPONENTS=dft bash install_scripts/install-all-Debian-based.sh
+    $ NANOWORKS_ENGINE=qe NANOWORKS_COMPONENTS=dft bash install_scripts/install-development-Debian-based.sh --dry-run
+    $ NANOWORKS_ENGINE=qe NANOWORKS_COMPONENTS=dft bash install_scripts/install-development-Debian-based.sh
 
 ``--dry-run`` prints the selected Python extras, system packages and resource
 installation steps without creating a virtual environment, invoking sudo,
@@ -37,8 +44,8 @@ or downloading packages. Valid environment values are ``qe``, ``gpaw`` or
 ``both`` for ``NANOWORKS_ENGINE``, and ``dft``, ``md``, ``ml`` or ``all`` for
 ``NANOWORKS_COMPONENTS``. Invalid selections stop before installation.
 ``NANOWORKS_VERSION`` optionally pins the package version; the selected version
-must provide the requested extras. Without a pin, pip installs the newest
-available PyPI package, not the development checkout itself.
+must provide the requested extras. Without a pin, the development installer installs the current ``main``
+code from GitHub and includes git among its system prerequisites.
 
 QE-only installation skips GPAW and its build configuration. KIM/ASAP3 and
 LAMMPS dependencies are added only for MD; ML Python dependencies are added

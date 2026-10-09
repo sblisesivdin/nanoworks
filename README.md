@@ -39,20 +39,24 @@ The installer does not download or compile Quantum ESPRESSO or thermo_pw.
 QE users should provide the supported QE 7.4.1 and thermo_pw 2.1.0 installation
 through their operating system, local build, environment module, or HPC site.
 
+The old `main/install_scripts/install-all-Debian-based.sh` URL remains a
+26.8 compatibility installer with the original menu and `nanoworks==26.8.0`
+package pin. Development changes use a separate file.
+
 The development installer separates **QE / GPAW / both** from **DFT / MD / ML**
 component selection. For a QE-only installation, inspect and run it from a
 checkout of the development branch:
 
 ```bash
-NANOWORKS_ENGINE=qe NANOWORKS_COMPONENTS=dft bash install_scripts/install-all-Debian-based.sh --dry-run
-NANOWORKS_ENGINE=qe NANOWORKS_COMPONENTS=dft bash install_scripts/install-all-Debian-based.sh
+NANOWORKS_ENGINE=qe NANOWORKS_COMPONENTS=dft bash install_scripts/install-development-Debian-based.sh --dry-run
+NANOWORKS_ENGINE=qe NANOWORKS_COMPONENTS=dft bash install_scripts/install-development-Debian-based.sh
 ```
 
 QE selection installs its PseudoDojo resources and skips GPAW configuration;
 MD system dependencies are included only when MD is selected. Existing release
-installers retain their older menus until the next release. The script installs
-the selected package from PyPI; to install the current code instead, use
-`python -m pip install ".[qe]"` from the repository directory.
+installers retain their older menus until the next release. The development script installs the current `main` code from GitHub.
+A release asset instead pins its own published package version. For a local
+checkout, use `python -m pip install ".[qe]"` from the repository directory.
 
 For a fresh Python environment, `python -m pip install "nanoworks[qe]"`
 selects QE dependencies without GPAW. Use `[gpaw]` for GPAW, `[gpaw,qe]` for

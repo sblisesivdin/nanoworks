@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- The legacy installer URL preserves the 26.8 workflow and package pin; development installation uses a separate script and the current source branch.
+
 - Debian installation separates QE/GPAW engine and MD/ML component choices, installs QE pseudopotentials when selected and provides an installation-plan dry run.
 
 - GPAW/QE Phonopy frequency analysis uses the supported q-point API, batches QE band points and rejects incomplete/nonfinite frequency results.

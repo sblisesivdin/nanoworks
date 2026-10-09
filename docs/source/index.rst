@@ -123,7 +123,7 @@ its required scientific software:
 
 .. code-block:: console
 
-   $ curl -fsSL https://raw.githubusercontent.com/sblisesivdin/nanoworks/refs/heads/main/install_scripts/install-all-Debian-based.sh | bash
+   $ curl -fsSL https://github.com/sblisesivdin/nanoworks/releases/latest/download/install-all-Debian-based.sh | bash
 
 .. raw:: html
 
