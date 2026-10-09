@@ -58,6 +58,18 @@ class TestPhononSettings(unittest.TestCase):
             with self.subTest(changes=changes), self.assertRaises(ValueError):
                 validate_phonon_settings(self.config(**changes))
 
+    def test_mass_validation_is_deferred_until_final_structure_is_known(self):
+        from ase import Atoms
+        atoms = Atoms('Ni', cell=[4, 4, 4], pbc=True, masses=[0])
+        config = self.config(bulk_configuration=atoms)
+        _, report = validate_phonon_settings(config, validate_structure=False)
+        self.assertNotIn('atomic_masses_amu', report)
+        with self.assertRaisesRegex(ValueError, 'atomic masses'):
+            validate_phonon_settings(config)
+        # Native QE DFPT does not use the ASE/Phonopy finite-displacement mass path.
+        _, report = validate_phonon_settings(self.config(Engine='QE', bulk_configuration=atoms))
+        self.assertNotIn('atomic_masses_amu', report)
+
     def test_unused_thermal_and_native_dfpt_displacement_do_not_block(self):
         _, report = validate_phonon_settings(self.config(Engine='QE', Phonon_thermal_calc=False,
             Phonon_T_step=0, Phonon_displacement=-1))

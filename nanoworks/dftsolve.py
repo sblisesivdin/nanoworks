@@ -770,7 +770,7 @@ class DFTConfig:
         if self.Phonon_supercell is None:
             self.Phonon_supercell = np.diag([2, 2, 2])
         if self.Phonon_calc:
-            phonon_settings, _ = validate_phonon_settings(self)
+            phonon_settings, _ = validate_phonon_settings(self, validate_structure=False)
             for name, value in phonon_settings.items():
                 setattr(self, name, value)
         if self.Opt_BSE_valence is None:
@@ -988,6 +988,10 @@ def struct_from_file(
             parprint("Spacegroup of CIF file:",get_spacegroup(config.bulk_configuration, symprec=1e-2))
             parprint("Special Points usable for this spacegroup:",get_special_points(config.bulk_configuration.get_cell()))
 
+    # Validate the final structure after any geometry-file override, before output or SCFs.
+    if config.Phonon_calc:
+        validate_phonon_settings(config)
+
     # Output directory
     input_dir = Path(inputfile).parent
     if config.Outdirname != '':
@@ -1077,6 +1081,8 @@ def struct_from_auto(
     config_values.update(overrides or {})
     config = DFTConfig(**config_values)
     config._cli_overrides = dict(overrides or {})
+    if config.Phonon_calc:
+        validate_phonon_settings(config)
     
     # Determine output path
     input_dir = struct_path.parent
@@ -1200,6 +1206,8 @@ class dftsolve:
         
         # For backward compatibility, expose config attributes as instance attributes
         self.Engine = config.Engine
+        if config.Phonon_calc:
+            validate_phonon_settings(config)
         self.engine = load_engine_module(self.Engine)
         portable_scf = {
             'accuracy': config.SCF_accuracy,
@@ -7337,6 +7345,10 @@ def check_dft_configuration(
         else:
             add('ok', 'phonon-method', phonon_details['method'])
             add('ok', 'phonon-dos-mesh', ' x '.join(map(str, phonon_details['dos_mesh'])))
+            if 'atomic_masses_amu' in phonon_details:
+                masses = phonon_details['atomic_masses_amu']
+                add('ok', 'phonon-masses', f"{len(masses)} atoms, {min(masses):g} to {max(masses):g} amu; "
+                    + phonon_details['mass_source'])
             if 'displacement_angstrom' in phonon_details:
                 add('ok', 'phonon-displacement', f"{phonon_details['displacement_angstrom']:g} Angstrom")
             if 'temperature_range_kelvin' in phonon_details:

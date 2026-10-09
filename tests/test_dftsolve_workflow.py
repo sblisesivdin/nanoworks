@@ -67,6 +67,62 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         self.assertEqual(json.loads(format_dft_preflight_json(report))['phonon'], report['phonon'])
         self.assertIn('8 atoms, 4 unit cells', format_dft_preflight_report(report))
 
+    def test_finite_displacement_preflight_reports_custom_masses(self):
+        for engine, hubbard in (('GPAW', None), ('QE', {'Ni-3d': 6})):
+            with self.subTest(engine=engine):
+                config = DFTConfig(Engine=engine, Phonon_calc=True, Hubbard_U=hubbard,
+                    bulk_configuration=Atoms('Ni2', cell=[4, 4, 4], pbc=True, masses=[60, 62]))
+                report = check_dft_configuration(config, 'Ni', check_executables=False, check_saved_state=False)
+                self.assertEqual(report['phonon']['atomic_masses_amu'], [60, 62])
+                self.assertEqual(report['phonon']['mass_source'], 'ASE explicit masses')
+                self.assertIn('60 to 62 amu', format_dft_preflight_report(report))
+
+    def test_invalid_phonon_masses_are_preflight_errors_before_engine_execution(self):
+        for engine, hubbard in (('GPAW', None), ('QE', {'Ni-3d': 6})):
+            with self.subTest(engine=engine):
+                config = DFTConfig(Engine=engine, Phonon_calc=True, Hubbard_U=hubbard,
+                    bulk_configuration=Atoms('Ni2', cell=[4, 4, 4], pbc=True))
+                config.bulk_configuration.set_masses([0, 60])
+                report = check_dft_configuration(config, 'Ni', check_executables=False, check_saved_state=False)
+                self.assertFalse(report['ok'])
+                check = next(item for item in report['checks'] if item['name'] == 'phonon-settings')
+                self.assertIn('atomic masses', check['detail'])
+                with patch('nanoworks.dftsolve.load_engine_module') as load:
+                    with self.assertRaisesRegex(ValueError, 'atomic masses'):
+                        DFTSolver('Ni', config)
+                load.assert_not_called()
+
+    def test_geometry_mass_validation_precedes_output_directory_creation(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / 'phonon.py'
+            path.write_text("Engine='QE'\nHubbard_U={'Ni-3d':6}\nPhonon_calc=True\n")
+            atoms = Atoms('Ni', cell=[4, 4, 4], pbc=True, masses=[0])
+            with patch('nanoworks.dftsolve.read', return_value=atoms):
+                with self.assertRaisesRegex(ValueError, 'atomic masses'):
+                    struct_from_file(path, 'Ni.cif', report_structure=False)
+            self.assertFalse((Path(tmpdir) / 'Ni').exists())
+
+    def test_auto_phonon_mass_validation_precedes_generated_outputs(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            geometry = Path(tmpdir) / 'Ni.cif'
+            geometry.write_text('geometry is supplied by the mocked reader')
+            atoms = Atoms('Ni', cell=[4, 4, 4], pbc=True, masses=[0])
+            with patch('nanoworks.dftsolve.read', return_value=atoms):
+                with self.assertRaisesRegex(ValueError, 'atomic masses'):
+                    struct_from_auto(geometry, report_structure=False,
+                        overrides={'Engine': 'QE', 'Phonon_calc': True, 'Hubbard_U': {'Ni-3d': 6}})
+            self.assertFalse((Path(tmpdir) / 'Ni').exists())
+
+    def test_geometry_override_replaces_unused_invalid_input_masses(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / 'phonon.py'
+            path.write_text("from ase import Atoms\nEngine='QE'\nHubbard_U={'Ni-3d':6}\n"
+                "Phonon_calc=True\nbulk_configuration=Atoms('Ni',cell=[4,4,4],pbc=True,masses=[0])\n")
+            atoms = Atoms('Ni', cell=[4, 4, 4], pbc=True, masses=[60])
+            with patch('nanoworks.dftsolve.read', return_value=atoms):
+                _, config = struct_from_file(path, 'Ni.cif', create_output=False, report_structure=False)
+            self.assertEqual(config.bulk_configuration.get_masses().tolist(), [60])
+
     def test_phonon_preflight_blocks_parameters_mutated_after_configuration(self):
         config = DFTConfig(Engine='QE', Phonon_calc=True)
         config.Phonon_qpts_z = 2.5

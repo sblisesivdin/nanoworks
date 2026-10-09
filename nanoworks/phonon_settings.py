@@ -16,7 +16,7 @@ def validate_atomic_masses(masses, natoms):
         values = np.asarray(masses, dtype=float)
     except (TypeError, ValueError, OverflowError) as exc:
         raise ValueError('Phonon atomic masses must be finite positive values for every atom.') from exc
-    if values.shape != (natoms,) or not np.isfinite(values).all() or np.any(values <= 0):
+    if natoms <= 0 or values.shape != (natoms,) or not np.isfinite(values).all() or np.any(values <= 0):
         raise ValueError('Phonon atomic masses must be finite positive values for every atom.')
     return values.copy()
 
@@ -76,7 +76,7 @@ def normalize_supercell(value):
     return normalized, determinant
 
 
-def validate_phonon_settings(config, engine=None):
+def validate_phonon_settings(config, engine=None, validate_structure=True):
     engine = engine or config.Engine
     finite_displacement = engine == 'GPAW' or bool(config.Hubbard_U)
     matrix, multiplier = normalize_supercell(config.Phonon_supercell)
@@ -107,6 +107,11 @@ def validate_phonon_settings(config, engine=None):
         atoms = getattr(config, 'bulk_configuration', None)
         if atoms is not None:
             details['supercell_atoms'] = len(atoms) * multiplier
+            if validate_structure and hasattr(atoms, 'get_masses'):
+                masses = validate_atomic_masses(atoms.get_masses(), len(atoms))
+                details['atomic_masses_amu'] = masses.tolist()
+                details['mass_source'] = ('ASE explicit masses' if atoms.has('masses')
+                                          else 'ASE elemental defaults')
     else:
         details['dfpt_qpoint_grid'] = np.diag(matrix).tolist()
     if config.Phonon_thermal_calc:

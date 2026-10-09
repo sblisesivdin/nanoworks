@@ -311,6 +311,9 @@ or:
     Finite-displacement GPAW/QE workflows preserve ASE atomic masses in
     Phonopy and analysis plans, including custom masses supplied through
     ``bulk_configuration.set_masses(...)``. Masses must be finite and positive.
+    Finite-displacement preflight reports the actual masses and whether ASE
+    supplied explicit masses or elemental defaults. Validation uses the final
+    imported structure and stops invalid masses before engine execution.
     CIF geometry import replaces ``bulk_configuration``; use a structure format
     that preserves masses or provide the ASE structure directly without ``-g``
     when custom masses are required. Mass-only changes retain compatible
