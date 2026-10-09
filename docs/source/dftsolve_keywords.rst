@@ -318,10 +318,12 @@ or:
     that preserves masses or provide the ASE structure directly without ``-g``
     when custom masses are required. QE relaxation preserves these input
     masses in memory. When ``Ground_calc=False`` reloads a saved final CIF,
-    GPAW/QE restore explicit masses from the current ASE input after checking
-    atom count and element order. Keep the original per-site ordering; a
-    differing count/order stops reuse rather than assigning masses to unrelated
-    sites. The CIF itself is not an isotope-mass archive. Mass-only changes
+    GPAW/QE always check atom count and element order against the current input
+    before accepting the geometry, including structures with default masses.
+    This protects the indexing of per-site spin/U settings. Explicit masses
+    are then restored from the current ASE input. Keep the original per-site
+    ordering; permutations among identical elements cannot be detected by this
+    check. A differing count/order stops reuse. The CIF itself is not an isotope-mass archive. Mass-only changes
     retain compatible
     electronic force records but refresh the dynamical analysis. Regenerate
     plans through the normal workflow after changing masses. Old QE plans

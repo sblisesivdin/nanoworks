@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- Saved final-geometry reuse checks atom count and element ordering even with default masses, protecting per-site electronic settings from mismatched structures.
+
 - Saved final-geometry reuse preserves explicit ASE masses for GPAW/QE and rejects mismatched atom counts or element ordering.
 
 - Finite-displacement preflight reports ASE masses and rejects invalid final-structure masses before engine execution or output-directory creation.

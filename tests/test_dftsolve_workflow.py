@@ -2845,6 +2845,27 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 self.assertIs(solver.bulk_configuration, initial)
                 self.assertIs(solver.config.bulk_configuration, initial)
 
+    def test_saved_geometry_rejects_site_mismatch_with_default_masses(self):
+        for engine in ('GPAW', 'QE'):
+            for symbols in ('ONi', 'Ni'):
+                with self.subTest(engine=engine, symbols=symbols), tempfile.TemporaryDirectory() as tmpdir:
+                    initial = Atoms('NiO', cell=[4, 4, 4], pbc=True)
+                    self.assertFalse(initial.has('masses'))
+                    solver = object.__new__(DFTSolver)
+                    solver.struct = str(Path(tmpdir) / 'sample')
+                    solver.Engine = engine
+                    solver.bulk_configuration = initial
+                    solver.config = SimpleNamespace(bulk_configuration=initial)
+                    final = Atoms(symbols, cell=[6, 6, 6], pbc=True)
+                    final.positions = [[index, index, index] for index in range(len(final))]
+                    write(solver.struct + f'-GROUND-{engine}-Result-Final.cif', final)
+                    with patch('nanoworks.dftsolve.parprint') as warning:
+                        with self.assertRaisesRegex(ValueError, 'Cannot reuse saved final geometry'):
+                            solver._load_existing_final_structure()
+                    self.assertIs(solver.bulk_configuration, initial)
+                    self.assertIs(solver.config.bulk_configuration, initial)
+                    warning.assert_not_called()
+
     def test_load_existing_final_structure_when_missing(self):
         initial = Atoms(
             'Si',

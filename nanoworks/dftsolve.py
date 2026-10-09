@@ -1511,16 +1511,25 @@ class dftsolve:
                 f"from '{final_structure_file}': {exc}"
             ) from exc
 
+        # Geometry reuse must preserve the indexing of per-site electronic settings,
+        # even when the input uses default masses. Same-element permutations cannot
+        # be detected from symbols, so the original site ordering remains required.
+        if (self.bulk_configuration.get_chemical_symbols()
+                != final_structure.get_chemical_symbols()):
+            reason = (
+                'Cannot restore custom atomic masses'
+                if self.bulk_configuration.has('masses')
+                else 'Cannot reuse saved final geometry'
+            )
+            raise ValueError(
+                f'{reason}: the saved final structure atom count '
+                'or element order differs from the current input. Use the matching ASE '
+                'structure and per-site settings, or regenerate the ground-state geometry.'
+            )
+
         # CIF preserves geometry but does not preserve custom ASE masses.
         # The current input remains authoritative for per-site isotope masses.
         if self.bulk_configuration.has('masses'):
-            if (self.bulk_configuration.get_chemical_symbols()
-                    != final_structure.get_chemical_symbols()):
-                raise ValueError(
-                    'Cannot restore custom atomic masses: the saved final structure atom count '
-                    'or element order differs from the current input. Use the matching ASE '
-                    'structure and per-site masses, or regenerate the ground-state geometry.'
-                )
             final_structure.set_masses(self.bulk_configuration.get_masses())
 
         self.bulk_configuration = final_structure
