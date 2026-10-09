@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- AFM phonon conversion tests use a body-centred magnetic cell for symmetry discovery and separately check arbitrary-basis atom/moment roundtrips.
+
 - GPAW Al/Si and QE NiO phonon examples document force recovery, analysis-only commands, retained files and signed-frequency diagnostics.
 
 - GPAW phonon analysis can be repeated from an archived plan without GPAW or force SCFs; geometry, provenance, force-constant hashes and Phonopy versions are checked.

@@ -162,14 +162,42 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             from phonopy import Phonopy
         except ModuleNotFoundError:
             self.skipTest('phonopy is optional')
-        atoms = Atoms('Ni2', positions=[[0, 0, 0], [1, 1, 1]],
+        import numpy as np
+        # Use the body-centred AFM fixture also used by the postprocess tests.
+        # The former (1/3, 1/3, 1/3) basis triggers a magnetic UNI matching
+        # failure in some spglib versions, unrelated to atom conversion.
+        atoms = Atoms('Ni2', scaled_positions=[[0, 0, 0], [.5, .5, .5]],
                       cell=[3, 3, 3], pbc=True, magmoms=[2, -2])
         unitcell = convert_atoms_to_phonopy(atoms)
+        np.testing.assert_array_equal(unitcell.magnetic_moments, [2, -2])
         phonon = Phonopy(unitcell, [[2, 0, 0], [0, 1, 0], [0, 0, 1]])
         phonon.generate_displacements(distance=0.01)
+        self.assertTrue(phonon.supercells_with_displacements)
         for supercell in phonon.supercells_with_displacements:
             restored = convert_atoms_to_ase(supercell)
             self.assertEqual(sorted(restored.get_initial_magnetic_moments()), [-2, -2, 2, 2])
+            np.testing.assert_array_equal(restored.get_initial_magnetic_moments(),
+                                          supercell.magnetic_moments)
+            np.testing.assert_allclose(restored.positions, supercell.positions)
+
+    def test_phonon_atom_roundtrip_preserves_arbitrary_afm_basis(self):
+        try:
+            from phonopy.structure.atoms import PhonopyAtoms
+        except ModuleNotFoundError:
+            self.skipTest('phonopy is optional')
+        import numpy as np
+        # Conversion itself must preserve an arbitrary basis without invoking
+        # magnetic space-group discovery or hiding symmetry-search failures.
+        atoms = Atoms('Ni2', positions=[[0, 0, 0], [1, 1, 1]],
+                      cell=[3, 3, 3], pbc=True, magmoms=[2, -2])
+        unitcell = convert_atoms_to_phonopy(atoms)
+        self.assertIsInstance(unitcell, PhonopyAtoms)
+        np.testing.assert_array_equal(unitcell.magnetic_moments, [2, -2])
+        restored = convert_atoms_to_ase(unitcell)
+        self.assertEqual(restored.get_chemical_symbols(), atoms.get_chemical_symbols())
+        np.testing.assert_allclose(restored.positions, atoms.positions)
+        np.testing.assert_allclose(restored.cell, atoms.cell)
+        np.testing.assert_array_equal(restored.get_initial_magnetic_moments(), [2, -2])
 
     def test_force_cache_can_be_explicitly_invalidated(self):
         import numpy as np
