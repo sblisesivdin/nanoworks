@@ -70,6 +70,15 @@ def _plain(value):
     return value
 
 
+def _physical_signature(plan):
+    """Bind displacement geometry and force-job indexing, excluding analysis choices."""
+    fields = ('schema', 'method', 'xc', 'hubbard_u', 'spin_polarized',
+              'phonopy_version', 'unitcell', 'supercell', 'displacement',
+              'electronic_kpoints', 'pseudopotential_hashes', 'pseudopotential_paths', 'jobs')
+    return hashlib.sha256(json.dumps({key: plan[key] for key in fields},
+        sort_keys=True, allow_nan=False).encode()).hexdigest()
+
+
 def pw_executable_identity():
     """Identify the selected pw.x by content, independent of installation path."""
     executable = shutil.which('pw.x')
@@ -187,7 +196,7 @@ def prepare_force_plan(config, atoms, struct, pseudo_dir, pseudopotentials):
             'cache_file': f'{prefix}-Result-Force-{index:04d}.json',
             'state_dir': str(state_dir), 'input_text': text, 'signature': signature})
     plan = _plain({
-        'schema': 2, 'method': 'finite-displacement', 'struct': struct,
+        'schema': 3, 'method': 'finite-displacement', 'struct': struct,
         'pw_executable': binary,
         'xc': config.XC_calc, 'hubbard_u': config.Hubbard_U, 'spin_polarized': config.Spin_calc,
         'phonopy_version': phonopy.__version__, 'unitcell': unitcell,
@@ -201,6 +210,7 @@ def prepare_force_plan(config, atoms, struct, pseudo_dir, pseudopotentials):
         'temperature': [config.Phonon_T_min, config.Phonon_T_max, config.Phonon_T_step],
         'jobs': jobs,
     })
+    plan['physical_signature'] = _physical_signature(plan)
     manifest = Path(f'{struct}-PHONON-QE-Input-Finite-Displacement.json')
     manifest.write_text(json.dumps(plan, indent=2) + '\n', encoding='utf-8')
     plan['manifest_file'] = str(manifest)
@@ -237,6 +247,10 @@ def _save_force(job, force, binary_identity=None):
 
 
 def _validate_plan_resources(plan):
+    if plan.get('schema') != 3 or 'physical_signature' not in plan:
+        raise ValueError('This QE force plan lacks physical provenance; regenerate it before reuse.')
+    if plan['physical_signature'] != _physical_signature(plan):
+        raise ValueError('QE phonon geometry or force-job provenance changed; regenerate the force plan.')
     import phonopy
     if phonopy.__version__ != plan['phonopy_version']:
         raise ValueError('Phonopy version changed; regenerate the QE force plan on this host.')

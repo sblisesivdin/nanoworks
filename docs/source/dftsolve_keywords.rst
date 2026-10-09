@@ -309,6 +309,12 @@ or:
     Each edited band-path segment must contain at least two finite fractional
     q-points with three coordinates. Invalid segments stop analysis before
     result exports and leave the archived force constants available for retry.
+    QE finite-displacement plans also bind the unit cell (including masses and
+    magnetic moments), supercell, displacement and ordered force jobs to a
+    physical signature. Editing these fields stops both force reuse and analysis.
+    Regenerate older unsigned QE plans through the normal workflow; compatible
+    verified force records can still be reused. DOS mesh, band path, acoustic
+    sum rule and thermal settings remain editable analysis choices.
     Older calculations without an analysis plan need one normal phonon
     workflow run to create it, reusing matching caches where available.
     Finite-displacement GPAW/QE workflows preserve ASE atomic masses in

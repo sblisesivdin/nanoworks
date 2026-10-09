@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- QE phonon plans bind physical geometry and ordered force jobs to a signature; altered or older unsigned plans require regeneration before reuse.
+
 - GPAW phonon analysis validates editable band q-point segments before result exports; invalid paths retain archived force constants for retry.
 
 - Saved final-geometry reuse checks atom count and element ordering even with default masses, protecting per-site electronic settings from mismatched structures.

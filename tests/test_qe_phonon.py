@@ -126,6 +126,49 @@ class TestQEFiniteDisplacements(unittest.TestCase):
         return prepare_force_plan(self.config, self.atoms, self.root / 'Ni',
                                   self.root, {'Ni': 'Ni.upf'})
 
+    def test_changed_physical_plan_is_rejected_before_force_or_analysis_work(self):
+        changes = (
+            lambda plan: plan['unitcell']['scaled_positions'][0].__setitem__(0, .1),
+            lambda plan: plan['unitcell']['masses'].__setitem__(0, 240),
+            lambda plan: plan['unitcell']['magnetic_moments'].__setitem__(0, -2),
+            lambda plan: plan.__setitem__('displacement', .02),
+            lambda plan: plan['jobs'].reverse(),
+            lambda plan: plan['jobs'][0].__setitem__('signature', 'altered'),
+        )
+        for change in changes:
+            with self.subTest(change=change):
+                plan = self.plan()
+                change(plan)
+                with patch('nanoworks.qe_phonon.qe.run_pw_forces') as run:
+                    with self.assertRaisesRegex(ValueError, 'geometry or force-job provenance'):
+                        run_force_plan(plan)
+                run.assert_not_called()
+                with patch('nanoworks.qe_phonon.make_phonon') as build:
+                    with self.assertRaisesRegex(ValueError, 'geometry or force-job provenance'):
+                        postprocess(plan)
+                build.assert_not_called()
+
+    def test_old_unsigned_plan_requires_regeneration(self):
+        plan = self.plan()
+        plan['schema'] = 2
+        plan.pop('physical_signature')
+        with patch('nanoworks.qe_phonon.qe.run_pw_forces') as run:
+            with self.assertRaisesRegex(ValueError, 'lacks physical provenance'):
+                run_force_plan(plan)
+        run.assert_not_called()
+
+    def test_analysis_choices_do_not_change_physical_plan_signature(self):
+        from nanoworks.qe_phonon import _physical_signature, _validate_plan_resources
+        plan = self.plan()
+        original = plan['physical_signature']
+        plan['dos_mesh'] = [4, 4, 4]
+        plan['acoustic_sum_rule'] = False
+        plan['thermal'] = True
+        plan['temperature'] = [0, 200, 50]
+        plan['band_path']['kpoints'][0] = [.1, 0, 0]
+        self.assertEqual(_physical_signature(plan), original)
+        _validate_plan_resources(plan)
+
     def test_force_inputs_preserve_spin_u_and_extensive_settings(self):
         plan = self.plan()
         self.assertGreater(len(plan['jobs']), 1)
