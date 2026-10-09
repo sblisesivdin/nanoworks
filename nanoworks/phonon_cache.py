@@ -88,6 +88,33 @@ def load_force_constants(path, nprimitive, nsupercell):
     return None
 
 
+def load_verified_force_constants(path, metadata_path, settings, nprimitive, nsupercell):
+    """Reuse completed constants only when settings and numerical content match."""
+    try:
+        record = json.loads(Path(metadata_path).read_text(encoding='utf-8'))
+        if (record['schema'] != 1 or record['units'] != 'eV/Angstrom^2'
+                or record['settings'] != settings):
+            return None
+        constants = load_force_constants(path, nprimitive, nsupercell)
+        if constants is not None and record['force_constants_sha256'] == force_digest(constants):
+            return constants
+    except (OSError, ValueError, TypeError, KeyError, OverflowError):
+        pass
+    return None
+
+
+def save_verified_force_constants(path, metadata_path, constants, settings, nprimitive, nsupercell):
+    """Validate first and publish completion metadata after the atomic array write."""
+    constants = np.asarray(constants, dtype=float)
+    if (constants.shape not in ((nprimitive, nsupercell, 3, 3), (nsupercell, nsupercell, 3, 3))
+            or not np.isfinite(constants).all()):
+        raise ValueError('Phonon force constants must have finite compatible compact/full dimensions.')
+    digest = force_digest(constants)
+    write_array_atomic(path, constants)
+    write_json_atomic(metadata_path, {'schema': 1, 'units': 'eV/Angstrom^2',
+        'settings': settings, 'force_constants_sha256': digest})
+
+
 def collective_cache_call(callback, *args):
     """Perform cache I/O on root and share results or failures with every MPI rank."""
     from ase.parallel import broadcast, world

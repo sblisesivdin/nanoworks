@@ -274,6 +274,12 @@ or:
     ``Phonon_acoustic_sum_rule`` rebuilds force constants from the existing
     verified forces without repeating their SCFs. Force-constant caches are
     also checked for finite values and compatible compact/full dimensions.
+    Force-constant completion metadata binds the calculation settings,
+    eV/Angstrom-squared units and a SHA-256 digest of the numerical constants.
+    Changed finite values are rejected, as are incomplete or unhashed legacy
+    completion records. The normal workflow rebuilds constants from matching
+    verified displacement forces; compatible force SCFs are not repeated.
+    Completion metadata is published after the atomic constant-array write.
     Cache I/O runs on the MPI root and its result or error is shared with
     all ranks. Earlier GPAW force arrays without individual metadata are
     recomputed once.

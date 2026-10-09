@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- GPAW phonon force-constant caches verify content hashes, units and completion metadata; invalid constants are rebuilt from compatible verified displacement forces.
+
 - GPAW/QE finite-displacement phonons preserve ASE atomic masses in conversions and analysis plans; mass-only changes retain compatible electronic forces.
 
 - QE phonon force caches validate numerical content hashes and units; altered or older unhashed records are recomputed individually and rejected by analysis-only retries.

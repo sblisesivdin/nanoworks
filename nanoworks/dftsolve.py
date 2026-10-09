@@ -302,7 +302,7 @@ from nanoworks.phonon_results import prepare_gpaw_postprocess_plan, postprocess_
 from nanoworks.phonon_settings import validate_phonon_settings
 from nanoworks.phonon_cache import (
     collective_cache_call, force_signature, load_verified_force,
-    load_force_constants, matching_settings,
+    load_verified_force_constants, save_verified_force_constants,
     save_verified_force, write_array_atomic, write_json_atomic,
 )
 import numpy as np
@@ -6024,16 +6024,12 @@ class dftsolve:
             'displacement': self.Phonon_displacement,
             'acoustic_sum_rule': bool(sum_rule),
         }
-        reuse_cache = collective_cache_call(matching_settings, cache_path, cache_settings)
-        if not reuse_cache:
-            parprint('Phonon cache settings changed or are missing; rebuilding force constants.')
-            # Invalidate before writing any forces, including interrupted runs.
+        cached_constants = collective_cache_call(load_verified_force_constants,
+            phonon_path, cache_path, cache_settings, len(phonon.primitive), len(phonon.supercell))
+        if cached_constants is None:
+            parprint('Phonon force-constant cache is missing, stale or invalid; rebuilding from verified forces.')
+            # Invalidate completion before rebuilding, including interrupted runs.
             collective_cache_call(write_json_atomic, cache_path, {})
-
-        cached_constants = None
-        if reuse_cache:
-            cached_constants = collective_cache_call(load_force_constants, phonon_path,
-                len(phonon.primitive), len(phonon.supercell))
 
         if cached_constants is not None:
             with paropen(self.struct+'-PHONON-GPAW-Log-Phonopy.txt', 'a') as f2:
@@ -6061,8 +6057,8 @@ class dftsolve:
                 phonon.symmetrize_force_constants()
             with paropen(self.struct+'-PHONON-GPAW-Log-Phonopy.txt', 'a') as f2:
                 print('Writing FCs to {!r}'.format(phonon_path), end="\n", file=f2)
-            collective_cache_call(write_array_atomic, phonon_path, phonon.force_constants)
-            collective_cache_call(write_json_atomic, cache_path, cache_settings)
+            collective_cache_call(save_verified_force_constants, phonon_path, cache_path,
+                phonon.force_constants, cache_settings, len(phonon.primitive), len(phonon.supercell))
             #shutil.rmtree('force-sets')
 
         summary = self.struct + '-PHONON-GPAW-Result-Summary.json'

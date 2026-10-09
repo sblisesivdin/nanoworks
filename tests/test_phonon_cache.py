@@ -5,6 +5,7 @@
 """Regression cases for interrupted phonon force caches and MPI cache I/O."""
 
 import tempfile
+import json
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -15,6 +16,7 @@ import numpy as np
 from nanoworks.phonon_cache import (
     collective_cache_call, force_signature, load_force_constants,
     load_verified_force, save_verified_force,
+    load_verified_force_constants, save_verified_force_constants,
 )
 
 
@@ -82,6 +84,64 @@ class TestPhononCache(unittest.TestCase):
         self.assertIsNone(load_force_constants(self.path, 2, 4))
         np.save(self.path, np.full((2, 4, 3, 3), np.nan))
         self.assertIsNone(load_force_constants(self.path, 2, 4))
+
+    def test_verified_force_constants_accept_full_and_compact_records(self):
+        metadata = self.path.with_suffix('.json')
+        settings = {'cutoff': 500, 'masses': [60, 60]}
+        for shape in ((2, 4, 3, 3), (4, 4, 3, 3)):
+            with self.subTest(shape=shape):
+                constants = np.arange(np.prod(shape), dtype=float).reshape(shape) / 100
+                save_verified_force_constants(self.path, metadata, constants, settings, 2, 4)
+                np.testing.assert_array_equal(load_verified_force_constants(
+                    self.path, metadata, settings, 2, 4), constants)
+                self.assertIsNone(load_verified_force_constants(
+                    self.path, metadata, dict(settings, cutoff=600), 2, 4))
+                self.assertIsNone(load_verified_force_constants(
+                    self.path, metadata, dict(settings, masses=[62, 62]), 2, 4))
+
+    def test_altered_finite_constants_do_not_invalidate_displacement_forces(self):
+        metadata = self.path.with_suffix('.json')
+        constants = np.ones((2, 4, 3, 3))
+        force_path = self.path.with_name('displacement.npy')
+        save_verified_force(force_path, self.forces, 'settings-A', 2)
+        save_verified_force_constants(self.path, metadata, constants, {'cutoff': 500}, 2, 4)
+        constants[0, 0, 0, 0] += .1
+        np.save(self.path, constants)
+        self.assertIsNone(load_verified_force_constants(
+            self.path, metadata, {'cutoff': 500}, 2, 4))
+        np.testing.assert_array_equal(load_verified_force(force_path, 'settings-A', 2), self.forces)
+
+    def test_unhashed_or_incomplete_force_constant_completion_is_rejected(self):
+        metadata = self.path.with_suffix('.json')
+        constants = np.ones((2, 4, 3, 3))
+        settings = {'cutoff': 500}
+        for record in (settings, {}, {'schema': 1, 'units': 'eV/Angstrom^2', 'settings': settings}):
+            np.save(self.path, constants)
+            metadata.write_text(json.dumps(record))
+            self.assertIsNone(load_verified_force_constants(self.path, metadata, settings, 2, 4))
+        metadata.write_text('{ interrupted metadata')
+        self.assertIsNone(load_verified_force_constants(self.path, metadata, settings, 2, 4))
+
+    def test_force_constant_write_failure_never_certifies_changed_array(self):
+        metadata = self.path.with_suffix('.json')
+        constants = np.ones((2, 4, 3, 3))
+        settings = {'cutoff': 500}
+        save_verified_force_constants(self.path, metadata, constants, settings, 2, 4)
+        with patch('nanoworks.phonon_cache.write_json_atomic', side_effect=OSError('disk full')):
+            with self.assertRaises(OSError):
+                save_verified_force_constants(self.path, metadata, constants * 2, settings, 2, 4)
+        self.assertIsNone(load_verified_force_constants(self.path, metadata, settings, 2, 4))
+
+    def test_invalid_new_constants_preserve_previous_verified_cache(self):
+        metadata = self.path.with_suffix('.json')
+        constants = np.ones((2, 4, 3, 3))
+        settings = {'cutoff': 500}
+        save_verified_force_constants(self.path, metadata, constants, settings, 2, 4)
+        for invalid in (np.zeros((3, 4, 3, 3)), np.full((2, 4, 3, 3), np.nan)):
+            with self.subTest(shape=invalid.shape), self.assertRaisesRegex(ValueError, 'compact/full'):
+                save_verified_force_constants(self.path, metadata, invalid, settings, 2, 4)
+        np.testing.assert_array_equal(load_verified_force_constants(
+            self.path, metadata, settings, 2, 4), constants)
 
     def test_root_io_failure_is_shared_with_all_ranks(self):
         callback = Mock(side_effect=OSError('disk full'))
