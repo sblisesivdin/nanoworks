@@ -241,6 +241,22 @@ class TestGPAWPostprocessPlan(unittest.TestCase):
                 postprocess_gpaw_plan(self.plan)
         export.assert_not_called()
 
+    def test_completed_summary_snapshots_edited_analysis_settings(self):
+        self.plan['dos_mesh'] = [4, 4, 4]
+        self.plan['temperature'] = [0, 200, 50]
+        with patch('nanoworks.phonon_results.write_gpaw_phonon_results',
+                   return_value={'status': 'complete', 'engine': 'GPAW'}):
+            result = postprocess_gpaw_plan(self.plan)
+        self.assertEqual(result['physical_signature'], self.plan['physical_signature'])
+        self.assertEqual(result['phonopy_version'], self.plan['phonopy_version'])
+        self.assertEqual(result['analysis_settings']['dos_mesh'], [4, 4, 4])
+        self.assertEqual(result['analysis_settings']['temperature'], [0., 200., 50.])
+        self.assertEqual(self.report()['analysis_settings'], result['analysis_settings'])
+        self.plan['dos_mesh'][0] = 99
+        self.plan['band_path'][0][0][0][0] = .25
+        self.assertEqual(result['analysis_settings']['dos_mesh'], [4, 4, 4])
+        self.assertEqual(result['analysis_settings']['band_path'][0][0][0], [0., 0., 0.])
+
     def test_invalid_edited_band_path_is_rejected_before_exports(self):
         self.plan['band_path'] = ([[[0, 0, 0], [float('inf'), 0, 0]]], ['G', 'X'], [False])
         with patch('nanoworks.phonon_results.write_gpaw_phonon_results') as export:

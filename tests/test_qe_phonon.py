@@ -505,4 +505,18 @@ class TestQEFiniteDisplacements(unittest.TestCase):
         self.assertTrue(Path(result['mesh_data_file']).is_file())
         self.assertEqual(result['status'], 'complete')
         self.assertEqual(result['pw_executable_sha256'], self.binary['sha256'])
+        from nanoworks.phonon_cache import force_digest
+        self.assertEqual(result['physical_signature'], plan['physical_signature'])
+        self.assertEqual(result['phonopy_version'], plan['phonopy_version'])
+        self.assertEqual(result['analysis_settings']['dos_mesh'], plan['dos_mesh'])
+        self.assertEqual(result['analysis_settings']['band_path'], plan['band_path'])
+        self.assertTrue(result['analysis_settings']['acoustic_sum_rule'])
+        self.assertFalse(result['analysis_settings']['thermal'])
+        self.assertIsNone(result['analysis_settings']['temperature'])
+        self.assertEqual(result['force_constants_sha256'], force_digest(np.load(result['force_constants_file'])))
+        self.assertEqual(result['force_constants_hash_kind'], 'canonical-float64-values')
+        plan['dos_mesh'][0] = 99
+        plan['band_path']['kpoints'][0][0] = .25
+        self.assertEqual(result['analysis_settings']['dos_mesh'], [2, 2, 2])
+        self.assertEqual(result['analysis_settings']['band_path']['kpoints'][0], [0., 0., 0.])
         self.assertGreater(np.linalg.norm(np.load(result['force_constants_file'])), 0)

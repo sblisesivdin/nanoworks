@@ -161,6 +161,10 @@ def postprocess_gpaw_plan(plan, phonon=None):
         report = write_gpaw_phonon_results(phonon, plan['prefix'], band_path, mesh, temperature)
         report.update(plan['provenance'])
         report.update({'analysis_only': analysis_only,
+            'physical_signature': plan['physical_signature'],
+            'phonopy_version': plan['phonopy_version'],
+            'analysis_settings': _plain({'dos_mesh': mesh, 'band_path': band_path,
+                                         'temperature': temperature}),
             'force_constants_sha256': plan['force_constants_sha256'],
             'postprocess_plan_file': plan['prefix'] + '-Input-Postprocess.json'})
         if analysis_only:

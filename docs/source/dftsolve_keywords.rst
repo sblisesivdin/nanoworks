@@ -341,6 +341,13 @@ or:
     plans through the normal workflow after changing masses. Old QE plans
     without masses retain Phonopy defaults. This does not alter native QE DFPT
     species-mass handling.
+    Successful GPAW/QE summaries retain ``physical_signature``, the exact
+    ``phonopy_version`` and a snapshot of ``analysis_settings`` (mesh, band
+    path and enabled temperature range; QE also records ASR/thermal switches).
+    Editing the input plan afterwards does not change this result snapshot.
+    QE summaries additionally record a force-constant hash over canonical
+    float64 numerical values, identified by ``force_constants_hash_kind``;
+    GPAW's archived ``force_constants_sha256`` remains a file-content hash.
     GPAW/QE verify consistent band/mesh mode counts and finite numerical DOS
     tables before reporting completion. QE atom-projected DOS must contain one
     row per magnetic unit-cell atom. GPAW thermal CSV output requires four
