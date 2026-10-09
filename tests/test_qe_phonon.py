@@ -16,6 +16,7 @@ import numpy as np
 from ase import Atoms
 from ase.units import Bohr
 from nanoworks.engine import qe
+from nanoworks.phonon_results import qpoint_frequencies
 from nanoworks.qe_phonon import (
     prepare_force_plan, run_force_plan, supercell_kpoints, make_phonon, _save_force, postprocess,
     record_force_result, write_mesh_data, has_verified_force,
@@ -302,8 +303,13 @@ class TestQEFiniteDisplacements(unittest.TestCase):
             _save_force(job, residual - 5.0 * (cell.positions - positions), binary_identity=self.binary)
         with patch('nanoworks.qe_phonon._plot', return_value=Path('phonon.png')):
             with patch('nanoworks.qe_phonon.pw_executable_identity', return_value=None) as identity:
-                result = postprocess(plan)
+                with patch('nanoworks.qe_phonon.qpoint_frequencies', wraps=qpoint_frequencies) as batch:
+                    result = postprocess(plan)
         identity.assert_not_called()
+        batch.assert_called_once()
+        np.testing.assert_array_equal(batch.call_args.args[1], plan['band_path']['kpoints'])
+        self.assertEqual(np.shape(result['frequencies']['frequencies_thz']),
+                         (len(plan['band_path']['kpoints']), 6))
         self.assertEqual(result['frequencies']['nmodes'], 6)
         self.assertEqual(result['dos']['natoms'], 2)
         self.assertAlmostEqual(result['residual_force_max_ev_angstrom'], .01)

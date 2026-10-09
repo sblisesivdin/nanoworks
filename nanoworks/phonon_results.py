@@ -11,6 +11,26 @@ import json
 import numpy as np
 
 
+def qpoint_frequencies(phonon, qpoints):
+    """Return finite signed THz frequencies using the supported q-point API."""
+    points = np.asarray(qpoints, dtype=float)
+    if (points.ndim != 2 or points.shape[1] != 3 or not len(points)
+            or not np.isfinite(points).all()):
+        raise ValueError('Phonon q-points must be a nonempty finite N x 3 array.')
+    result = phonon.run_qpoints(points)
+    # Earlier Phonopy releases stored the result but returned None.
+    if result is None:
+        result = phonon.qpoints
+    if result is None:
+        raise ValueError('Phonopy did not produce a q-point result.')
+    frequencies = np.asarray(result.frequencies, dtype=float)
+    if (frequencies.ndim != 2 or frequencies.shape[0] != len(points)
+            or frequencies.shape[1] == 0 or not np.isfinite(frequencies).all()):
+        raise ValueError('Phonopy q-point frequencies must contain matching finite mode arrays.')
+    # Preserve negative modes and detach from Phonopy's mutable result state.
+    return frequencies.copy()
+
+
 def _plain(value):
     if isinstance(value, (np.ndarray, np.generic)):
         return value.tolist()
@@ -152,7 +172,7 @@ def write_gpaw_phonon_results(phonon, prefix, band_path, mesh, temperature=None)
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
 
-    gamma = np.asarray(phonon.get_frequencies((0, 0, 0)), dtype=float)
+    gamma = qpoint_frequencies(phonon, [[0, 0, 0]])[0]
     if gamma.ndim != 1 or not gamma.size or not np.isfinite(gamma).all():
         raise ValueError('Phonopy Gamma frequencies must be a finite, nonempty mode array.')
     with Path(prefix + '-Log-Phonopy.txt').open('a', encoding='utf-8') as stream:

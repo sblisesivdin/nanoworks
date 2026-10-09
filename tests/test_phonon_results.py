@@ -14,8 +14,55 @@ from unittest.mock import Mock, patch
 import numpy as np
 
 from nanoworks.phonon_results import (
-    write_gpaw_phonon_results, prepare_gpaw_postprocess_plan, postprocess_gpaw_plan,
+    qpoint_frequencies, write_gpaw_phonon_results, prepare_gpaw_postprocess_plan, postprocess_gpaw_plan,
 )
+
+
+class TestQpointFrequencies(unittest.TestCase):
+    def test_batch_preserves_order_negative_modes_and_detaches_results(self):
+        modes = np.array([[-.3, .2, .4], [.1, .5, .9]])
+        phonon = Mock()
+        phonon.run_qpoints.return_value = SimpleNamespace(frequencies=modes)
+        points = [[.5, 0, 0], [0, 0, 0]]
+        result = qpoint_frequencies(phonon, points)
+        np.testing.assert_array_equal(result, modes)
+        phonon.run_qpoints.assert_called_once()
+        np.testing.assert_array_equal(phonon.run_qpoints.call_args.args[0], points)
+        modes[:] = 99
+        np.testing.assert_array_equal(result, [[-.3, .2, .4], [.1, .5, .9]])
+        phonon.get_frequencies.assert_not_called()
+
+    def test_earlier_api_reads_stored_qpoint_result(self):
+        phonon = Mock()
+        phonon.run_qpoints.return_value = None
+        phonon.qpoints = SimpleNamespace(frequencies=[[-.02, .1, .2]])
+        np.testing.assert_array_equal(qpoint_frequencies(phonon, [[0, 0, 0]]),
+                                      [[-.02, .1, .2]])
+        phonon.get_frequencies.assert_not_called()
+
+    def test_invalid_qpoints_stop_before_frequency_calculation(self):
+        for points in ([], [0, 0, 0], [[0, 0]], [[0, np.nan, 0]]):
+            with self.subTest(points=points):
+                phonon = Mock()
+                with self.assertRaisesRegex(ValueError, 'q-points'):
+                    qpoint_frequencies(phonon, points)
+                phonon.run_qpoints.assert_not_called()
+
+    def test_incomplete_or_nonfinite_modes_are_rejected(self):
+        for modes in ([.1, .2, .3], [[.1, .2, .3], [.4, .5, .6]],
+                      [[]], [[np.nan, .1, .2]], [[np.inf, .1, .2]]):
+            with self.subTest(modes=modes):
+                phonon = Mock()
+                phonon.run_qpoints.return_value = SimpleNamespace(frequencies=modes)
+                with self.assertRaisesRegex(ValueError, 'matching finite mode'):
+                    qpoint_frequencies(phonon, [[0, 0, 0]])
+
+    def test_missing_stored_result_is_rejected(self):
+        phonon = Mock()
+        phonon.run_qpoints.return_value = None
+        phonon.qpoints = None
+        with self.assertRaisesRegex(ValueError, 'did not produce'):
+            qpoint_frequencies(phonon, [[0, 0, 0]])
 
 
 class TestGPAWPhononResults(unittest.TestCase):
@@ -24,7 +71,9 @@ class TestGPAWPhononResults(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.prefix = str(Path(temporary.name) / 'Ni-PHONON-GPAW')
         self.phonon = Mock()
-        self.phonon.get_frequencies.return_value = [-.02, .1, .2]
+        self.phonon.run_qpoints.return_value = SimpleNamespace(
+            frequencies=np.array([[-.02, .1, .2]]))
+        self.phonon.get_frequencies.side_effect = AssertionError("Deprecated frequency API used")
         self.phonon.mesh = SimpleNamespace(qpoints=np.array([[0, 0, 0], [.5, 0, 0]]),
             weights=np.array([1, 3]), frequencies=np.array([[-.02, .1, .2], [-.3, .4, .5]]))
         self.phonon.total_dos = SimpleNamespace(
@@ -118,8 +167,8 @@ class TestGPAWPostprocessPlan(unittest.TestCase):
                 result = postprocess_gpaw_plan(stored)
         reconstructed = export.call_args.args[0]
         np.testing.assert_array_equal(reconstructed.force_constants, self.phonon.force_constants)
-        np.testing.assert_allclose(reconstructed.get_frequencies([.2, 0, 0]),
-                                   self.phonon.get_frequencies([.2, 0, 0]))
+        np.testing.assert_allclose(qpoint_frequencies(reconstructed, [[.2, 0, 0]]),
+                                   qpoint_frequencies(self.phonon, [[.2, 0, 0]]))
         np.testing.assert_array_equal(reconstructed.unitcell.masses, self.phonon.unitcell.masses)
         self.assertTrue(result['analysis_only'])
         self.assertTrue(result['reused_force_constants'])

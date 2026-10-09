@@ -283,6 +283,8 @@ or:
     postprocessing, complete, failed or interrupted status, electronic/cache
     settings, Gamma frequencies and band/mesh diagnostics. Signed mesh
     frequencies and total DOS are also written to separate THz tables.
+    GPAW Gamma and QE finite-displacement band frequencies use Phonopy
+    q-point analysis; incomplete or nonfinite frequency arrays stop exports.
     The -0.1 THz imaginary-mode reporting threshold is not a physical
     stability criterion. Rerunning the same workflow after an export failure
     reuses matching force constants or individual force records before

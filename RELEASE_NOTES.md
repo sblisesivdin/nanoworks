@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- GPAW/QE Phonopy frequency analysis uses the supported q-point API, batches QE band points and rejects incomplete/nonfinite frequency results.
+
 - AFM phonon conversion tests use a body-centred magnetic cell for symmetry discovery and separately check arbitrary-basis atom/moment roundtrips.
 
 - GPAW Al/Si and QE NiO phonon examples document force recovery, analysis-only commands, retained files and signed-frequency diagnostics.

@@ -14,7 +14,7 @@ import numpy as np
 from ase import Atoms
 from nanoworks.engine import resolve_initial_magnetic_moments
 from nanoworks.engine import qe
-from nanoworks.phonon_results import write_mesh_data
+from nanoworks.phonon_results import qpoint_frequencies, write_mesh_data
 from nanoworks.phonon_settings import validate_phonon_settings
 from nanoworks.occupations import resolve_engine_occupation
 from nanoworks.scf import resolve_qe_scf_settings
@@ -371,9 +371,12 @@ def _postprocess(plan):
     band_path = plan['band_path']
     # QE band paths provide fractional reciprocal coordinates as kpoints.
     qpoints = np.asarray(band_path['kpoints'], dtype=float)
+    modes = qpoint_frequencies(phonon, qpoints)
+    nmodes = 3 * len(plan['unitcell']['symbols'])
+    if modes.shape[1] != nmodes:
+        raise ValueError('QE phonon mode count does not match the magnetic unit cell.')
     frequencies = {'qpoints': qpoints.tolist(), 'nqpoints': len(qpoints),
-        'nmodes': 3 * len(plan['unitcell']['symbols']),
-        'frequencies_thz': [phonon.get_frequencies(q).tolist() for q in qpoints]}
+        'nmodes': nmodes, 'frequencies_thz': modes.tolist()}
     phonon.run_mesh(plan['dos_mesh'], with_eigenvectors=True, is_mesh_symmetry=False)
     mesh_data = phonon.mesh
     mesh_file, mesh_diagnostics = write_mesh_data(prefix, mesh_data.qpoints,
