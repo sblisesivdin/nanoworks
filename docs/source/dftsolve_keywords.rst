@@ -244,6 +244,23 @@ or:
 
     Controls execution of phonon calculations.
 
+    When enabled, phonon parameters are validated before calculations start.
+    K-point and DOS-mesh counts must be positive integers, and
+    ``Phonon_npoints`` must be an integer of at least two. Boolean or
+    fractional counts are rejected. A three-integer ``Phonon_supercell``
+    sequence is normalized to a diagonal matrix; general integer matrices
+    require a positive determinant. Native QE DFPT additionally requires
+    positive diagonal entries and zero off-diagonal entries. Finite
+    displacements and explicit phonon cutoffs must be finite and positive.
+    Thermal calculations require finite ``0 <= Phonon_T_min <= Phonon_T_max``
+    and positive ``Phonon_T_step``. Unused thermal parameters and the
+    displacement ignored by native QE DFPT do not block the workflow.
+
+    Preflight reports the phonon method and DOS mesh. Finite-displacement
+    workflows also report the supercell multiplier and atom count when a
+    structure is available; native DFPT reports its q-point grid. These
+    details are included in both text and JSON preflight output.
+
     GPAW finite-displacement forces inherit the saved ground-state XC,
     Hubbard-U, spin, charge, occupations and SCF settings. Converged local
     magnetic moments seed the displaced supercells and are preserved in

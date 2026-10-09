@@ -140,6 +140,13 @@ class TestQEFiniteDisplacements(unittest.TestCase):
             self.assertEqual(job['natoms'], 4)
         self.assertEqual(len({job['state_dir'] for job in plan['jobs']}), len(plan['jobs']))
 
+    def test_force_plan_does_not_truncate_fractional_electronic_mesh(self):
+        self.config.Phonon_kpts_x = 2.5
+        with patch('nanoworks.qe_phonon.qe.render_pw_input') as render:
+            with self.assertRaisesRegex(ValueError, 'Phonon_kpts_x'):
+                self.plan()
+        render.assert_not_called()
+
     def test_resume_invalidates_forces_when_pseudo_content_changes(self):
         plan = self.plan()
         with patch('nanoworks.qe_phonon.qe.run_pw_forces', return_value=np.zeros((4, 3))) as run:

@@ -15,6 +15,7 @@ from ase import Atoms
 from nanoworks.engine import resolve_initial_magnetic_moments
 from nanoworks.engine import qe
 from nanoworks.phonon_results import write_mesh_data
+from nanoworks.phonon_settings import validate_phonon_settings
 from nanoworks.occupations import resolve_engine_occupation
 from nanoworks.scf import resolve_qe_scf_settings
 
@@ -96,6 +97,7 @@ def _validate_execution_binary(plan):
 
 def prepare_force_plan(config, atoms, struct, pseudo_dir, pseudopotentials):
     """Render the undisplaced and displaced SCFs without executing QE."""
+    validate_phonon_settings(config, engine='QE')
     import phonopy
 
     if getattr(config, 'SOC_calc', False) or getattr(config, 'Mode', 'PW') != 'PW':

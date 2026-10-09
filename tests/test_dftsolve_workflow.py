@@ -51,6 +51,36 @@ with patch.object(
 
 class TestDFTSolveWorkflow(unittest.TestCase):
 
+    def test_phonon_settings_rejected_before_calculation_configuration_completes(self):
+        for engine in ('GPAW', 'QE'):
+            with self.subTest(engine=engine), self.assertRaisesRegex(ValueError, 'Phonon_T_step'):
+                DFTConfig(Engine=engine, Phonon_calc=True, Phonon_thermal_calc=True, Phonon_T_step=0)
+
+    def test_phonon_preflight_reports_finite_displacement_size_and_mesh(self):
+        config = DFTConfig(Engine='GPAW', Phonon_calc=True, Phonon_supercell=[2, 2, 1],
+            Phonon_qpts_x=8, Phonon_qpts_y=8, Phonon_qpts_z=1,
+            bulk_configuration=Atoms('Si2', cell=[5, 5, 5], pbc=True))
+        report = check_dft_configuration(config, 'Si', check_executables=False, check_saved_state=False)
+        self.assertEqual(report['phonon']['method'], 'finite-displacement')
+        self.assertEqual(report['phonon']['supercell_atoms'], 8)
+        self.assertEqual(report['phonon']['dos_mesh'], [8, 8, 1])
+        self.assertEqual(json.loads(format_dft_preflight_json(report))['phonon'], report['phonon'])
+        self.assertIn('8 atoms, 4 unit cells', format_dft_preflight_report(report))
+
+    def test_phonon_preflight_blocks_parameters_mutated_after_configuration(self):
+        config = DFTConfig(Engine='QE', Phonon_calc=True)
+        config.Phonon_qpts_z = 2.5
+        report = check_dft_configuration(config, 'Si', check_executables=False, check_saved_state=False)
+        self.assertFalse(report['ok'])
+        check = next(check for check in report['checks'] if check['name'] == 'phonon-settings')
+        self.assertIn('Phonon_qpts_z', check['detail'])
+
+    def test_native_dfpt_preflight_reports_qpoint_grid_without_force_atom_estimate(self):
+        config = DFTConfig(Engine='QE', Phonon_calc=True, Phonon_supercell=[3, 3, 1])
+        report = check_dft_configuration(config, 'Si', check_executables=False, check_saved_state=False)
+        self.assertEqual(report['phonon']['dfpt_qpoint_grid'], [3, 3, 1])
+        self.assertNotIn('supercell_atoms', report['phonon'])
+
     def test_force_resume_shell_skips_hits_runs_misses_and_aborts_invalid_plans(self):
         for check_status in (0, 1, 2, 3):
             with self.subTest(check_status=check_status):

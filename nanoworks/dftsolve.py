@@ -299,6 +299,7 @@ from ase.filters import FrechetCellFilter
 from ase.io.cif import write_cif
 from pathlib import Path
 from nanoworks.phonon_results import write_gpaw_phonon_results
+from nanoworks.phonon_settings import validate_phonon_settings
 from nanoworks.phonon_cache import (
     collective_cache_call, force_signature, load_verified_force,
     load_force_constants, matching_settings,
@@ -768,6 +769,10 @@ class DFTConfig:
             )
         if self.Phonon_supercell is None:
             self.Phonon_supercell = np.diag([2, 2, 2])
+        if self.Phonon_calc:
+            phonon_settings, _ = validate_phonon_settings(self)
+            for name, value in phonon_settings.items():
+                setattr(self, name, value)
         if self.Opt_BSE_valence is None:
             self.Opt_BSE_valence = range(0, 3)
         if self.Opt_BSE_conduction is None:
@@ -7320,6 +7325,26 @@ def check_dft_configuration(
         config.Engine
     )
 
+    phonon_details = None
+    if config.Phonon_calc:
+        try:
+            _, phonon_details = validate_phonon_settings(config)
+        except (TypeError, ValueError) as exc:
+            add('error', 'phonon-settings', str(exc))
+        else:
+            add('ok', 'phonon-method', phonon_details['method'])
+            add('ok', 'phonon-dos-mesh', ' x '.join(map(str, phonon_details['dos_mesh'])))
+            if 'displacement_angstrom' in phonon_details:
+                add('ok', 'phonon-displacement', f"{phonon_details['displacement_angstrom']:g} Angstrom")
+            if 'temperature_range_kelvin' in phonon_details:
+                low, high, step = phonon_details['temperature_range_kelvin']
+                add('ok', 'phonon-temperature', f'{low:g} to {high:g} K, step {step:g} K')
+            if 'supercell_atoms' in phonon_details:
+                add('ok', 'phonon-supercell', f"{phonon_details['supercell_atoms']} atoms, "
+                    f"{phonon_details['supercell_multiplier']} unit cells")
+            elif 'dfpt_qpoint_grid' in phonon_details:
+                add('ok', 'phonon-dfpt-grid', ' x '.join(map(str, phonon_details['dfpt_qpoint_grid'])))
+
     requested_hybrid_stages = list(stages)
     if config.Geo_optim:
         requested_hybrid_stages.append(
@@ -7358,8 +7383,6 @@ def check_dft_configuration(
         if config.Phonon_calc and config.Hubbard_U:
             if importlib.util.find_spec('phonopy') is None:
                 add('error', 'python:phonopy', 'phonopy is required for QE Hubbard-U phonons.')
-            else:
-                add('ok', 'phonon-method', 'finite-displacement (Phonopy + pw.x, with Hubbard U)')
         if config.Mode != 'PW':
             add(
                 'error',
@@ -7675,6 +7698,7 @@ def check_dft_configuration(
         'stages': stages,
         'checks': checks,
         'errors': errors,
+        **({'phonon': phonon_details} if phonon_details is not None else {}),
     }
 
 
@@ -7720,6 +7744,8 @@ def format_dft_preflight_json(report):
                            if check['name'] == 'cli-overrides'), None)
     if override_check is not None:
         payload['overrides'] = json.loads(override_check['detail'])
+    if 'phonon' in report:
+        payload['phonon'] = report['phonon']
 
     return json.dumps(
         payload,

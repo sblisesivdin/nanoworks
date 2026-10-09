@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- Phonon parameters are validated before calculations; preflight reports the method, mesh and finite-displacement supercell size or native DFPT q-point grid.
+
 - GPAW phonon forces retain the ground-state electronic settings and magnetic moments; incompatible force caches are recomputed.
 - GPAW phonons resume individually verified displacement forces after interruptions, recover corrupt caches and reuse forces when only the acoustic sum rule changes.
 - GPAW phonon exports run on MPI root, report workflow status and signed mesh diagnostics, and write separate DOS tables; required export failures stop the workflow.
