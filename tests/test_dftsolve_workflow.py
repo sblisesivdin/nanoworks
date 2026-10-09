@@ -189,15 +189,18 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         # Conversion itself must preserve an arbitrary basis without invoking
         # magnetic space-group discovery or hiding symmetry-search failures.
         atoms = Atoms('Ni2', positions=[[0, 0, 0], [1, 1, 1]],
-                      cell=[3, 3, 3], pbc=True, magmoms=[2, -2])
+                      cell=[3, 3, 3], pbc=True, magmoms=[2, -2], masses=[60, 62])
         unitcell = convert_atoms_to_phonopy(atoms)
         self.assertIsInstance(unitcell, PhonopyAtoms)
+        np.testing.assert_array_equal(unitcell.masses, [60, 62])
         np.testing.assert_array_equal(unitcell.magnetic_moments, [2, -2])
         restored = convert_atoms_to_ase(unitcell)
         self.assertEqual(restored.get_chemical_symbols(), atoms.get_chemical_symbols())
         np.testing.assert_allclose(restored.positions, atoms.positions)
         np.testing.assert_allclose(restored.cell, atoms.cell)
         np.testing.assert_array_equal(restored.get_initial_magnetic_moments(), [2, -2])
+        np.testing.assert_array_equal(restored.get_masses(), [60, 62])
+        np.testing.assert_array_equal(convert_atoms_to_ase(atoms).get_masses(), [60, 62])
 
     def test_force_cache_can_be_explicitly_invalidated(self):
         import numpy as np

@@ -141,7 +141,7 @@ class TestGPAWPostprocessPlan(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.prefix = str(Path(temporary.name) / 'Ni-PHONON-GPAW')
         cell = PhonopyAtoms(symbols=['Ni', 'Ni'], cell=np.eye(3) * 4,
-            scaled_positions=[[0, 0, 0], [.5, .5, .5]], magnetic_moments=[2, -2])
+            scaled_positions=[[0, 0, 0], [.5, .5, .5]], magnetic_moments=[2, -2], masses=[60, 60])
         self.matrix = np.diag([2, 1, 1])
         self.phonon = Phonopy(cell, self.matrix)
         count = len(self.phonon.supercell)

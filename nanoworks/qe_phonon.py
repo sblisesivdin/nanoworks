@@ -16,7 +16,7 @@ from nanoworks.engine import resolve_initial_magnetic_moments
 from nanoworks.engine import qe
 from nanoworks.phonon_cache import force_digest
 from nanoworks.phonon_results import qpoint_frequencies, write_mesh_data
-from nanoworks.phonon_settings import validate_phonon_settings
+from nanoworks.phonon_settings import validate_atomic_masses, validate_phonon_settings
 from nanoworks.occupations import resolve_engine_occupation
 from nanoworks.scf import resolve_qe_scf_settings
 
@@ -37,7 +37,9 @@ def make_phonon(unitcell, supercell, displacement):
         raise ValueError('Phonon_displacement must be finite and positive.')
     cell = PhonopyAtoms(symbols=unitcell['symbols'], cell=unitcell['cell'],
                         scaled_positions=unitcell['scaled_positions'],
-                        magnetic_moments=unitcell.get('magnetic_moments'))
+                        magnetic_moments=unitcell.get('magnetic_moments'),
+                        masses=(validate_atomic_masses(unitcell['masses'], len(unitcell['symbols']))
+                                if 'masses' in unitcell else None))
     # The force parser converts QE's Ry/Bohr to eV/Angstrom. The default
     # Phonopy unit system matches those converted forces (not QE raw units).
     # Identity primitive_matrix preserves the input magnetic cell and q path.
@@ -116,6 +118,7 @@ def prepare_force_plan(config, atoms, struct, pseudo_dir, pseudopotentials):
         'symbols': atoms.get_chemical_symbols(), 'cell': atoms.cell.tolist(),
         'scaled_positions': atoms.get_scaled_positions().tolist(),
         'magnetic_moments': _plain(moments),
+        'masses': validate_atomic_masses(atoms.get_masses(), len(atoms)).tolist(),
     }
     phonon = make_phonon(unitcell, config.Phonon_supercell, config.Phonon_displacement)
     cells = [phonon.supercell, *phonon.supercells_with_displacements]
@@ -156,7 +159,7 @@ def prepare_force_plan(config, atoms, struct, pseudo_dir, pseudopotentials):
         prefix = f'{struct}-PHONON-QE'
         state_dir = Path(f'{prefix}-Result-State-{index:04d}')
         force_atoms = Atoms(symbols=cell.symbols, cell=cell.cell,
-                            scaled_positions=cell.scaled_positions, pbc=True)
+                            scaled_positions=cell.scaled_positions, pbc=True, masses=cell.masses)
         state_dir.mkdir(parents=True, exist_ok=True)
         text = qe.render_pw_input(
             calculation='scf', atoms=force_atoms, pseudopotentials=pseudopotentials,

@@ -10,6 +10,17 @@ import operator
 import numpy as np
 
 
+def validate_atomic_masses(masses, natoms):
+    """Require one finite positive atomic mass per phonon unit-cell site."""
+    try:
+        values = np.asarray(masses, dtype=float)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError('Phonon atomic masses must be finite positive values for every atom.') from exc
+    if values.shape != (natoms,) or not np.isfinite(values).all() or np.any(values <= 0):
+        raise ValueError('Phonon atomic masses must be finite positive values for every atom.')
+    return values.copy()
+
+
 def positive_integer(value, name, minimum=1):
     if isinstance(value, (bool, np.bool_)):
         raise ValueError(f'{name} must be an integer >= {minimum}.')

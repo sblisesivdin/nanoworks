@@ -64,3 +64,11 @@ class TestPhononSettings(unittest.TestCase):
         self.assertEqual(report['dfpt_qpoint_grid'], [2, 2, 1])
         self.assertNotIn('supercell_atoms', report)
         self.assertNotIn('temperature_range_kelvin', report)
+
+
+class TestPhononAtomicMasses(unittest.TestCase):
+    def test_invalid_mass_arrays_are_rejected(self):
+        from nanoworks.phonon_settings import validate_atomic_masses
+        for masses in ([0, 60], [-1, 60], [np.nan, 60], [np.inf, 60], [60], [[60, 60]]):
+            with self.subTest(masses=masses), self.assertRaisesRegex(ValueError, 'atomic masses'):
+                validate_atomic_masses(masses, 2)

@@ -142,6 +142,43 @@ class TestQEFiniteDisplacements(unittest.TestCase):
             self.assertEqual(job['natoms'], 4)
         self.assertEqual(len({job['state_dir'] for job in plan['jobs']}), len(plan['jobs']))
 
+    def test_force_plan_preserves_custom_masses_without_repeating_force_scfs(self):
+        self.atoms.set_masses([60, 60])
+        first = self.plan()
+        self.assertEqual(first['unitcell']['masses'], [60, 60])
+        phonon = make_phonon(first['unitcell'], first['supercell'], first['displacement'])
+        np.testing.assert_array_equal(phonon.unitcell.masses, [60, 60])
+        np.testing.assert_array_equal(phonon.supercell.masses, [60] * 4)
+        self.atoms.set_masses([62, 62])
+        second = self.plan()
+        self.assertEqual(second['unitcell']['masses'], [62, 62])
+        # Isotope mass changes the dynamical analysis, not Born-Oppenheimer forces.
+        self.assertEqual([job['signature'] for job in first['jobs']],
+                         [job['signature'] for job in second['jobs']])
+
+    def test_mass_scaled_frequencies_retain_inverse_square_root_relation(self):
+        self.atoms.set_masses([60, 60])
+        plan = self.plan()
+        first = make_phonon(plan['unitcell'], plan['supercell'], plan['displacement'])
+        count = len(first.supercell)
+        constants = np.zeros((count, count, 3, 3))
+        for index in range(count):
+            constants[index, index] = np.eye(3)
+        first.force_constants = constants
+        heavier = dict(plan['unitcell'], masses=[240, 240])
+        second = make_phonon(heavier, plan['supercell'], plan['displacement'])
+        second.force_constants = constants
+        np.testing.assert_allclose(qpoint_frequencies(second, [[.2, 0, 0]]),
+                                   qpoint_frequencies(first, [[.2, 0, 0]]) / 2)
+
+    def test_legacy_force_plan_without_masses_uses_phonopy_defaults(self):
+        plan = self.plan()
+        legacy = dict(plan['unitcell'])
+        del legacy['masses']
+        phonon = make_phonon(legacy, plan['supercell'], plan['displacement'])
+        self.assertTrue(np.isfinite(phonon.unitcell.masses).all())
+        self.assertTrue(np.all(phonon.unitcell.masses > 0))
+
     def test_force_plan_does_not_truncate_fractional_electronic_mesh(self):
         self.config.Phonon_kpts_x = 2.5
         with patch('nanoworks.qe_phonon.qe.render_pw_input') as render:

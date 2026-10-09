@@ -302,6 +302,16 @@ or:
     physical snapshot/provenance changes require regenerating the plan.
     Older calculations without an analysis plan need one normal phonon
     workflow run to create it, reusing matching caches where available.
+    Finite-displacement GPAW/QE workflows preserve ASE atomic masses in
+    Phonopy and analysis plans, including custom masses supplied through
+    ``bulk_configuration.set_masses(...)``. Masses must be finite and positive.
+    CIF geometry import replaces ``bulk_configuration``; use a structure format
+    that preserves masses or provide the ASE structure directly without ``-g``
+    when custom masses are required. Mass-only changes retain compatible
+    electronic force records but refresh the dynamical analysis. Regenerate
+    plans through the normal workflow after changing masses. Old QE plans
+    without masses retain Phonopy defaults. This does not alter native QE DFPT
+    species-mass handling.
     Total charge and explicitly fixed band counts scale with the number of
     unit cells in the supercell.
 

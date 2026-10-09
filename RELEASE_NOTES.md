@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- GPAW/QE finite-displacement phonons preserve ASE atomic masses in conversions and analysis plans; mass-only changes retain compatible electronic forces.
+
 - QE phonon force caches validate numerical content hashes and units; altered or older unhashed records are recomputed individually and rejected by analysis-only retries.
 
 - The legacy installer URL preserves the 26.8 workflow and package pin; development installation uses a separate script and the current source branch.

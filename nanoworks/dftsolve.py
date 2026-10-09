@@ -6019,6 +6019,7 @@ class dftsolve:
             'cell': self.bulk_configuration.cell.tolist(),
             'positions': self.bulk_configuration.get_positions().tolist(),
             'magmoms': self.bulk_configuration.get_initial_magnetic_moments().tolist(),
+            'masses': self.bulk_configuration.get_masses().tolist(),
             'supercell': np.asarray(self.Phonon_supercell).tolist(),
             'displacement': self.Phonon_displacement,
             'acoustic_sum_rule': bool(sum_rule),
@@ -6045,9 +6046,9 @@ class dftsolve:
                 #os.makedirs('force-sets', exist_ok=True)
             supercells = list(phonon.supercells_with_displacements)
             fnames = [self.struct+'-PHONON-GPAW-Result-Supercell-{:04}.npy'.format(i) for i in range(len(supercells))]
-            # ASR changes only the force-constant analysis, not the SCFs.
+            # ASR and masses affect analysis; electronic force SCFs are mass-independent.
             force_settings = {key: value for key, value in cache_settings.items()
-                              if key != 'acoustic_sum_rule'}
+                              if key not in ('acoustic_sum_rule', 'masses')}
             set_of_forces = [
                 self.load_or_compute_force(fname, calc, supercell,
                     cache_signature=force_signature(force_settings, supercell))
@@ -6942,6 +6943,7 @@ def get_band_path(atoms, path_str, npoints, path_frac=None, labels=None):
     return qpoints, labels, connections
 
 def convert_atoms_to_ase(atoms):
+    masses = atoms.get_masses() if hasattr(atoms, 'get_masses') else atoms.masses
     moments = getattr(atoms, 'magnetic_moments', None)
     if hasattr(atoms, 'get_initial_magnetic_moments'):
         moments = atoms.get_initial_magnetic_moments()
@@ -6952,6 +6954,7 @@ def convert_atoms_to_ase(atoms):
             cell=atoms.get_cell(),
             pbc=True,
             magmoms=moments,
+            masses=masses,
         )
     else:
         return Atoms(
@@ -6960,15 +6963,18 @@ def convert_atoms_to_ase(atoms):
             cell=atoms.cell,
             pbc=True,
             magmoms=moments,
+            masses=masses,
         )
 
 def convert_atoms_to_phonopy(atoms):
     from phonopy.structure.atoms import PhonopyAtoms
+    from nanoworks.phonon_settings import validate_atomic_masses
 
     return PhonopyAtoms(
         symbols=atoms.get_chemical_symbols(),
         scaled_positions=atoms.get_scaled_positions(),
         cell=atoms.get_cell(),
+        masses=validate_atomic_masses(atoms.get_masses(), len(atoms)),
         magnetic_moments=(
             atoms.get_initial_magnetic_moments()
             if atoms.has('initial_magmoms') else None
