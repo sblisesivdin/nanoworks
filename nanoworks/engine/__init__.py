@@ -31,6 +31,20 @@ def normalize_engine_name(engine):
     """Return the canonical Nanoworks engine name."""
     return str(engine).strip().upper()
 
+def resolve_gpaw_optical_blocks(nblocks, world_size):
+    """Resolve RPA matrix distribution under the actual optical MPI world."""
+    if isinstance(world_size, bool) or not isinstance(world_size, Integral) or world_size < 1:
+        raise ValueError('GPAW optical MPI size must be a positive integer.')
+    if nblocks is None:
+        return int(world_size)
+    if isinstance(nblocks, bool) or not isinstance(nblocks, Integral) or nblocks < 1:
+        raise ValueError('Opt_nblocks must be a positive integer or None.')
+    if nblocks > world_size or world_size % nblocks:
+        raise ValueError('Opt_nblocks must divide the GPAW optical MPI process count '
+                         f'({world_size}) and cannot exceed it.')
+    return int(nblocks)
+
+
 def resolve_initial_magnetic_moments(
     atoms,
     magmom_per_atom=1.0,

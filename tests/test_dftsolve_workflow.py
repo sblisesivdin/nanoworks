@@ -2560,6 +2560,36 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             ['optical'],
         )
 
+    def test_gpaw_rpa_receives_optical_matrix_block_count(self):
+        config = DFTConfig(Engine='GPAW', Optical_calc=True, Opt_calc_type='RPA', Opt_nblocks=2)
+        solver = object.__new__(DFTSolver)
+        solver.__dict__.update(vars(config))
+        solver.struct = 'sample'
+        solver.engine = Mock()
+        solver.engine.is_hybrid.return_value = False
+        response = Mock(side_effect=RuntimeError('response constructor reached'))
+        with patch.dict(sys.modules, {'gpaw.response.df': SimpleNamespace(DielectricFunction=response)}):
+            with patch('nanoworks.dftsolve.world', SimpleNamespace(size=4)):
+                with self.assertRaisesRegex(RuntimeError, 'response constructor reached'):
+                    solver._opticalcalc_gpaw()
+        self.assertEqual(response.call_args.kwargs['nblocks'], 2)
+        solver.engine.prepare_optical_calc.assert_called_once()
+
+    def test_invalid_optical_blocks_stop_before_loading_ground_state(self):
+        config = DFTConfig(Engine='GPAW', Optical_calc=True, Opt_calc_type='RPA', Opt_nblocks=3)
+        solver = object.__new__(DFTSolver)
+        solver.__dict__.update(vars(config))
+        solver.struct = 'sample'
+        solver.engine = Mock()
+        with patch('nanoworks.dftsolve.world', SimpleNamespace(size=4)):
+            with self.assertRaisesRegex(ValueError, 'Opt_nblocks'):
+                solver._opticalcalc_gpaw()
+        solver.engine.prepare_optical_calc.assert_not_called()
+
+    def test_default_optical_blocks_remain_auto_until_execution(self):
+        config = DFTConfig(Engine='GPAW', Optical_calc=True, Opt_calc_type='RPA')
+        self.assertIsNone(config.Opt_nblocks)
+
     def test_mixed_gpaw_optical_workflow_requires_process_split(self):
         self.assertTrue(
             should_split_gpaw_optical(

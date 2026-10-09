@@ -12,10 +12,20 @@ from nanoworks.engine import (
     resolve_calculation_stages,
     load_engine_module,
     resolve_initial_magnetic_moments,
+    resolve_gpaw_optical_blocks,
 )
 
 
 class TestEngine(unittest.TestCase):
+
+    def test_optical_blocks_resolve_under_actual_mpi_size(self):
+        for size in (1, 4, 8):
+            self.assertEqual(resolve_gpaw_optical_blocks(None, size), size)
+            self.assertEqual(resolve_gpaw_optical_blocks(1, size), 1)
+        self.assertEqual(resolve_gpaw_optical_blocks(4, 8), 4)
+        for blocks in (0, -1, True, 2.5, '4', 3, 16):
+            with self.subTest(blocks=blocks), self.assertRaisesRegex(ValueError, 'Opt_nblocks'):
+                resolve_gpaw_optical_blocks(blocks, 8)
 
     def test_engine_name_is_normalized(self):
         self.assertEqual(

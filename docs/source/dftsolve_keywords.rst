@@ -2024,7 +2024,11 @@ Optical Calculations Keywords
     :Type: ``int`` or ``None``
     :Default: ``None`` (resolved to the MPI world size)
 
-    Controls splitting matrices into blocks and distribution of G-vectors/frequencies over processes.
+    GPAW RPA response matrix distribution. ``None`` uses the actual optical
+    MPI process count, including the fresh process in a combined workflow.
+    An explicit value must be a positive integer that divides that process
+    count and does not exceed it. Preflight reports the resolved block count.
+    This setting is not used by GPAW BSE or native QE optics.
 
 .. code-block:: python
 

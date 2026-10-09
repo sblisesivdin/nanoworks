@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- GPAW RPA optics applies Opt_nblocks to response matrices and resolves automatic blocks under the optical MPI process count.
+
 - QE phonon manifests, force records and summaries share the atomic JSON writer.
 
 - GPAW/QE phonon summaries retain physical signatures, Phonopy versions and analysis settings; QE also records the numerical force-constant hash.

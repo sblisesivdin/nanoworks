@@ -242,6 +242,7 @@ from nanoworks.engine import (
     normalize_engine_name,
     resolve_calculation_stages,
     resolve_initial_magnetic_moments,
+    resolve_gpaw_optical_blocks,
     resolve_stage_kpoint_settings,
     load_engine_module,
 )
@@ -783,8 +784,6 @@ class DFTConfig:
             self.Opt_max_en = self.Opt_BSE_max_en
         if self.Opt_num_of_data is None:
             self.Opt_num_of_data = self.Opt_BSE_num_of_data
-        if self.Opt_nblocks is None:
-            self.Opt_nblocks = world.size
         
         sanitized_projections = []
         
@@ -6371,6 +6370,10 @@ class dftsolve:
             else self.Ground_gamma
         )
         
+        response_blocks = None
+        if self.Opt_calc_type == 'RPA':
+            response_blocks = resolve_gpaw_optical_blocks(self.Opt_nblocks, world.size)
+
         if self.Mode == 'PW':
             parprint("Starting optical calculation...")
             try:
@@ -6413,7 +6416,7 @@ class dftsolve:
                 )
             except FileNotFoundError as err:
                 # output error, and return with an error code
-                parprint('\033[91mERROR:\033[0mOptical computations must be done separately. Please do ground calculations first.')
+                parprint('\033[91mERROR:\033[0mThe GPAW ground-state file is missing. Run Ground_calc=True in this input or provide the saved ground state.')
                 sys.exit(1)
 
             calc.get_potential_energy()
@@ -6552,6 +6555,7 @@ class dftsolve:
                 df = DielectricFunction(calc=self.struct+'-OPTICAL-GPAW-Result-State.gpw',
                                         frequencies={'type': 'nonlinear', 'domega0': self.Opt_domega0, 'omega2': self.Opt_omega2},
                                         eta=self.Opt_eta, intraband=False, hilbert=False,
+                                        nblocks=response_blocks,
                                         ecut=self.Opt_cut_of_energy, txt=self.struct+'-OPTICAL-GPAW-Log-Calculation-RPA.txt')
                 # Writing to files as: omega, nlfc.real, nlfc.imag, lfc.real, lfc.imag
                 # Here lfc is local field correction
@@ -7673,6 +7677,14 @@ def check_dft_configuration(
                     f'python:{module_name}',
                     f'{module_name} is required for the {stage} stage.',
                 )
+
+        if config.Optical_calc and config.Opt_calc_type == 'RPA':
+            try:
+                blocks = resolve_gpaw_optical_blocks(config.Opt_nblocks, parallel_cores)
+            except ValueError as exc:
+                add('error', 'optical-blocks', str(exc))
+            else:
+                add('ok', 'optical-blocks', f'{blocks} matrix blocks across {parallel_cores} MPI processes')
 
         if config.Optical_calc and config.Mode != 'PW':
             add(
