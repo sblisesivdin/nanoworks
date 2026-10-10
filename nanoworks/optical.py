@@ -78,3 +78,39 @@ def run_optical_exports(callback):
     if error is not None:
         raise RuntimeError('Optical export failed: ' + error)
     return result
+
+
+REDUCED_PLANCK_EV_SECONDS = 6.582119569e-16
+SPEED_OF_LIGHT_CM_PER_SECOND = 2.99792458e10
+
+
+def derive_optical_table(energies, epsilon_real, epsilon_imaginary):
+    """Derive seven-column optical spectra using the existing positive-k convention."""
+    try:
+        energy, real, imaginary = [np.asarray(values, dtype=float)
+                                   for values in (energies, epsilon_real, epsilon_imaginary)]
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError('Dielectric spectra require matching finite one-dimensional arrays.') from exc
+    if (energy.ndim != 1 or len(energy) < 2 or real.shape != energy.shape
+            or imaginary.shape != energy.shape
+            or not all(np.isfinite(values).all() for values in (energy, real, imaginary))):
+        raise ValueError('Dielectric spectra require matching finite one-dimensional arrays.')
+    try:
+        with np.errstate(over='raise', invalid='raise', divide='raise'):
+            # Complex square roots avoid cancellation in |epsilon| - epsilon_real
+            # for weak absorption. Retain the historical nonnegative extinction.
+            index = np.sqrt(real + 1j * imaginary)
+            refractive, extinction = index.real, np.abs(index.imag)
+            reflection = np.empty_like(energy)
+            regular = np.maximum(refractive, extinction) < 1e150
+            n, k = refractive[regular], extinction[regular]
+            reflection[regular] = ((n - 1.) ** 2 + k ** 2) / ((n + 1.) ** 2 + k ** 2)
+            n, k = refractive[~regular], extinction[~regular]
+            denominator = np.hypot(n + 1., k)
+            reflection[~regular] = ((n - 1.) / denominator) ** 2 + (k / denominator) ** 2
+            absorption = (2. * energy / (REDUCED_PLANCK_EV_SECONDS
+                          * SPEED_OF_LIGHT_CM_PER_SECOND)) * extinction
+            table = np.column_stack([energy, real, imaginary, refractive, extinction, absorption, reflection])
+    except FloatingPointError as exc:
+        raise ValueError('Derived optical properties exceed the supported finite numerical range.') from exc
+    return validate_optical_table(table)

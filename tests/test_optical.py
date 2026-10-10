@@ -96,3 +96,41 @@ class TestOpticalExportMPI(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, 'disk full'):
                     run_optical_exports(callback)
         callback.assert_not_called()
+
+
+class TestDerivedOpticalProperties(unittest.TestCase):
+    def test_analytic_dielectric_response_and_units(self):
+        import numpy as np
+        from nanoworks.optical import derive_optical_table
+        table = derive_optical_table([0, 1], [3, 3], [4, 4])
+        np.testing.assert_array_equal(table[:, 3], [2, 2])
+        np.testing.assert_array_equal(table[:, 4], [1, 1])
+        np.testing.assert_allclose(table[:, 6], [.2, .2])
+        self.assertAlmostEqual(table[1, 5], 101354.61433096675)
+        self.assertEqual(table[0, 5], 0)
+
+    def test_weak_absorption_survives_dielectric_subtraction_cancellation(self):
+        import numpy as np
+        from nanoworks.optical import derive_optical_table
+        table = derive_optical_table([0, 1], [4, 4], [1e-12, 1e-12])
+        np.testing.assert_allclose(table[:, 4], [2.5e-13, 2.5e-13], rtol=1e-14, atol=0)
+        self.assertGreater(table[1, 5], 0)
+        np.testing.assert_allclose(table[:, 3] ** 2 - table[:, 4] ** 2, [4, 4])
+        np.testing.assert_allclose(2 * table[:, 3] * table[:, 4], [1e-12, 1e-12], atol=0)
+
+    def test_negative_real_dielectric_and_sign_convention(self):
+        import numpy as np
+        from nanoworks.optical import derive_optical_table
+        table = derive_optical_table([0, 1], [-4, -4], [0, 0])
+        np.testing.assert_array_equal(table[:, 3], [0, 0])
+        np.testing.assert_array_equal(table[:, 4], [2, 2])
+        np.testing.assert_array_equal(table[:, 6], [1, 1])
+        signed = derive_optical_table([0, 1], [3, 3], [-4, -4])
+        np.testing.assert_array_equal(signed[:, 2], [-4, -4])
+        np.testing.assert_array_equal(signed[:, 4], [1, 1])
+
+    def test_nonfinite_or_mismatched_dielectric_data_is_rejected(self):
+        from nanoworks.optical import derive_optical_table
+        for values in (([0, 1], [3], [4, 4]), ([0, 1], [3, float('nan')], [4, 4])):
+            with self.subTest(values=values), self.assertRaisesRegex(ValueError, 'Dielectric spectra'):
+                derive_optical_table(*values)

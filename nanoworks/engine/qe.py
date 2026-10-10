@@ -23,7 +23,10 @@ from nanoworks.pseudos import (
     read_upf_z_valence,
 )
 from nanoworks.hubbard import normalize_hubbard_u
-from nanoworks.optical import validate_optical_table
+from nanoworks.optical import (
+    validate_optical_table, derive_optical_table,
+    REDUCED_PLANCK_EV_SECONDS, SPEED_OF_LIGHT_CM_PER_SECOND,
+)
 from nanoworks.cutoffs import validate_cutoff_settings
 from nanoworks.electrostatics import resolve_qe_electrostatic_settings
 from nanoworks.hybrids import (
@@ -47,8 +50,6 @@ THZ_PER_CM_MINUS_ONE = 0.0299792458
 BOLTZMANN_EV_PER_K = 8.617333262145e-5
 EV_PER_THZ = 4.135667696e-3
 KJ_PER_MOL_PER_EV = 96.48533212331002
-REDUCED_PLANCK_EV_SECONDS = 6.582119569e-16
-SPEED_OF_LIGHT_CM_PER_SECOND = 2.99792458e10
 
 
 def ev_to_rydberg(value):
@@ -4279,65 +4280,14 @@ def prepare_epsilon_optical_data(
         epsilon_imaginary = imaginary['components'][
             component_index
         ]
-        refractive_index = []
-        extinction_coefficient = []
-        absorption_cm_inverse = []
-        reflectivity = []
-
-        for energy, eps_real, eps_imaginary in zip(
-            energies_ev,
-            epsilon_real,
-            epsilon_imaginary,
-        ):
-            epsilon_magnitude = math.hypot(
-                eps_real,
-                eps_imaginary,
-            )
-            refractive = math.sqrt(
-                max(
-                    0.0,
-                    (epsilon_magnitude + eps_real) / 2.0,
-                )
-            )
-            extinction = math.sqrt(
-                max(
-                    0.0,
-                    (epsilon_magnitude - eps_real) / 2.0,
-                )
-            )
-            reflection_denominator = (
-                (1.0 + refractive) ** 2
-                + extinction ** 2
-            )
-
-            refractive_index.append(
-                refractive
-            )
-            extinction_coefficient.append(
-                extinction
-            )
-            absorption_cm_inverse.append(
-                2.0 * energy * extinction
-                / (
-                    REDUCED_PLANCK_EV_SECONDS
-                    * SPEED_OF_LIGHT_CM_PER_SECOND
-                )
-            )
-            reflectivity.append(
-                (
-                    (1.0 - refractive) ** 2
-                    + extinction ** 2
-                )
-                / reflection_denominator
-            )
-
+        table = derive_optical_table(energies_ev, epsilon_real, epsilon_imaginary)
         directions[direction] = {
-            'epsilon_real': epsilon_real,
-            'epsilon_imaginary': epsilon_imaginary,
-            'refractive_index': refractive_index,
-            'extinction_coefficient': extinction_coefficient,
-            'absorption_cm_inverse': absorption_cm_inverse,
-            'reflectivity': reflectivity,
+            'epsilon_real': table[:, 1].tolist(),
+            'epsilon_imaginary': table[:, 2].tolist(),
+            'refractive_index': table[:, 3].tolist(),
+            'extinction_coefficient': table[:, 4].tolist(),
+            'absorption_cm_inverse': table[:, 5].tolist(),
+            'reflectivity': table[:, 6].tolist(),
         }
 
     return {
