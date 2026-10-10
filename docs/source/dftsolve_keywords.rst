@@ -1903,7 +1903,11 @@ Optical Calculations Keywords
     :Type: ``int``
     :Default: ``8``
 
-    Number of bands used in optical calculations.
+    Number of bands used in optical calculations; must be a positive integer.
+    Enabled optical workflows validate finite numeric settings before engine
+    execution. QE and GPAW BSE require an increasing photon-energy range and
+    at least two integer grid points. GPAW RPA validates its nonlinear grid
+    controls instead; unused backend/method parameters do not block a run.
 
 .. code-block:: python
 

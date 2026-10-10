@@ -2560,6 +2560,16 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             ['optical'],
         )
 
+    def test_invalid_optical_input_rejected_before_engine_loading(self):
+        for engine in ('GPAW', 'QE'):
+            with self.subTest(engine=engine):
+                config = DFTConfig(Engine=engine, Optical_calc=True, Opt_calc_type='RPA')
+                config.Opt_eta = float('nan')
+                with patch('nanoworks.dftsolve.load_engine_module') as load:
+                    with self.assertRaisesRegex(ValueError, 'Opt_eta'):
+                        DFTSolver('sample', config)
+                load.assert_not_called()
+
     def test_gpaw_rpa_receives_optical_matrix_block_count(self):
         config = DFTConfig(Engine='GPAW', Optical_calc=True, Opt_calc_type='RPA', Opt_nblocks=2)
         solver = object.__new__(DFTSolver)

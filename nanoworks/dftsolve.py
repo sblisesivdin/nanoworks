@@ -246,6 +246,7 @@ from nanoworks.engine import (
     resolve_stage_kpoint_settings,
     load_engine_module,
 )
+from nanoworks.optical import validate_optical_settings
 from nanoworks.dos import (
     resolve_dos_settings,
     validate_dos_settings,
@@ -785,6 +786,10 @@ class DFTConfig:
         if self.Opt_num_of_data is None:
             self.Opt_num_of_data = self.Opt_BSE_num_of_data
         
+        if self.Optical_calc:
+            for name, value in validate_optical_settings(self).items():
+                setattr(self, name, value)
+
         sanitized_projections = []
         
         for idx, proj in enumerate(self.Projections):
@@ -1207,6 +1212,8 @@ class dftsolve:
         self.Engine = config.Engine
         if config.Phonon_calc:
             validate_phonon_settings(config)
+        if config.Optical_calc:
+            validate_optical_settings(config)
         self.engine = load_engine_module(self.Engine)
         portable_scf = {
             'accuracy': config.SCF_accuracy,
@@ -7361,6 +7368,12 @@ def check_dft_configuration(
         config.Engine
     )
 
+    if config.Optical_calc:
+        try:
+            validate_optical_settings(config)
+        except (TypeError, ValueError) as exc:
+            add('error', 'optical-settings', str(exc))
+
     phonon_details = None
     if config.Phonon_calc:
         try:
@@ -7469,21 +7482,6 @@ def check_dft_configuration(
                 'optical-method',
                 "Native QE optics requires Opt_calc_type = 'RPA'.",
             )
-
-        if config.Optical_calc:
-            if config.Opt_max_en <= config.Opt_min_en:
-                add(
-                    'error',
-                    'optical-grid',
-                    'Opt_max_en must be greater than Opt_min_en.',
-                )
-
-            if int(config.Opt_num_of_data) < 2:
-                add(
-                    'error',
-                    'optical-grid',
-                    'Opt_num_of_data must be at least 2.',
-                )
 
         if config.DOS_calc:
             try:

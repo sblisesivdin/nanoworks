@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- Optical workflows validate method-specific numerical inputs before engine execution, without truncating fractional band/grid counts.
+
 - GPAW RPA optics applies Opt_nblocks to response matrices and resolves automatic blocks under the optical MPI process count.
 
 - QE phonon manifests, force records and summaries share the atomic JSON writer.
