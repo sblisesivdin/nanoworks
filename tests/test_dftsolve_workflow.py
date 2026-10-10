@@ -2570,6 +2570,62 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                         DFTSolver('sample', config)
                 load.assert_not_called()
 
+    def test_gpaw_bse_and_rpa_use_the_same_derived_property_conversion(self):
+        import numpy as np
+        for method in ('BSE', 'RPA'):
+            with self.subTest(method=method), tempfile.TemporaryDirectory() as tmpdir:
+                solver = object.__new__(DFTSolver)
+                solver.struct = str(Path(tmpdir) / 'sample')
+                solver.Opt_calc_type = method
+                prefix = solver.struct + '-OPTICAL-GPAW-Result-Calculation'
+                if method == 'BSE':
+                    np.savetxt(prefix + '-BSE_dielec.csv', [[0, 3, 4], [1, 3, 4]], delimiter=',')
+                else:
+                    for direction in 'xyz':
+                        np.savetxt(prefix + f'-RPA_dielec_{direction}direction.csv',
+                                   [[0, 3, 4, 3, 4], [1, 3, 4, 3, 4]], delimiter=',')
+                outputs = solver._export_gpaw_optical_tables()
+                self.assertEqual(len(outputs), 1 if method == 'BSE' else 6)
+                for path in outputs:
+                    data = np.loadtxt(path, skiprows=1)
+                    np.testing.assert_array_equal(data[:, 3:5], [[2, 1], [2, 1]])
+                    self.assertAlmostEqual(data[1, 5], 101354.61433096675, places=5)
+                    np.testing.assert_allclose(data[:, 6], [.2, .2])
+
+    def test_gpaw_lfc_x_absorption_uses_lfc_extinction(self):
+        import numpy as np
+        with tempfile.TemporaryDirectory() as tmpdir:
+            solver = object.__new__(DFTSolver)
+            solver.struct = str(Path(tmpdir) / 'sample')
+            solver.Opt_calc_type = 'RPA'
+            prefix = solver.struct + '-OPTICAL-GPAW-Result-Calculation'
+            for direction in 'xyz':
+                np.savetxt(prefix + f'-RPA_dielec_{direction}direction.csv',
+                           [[0, 3, 4, 0, 8], [1, 3, 4, 0, 8]], delimiter=',')
+            solver._export_gpaw_optical_tables()
+            nlfc = np.loadtxt(prefix + '-RPA-NLFC-AllData_xdirection.dat', skiprows=1)
+            lfc = np.loadtxt(prefix + '-RPA-LFC-AllData_xdirection.dat', skiprows=1)
+            self.assertEqual(nlfc[1, 4], 1.)
+            self.assertEqual(lfc[1, 4], 2.)
+            self.assertAlmostEqual(lfc[1, 5] / nlfc[1, 5], 2.)
+
+    def test_invalid_last_gpaw_rpa_direction_preserves_previous_tables(self):
+        import numpy as np
+        with tempfile.TemporaryDirectory() as tmpdir:
+            solver = object.__new__(DFTSolver)
+            solver.struct = str(Path(tmpdir) / 'sample')
+            solver.Opt_calc_type = 'RPA'
+            prefix = solver.struct + '-OPTICAL-GPAW-Result-Calculation'
+            for direction in 'xyz':
+                grid = [0, 2] if direction == 'z' else [0, 1]
+                np.savetxt(prefix + f'-RPA_dielec_{direction}direction.csv',
+                           [[grid[0], 3, 4, 3, 4], [grid[1], 3, 4, 3, 4]], delimiter=',')
+            target = Path(prefix + '-RPA-NLFC-AllData_xdirection.dat')
+            target.write_text('previous completed optical table')
+            with self.assertRaisesRegex(RuntimeError, 'different photon-energy grids'):
+                solver._export_gpaw_optical_tables()
+            self.assertEqual(target.read_text(), 'previous completed optical table')
+
     def test_gpaw_bse_export_uses_only_active_method_and_propagates_plot_failure(self):
         import numpy as np
         with tempfile.TemporaryDirectory() as tmpdir:

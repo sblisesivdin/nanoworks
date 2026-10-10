@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- GPAW RPA/BSE optical tables share stable conversion and atomic writes; LFC x-direction absorption now uses its own extinction coefficient.
+
 - Optical property conversion uses a shared stable complex-square-root calculation, preserving weak absorption in QE spectra.
 
 - The Slurm profile template is bundled under nanoworks/examples and included by --install-examples.

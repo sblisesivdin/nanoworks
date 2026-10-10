@@ -24,7 +24,7 @@ from nanoworks.pseudos import (
 )
 from nanoworks.hubbard import normalize_hubbard_u
 from nanoworks.optical import (
-    validate_optical_table, derive_optical_table,
+    validate_optical_table, derive_optical_table, write_optical_table,
     REDUCED_PLANCK_EV_SECONDS, SPEED_OF_LIGHT_CM_PER_SECOND,
 )
 from nanoworks.cutoffs import validate_cutoff_settings
@@ -4336,16 +4336,7 @@ def write_epsilon_optical_data(
             f"{output_prefix}-AllData_{direction}direction.dat"
         )
 
-        temporary = Path(str(output_file) + '.tmp')
-        try:
-            with temporary.open('w', encoding='utf-8') as fd:
-                fd.write('Energy(eV) Eps_real Eps_img Refractive_Index '
-                         'Extinction_Index Absorption(1/cm) Reflectivity\n')
-                for values in table:
-                    fd.write(' '.join(f'{value:.12g}' for value in values) + '\n')
-            temporary.replace(output_file)
-        finally:
-            temporary.unlink(missing_ok=True)
+        write_optical_table(output_file, table)
 
         output_files[direction] = output_file
 

@@ -1904,6 +1904,12 @@ Optical Calculations Keywords
     :Default: ``8``
 
     Number of bands used in optical calculations; must be a positive integer.
+    GPAW RPA/BSE and QE use the same dielectric-to-optical conversion and
+    physical constants for refractive index, extinction, absorption (1/cm)
+    and reflectivity. The existing nonnegative extinction convention is
+    retained. Complex square roots preserve weak absorption. GPAW derived
+    spectra are validated as a complete set and written atomically; its
+    dielectric-response calculations remain native GPAW operations.
     Optical plots and QE derived tables require finite seven-column spectra
     with at least two points on an increasing nonnegative photon-energy grid.
     QE validates all three directions before replacing existing tables and

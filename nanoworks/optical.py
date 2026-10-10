@@ -114,3 +114,23 @@ def derive_optical_table(energies, epsilon_real, epsilon_imaginary):
     except FloatingPointError as exc:
         raise ValueError('Derived optical properties exceed the supported finite numerical range.') from exc
     return validate_optical_table(table)
+
+
+OPTICAL_TABLE_HEADER = ('Energy(eV) Eps_real Eps_img Refractive_Index '
+                        'Extinction_Index Absorption(1/cm) Reflectivity')
+
+
+def write_optical_table(path, data):
+    """Publish a validated optical table without truncating a previous result."""
+    from pathlib import Path
+    table = validate_optical_table(data)
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = Path(str(path) + '.tmp')
+    try:
+        with temporary.open('w', encoding='utf-8') as stream:
+            np.savetxt(stream, table, fmt='%.12g', header=OPTICAL_TABLE_HEADER, comments='')
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
+    return path
