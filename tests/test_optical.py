@@ -49,3 +49,27 @@ class TestOpticalSettings(unittest.TestCase):
     def test_qe_broadening_must_match_epsilon_input_requirements(self):
         with self.assertRaisesRegex(ValueError, 'Opt_eta'):
             validate_optical_settings(self.config(Engine='QE', Opt_eta=0))
+
+
+class TestOpticalTables(unittest.TestCase):
+    def test_finite_negative_dielectric_values_are_preserved(self):
+        import numpy as np
+        from nanoworks.optical import validate_optical_table
+        data = np.array([[0, -2, 1, .3, 1.4, 0, .5], [1, -1, 1, .4, 1.1, 2, .3]])
+        result = validate_optical_table(data)
+        np.testing.assert_array_equal(result, data)
+        data[0, 1] = 99
+        self.assertEqual(result[0, 1], -2)
+
+    def test_malformed_or_nonfinite_spectra_are_rejected(self):
+        import numpy as np
+        from nanoworks.optical import validate_optical_table
+        valid = np.ones((2, 7)); valid[:, 0] = [0, 1]
+        cases = [valid[:, :6], valid[:1], valid.tolist()[0],
+                 valid.copy(), valid.copy(), valid.copy()]
+        cases[3][1, 1] = np.nan
+        cases[4][:, 0] = [1, 0]
+        cases[5][:, 0] = [-1, 0]
+        for table in cases:
+            with self.subTest(table=table), self.assertRaisesRegex(ValueError, 'Optical tables'):
+                validate_optical_table(table)

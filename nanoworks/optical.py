@@ -50,3 +50,16 @@ def validate_optical_settings(config):
             number('Opt_domega0', 0., strict=True)
             number('Opt_omega2', 0., strict=True)
     return result
+
+
+def validate_optical_table(data):
+    """Require finite seven-column spectra on an increasing nonnegative grid."""
+    try:
+        table = np.asarray(data, dtype=float)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError('Optical tables require finite N x 7 arrays with at least two energy points.') from exc
+    if (table.ndim != 2 or table.shape[1] != 7 or len(table) < 2
+            or not np.isfinite(table).all() or np.any(table[:, 0] < 0)
+            or np.any(np.diff(table[:, 0]) <= 0)):
+        raise ValueError('Optical tables require finite N x 7 arrays on an increasing nonnegative energy grid.')
+    return table.copy()

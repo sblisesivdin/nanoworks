@@ -2052,6 +2052,22 @@ class TestQEEngine(unittest.TestCase):
                     imaginary_file,
                 )
 
+    def test_invalid_last_optical_direction_preserves_previous_tables(self):
+        optical_data = {'energies_ev': [0., 1.], 'directions': {
+            direction: {name: [1., 2.] for name in ('epsilon_real', 'epsilon_imaginary',
+                'refractive_index', 'extinction_coefficient', 'absorption_cm_inverse', 'reflectivity')}
+            for direction in 'xyz'}}
+        optical_data['directions']['z']['epsilon_real'][1] = float('nan')
+        with tempfile.TemporaryDirectory() as tmpdir:
+            prefix = Path(tmpdir) / 'sample'
+            files = [Path(f'{prefix}-AllData_{direction}direction.dat') for direction in 'xyz']
+            for path in files:
+                path.write_text('previous completed spectrum')
+            with self.assertRaisesRegex(ValueError, 'Optical tables'):
+                write_epsilon_optical_data(optical_data, prefix)
+            for path in files:
+                self.assertEqual(path.read_text(), 'previous completed spectrum')
+
     def test_write_epsilon_optical_data(self):
         optical_data = {
             'energies_ev': [0.0, 1.0],

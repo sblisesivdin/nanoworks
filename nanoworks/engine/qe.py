@@ -23,6 +23,7 @@ from nanoworks.pseudos import (
     read_upf_z_valence,
 )
 from nanoworks.hubbard import normalize_hubbard_u
+from nanoworks.optical import validate_optical_table
 from nanoworks.cutoffs import validate_cutoff_settings
 from nanoworks.electrostatics import resolve_qe_electrostatic_settings
 from nanoworks.hybrids import (
@@ -4354,11 +4355,6 @@ def write_epsilon_optical_data(
     output_prefix = Path(
         output_prefix
     ).expanduser()
-    output_prefix.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
     energies_ev = optical_data[
         'energies_ev'
     ]
@@ -4373,21 +4369,19 @@ def write_epsilon_optical_data(
         'absorption_cm_inverse',
         'reflectivity',
     )
-    output_files = {}
-
+    tables = {}
     for direction in 'xyz':
-        direction_data = directions[
-            direction
-        ]
+        try:
+            direction_data = directions[direction]
+            table = np.column_stack([energies_ev, *[direction_data[name] for name in field_names]])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError('QE optical data columns must use a common length for all three directions.') from exc
+        tables[direction] = validate_optical_table(table)
 
-        if any(
-            len(direction_data[field_name]) != len(energies_ev)
-            for field_name in field_names
-        ):
-            raise ValueError(
-                "QE optical data columns must use a common length."
-            )
-
+    # Validate every direction before replacing any previously completed table.
+    output_prefix.parent.mkdir(parents=True, exist_ok=True)
+    output_files = {}
+    for direction, table in tables.items():
         output_file = Path(
             f"{output_prefix}-AllData_{direction}direction.dat"
         )
@@ -4401,21 +4395,8 @@ def write_epsilon_optical_data(
                 "Extinction_Index Absorption(1/cm) Reflectivity\n"
             )
 
-            for index, energy in enumerate(energies_ev):
-                values = [
-                    energy,
-                    *(
-                        direction_data[field_name][index]
-                        for field_name in field_names
-                    ),
-                ]
-                fd.write(
-                    " ".join(
-                        f"{value:.12g}"
-                        for value in values
-                    )
-                    + "\n"
-                )
+            for values in table:
+                fd.write(' '.join(f'{value:.12g}' for value in values) + '\n')
 
         output_files[direction] = output_file
 

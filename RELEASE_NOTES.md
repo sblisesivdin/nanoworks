@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- Optical plots and QE derived tables reject malformed spectra; all QE directions are checked before replacing previous tables.
+
 - Optical workflows validate method-specific numerical inputs before engine execution, without truncating fractional band/grid counts.
 
 - GPAW RPA optics applies Opt_nblocks to response matrices and resolves automatic blocks under the optical MPI process count.

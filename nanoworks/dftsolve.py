@@ -246,7 +246,7 @@ from nanoworks.engine import (
     resolve_stage_kpoint_settings,
     load_engine_module,
 )
-from nanoworks.optical import validate_optical_settings
+from nanoworks.optical import validate_optical_settings, validate_optical_table
 from nanoworks.dos import (
     resolve_dos_settings,
     validate_dos_settings,
@@ -6720,6 +6720,8 @@ class dftsolve:
             file_prefix (str): Prefix string for the saved .png files.
             title_suffix (str): String appended to the plot titles (e.g., 'BSE' or 'RPA LFC (x)').
         """
+        data = validate_optical_table(data)
+
         import matplotlib
         matplotlib.use('Agg') # Essential for headless cluster/HPC environments
         import matplotlib.pyplot as plt

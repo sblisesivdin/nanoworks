@@ -1904,6 +1904,9 @@ Optical Calculations Keywords
     :Default: ``8``
 
     Number of bands used in optical calculations; must be a positive integer.
+    Optical plots and QE derived tables require finite seven-column spectra
+    with at least two points on an increasing nonnegative photon-energy grid.
+    QE validates all three directions before replacing existing tables.
     Enabled optical workflows validate finite numeric settings before engine
     execution. QE and GPAW BSE require an increasing photon-energy range and
     at least two integer grid points. GPAW RPA validates its nonlinear grid
