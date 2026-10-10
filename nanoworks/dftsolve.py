@@ -6443,6 +6443,7 @@ class dftsolve:
                              valence_bands=self.Opt_BSE_valence,
                              conduction_bands=self.Opt_BSE_conduction,
                              nbands=self.Opt_num_of_bands,
+                             eshift=self.Opt_shift_en,
                              mode='BSE',
                              integrate_gamma='sphere', txt=self.struct+'-OPTICAL-GPAW-Log-Calculation-BSE.txt')
 

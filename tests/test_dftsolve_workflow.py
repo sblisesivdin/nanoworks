@@ -2587,6 +2587,29 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                         DFTSolver('sample', config)
                 load.assert_not_called()
 
+    def test_gpaw_bse_passes_optical_shift_to_response_without_shifting_grid(self):
+        import numpy as np
+        for shift in (0., 1.25, -.5):
+            with self.subTest(shift=shift), tempfile.TemporaryDirectory() as tmpdir:
+                config = DFTConfig(Engine='GPAW', Optical_calc=True,
+                                   Opt_calc_type='BSE', Opt_shift_en=shift)
+                solver = object.__new__(DFTSolver)
+                solver.__dict__.update(vars(config))
+                solver.struct = str(Path(tmpdir) / 'sample')
+                solver.engine = SimpleNamespace(is_hybrid=Mock(return_value=False),
+                                                 prepare_optical_calc=Mock(return_value=Mock()))
+                solver._export_gpaw_optical_tables = Mock()
+                solver._plot_optical_results = Mock()
+                bse = Mock()
+                with patch.dict(sys.modules, {'gpaw.response.bse': SimpleNamespace(BSE=bse)}):
+                    solver._opticalcalc_gpaw()
+                self.assertEqual(bse.call_args.kwargs['eshift'], shift)
+                grid = bse.return_value.get_dielectric_function.call_args.kwargs['w_w']
+                np.testing.assert_array_equal(grid, np.linspace(
+                    config.Opt_min_en, config.Opt_max_en, config.Opt_num_of_data))
+                solver.engine.prepare_optical_calc.return_value.diagonalize_full_hamiltonian.assert_called_once()
+                solver._export_gpaw_optical_tables.assert_called_once()
+
     def test_gpaw_bse_and_rpa_use_the_same_derived_property_conversion(self):
         import numpy as np
         for method in ('BSE', 'RPA'):

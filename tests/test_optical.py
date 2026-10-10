@@ -26,6 +26,16 @@ class TestOpticalSettings(unittest.TestCase):
         validate_optical_settings(self.config(Spin_calc=True))
         validate_optical_settings(self.config(Engine='QE', Spin_calc=True))
 
+    def test_shift_is_validated_only_when_used(self):
+        for engine, method in (('GPAW', 'BSE'), ('QE', 'RPA')):
+            for shift in (float('nan'), float('inf'), True):
+                with self.subTest(engine=engine, shift=shift), self.assertRaisesRegex(ValueError, 'Opt_shift_en'):
+                    validate_optical_settings(self.config(Engine=engine, Opt_calc_type=method, Opt_shift_en=shift))
+            for shift in (-.5, 0., 1.25):
+                self.assertEqual(validate_optical_settings(self.config(
+                    Engine=engine, Opt_calc_type=method, Opt_shift_en=shift))['Opt_shift_en'], shift)
+        validate_optical_settings(self.config(Opt_shift_en=float('nan')))
+
     def test_invalid_common_parameters(self):
         for engine in ('GPAW', 'QE'):
             for change in (dict(Opt_eta=float('nan')), dict(Opt_eta=-1),

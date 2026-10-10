@@ -56,9 +56,9 @@ def validate_optical_settings(config):
         count('Opt_num_of_data', 2)
         if result['Opt_max_en'] <= result['Opt_min_en']:
             raise ValueError('Opt_max_en must be greater than Opt_min_en.')
-    if config.Engine == 'QE':
+    if config.Engine == 'QE' or method == 'BSE':
         number('Opt_shift_en')
-    else:
+    if config.Engine != 'QE':
         number('Opt_cut_of_energy', 0., strict=True)
         if method == 'RPA':
             number('Opt_domega0', 0., strict=True)

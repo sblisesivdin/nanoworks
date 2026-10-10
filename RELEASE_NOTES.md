@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- GPAW BSE now applies Opt_shift_en as a scissors correction without shifting the requested photon-energy grid.
+
 - Unsupported GPAW optical modes and spin-dependent BSE stop before ground-state loading and full diagonalization.
 
 - GPAW RPA/BSE optical tables share stable conversion and atomic writes; LFC x-direction absorption now uses its own extinction coefficient.

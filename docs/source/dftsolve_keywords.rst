@@ -1806,8 +1806,11 @@ Optical Calculations Keywords
     :Default: ``0.0``
     :Unit: eV
 
-    Shift added to energy values. Used by GPAW BSE and native QE
-    ``epsilon.x`` calculations.
+    Transition-energy correction in eV. Passed to the GPAW BSE
+    ``eshift`` scissors operator and native QE ``epsilon.x``. The correction
+    acts inside the response calculation; the requested photon-energy grid
+    is retained. Positive and negative finite shifts are accepted.
+    GPAW RPA does not use this parameter.
 
 .. code-block:: python
 
