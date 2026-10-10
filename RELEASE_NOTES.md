@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- Unsupported GPAW optical modes and spin-dependent BSE stop before ground-state loading and full diagonalization.
+
 - GPAW RPA/BSE optical tables share stable conversion and atomic writes; LFC x-direction absorption now uses its own extinction coefficient.
 
 - Optical property conversion uses a shared stable complex-square-root calculation, preserving weak absorption in QE spectra.

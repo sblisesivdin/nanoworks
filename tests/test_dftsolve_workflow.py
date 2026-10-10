@@ -2560,6 +2560,23 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             ['optical'],
         )
 
+    def test_unsupported_gpaw_optics_stops_before_engine_and_state_loading(self):
+        for name, value, message in (('Mode', 'LCAO', 'PW mode'),
+                                     ('Spin_calc', True, 'Spin_calc')):
+            with self.subTest(name=name):
+                config = DFTConfig(Engine='GPAW', Optical_calc=True, Opt_calc_type='BSE')
+                setattr(config, name, value)
+                with patch('nanoworks.dftsolve.load_engine_module') as load:
+                    with self.assertRaisesRegex(ValueError, message):
+                        DFTSolver('sample', config)
+                load.assert_not_called()
+                solver = object.__new__(DFTSolver)
+                solver.__dict__.update(vars(config))
+                solver.engine = SimpleNamespace(prepare_optical_calc=Mock())
+                with self.assertRaisesRegex(ValueError, message):
+                    solver._opticalcalc_gpaw()
+                solver.engine.prepare_optical_calc.assert_not_called()
+
     def test_invalid_optical_input_rejected_before_engine_loading(self):
         for engine in ('GPAW', 'QE'):
             with self.subTest(engine=engine):

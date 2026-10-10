@@ -17,6 +17,15 @@ class TestOpticalSettings(unittest.TestCase):
         values.update(changes)
         return SimpleNamespace(**values)
 
+    def test_gpaw_rejects_unsupported_mode_and_spin_bse(self):
+        for changes, message in ((dict(Mode='FD'), 'PW mode'),
+                                 (dict(Mode='LCAO'), 'PW mode'),
+                                 (dict(Opt_calc_type='BSE', Spin_calc=True), 'Spin_calc')):
+            with self.subTest(changes=changes), self.assertRaisesRegex(ValueError, message):
+                validate_optical_settings(self.config(**changes))
+        validate_optical_settings(self.config(Spin_calc=True))
+        validate_optical_settings(self.config(Engine='QE', Spin_calc=True))
+
     def test_invalid_common_parameters(self):
         for engine in ('GPAW', 'QE'):
             for change in (dict(Opt_eta=float('nan')), dict(Opt_eta=-1),

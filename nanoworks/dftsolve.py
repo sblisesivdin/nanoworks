@@ -248,7 +248,7 @@ from nanoworks.engine import (
 )
 from nanoworks.optical import (
     validate_optical_settings, validate_optical_table, run_optical_exports,
-    derive_optical_table, write_optical_table,
+    derive_optical_table, write_optical_table, validate_gpaw_optical_workflow,
 )
 from nanoworks.dos import (
     resolve_dos_settings,
@@ -6379,6 +6379,7 @@ class dftsolve:
             else self.Ground_gamma
         )
         
+        self.Opt_calc_type = validate_gpaw_optical_workflow(self)
         response_blocks = None
         if self.Opt_calc_type == 'RPA':
             response_blocks = resolve_gpaw_optical_blocks(self.Opt_nblocks, world.size)
@@ -6437,9 +6438,6 @@ class dftsolve:
             if self.Opt_calc_type == 'BSE':
                 from gpaw.response.bse import BSE
                 
-                if self.Spin_calc == True:
-                   parprint('\033[91mERROR:\033[0mBSE calculations can not run with spin dependent data.')
-                   sys.exit(1)
                 parprint('Starting BSE calculations')
                 bse = BSE(calc= self.struct+'-OPTICAL-GPAW-Result-State.gpw', ecut=self.Opt_cut_of_energy,
                              valence_bands=self.Opt_BSE_valence,

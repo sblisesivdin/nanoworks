@@ -1818,7 +1818,9 @@ Optical Calculations Keywords
     :Type: ``Sequence of integers``
     :Default: ``range(0,3)``
 
-    Valence bands used in BSE calculation.
+    Valence bands used in BSE calculation. Nanoworks GPAW BSE requires
+    ``Mode = 'PW'`` and ``Spin_calc = False``; incompatible settings are
+    rejected before wavefunction preparation and full diagonalization.
 
 .. code-block:: python
 

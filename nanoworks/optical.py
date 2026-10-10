@@ -10,11 +10,25 @@ from numbers import Integral, Real
 import numpy as np
 
 
+def validate_gpaw_optical_workflow(config):
+    """Reject unsupported GPAW response workflows before preparing wavefunctions."""
+    method = str(config.Opt_calc_type).strip().upper()
+    if method not in ('RPA', 'BSE'):
+        raise ValueError('Opt_calc_type must be RPA or BSE.')
+    if getattr(config, 'Mode', 'PW') != 'PW':
+        raise ValueError('GPAW optical calculations require PW mode.')
+    if method == 'BSE' and getattr(config, 'Spin_calc', False):
+        raise ValueError('Nanoworks GPAW BSE calculations do not support Spin_calc=True.')
+    return method
+
+
 def validate_optical_settings(config):
     """Validate only parameters used by the selected optical method."""
     method = str(config.Opt_calc_type).strip().upper()
     if method not in ('RPA', 'BSE'):
         raise ValueError('Opt_calc_type must be RPA or BSE.')
+    if config.Engine == 'GPAW':
+        method = validate_gpaw_optical_workflow(config)
     result = {'Opt_calc_type': method}
 
     def number(name, minimum=None, strict=False):
