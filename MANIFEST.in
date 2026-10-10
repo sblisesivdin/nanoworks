@@ -3,7 +3,6 @@
 # See LICENSE.md in the project root for license terms.
 
 graft nanoworks
-graft examples
 include pyproject.toml
 include README.md
 include LICENSE.md

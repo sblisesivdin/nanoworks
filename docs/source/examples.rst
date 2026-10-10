@@ -19,6 +19,16 @@ Now your example folder is located in the ``~/.nanoworks/examples/``
 
 Below is a categorized overview of the available examples and what they demonstrate. You can run any of the example scripts directly using Python.
 
+Cluster Execution
+-----------------
+
+* **Slurm Profile Template:**
+  ``slurm-profiles/truba-example.json`` provides reusable scheduler and QE
+  module settings. It is bundled with the other examples and copied by
+  ``nanoworks --install-examples``. Replace the project, partition, QoS and
+  module values with your cluster's actual settings; see the folder's README.
+  The template does not submit jobs automatically.
+
 Electronic Properties & Basic DFT
 ---------------------------------
 

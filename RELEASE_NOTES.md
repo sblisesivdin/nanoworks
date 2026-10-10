@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- The Slurm profile template is bundled under nanoworks/examples and included by --install-examples.
+
 - GPAW optical export failures stop all MPI ranks and stale files from other methods are ignored; QE optical tables are replaced atomically.
 
 - Optical plots and QE derived tables reject malformed spectra; all QE directions are checked before replacing previous tables.

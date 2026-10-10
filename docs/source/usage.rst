@@ -301,6 +301,10 @@ every command. Pass a file path directly or place a named profile at
    $ dftsolve --dry-run --cluster-profile truba -p 48 \
        -g geometry.cif -i input.py
 
+A bundled template is available after ``nanoworks --install-examples`` at
+``~/.nanoworks/examples/slurm-profiles/truba-example.json``. Edit its
+placeholder project and site-specific scheduler/module values before use.
+
 Supplying ``--cluster-profile`` selects Slurm automatically. Explicit
 ``--slurm-*`` options override the corresponding profile values. Profiles do
 not accept arbitrary shell commands; module names and scheduler values pass

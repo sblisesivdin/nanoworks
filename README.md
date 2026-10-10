@@ -171,7 +171,9 @@ dftsolve --dry-run --cluster-profile truba -p 48 \
 
 The profile supports `time`, `memory`, `partition`, `account`, `qos`,
 `modules`, and `job_name`. Explicit `--slurm-*` options override profile
-values. See `examples/slurm-profiles/truba-example.json`.
+values. See `nanoworks/examples/slurm-profiles/truba-example.json`.
+After `nanoworks --install-examples`, the profile is available at
+`~/.nanoworks/examples/slurm-profiles/truba-example.json`.
 
 ### 2. mdsolve (formerly asapsolve.py)
 Perform molecular dynamics calculations using ASAP3 or LAMMPS with OpenKIM interatomic potentials. Select `Ensemble = 'NVT'` for the common Langevin workflow, `Ensemble = 'NVE'` for LAMMPS microcanonical dynamics, or `Ensemble = 'NPT'` for fully periodic 3D isotropic pressure coupling. LAMMPS runs can use OpenKIM or native EAM/alloy, EAM/fs, Tersoff, and SW potentials and can optionally perform a conjugate-gradient energy minimization before MD and compute mean squared displacement, species-resolved MSD, radial distribution functions, and velocity autocorrelation functions during the trajectory, and estimate diffusion coefficients from MSD or VACF Green-Kubo integration. Long LAMMPS runs can also write and resume from binary restart checkpoints, with configurable trajectory and thermodynamic output cadence. An optional equilibration segment can be run before production analyses.
