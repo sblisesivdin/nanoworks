@@ -4386,17 +4386,16 @@ def write_epsilon_optical_data(
             f"{output_prefix}-AllData_{direction}direction.dat"
         )
 
-        with output_file.open(
-            'w',
-            encoding='utf-8',
-        ) as fd:
-            fd.write(
-                "Energy(eV) Eps_real Eps_img Refractive_Index "
-                "Extinction_Index Absorption(1/cm) Reflectivity\n"
-            )
-
-            for values in table:
-                fd.write(' '.join(f'{value:.12g}' for value in values) + '\n')
+        temporary = Path(str(output_file) + '.tmp')
+        try:
+            with temporary.open('w', encoding='utf-8') as fd:
+                fd.write('Energy(eV) Eps_real Eps_img Refractive_Index '
+                         'Extinction_Index Absorption(1/cm) Reflectivity\n')
+                for values in table:
+                    fd.write(' '.join(f'{value:.12g}' for value in values) + '\n')
+            temporary.replace(output_file)
+        finally:
+            temporary.unlink(missing_ok=True)
 
         output_files[direction] = output_file
 

@@ -2068,6 +2068,21 @@ class TestQEEngine(unittest.TestCase):
             for path in files:
                 self.assertEqual(path.read_text(), 'previous completed spectrum')
 
+    def test_failed_qe_optical_table_publication_preserves_previous_file(self):
+        optical_data = {'energies_ev': [0., 1.], 'directions': {
+            direction: {name: [1., 2.] for name in ('epsilon_real', 'epsilon_imaginary',
+                'refractive_index', 'extinction_coefficient', 'absorption_cm_inverse', 'reflectivity')}
+            for direction in 'xyz'}}
+        with tempfile.TemporaryDirectory() as tmpdir:
+            prefix = Path(tmpdir) / 'sample'
+            target = Path(f'{prefix}-AllData_xdirection.dat')
+            target.write_text('previous completed spectrum')
+            with patch('pathlib.Path.replace', side_effect=OSError('publication failed')):
+                with self.assertRaisesRegex(OSError, 'publication failed'):
+                    write_epsilon_optical_data(optical_data, prefix)
+            self.assertEqual(target.read_text(), 'previous completed spectrum')
+            self.assertFalse(Path(str(target) + '.tmp').exists())
+
     def test_write_epsilon_optical_data(self):
         optical_data = {
             'energies_ev': [0.0, 1.0],

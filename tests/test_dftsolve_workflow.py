@@ -2570,6 +2570,32 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                         DFTSolver('sample', config)
                 load.assert_not_called()
 
+    def test_gpaw_bse_export_uses_only_active_method_and_propagates_plot_failure(self):
+        import numpy as np
+        with tempfile.TemporaryDirectory() as tmpdir:
+            solver = object.__new__(DFTSolver)
+            solver.struct = str(Path(tmpdir) / 'sample')
+            solver.Opt_calc_type = 'BSE'
+            table = np.ones((2, 7)); table[:, 0] = [0, 1]
+            np.savetxt(solver.struct + '-OPTICAL-GPAW-Result-Calculation-BSE-AllData.dat', table, header='columns')
+            # A stale file from another method must not be read or plotted.
+            Path(solver.struct + '-OPTICAL-GPAW-Result-Calculation-RPA-LFC-AllData_xdirection.dat').write_text('invalid old RPA data')
+            solver._generate_optical_figures = Mock(side_effect=OSError('disk full'))
+            with self.assertRaisesRegex(RuntimeError, 'Optical export failed.*disk full'):
+                solver._plot_optical_results()
+            solver._generate_optical_figures.assert_called_once()
+            self.assertEqual(solver._generate_optical_figures.call_args.args[2], 'BSE')
+
+    def test_missing_gpaw_rpa_spectrum_stops_before_plotting(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            solver = object.__new__(DFTSolver)
+            solver.struct = str(Path(tmpdir) / 'sample')
+            solver.Opt_calc_type = 'RPA'
+            solver._generate_optical_figures = Mock()
+            with self.assertRaisesRegex(RuntimeError, 'Optical export failed.*FileNotFoundError'):
+                solver._plot_optical_results()
+            solver._generate_optical_figures.assert_not_called()
+
     def test_gpaw_rpa_receives_optical_matrix_block_count(self):
         config = DFTConfig(Engine='GPAW', Optical_calc=True, Opt_calc_type='RPA', Opt_nblocks=2)
         solver = object.__new__(DFTSolver)

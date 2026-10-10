@@ -73,3 +73,26 @@ class TestOpticalTables(unittest.TestCase):
         for table in cases:
             with self.subTest(table=table), self.assertRaisesRegex(ValueError, 'Optical tables'):
                 validate_optical_table(table)
+
+
+class TestOpticalExportMPI(unittest.TestCase):
+    def test_root_failure_is_broadcast(self):
+        from unittest.mock import Mock, patch
+        from nanoworks.optical import run_optical_exports
+        callback = Mock(side_effect=OSError('disk full'))
+        with patch('ase.parallel.world', SimpleNamespace(rank=0)):
+            with patch('ase.parallel.broadcast', side_effect=lambda value, **kwargs: value) as broadcast:
+                with self.assertRaisesRegex(RuntimeError, 'Optical export failed.*disk full'):
+                    run_optical_exports(callback)
+        callback.assert_called_once()
+        self.assertEqual(broadcast.call_args.args[0][0], 'OSError: disk full')
+
+    def test_nonroot_receives_failure_without_opening_files(self):
+        from unittest.mock import Mock, patch
+        from nanoworks.optical import run_optical_exports
+        callback = Mock()
+        with patch('ase.parallel.world', SimpleNamespace(rank=1)):
+            with patch('ase.parallel.broadcast', return_value=('OSError: disk full', None)):
+                with self.assertRaisesRegex(RuntimeError, 'disk full'):
+                    run_optical_exports(callback)
+        callback.assert_not_called()

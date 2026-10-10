@@ -246,7 +246,7 @@ from nanoworks.engine import (
     resolve_stage_kpoint_settings,
     load_engine_module,
 )
-from nanoworks.optical import validate_optical_settings, validate_optical_table
+from nanoworks.optical import validate_optical_settings, validate_optical_table, run_optical_exports
 from nanoworks.dos import (
     resolve_dos_settings,
     validate_dos_settings,
@@ -6798,45 +6798,29 @@ class dftsolve:
         plt.close(fig)
 
     def _plot_optical_results(self):
-        """
-        Scans for generated optical .dat files and plots them.
-        Execution is strictly isolated to the master node (rank 0).
-        """
-        from ase.parallel import world, parprint
-        import os
-        import numpy as np
-
-        # Safety check: Ensure only the master core executes plotting
-        if world.rank == 0:
-            parprint("Generating optical property figures...")
-            
-            # 1. Process BSE Data
-            bse_filename = f"{self.struct}-OPTICAL-GPAW-Result-Calculation-BSE-AllData.dat"
-            if os.path.exists(bse_filename):
-                try:
-                    bse_data = np.loadtxt(bse_filename, skiprows=1)
-                    # Create prefix aligning with Nanoworks standard
-                    file_prefix = f"{self.struct}-OPTICAL-GPAW-Graph-BSE"
-                    self._generate_optical_figures(bse_data, file_prefix, "BSE")
-                except Exception as e:
-                    print(f"Error plotting BSE data: {e}")
-
-            # 2. Process RPA Data (LFC and NLFC across x, y, z directions)
-            rpa_types = ["LFC", "NLFC"]
-            directions = ["xdirection", "ydirection", "zdirection"]
-
-            for rtype in rpa_types:
-                for direction in directions:
-                    rpa_filename = f"{self.struct}-OPTICAL-GPAW-Result-Calculation-RPA-{rtype}-AllData_{direction}.dat"
-                    if os.path.exists(rpa_filename):
-                        try:
-                            rpa_data = np.loadtxt(rpa_filename, skiprows=1)
-                            # Create prefix aligning with Nanoworks standard
-                            file_prefix = f"{self.struct}-OPTICAL-GPAW-Graph-RPA-{rtype}-{direction}"
-                            title_suffix = f"RPA {rtype} ({direction})"
-                            self._generate_optical_figures(rpa_data, file_prefix, title_suffix)
-                        except Exception as e:
-                            print(f"Error plotting RPA data ({rtype}, {direction}): {e}")
+        """Plot required files for the active method; share failures across MPI."""
+        def export():
+            parprint('Generating optical property figures...')
+            spectra = []
+            if self.Opt_calc_type == 'BSE':
+                spectra.append((f'{self.struct}-OPTICAL-GPAW-Result-Calculation-BSE-AllData.dat',
+                    f'{self.struct}-OPTICAL-GPAW-Graph-BSE', 'BSE'))
+            elif self.Opt_calc_type == 'RPA':
+                for kind in ('LFC', 'NLFC'):
+                    for direction in ('xdirection', 'ydirection', 'zdirection'):
+                        spectra.append((
+                            f'{self.struct}-OPTICAL-GPAW-Result-Calculation-RPA-{kind}-AllData_{direction}.dat',
+                            f'{self.struct}-OPTICAL-GPAW-Graph-RPA-{kind}-{direction}',
+                            f'RPA {kind} ({direction})'))
+            else:
+                raise ValueError('Unknown GPAW optical calculation type.')
+            # Read and validate the entire set before updating existing figures.
+            tables = [validate_optical_table(np.loadtxt(filename, skiprows=1))
+                      for filename, _, _ in spectra]
+            for table, (_, prefix, title) in zip(tables, spectra):
+                self._generate_optical_figures(table, prefix, title)
+            return [prefix for _, prefix, _ in spectra]
+        return run_optical_exports(export)
 
     def run_gpaw(self, calc, cell):
         cell = convert_atoms_to_ase(cell)

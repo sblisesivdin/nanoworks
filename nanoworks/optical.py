@@ -63,3 +63,18 @@ def validate_optical_table(data):
             or np.any(np.diff(table[:, 0]) <= 0)):
         raise ValueError('Optical tables require finite N x 7 arrays on an increasing nonnegative energy grid.')
     return table.copy()
+
+
+def run_optical_exports(callback):
+    """Export on MPI root and propagate output failures to every rank."""
+    from ase.parallel import broadcast, world
+    error = result = None
+    if world.rank == 0:
+        try:
+            result = callback()
+        except (Exception, KeyboardInterrupt) as exc:
+            error = f'{type(exc).__name__}: {exc}'
+    error, result = broadcast((error, result), root=0, comm=world)
+    if error is not None:
+        raise RuntimeError('Optical export failed: ' + error)
+    return result
