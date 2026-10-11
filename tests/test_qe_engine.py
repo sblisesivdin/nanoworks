@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 import numpy as np
 
+from nanoworks.tableio import DatWriter
 from nanoworks.engine import load_engine_module
 from ase.units import Bohr
 from ase import Atoms
@@ -6744,6 +6745,31 @@ class TestQEEngine(unittest.TestCase):
         self.assertEqual(rows[1]['Weight(1)'], '0.75')
         self.assertEqual(rows[0]['projection_basis(1)'], 'total-angular-momentum')
         self.assertEqual(rows[0]['selected_state_count(1)'], '6')
+
+    def test_projected_band_write_failure_preserves_existing_table(self):
+        projection = {
+            'nkpoints': 1, 'nbands': 1,
+            'projections': [{'index': 0, 'atoms': [0], 'orbital': 's',
+                             'label': 'Si s', 'weights': [[.25]]}],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'projections.dat'
+            output.write_bytes(b'previous complete result')
+            original = DatWriter.writerow
+            calls = 0
+
+            def fail_row(writer, row):
+                nonlocal calls
+                calls += 1
+                if calls == 2:
+                    raise OSError('injected write failure')
+                return original(writer, row)
+
+            with patch.object(DatWriter, 'writerow', fail_row):
+                with self.assertRaises(OSError):
+                    write_qe_band_projection_csv(output, [0.], [[1.]], projection)
+            self.assertEqual(output.read_bytes(), b'previous complete result')
+            self.assertFalse(output.with_name(output.name + '.tmp').exists())
 
     def test_prepare_qe_band_projection_warns_for_unmatched_selection(self):
         for spin_orbit in (False, True):

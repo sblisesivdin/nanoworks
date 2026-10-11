@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- GPAW band DAT exports avoid MPI file races and report write failures; QE projected-band writes preserve existing tables on failure.
+
 - GPAW/QE bands export KPath DAT coordinates and symmetry labels for JSON-free replotting.
 
 - --plot supports PDOS and SOC-DOS tables; DOS/PDOS/band figure writes preserve existing PNGs on failure.

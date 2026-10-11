@@ -6973,25 +6973,30 @@ def write_qe_band_projection_csv(
 
     output_file = Path(output_file)
     output_file.parent.mkdir(parents=True, exist_ok=True)
-    with output_file.open('w', encoding='utf-8', newline='') as stream:
-        writer = DatWriter(stream)
-        writer.writerow([
-            'kpoint_index', 'band_index', 'distance', 'energy_ev',
-            'projection_index', 'label', 'atoms', 'orbital', 'j',
-            'projection_basis', 'selected_state_count', 'weight',
-        ])
-        for kpoint in range(nkpoints):
-            for band in range(nbands):
-                for index, selection in enumerate(selections):
-                    writer.writerow([
-                        kpoint, band, xvalues[kpoint], energies[kpoint, band],
-                        selection['index'], selection['label'],
-                        ';'.join(str(atom) for atom in selection['atoms']),
-                        selection['orbital'], selection.get('j'),
-                        projection_data.get('projection_basis', 'orbital'),
-                        selection.get('selected_state_count'),
-                        weights[index][kpoint, band],
-                    ])
+    temporary = output_file.with_name(output_file.name + '.tmp')
+    try:
+        with temporary.open('w', encoding='utf-8', newline='') as stream:
+            writer = DatWriter(stream)
+            writer.writerow([
+                'kpoint_index', 'band_index', 'distance', 'energy_ev',
+                'projection_index', 'label', 'atoms', 'orbital', 'j',
+                'projection_basis', 'selected_state_count', 'weight',
+            ])
+            for kpoint in range(nkpoints):
+                for band in range(nbands):
+                    for index, selection in enumerate(selections):
+                        writer.writerow([
+                            kpoint, band, xvalues[kpoint], energies[kpoint, band],
+                            selection['index'], selection['label'],
+                            ';'.join(str(atom) for atom in selection['atoms']),
+                            selection['orbital'], selection.get('j'),
+                            projection_data.get('projection_basis', 'orbital'),
+                            selection.get('selected_state_count'),
+                            weights[index][kpoint, band],
+                        ])
+        temporary.replace(output_file)
+    finally:
+        temporary.unlink(missing_ok=True)
     return output_file
 
 
