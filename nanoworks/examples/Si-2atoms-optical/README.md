@@ -18,14 +18,14 @@ dftsolve -E GPAW -i Si-Step1-ground_dos_band.py -g Si_mp-149_primitive_Example.c
 
 Outputs are in `Si-results/`, prefixed by the CIF stem
 `Si_mp-149_primitive_Example`. Read the ground SCF log, then the DOS and band
-PNGs. Numerical DAT tables have one header row with column names and units;
-import them in Excel/Origin using a whitespace separator. Electronic energies
+PNGs. Numerical DAT tables have one header row with column names and units.
+Electronic energies
 are `E - Ef`. These small settings require convergence before research use.
 The input is a configuration: `python Si-Step1-ground_dos_band.py` does not
 run the Nanoworks calculation.
 
 Follow the [silicon tutorial](https://nanoworks.readthedocs.io/en/latest/tutorials.html#tutorial-silicon)
-for the output-file map, saved-state DOS rerun and manual table interpretation.
+for the output-file map, saved-state DOS rerun and result interpretation.
 The optical exercises below are later steps; a completed ground run alone does
 not establish optical convergence or sufficient memory for a larger BSE run.
 
@@ -143,8 +143,7 @@ dftsolve --plot Si-BSE-smoke-results/Si_mp-149_primitive_Example-OPTICAL-GPAW-Re
 ```
 
 Use the actual structure-prefixed filename in your result folder. The DAT
-file contains seven columns with names and units, ready for Excel or Origin
-(whitespace separator, decimal point). No duplicate CSV is produced.
+file contains seven columns with names and units. No duplicate CSV is produced.
 Older optical DAT and CSV tables remain readable with `--plot`.
 No JSON summary, input, geometry or DFT engine is needed. Figures are written
 beside the selected table, and saved energies and values are preserved.

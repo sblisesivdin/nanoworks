@@ -86,9 +86,7 @@ convergence. In DOS and band outputs, zero energy is the Fermi-level reference.
 PBE silicon is an exercise in reading a semiconductor spectrum, not a claim
 that its calculated gap equals the experimental gap.
 
-Import the DAT file into Excel or Origin with a whitespace separator,
-consecutive spaces treated as one separator, and the first row as column names.
-Column names include units without internal spaces. PDOS ``TOTAL`` sums the
+DAT column names include units without internal spaces. PDOS ``TOTAL`` sums the
 atomic projections and need not equal the total electronic DOS.
 
 Optional: regenerate the band figure from the saved table
@@ -184,8 +182,8 @@ Both DOS channels can be replotted using either paired table:
 
    dftsolve --plot Fe-QE-spin-smoke-results/Fe-QE-spin-smoke-results-DOS-QE-Result-DOS-Up.dat
 
-Keep the Down table beside the Up table. For Excel or Origin, import each DAT
-as a whitespace-delimited table with its first row as the header.
+Keep the Down table beside the Up table. Each DAT begins with column names
+and units; DOS energies are relative to Ef.
 
 Before scientific use
 ^^^^^^^^^^^^^^^^^^^^^

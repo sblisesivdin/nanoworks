@@ -1931,7 +1931,7 @@ Optical Calculations Keywords
     active optical method; missing spectra and plotting errors stop the
     workflow and propagate to all MPI ranks.
     Each derived optical spectrum is one whitespace-separated DAT table
-    with column names and units for Excel and Origin.
+    with column names and units.
     ``dftsolve --plot <table.dat>`` regenerates
     figures directly from those seven columns without a summary JSON.
     JSON is optional bookkeeping, not a requirement for numerical analysis.

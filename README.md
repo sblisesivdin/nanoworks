@@ -126,7 +126,7 @@ dftsolve -p <cores> -g <geometry.cif> -a
 *   `--slurm-memory`, `--slurm-partition`, `--slurm-account`, `--slurm-qos`, `--slurm-job-name`: Optional Slurm resource settings.
 *   `--slurm-module`: Module to load in the generated script; repeat the option to load multiple modules.
 
-Nanoworks numerical results use one DAT table with a unit-bearing header and whitespace-separated columns for Excel, Origin and manual analysis. `--plot` reads these tables directly; JSON summaries are optional. Band calculations also export a KPath DAT with distances and symmetry labels for later plotting.
+Nanoworks numerical results use one DAT table with a unit-bearing header and whitespace-separated columns. `--plot` reads these tables directly; JSON summaries are optional. Band calculations also export a KPath DAT with distances and symmetry labels for later plotting.
 
 Check an input before submitting a calculation:
 

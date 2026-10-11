@@ -18,8 +18,8 @@ Use the actual filename produced by your calculation. Figures are written
 beside the selected table; repeat plotting replaces its generated images.
 Source tables are read without modification.
 
-Optical Data for Excel and Origin
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Optical Result Tables
+~~~~~~~~~~~~~~~~~~~~~
 
 Completed GPAW and QE optical workflows produce one whitespace-separated
 DAT table per derived spectrum, with one header row and seven columns:
@@ -43,11 +43,6 @@ DAT table per derived spectrum, with one header row and seven columns:
      - Absorption coefficient in inverse centimetres
    * - Reflectivity(1)
      - Reflectivity as a dimensionless fraction
-
-Import DAT with a whitespace separator and a decimal point. The first row
-contains column names. No Python or
-JSON knowledge is needed to inspect, edit or plot these numerical data in
-Excel, Origin or another analysis program.
 
 ``--plot`` reads the optical table directly and creates four standard
 figures. It checks the column header, finite values and increasing

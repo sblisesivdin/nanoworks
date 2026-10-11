@@ -19,10 +19,7 @@ band and phonon branch has a separate numbered header. Missing values are
 spaces or delimiters use percent escapes, for example ``Spin%20Up``;
 original projection labels are also retained in the calculation metadata.
 
-In Excel or Origin, select a whitespace separator and use the first row as
-column names. Treat consecutive spaces as one delimiter. In NumPy, use
-``numpy.loadtxt(filename, skiprows=1)`` for fully numerical tables. Band
-tables may contain blank lines between path or band segments.
+Band tables may contain blank lines between path or band segments.
 
 In convergence tables, ``ParameterValue`` has the unit identified by
 ``parameter_type``: cutoff in eV, k-point density in points per angstrom,

@@ -22,7 +22,7 @@ Use your current source checkout for the development tutorials.
 
 Start with :doc:`tutorials`: silicon introduces ground-state, DOS and band
 results with GPAW; Fe introduces a native QE spin workflow. Each exercise
-explains preparation, preflight, execution and DAT import into Excel or Origin.
+explains preparation, preflight, execution and the meaning of Nanoworks outputs.
 DFT input files describe settings and are passed to ``dftsolve -i``; running
 them with ``python`` does not execute the calculation workflow.
 

@@ -66,8 +66,8 @@ For example, the Up DOS table is:
 Fe-QE-spin-smoke-results/Fe-QE-spin-smoke-results-DOS-QE-Result-DOS-Up.dat
 ```
 
-Each DAT begins with column names and units. Import with whitespace separators
-in Excel or Origin. DOS and band energies are relative to Ef; the negative
+Each DAT begins with column names and units. DOS and band energies are
+relative to Ef; the negative
 Down DOS curve is a display convention. The `Projections` atom index `[0]`
 selects Fe, and the s/d marker sizes describe orbital contributions.
 The projected DOS sum need not equal the total DOS.
