@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- Clarify release/development installation and add step-by-step silicon and QE spin tutorials with DAT result interpretation.
+
 - GPAW band plots and tables share E-Ef; unavailable hybrid references stop the calculation.
 
 - GPAW magnetic bands apply SOC; unsupported SOC projected bands stop before calculation.

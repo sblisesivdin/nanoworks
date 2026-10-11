@@ -118,8 +118,10 @@ machine-learned-potential solvers.
 Get Started with Nanoworks
 --------------------------
 
-For Debian and Ubuntu systems, the automated installer prepares Nanoworks and
-its required scientific software:
+For a published release on Debian and Ubuntu, the automated installer prepares
+Nanoworks and its selected dependencies. Quantum ESPRESSO remains an external
+installation. To use current development examples, follow the development
+route in the installation guide instead:
 
 .. code-block:: console
 
@@ -129,7 +131,7 @@ its required scientific software:
 
    <div class="nw-actions nw-actions-left">
      <a class="nw-button nw-button-primary" href="installation.html">Installation Guide</a>
-     <a class="nw-button nw-button-secondary" href="examples.html#running-the-examples">Run the Examples</a>
+     <a class="nw-button nw-button-secondary" href="tutorials.html">Start a Tutorial</a>
    </div>
 
 Built on the Scientific Python Ecosystem—and More!
@@ -187,8 +189,8 @@ Documentation
        <p>Choose the quick or detailed installation path.</p>
      </article>
      <article class="nw-card nw-link-card">
-       <h3><a href="examples.html">Run the Examples</a></h3>
-       <p>Start from categorized, ready-to-run materials workflows.</p>
+       <h3><a href="tutorials.html">Follow a DFT Tutorial</a></h3>
+       <p>Prepare silicon or magnetic Fe, check the input, and read numerical results.</p>
      </article>
      <article class="nw-card nw-link-card">
        <h3><a href="input_file_keywords.html">Browse Input Keywords</a></h3>
@@ -206,6 +208,7 @@ Documentation
    :hidden:
 
    installation
+   tutorials
    examples
    usage
    result_tables

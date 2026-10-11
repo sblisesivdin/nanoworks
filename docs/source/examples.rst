@@ -17,7 +17,16 @@ then install examples with nanoworks command:
     
 Now your example folder is located in the ``~/.nanoworks/examples/`` 
 
-Below is a categorized overview of the available examples and what they demonstrate. You can run any of the example scripts directly using Python.
+Existing example folders are preserved rather than refreshed by this command.
+Use your current source checkout for the development tutorials.
+
+Start with :doc:`tutorials`: silicon introduces ground-state, DOS and band
+results with GPAW; Fe introduces a native QE spin workflow. Each exercise
+explains preparation, preflight, execution and DAT import into Excel or Origin.
+DFT input files describe settings and are passed to ``dftsolve -i``; running
+them with ``python`` does not execute the calculation workflow.
+
+Below is a categorized overview of the available examples.
 
 Cluster Execution
 -----------------
@@ -34,8 +43,8 @@ Electronic Properties & Basic DFT
 
 The ``Si-2atoms-optical`` folder includes combined GPAW Ground+BSE and
 GPAW/QE RPA exercises, plus focused GPAW optical reruns from a saved ground
-state. Its README explains band windows, NLFC/LFC outputs, common JSON
-summaries and the convergence checks needed before scientific use.
+state. Its README explains band windows, NLFC/LFC DAT outputs, optional JSON
+bookkeeping and the convergence checks needed before scientific use.
 
 * **Silicon Convergence (GPAW and QE):**
   Runs the same ordered cutoff, k-point, and lattice-scale workflow with both
@@ -138,7 +147,9 @@ Interoperability with Other Codes
 Running the Examples
 --------------------
 
-You can run all examples automatically in sequence using the provided bash script in the examples folder:
+Begin with one tutorial and its required engine. The batch script below
+queues a broad collection of examples with different engine and resource
+requirements; it is not a minimal installation check:
 
 .. code-block:: bash
 

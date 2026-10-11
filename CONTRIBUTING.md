@@ -3,6 +3,20 @@ Contributing
 
 We welcome contributions and hope this guide will make the `Nanoworks` code repository easier to understand. It is important to mention that the `Nanoworks` software development is run voluntarily and therefore we need to build a community that can support user questions, attract new users, maintain documentation, write tutorials, and develops new features to make this software a useful tool for all users.
 
+Current Development Scope
+-------------------------
+
+As of October 11, 2026, development is in feature freeze. Current work focuses
+on bug fixes and clearer installation, existing examples and tutorials.
+New solver capabilities, input keywords and command-line options are deferred.
+Feature ideas may still be recorded for a future development cycle.
+
+Describe how a bug was reproduced and how the correction was checked. Keep
+static checks separate from actual engine execution: documentation checks do
+not validate GPAW/QE calculations, MPI behavior or numerical accuracy. Before
+a release candidate, validate representative calculations on a machine with
+the required engines and data, including serial and MPI runs.
+
 Being Respectful
 ----------------
 Please show empathy and kindness towards other people, software, and communities working diligently to develop other tools.
@@ -12,7 +26,7 @@ Please do not speak negatively about other people or their work in pull requests
 Cloning the Source Repository
 -----------------------------
 
-Before cloning the source repository to your computer, please visit the [installation page](https://sblisesivdin.github.io/nanoworks/installation/) of `Nanoworks` to install ASE, GPAW, and all other needed packages to your computer. Then, you can clone the source of the `Nanoworks` from the related repository:
+Use the development route on the [installation page](https://nanoworks.readthedocs.io/en/latest/installation.html) and install dependencies for your selected engine. A QE-only environment does not require GPAW. Clone the source repository:
 [Main Github repository](https://github.com/sblisesivdin/nanoworks) by:
 
     git clone https://github.com/sblisesivdin/nanoworks.git
