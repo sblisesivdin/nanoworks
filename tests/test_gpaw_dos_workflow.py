@@ -47,7 +47,7 @@ class TestGPAWDOSWorkflow(unittest.TestCase):
             struct=str(Path(self.directory.name) / 'Si'), Engine='GPAW',
             scf_settings={'convergence': {}}, bulk_configuration=self.atoms,
             Spin_calc=False, SOC_calc=False, Energy_min=-1., Energy_max=1.,
-            hybrid_fermi_level=Mock(return_value=2.))
+            hybrid_fermi_level=Mock(return_value=2.), _t=lambda key: key)
 
     def run_dos(self):
         with patch.dict(sys.modules, {'gpaw': types.ModuleType('gpaw'), 'gpaw.dos': self.gpaw_dos}), \
@@ -144,10 +144,20 @@ class TestGPAWDOSWorkflow(unittest.TestCase):
         self.calc.get_number_of_bands.return_value = 2
         self.calc.get_eigenvalues.side_effect = lambda k, spin: np.array([k + spin * 10., k + spin * 10. + 1.])
         self.engine.prepare_band_calc.return_value = self.calc
-        with patch.object(self.module, 'world', types.SimpleNamespace(rank=1)), \
+        saved = types.SimpleNamespace(write=Mock(), plot=Mock())
+        factory = Mock(return_value=saved)
+        ase_bands = types.ModuleType('ase.spectrum.band_structure')
+        ase_bands.BandStructure = factory
+        with patch.dict(sys.modules, {'ase.spectrum.band_structure': ase_bands}), \
+                patch.object(self.module, 'world', types.SimpleNamespace(rank=1)), \
                 patch.object(self.module, 'paropen', open), patch.object(self.module, 'parprint'), \
                 patch.object(self.module, 'run_optical_exports', side_effect=lambda callback: callback()):
             self.module.dftsolve._bandcalc_gpaw(self.solver)
+        self.assertEqual(factory.call_args.kwargs['reference'], 0.)
+        self.assertEqual(saved.plot.call_args.kwargs['emin'], -1.)
+        self.assertEqual(saved.plot.call_args.kwargs['emax'], 1.)
+        np.testing.assert_array_equal(factory.call_args.kwargs['energies'][0],
+                                      [[-2., -1.], [-1., 0.], [0., 1.]])
         for label, spin in [('Up', 0), ('Down', 1)]:
             expected = np.array([[k + spin * 10. - 2., k + spin * 10. - 1.] for k in range(3)])
             for suffix in ['', '-XYYY']:
@@ -181,3 +191,28 @@ class TestGPAWDOSWorkflow(unittest.TestCase):
         for call in write.call_args_list:
             self.assertTrue(np.isfinite(call.kwargs['data']).all())
             np.testing.assert_array_equal(call.kwargs['data'], np.zeros((2, 2, 2)))
+
+    def test_hybrid_reference_accepts_zero_and_rejects_unavailable_values(self):
+        self.solver.Ground_fermi_level = 0.
+        self.assertEqual(self.module.dftsolve.hybrid_fermi_level(self.solver), 0.)
+        self.engine.load_gpaw_calc.assert_not_called()
+        self.solver.Ground_fermi_level = np.inf
+        ground = Mock()
+        ground.get_fermi_level.return_value = np.nan
+        self.engine.load_gpaw_calc.return_value = ground
+        self.calc.get_fermi_level.return_value = -3.
+        self.assertEqual(self.module.dftsolve.hybrid_fermi_level(self.solver, self.calc), -3.)
+        self.calc.get_fermi_level.return_value = np.inf
+        with self.assertRaisesRegex(ValueError, 'finite'):
+            self.module.dftsolve.hybrid_fermi_level(self.solver, self.calc)
+
+    def test_band_invalid_reference_stops_before_result_exports(self):
+        self.engine.prepare_band_calc.return_value = self.calc
+        self.solver.Band_path = 'GX'
+        self.solver.Band_npoints = 3
+        self.solver.Band_num_of_bands = 2
+        for reference in [None, np.nan, np.inf]:
+            self.calc.get_fermi_level.return_value = reference
+            with patch.object(self.module, 'parprint'), self.assertRaisesRegex(ValueError, 'finite'):
+                self.module.dftsolve._bandcalc_gpaw(self.solver)
+        self.assertFalse(list(Path(self.directory.name).glob('*BAND*')))

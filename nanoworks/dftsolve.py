@@ -2754,10 +2754,9 @@ class dftsolve:
 
         Tries, in order: the value stored from the ground-state run, then the
         Fermi level of a freshly read ground-state .gpw, then the Fermi level
-        of the calculator passed in. Falls back to 0.0 eV only if nothing is
-        available, instead of unconditionally hard-coding 0.0 eV as before.
+        of the calculator passed in. Raises if no finite reference is available; a genuine 0.0 eV is valid.
         """
-        if self.Ground_fermi_level is not None and not np.isnan(self.Ground_fermi_level):
+        if self.Ground_fermi_level is not None and np.isfinite(self.Ground_fermi_level):
             return self.Ground_fermi_level
         # Try reading the converged ground-state .gpw written by groundcalc().
         try:
@@ -2766,7 +2765,7 @@ class dftsolve:
                 hybrid=True,
             )
             ef = ref_calc.get_fermi_level()
-            if ef is not None and not np.isnan(ef):
+            if ef is not None and np.isfinite(ef):
                 self.Ground_fermi_level = ef
                 return ef
         except Exception as e:
@@ -2774,12 +2773,11 @@ class dftsolve:
         if calc is not None:
             try:
                 ef = calc.get_fermi_level()
-                if ef is not None and not np.isnan(ef):
+                if ef is not None and np.isfinite(ef):
                     return ef
             except Exception as e:
                 parprint("\033[93mWARNING:\033[0m Failed to read Fermi level from provided calculator:", e)
-        parprint("\033[93mWARNING:\033[0m Could not determine the Fermi level for the hybrid calculation; using 0.0 eV as reference.")
-        return 0.0
+        raise ValueError('No finite GPAW hybrid Fermi-level reference is available.')
 
     def doscalc(self):
         """Run the DOS workflow using the selected DFT engine."""
@@ -5013,25 +5011,15 @@ class dftsolve:
             nbands=self.Band_num_of_bands,
         )
 
-        if hybrid:
-            ef = self.hybrid_fermi_level()
-        else:
-            ef = calc.get_fermi_level()
-
         calc.get_potential_energy()
-        # For hybrids, refine the reference now that the calculator is
-        # populated, in case the ground-state value was unavailable above.
-        if hybrid and (ef is None or ef == 0.0):
-            ef = self.hybrid_fermi_level(calc)
+        ef = self.hybrid_fermi_level(calc) if hybrid else calc.get_fermi_level()
+        if ef is None or not np.isfinite(ef):
+            raise ValueError('GPAW bands require a finite Fermi-level reference.')
         bs = calc.band_structure()
         band_npoints = len(bs.path.kpts)
             
         Band_num_of_bands = calc.get_number_of_bands()
         parprint('Num of bands:'+str(Band_num_of_bands))
-
-        # No need to write an additional gpaw file. Use json file to use with ase band-structure command
-        #calc.write(self.struct+'-BAND-GPAW-Result-Band.gpw')
-        bs.write(self.struct+'-BAND-GPAW-Result-State.json')
 
         distances, special_distances, labels = bs.path.get_linear_kpoint_axis()
         run_optical_exports(lambda: write_band_path_table(
@@ -5066,22 +5054,26 @@ class dftsolve:
         with paropen(self.struct+f'-TIMINGS-{self.Engine}-Log-Timings.txt', 'a') as f1:
             print('Band calculation: ', round((time32-time31),2), end="\n", file=f1)
 
-        # Write or draw figures
-        # Draw graphs only on master node
-        if world.rank == 0:
-            # Band Structure
-            if self.SOC_calc and not self.Spin_calc:
-                from ase.spectrum.band_structure import BandStructure
-                bs = BandStructure(path=bs.path, energies=np.array([soc_evals]), reference=ef)
-            bs.plot(filename=self.struct+f'-BAND-{self.Engine}-Graph-Band.png', show=False, emax=self.Energy_max + bs.reference, emin=self.Energy_min + bs.reference, ylabel=self._t("fig_band_ylabel"))
-            
-        # Projected band
-        if self.Projected_band_plot == True:
-            parprint(f"Drawing Projected Band...")
-            self._draw_projectedband(calc)
+        # JSON, DAT and live plots share the same E - Ef axis, including SOC.
+        from ase.spectrum.band_structure import BandStructure
+        saved_bands = BandStructure(path=bs.path, energies=eps_skn, reference=0.0)
+        def export_band_state_and_plot():
+            saved_bands.write(self.struct + '-BAND-GPAW-Result-State.json')
+            import matplotlib.pyplot as plt
+            fig, ax = plt.subplots()
+            try:
+                saved_bands.plot(ax=ax, filename=self.struct + '-BAND-GPAW-Graph-Band.png',
+                                 show=False, emin=self.Energy_min, emax=self.Energy_max,
+                                 ylabel=self._t("fig_band_ylabel"))
+            finally:
+                plt.close(fig)
+        run_optical_exports(export_band_state_and_plot)
+
+        if self.Projected_band_plot:
+            self._draw_projectedband(calc, reference_energy=ef)
 
 
-    def _draw_projectedband(self, calc):
+    def _draw_projectedband(self, calc, reference_energy=None):
         """
         Internal method for dftsolve class to plot projected band structures.
         """
@@ -5116,6 +5108,9 @@ class dftsolve:
             }]
         
         bs = calc.band_structure()
+        reference_energy = bs.reference if reference_energy is None else reference_energy
+        if reference_energy is None or not np.isfinite(reference_energy):
+            raise ValueError('GPAW projected bands require a finite energy reference.')
 
         x, x_special, labels = bs.path.get_linear_kpoint_axis()
         
@@ -5128,7 +5123,7 @@ class dftsolve:
                 spin_label = "Up" if spin_index == 0 else "Down"
                 filename = f"{self.struct}-BAND-GPAW-Graph-Projected-Band-Spin-{spin_label}.png"
             
-            energies = bs.energies[spin_index]  
+            energies = bs.energies[spin_index] - reference_energy  
             nbands = energies.shape[1]
             projection_data = []
             
@@ -5204,7 +5199,7 @@ class dftsolve:
                 ax.set_xticks(x_special)
                 ax.set_xticklabels(labels)
                 ax.set_ylabel(self._t("fig_band_ylabel"))
-                ax.set_ylim(self.Energy_min + bs.reference, self.Energy_max + bs.reference)
+                ax.set_ylim(self.Energy_min, self.Energy_max)
                 ax.set_xlim(x[0], x[-1])
                 ax.axhline(0, color='black', lw=1.0, ls='-')
                 for x_loc in x_special:
