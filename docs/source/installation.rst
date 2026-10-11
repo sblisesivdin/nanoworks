@@ -4,6 +4,29 @@ Installation
 .. _installation:
 
 
+Choose a release or the development version
+--------------------------------------------
+
+A Python installation and a working calculation engine are separate steps.
+Choose one route before installing:
+
+.. list-table:: Installation routes
+   :header-rows: 1
+   :widths: 30 70
+
+   * - Goal
+     - Route
+   * - Use a published Nanoworks release
+     - Use its release installer and versioned documentation. The installer pins that release.
+   * - Use the current development fixes and tutorials
+     - Clone ``main`` and use the development installer or the source-install commands below.
+   * - Use QE already provided by an HPC site
+     - Load the site's QE module and install the QE Python dependencies in your own environment.
+
+The dependency extras described on this page belong to the current development
+code. A bare ``pip install nanoworks`` selects a published package, not ``main``;
+an older release may not provide the same extras or workflows.
+
 Quick Installation of Nanoworks to Linux Systems 
 ------------------------------------------------
 
@@ -29,7 +52,7 @@ Choose the DFT engine and optional components
 
 The development installer offers independent selections for the DFT engine
 (QE, GPAW or both) and components (DFT only, DFT + MD, DFT + ML or all).
-Defaults are both engines and all components. These selections will be
+Defaults are both engines and all components; select DFT only if you do not need MD or ML. These selections will be
 included in the next release installer; older release assets retain their
 original menus. From a checkout of the current development branch:
 
@@ -47,6 +70,26 @@ or downloading packages. Valid environment values are ``qe``, ``gpaw`` or
 must provide the requested extras. Without a pin, the development installer installs the current ``main``
 code from GitHub and includes git among its system prerequisites.
 
+For a first development installation on Debian/Ubuntu, obtain the checkout
+before running those commands:
+
+.. code-block:: console
+
+    $ sudo apt install git
+    $ git clone https://github.com/sblisesivdin/nanoworks.git ~/nanoworks
+    $ cd ~/nanoworks
+    $ NANOWORKS_ENGINE=qe NANOWORKS_COMPONENTS=dft bash install_scripts/install-development-Debian-based.sh --dry-run
+
+Read the plan, then rerun the final command without ``--dry-run``. For GPAW
+replace ``qe`` by ``gpaw``; use ``both`` if both engines are needed. The script
+uses ``~/.venv_nw``. Activate it in each new terminal:
+
+.. code-block:: console
+
+    $ source ~/.venv_nw/bin/activate
+    (.venv_nw) $ nanoworks --version
+    (.venv_nw) $ dftsolve --help
+
 QE-only installation skips GPAW and its build configuration. KIM/ASAP3 and
 LAMMPS dependencies are added only for MD; ML Python dependencies are added
 only for ML. When QE is selected, the installer also installs the PseudoDojo
@@ -59,18 +102,21 @@ QE-only Python installation
 ---------------------------
 
 For an externally managed QE installation, GPAW and its build libraries are
-not required. Create a virtual environment and select only the QE extra:
+not required. For the development version, clone the source and install only
+the QE extra in a separate virtual environment:
 
 .. code-block:: console
 
+    $ git clone https://github.com/sblisesivdin/nanoworks.git ~/nanoworks-qe
+    $ cd ~/nanoworks-qe
     $ python3 -m venv ~/.venv_nw_qe
     $ source ~/.venv_nw_qe/bin/activate
-    (.venv_nw_qe) $ python -m pip install "nanoworks[qe]"
+    (.venv_nw_qe) $ python -m pip install ".[qe]"
     (.venv_nw_qe) $ nanoworks --install-qe-pseudos
     (.venv_nw_qe) $ nanoworks --install-examples
 
-To install the development checkout instead of the published package, run
-``python -m pip install ".[qe]"`` from the repository directory. Set
+These commands install the cloned source. For a published version, use the
+release route above. Set
 ``Engine = 'QE'`` in the input, or override it for one run:
 
 .. code-block:: console
@@ -230,7 +276,8 @@ Installation of Nanoworks and Python Modules
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The base ``nanoworks`` package installs common utilities. Choose engine extras
-explicitly; GPAW is optional:
+explicitly; GPAW is optional. The following commands run from the cloned
+repository directory in an activated environment:
 
 .. list-table:: Python dependency selections
    :header-rows: 1
@@ -239,19 +286,19 @@ explicitly; GPAW is optional:
    * - Selection
      - Install command
    * - QE only
-     - ``python -m pip install "nanoworks[qe]"``
+     - ``python -m pip install ".[qe]"``
    * - GPAW only
-     - ``python -m pip install "nanoworks[gpaw]"``
+     - ``python -m pip install ".[gpaw]"``
    * - Both DFT engines
-     - ``python -m pip install "nanoworks[gpaw,qe]"``
+     - ``python -m pip install ".[gpaw,qe]"``
    * - QE + MD
-     - ``python -m pip install "nanoworks[qe,md]"``
+     - ``python -m pip install ".[qe,md]"``
    * - QE + ML
-     - ``python -m pip install "nanoworks[qe,ml]"``
+     - ``python -m pip install ".[qe,ml]"``
    * - QE + MD + ML
-     - ``python -m pip install "nanoworks[qe,md,ml]"``
+     - ``python -m pip install ".[qe,md,ml]"``
    * - All components including GPAW
-     - ``python -m pip install "nanoworks[all]"``
+     - ``python -m pip install ".[all]"``
 
 ``[dft]`` remains an alias for the GPAW dependency selection. ``[all]`` includes
 GPAW and should not be used for a QE-only environment. Quote extras to prevent
@@ -271,3 +318,47 @@ Nanoworks software has an examples directory containing numerous examples in the
    (.venv_nw) $ nanoworks --install-examples
 
 Each example contains `README.md` files. You can run the related example with a single command in each example.
+
+Verify the engine and its data before the first calculation
+-----------------------------------------------------------
+
+For QE, check the executables required by the chosen example. For the Fe
+spin tutorial these are:
+
+.. code-block:: console
+
+    (.venv_nw) $ command -v pw.x dos.x projwfc.x bands.x pp.x
+    (.venv_nw) $ nanoworks --install-qe-pseudos
+
+If an executable is missing, load your site's module or complete the external
+QE installation. The Python package and development installer do not install
+QE. Elasticity additionally needs ``thermo_pw.x``; optics needs ``epsilon.x``.
+Do not use ``-p`` to resolve a missing executable: it only selects process count.
+
+For GPAW, inspect the installation and install PAW datasets if they are missing:
+
+.. code-block:: console
+
+    (.venv_nw) $ gpaw info
+    (.venv_nw) $ gpaw install-data --help
+
+Follow the `GPAW dataset installation instructions
+<https://gpaw.readthedocs.io/install.html#paw-datasets>`_ for your machine or
+cluster. PAW datasets are distinct from the QE UPF libraries.
+
+Next follow :doc:`tutorials`. Run the example's ``--check`` command first.
+A successful preflight checks configuration and dependencies; it does not
+prove SCF convergence, MPI execution or scientific accuracy.
+
+If something fails
+------------------
+
+* ``dftsolve: command not found``: activate the environment you installed into;
+  use ``command -v python dftsolve`` to check which installation is selected.
+* A missing QE executable: correct ``PATH`` or load the site module.
+* A missing GPAW setup or QE UPF: install the matching engine's data.
+* An unknown keyword: compare the input with the documentation for the installed
+  version; do not mix development inputs with an older release.
+* An existing examples folder: ``nanoworks --install-examples`` preserves it
+  rather than updating it. Use the examples in your current source checkout
+  when following the development tutorials.

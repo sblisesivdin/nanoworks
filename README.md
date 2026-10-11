@@ -58,12 +58,16 @@ installers retain their older menus until the next release. The development scri
 A release asset instead pins its own published package version. For a local
 checkout, use `python -m pip install ".[qe]"` from the repository directory.
 
-For a fresh Python environment, `python -m pip install "nanoworks[qe]"`
-selects QE dependencies without GPAW. Use `[gpaw]` for GPAW, `[gpaw,qe]` for
-both engines, or append `md` and/or `ml` to the selected extras. `[all]`
-includes GPAW. Installation selection does not change the default backend;
-set `Engine='QE'` or pass `dftsolve -E QE`. Selecting QE does not remove
-GPAW from an existing environment.
+For development, clone the repository first and run the commands from its
+root. For an existing external QE installation, a separate Python environment
+can install the local source with `python -m pip install ".[qe]"`. Use
+`.[gpaw]` for GPAW or `.[gpaw,qe]` for both. These extras describe development;
+an older published package may not provide them. Installing dependencies does
+not change the input's engine: select `Engine='QE'` or `dftsolve -E QE`.
+
+See the [installation guide](https://nanoworks.readthedocs.io/en/latest/installation.html)
+for the complete clone, activation and engine-data checks, then follow the
+[step-by-step tutorials](https://nanoworks.readthedocs.io/en/latest/tutorials.html).
 
 ### Detailed Installation
 
