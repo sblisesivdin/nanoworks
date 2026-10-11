@@ -96,3 +96,30 @@ class TestGPAWDOSWorkflow(unittest.TestCase):
         for mock in (self.rawdos.raw_dos, self.rawdos.raw_pdos):
             self.assertTrue(mock.called)
             self.assertTrue(all(call.kwargs['width'] == 0. for call in mock.call_args_list))
+
+    def test_soc_uses_gpaw_weighted_dos_and_exact_requested_width(self):
+        self.solver.SOC_calc = True
+        self.run_dos()
+        self.factory.assert_called_once_with(
+            self.calc, soc=True, theta=0.0, phi=0.0, shift_fermi_level=False)
+        np.testing.assert_array_equal(self.table('DOS-SOC')[:, 0], [-1., 0., 1.])
+        np.testing.assert_array_equal(self.table('DOS-SOC')[:, 1], [30., 30., 30.])
+        call = self.rawdos.raw_dos.call_args
+        np.testing.assert_array_equal(call.args[0], [1., 2., 3.])
+        self.assertEqual(call.kwargs, {'spin': None, 'width': .001})
+        self.rawdos.raw_pdos.assert_not_called()
+
+    def test_soc_invalid_reference_or_spectrum_preserves_previous_table(self):
+        self.solver.SOC_calc = True
+        output = Path(self.solver.struct + '-DOS-GPAW-Result-DOS-SOC.dat')
+        for reference, values in [(np.nan, [1., 2., 3.]), (np.inf, [1., 2., 3.]),
+                                  (None, [1., 2., 3.]), (2., [1., np.nan, 3.]),
+                                  (2., [1., 2.])]:
+            with self.subTest(reference=reference, values=values):
+                output.write_bytes(b'previous spectrum')
+                self.calc.get_fermi_level.return_value = reference
+                self.rawdos.raw_dos.side_effect = None
+                self.rawdos.raw_dos.return_value = np.array(values)
+                with self.assertRaises(ValueError):
+                    self.run_dos()
+                self.assertEqual(output.read_bytes(), b'previous spectrum')

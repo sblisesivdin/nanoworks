@@ -2872,60 +2872,40 @@ class dftsolve:
         # Keep GPAW DAT energies on the same E - Ef axis as the DOS graph and QE exports.
         chem_sym = self.bulk_configuration.get_chemical_symbols()
 
+        if ef is None or not np.isfinite(ef):
+            raise ValueError('GPAW DOS requires a finite Fermi-level reference.')
+
+        from gpaw.dos import DOSCalculator
+        # Use the DOS-stage eigenvalues, k-point grid and projector weights.
+        # Hybrid preparation deliberately returns the converged ground state.
+        rawdos = DOSCalculator.from_calculator(
+            calc, soc=self.SOC_calc, theta=0.0, phi=0.0, shift_fermi_level=False)
+
         if self.SOC_calc:
             parprint("Calculating Total DOS with Spin-Orbit Coupling...")
-            from gpaw.spinorbit import soc_eigenstates
-
-            soc = soc_eigenstates(calc)
-
-            # Take eigenvalues and use only real parts
-            soc_evals_raw = soc.eigenvalues()
-            soc_evals = np.real(np.array(soc_evals_raw).flatten())
-
-            # NaN error protection for Fermi level
-            ef_safe = ef if not np.isnan(ef) else 0.0
-            soc_evals = soc_evals - ef_safe
-
-            energies = np.linspace(self.Energy_min, self.Energy_max, self.DOS_npoints)
-            dos = np.zeros_like(energies)
-
-            # Divide by zero protection
-            smearing = getattr(self, 'DOS_width', 0.1)
-            smearing = max(smearing, 0.01)
-
-            # Gaussian smearing
-            for e in soc_evals:
-                if not np.isnan(e): # Only valid numbers
-                    dos += np.exp(-((energies - e) / smearing)**2) / (smearing * np.sqrt(np.pi))
-
-            # Normalize with dividing to k-points number
-            try:
-                nkpts = max(1, len(calc.get_ibz_k_points()))
-            except:
-                nkpts = max(1, len(soc_evals_raw))
-            dos /= nkpts
-
-            # If data is empty...
-            if np.isnan(dos).all() or np.max(dos) == 0.0:
-                parprint("WARNING: Computed SOC-DOS array is empty or NaN. Matplotlib crash prevented.")
-                dos[:] = 0.0
+            shifted_energies = np.linspace(self.Energy_min, self.Energy_max, self.DOS_npoints)
+            energies = shifted_energies + ef
+            dos = np.asarray(rawdos.raw_dos(
+                energies, spin=None, width=dos_settings['width_ev']), dtype=float)
+            if dos.shape != energies.shape or not np.isfinite(dos).all():
+                raise ValueError('GPAW SOC DOS returned an invalid spectrum.')
 
             with paropen(self.struct+'-DOS-GPAW-Result-DOS-SOC.dat', "w") as fd:
                 print("Energy(eV) DOS(states/eV)", file=fd)
-                for en, d in zip(energies, dos):
+                for en, d in zip(shifted_energies, dos):
                     print(en, d, file=fd)
 
             # Use explicit figure creation to avoid memory overlap
             if world.rank == 0:
                 fig_soc, ax_soc = plt.subplots(figsize=(8, 6))
-                ax_soc.plot(energies, dos, 'purple', label='DOS (SOC)')
+                ax_soc.plot(shifted_energies, dos, 'purple', label='DOS (SOC)')
                 ax_soc.set_xlabel(self._t("fig_dos_xlabel"))
                 ax_soc.set_ylabel(self._t("fig_dos_ylabel"))
                 ax_soc.set_xlim(self.Energy_min, self.Energy_max)
                 ax_soc.legend()
 
                 # Draw scaling of DOS
-                if np.max(dos) > 0.0 and not np.isnan(dos).all():
+                if np.max(dos) > 0.0:
                     autoscale_y(ax_soc)
                 else:
                     ax_soc.set_ylim(0, 1)
@@ -2936,12 +2916,6 @@ class dftsolve:
 
             parprint("Spin-Orbit Total DOS is computed. PDOS is not computed for SOC.")
             return
-
-        from gpaw.dos import DOSCalculator
-        # Use the DOS-stage eigenvalues, k-point grid and projector weights.
-        # Hybrid preparation deliberately returns the converged ground state.
-        rawdos = DOSCalculator.from_calculator(
-            calc, soc=False, theta=0.0, phi=0.0, shift_fermi_level=False)
 
         if self.Spin_calc == True:
             # ==========================================
