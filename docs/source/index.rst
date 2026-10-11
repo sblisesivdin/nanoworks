@@ -208,6 +208,7 @@ Documentation
    installation
    examples
    usage
+   result_tables
    dftconverge
 
 .. toctree::

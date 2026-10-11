@@ -26,8 +26,8 @@ dftsolve -p 4 -i Fe-QE-spin-smoke.py
 The main spin-resolved outputs are written below
 `Fe-QE-spin-smoke-results/` and use the following suffixes:
 
-- `-DOS-QE-Result-DOS-Up.csv` and `-DOS-QE-Result-DOS-Down.csv`;
-- `-DOS-QE-Result-PDOS-Up.csv` and `-DOS-QE-Result-PDOS-Down.csv`;
+- `-DOS-QE-Result-DOS-Up.dat` and `-DOS-QE-Result-DOS-Down.dat`;
+- `-DOS-QE-Result-PDOS-Up.dat` and `-DOS-QE-Result-PDOS-Down.dat`;
 - `-BAND-QE-Result-Band-Up.dat` and `-BAND-QE-Result-Band-Down.dat`;
 - `-BAND-QE-Graph-Band.png` with both spin channels;
 - `-BAND-QE-Graph-Projected-Band-Spin-Up.png` and

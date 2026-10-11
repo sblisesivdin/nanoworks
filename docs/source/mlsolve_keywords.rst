@@ -296,7 +296,7 @@ Converge the strain amplitude and atomic-force tolerance for quantitative use.
     is ``null``. Significant tensor asymmetry also prevents that conclusion.
     The eigenvalues and positive-definiteness diagnostic remain available.
 
-Elastic outputs are ``<structure>-ML-ELASTIC-Samples.csv`` (raw stresses in GPa,
+Elastic outputs are ``<structure>-ML-ELASTIC-Samples.dat`` (raw stresses in GPa,
 engineering strains, energies and convergence flags),
 ``<structure>-ML-ELASTIC-Structures.traj``, per-structure relaxation logs,
 ``<structure>-ML-ELASTIC-Tensor.dat`` (symmetrized tensor in the resolved units),

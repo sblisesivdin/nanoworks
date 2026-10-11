@@ -178,7 +178,7 @@ or:
     highest occupied energy when only that edge is available.
 
     With ``SOC_calc = True``, QE projected DOS is written in the
-    total-angular-momentum basis produced by ``projwfc.x``. CSV columns use
+    total-angular-momentum basis produced by ``projwfc.x``. DAT columns use
     labels such as ``p_j0.5`` and ``p_j1.5``; Cartesian orbital labels are
     intentionally not used for these spinor projections.
 
@@ -350,7 +350,7 @@ or:
     GPAW's archived ``force_constants_sha256`` remains a file-content hash.
     GPAW/QE verify consistent band/mesh mode counts and finite numerical DOS
     tables before reporting completion. QE atom-projected DOS must contain one
-    row per magnetic unit-cell atom. GPAW thermal CSV output requires four
+    row per magnetic unit-cell atom. GPAW thermal DAT output requires four
     matching one-dimensional columns. QE force-constant files are replaced
     atomically, preserving a previous file if writing is interrupted.
     Total charge and explicitly fixed band counts scale with the number of
@@ -1509,8 +1509,8 @@ backend interpret the settings it supports.
     spinors.
 
     Selected weights and the referenced band energies are also exported to
-    ``*-BAND-QE-Result-Projected-Band.csv``. Collinear calculations write
-    separate ``-Up.csv`` and ``-Down.csv`` files. Each row identifies the
+    ``*-BAND-QE-Result-Projected-Band.dat``. Collinear calculations write
+    separate ``-Up.dat`` and ``-Down.dat`` files. Each row identifies the
     zero-based k-point, band and projection indices, path distance, energy
     in eV, atom indices, orbital, optional ``j``, projection basis,
     ``selected_state_count`` and weight. A selection matching no atomic states
@@ -1930,9 +1930,9 @@ Optical Calculations Keywords
     publishes each table by atomic file replacement. GPAW plots only the
     active optical method; missing spectra and plotting errors stop the
     workflow and propagate to all MPI ranks.
-    Each derived optical DAT table has a matching comma-separated CSV copy
-    with identical numerical values, column names and units for Excel and
-    Origin. ``dftsolve --plot <table.dat>`` or ``<table.csv>`` regenerates
+    Each derived optical spectrum is one whitespace-separated DAT table
+    with column names and units for Excel and Origin.
+    ``dftsolve --plot <table.dat>`` regenerates
     figures directly from those seven columns without a summary JSON.
     JSON is optional bookkeeping, not a requirement for numerical analysis.
     Completed GPAW/QE optical workflows also write

@@ -23,7 +23,7 @@ logs for the intended AFM state. After relaxation, regenerate dry-run/Slurm
 inputs from the final geometry; generated decks contain the supplied geometry.
 
 THz band/DOS tables, a PNG, NumPy force constants, Phonopy YAML, a summary
-JSON, and thermal CSV are written with `PHONON-QE` names. Undisplaced residual
+JSON, and thermal DAT are written with `PHONON-QE` names. Undisplaced residual
 forces are subtracted. Each SCF has an independent state directory. Repeating
 the normal command reuses force caches only when inputs, UPF content, the `pw.x` binary content and the recorded
 force-content hashes match. Altered force values invalidate the affected job;

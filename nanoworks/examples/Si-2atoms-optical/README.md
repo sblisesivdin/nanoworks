@@ -117,14 +117,14 @@ After a completed optical workflow, use its numerical table to recreate figures:
 dftsolve --plot Si-BSE-smoke-results/Si_mp-149_primitive_Example-OPTICAL-GPAW-Result-Calculation-BSE-AllData.dat
 ```
 
-Use the actual structure-prefixed filename in your result folder. A matching
-`.csv` file contains the same seven columns with names and units, ready for
-Excel or Origin (comma separator, decimal point). Either DAT or CSV can be
-passed to `--plot`. Older DAT results do not need a CSV copy to be plotted.
+Use the actual structure-prefixed filename in your result folder. The DAT
+file contains seven columns with names and units, ready for Excel or Origin
+(whitespace separator, decimal point). No duplicate CSV is produced.
+Older optical DAT and CSV tables remain readable with `--plot`.
 No JSON summary, input, geometry or DFT engine is needed. Figures are written
 beside the selected table, and saved energies and values are preserved.
 Repeat plotting replaces its generated images. The summary JSON is optional
-bookkeeping; the numerical tables remain independently usable.
+bookkeeping; numerical tables remain independently usable.
 
 RPA and especially BSE production calculations may require substantially more
 memory. Increase k-point, band, and response cutoffs only after monitoring the

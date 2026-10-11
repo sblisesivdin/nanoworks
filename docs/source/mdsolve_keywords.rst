@@ -268,10 +268,10 @@ radial distribution functions (RDF), and velocity autocorrelation functions
     Optional list of element symbols for element-resolved MSD analysis,
     for example ``['Li', 'O']``. The selected elements must be present
     in the structure. Nanoworks writes the combined result to
-    ``*-MSD-Species.csv``.
+    ``*-MSD-Species.dat``.
 
 When enabled, Nanoworks preserves the native LAMMPS MSD output and also writes
-``*-MSD.csv`` containing the x, y, z and total MSD components in
+``*-MSD.dat`` containing the x, y, z and total MSD components in
 Angstrom squared.
 
 
@@ -307,7 +307,7 @@ Angstrom squared.
     in the structure.
 
 When enabled, Nanoworks preserves the native LAMMPS RDF output and also writes
-``*-RDF.csv`` with pair labels, radial coordinate, ``g(r)``, and coordination
+``*-RDF.dat`` with pair labels, radial coordinate, ``g(r)``, and coordination
 number for each sampled step. With an empty ``RDF_pairs`` list, the pair label
 is ``All-All``.
 
@@ -327,7 +327,7 @@ is ``All-All``.
     Number of MD steps between VACF samples.
 
 When enabled, Nanoworks preserves the native LAMMPS VACF output and writes
-``*-VACF.csv`` with the x, y, z and total VACF components. With LAMMPS
+``*-VACF.dat`` with the x, y, z and total VACF components. With LAMMPS
 metal units, the VACF values have units of Angstrom squared per picosecond
 squared.
 
@@ -362,11 +362,11 @@ total MSD curve using the Einstein relation.
     Diffusion dimensionality used in ``D = slope / (2 d)``. Supported
     values are 1, 2, and 3.
 
-The result is written to ``*-Diffusion.csv`` with the fitted slope,
+The result is written to ``*-Diffusion.dat`` with the fitted slope,
 diffusion coefficient in Angstrom squared per picosecond and square
 centimeters per second, and the linear-fit R-squared value. When
 ``MSD_species`` is also set, Nanoworks writes element-resolved diffusion
-coefficients to ``*-Diffusion-Species.csv`` using the same fit settings.
+coefficients to ``*-Diffusion-Species.dat`` using the same fit settings.
 
 
 VACF Diffusion Analysis
@@ -391,7 +391,7 @@ VACF with the Green-Kubo relation.
     Diffusion dimensionality used to convert the integrated total VACF to
     a diffusion coefficient. Supported values are 1, 2, and 3.
 
-The result is written to ``*-Diffusion-VACF.csv`` together with the
+The result is written to ``*-Diffusion-VACF.dat`` together with the
 directional VACF integrals and the total diffusion estimate.
 
 
@@ -470,7 +470,7 @@ long-running calculations.
 
     LAMMPS thermodynamic print interval. Each Nanoworks MD cycle is a
     separate LAMMPS ``run``, so cycle-end thermodynamic records remain
-    available for the common ``*-Energy.csv`` summary.
+    available for the common ``*-Energy.dat`` summary.
 
 Larger intervals substantially reduce disk and log volume during long MD
 runs without changing the integration timestep.
@@ -531,5 +531,5 @@ production MD trajectory and analyses.
 
 When equilibration is enabled, Nanoworks performs a separate NVT, NVE, or NPT
 equilibration run, resets the LAMMPS timestep counter to zero, and only then
-creates the MSD, RDF, and VACF analysis computes. Production CSV outputs and
+creates the MSD, RDF, and VACF analysis computes. Production DAT outputs and
 diffusion fits therefore exclude the equilibration segment.

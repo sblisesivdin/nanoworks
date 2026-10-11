@@ -39,7 +39,7 @@ summaries and the convergence checks needed before scientific use.
 
 * **Silicon Convergence (GPAW and QE):**
   Runs the same ordered cutoff, k-point, and lattice-scale workflow with both
-  engines and writes JSON, CSV, and optimized-CIF results. (Folder:
+  engines and writes JSON, DAT, and optimized-CIF results. (Folder:
   ``Convergence/``)
 
 * **Bulk GaAs (No CIF):**

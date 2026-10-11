@@ -14,7 +14,7 @@ mode give 25 evaluated structures including the common reference.
 
 `Cu-elastic/optimized-ML-ELASTIC-Result.json` records the raw and symmetric
 6x6 tensors in GPa, fit RMSE, reference stress, eigenvalues and Voigt/Reuss/Hill
-moduli. The companion `Tensor.dat`, `Samples.csv`, `Structures.traj` and logs
+moduli. The companion `Tensor.dat`, `Samples.dat`, `Structures.traj` and logs
 preserve numerical inputs and outputs. Voigt order is xx, yy, zz, yz, xz, xy;
 shears are engineering strains.
 

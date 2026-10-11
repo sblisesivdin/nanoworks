@@ -2,7 +2,9 @@
 
 ### Development Version
 
-- Optical results export matching DAT/CSV tables for Excel and Origin; --plot reads them directly without JSON.
+- Numerical result tables use DAT with one unit-bearing header token per column; no duplicate CSV is produced.
+
+- Optical and DOS DAT tables can be replotted directly; legacy CSV reading remains supported.
 
 - dftsolve --plot redraws saved optical and DOS results in their result directory without DFT calculations.
 

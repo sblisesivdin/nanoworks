@@ -55,5 +55,5 @@ not decide physical stability; converge the force accuracy, displacement,
 supercell and meshes before interpreting soft modes.
 
 This input enables thermal analysis from 0 to 1000 K in 10 K steps. Set
-`Phonon_thermal_calc=False` to omit it from a normal run. Thermal CSV units
+`Phonon_thermal_calc=False` to omit it from a normal run. Thermal DAT units
 are K, kJ/mol for free energy and J/K/mol for entropy and heat capacity.

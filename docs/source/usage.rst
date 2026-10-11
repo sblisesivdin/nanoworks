@@ -10,8 +10,7 @@ file, geometry, GPAW installation or QE executables:
 .. code-block:: bash
 
    dftsolve --plot path/to/Si-OPTICAL-GPAW-Result-Calculation-BSE-AllData.dat
-   dftsolve --plot path/to/Si-OPTICAL-GPAW-Result-Calculation-BSE-AllData.csv
-   dftsolve --plot path/to/Si-DOS-QE-Result-DOS.csv
+   dftsolve --plot path/to/Si-DOS-QE-Result-DOS.dat
 
 Use the actual filename produced by your calculation. Figures are written
 beside the selected table; repeat plotting replaces its generated images.
@@ -20,9 +19,8 @@ Source tables are read without modification.
 Optical Data for Excel and Origin
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Completed GPAW and QE optical workflows produce whitespace-separated DAT
-and comma-separated CSV copies of each derived spectrum. Both contain the
-same numerical values, with one header row and seven columns:
+Completed GPAW and QE optical workflows produce one whitespace-separated
+DAT table per derived spectrum, with one header row and seven columns:
 
 .. list-table:: Optical result columns
    :header-rows: 1
@@ -31,33 +29,33 @@ same numerical values, with one header row and seven columns:
      - Meaning and unit
    * - Energy(eV)
      - Photon energy in eV
-   * - Eps_real
+   * - Eps_real(1)
      - Real dielectric function, dimensionless
-   * - Eps_img
+   * - Eps_img(1)
      - Imaginary dielectric function, dimensionless
-   * - Refractive_Index
+   * - Refractive_Index(1)
      - Refractive index, dimensionless
-   * - Extinction_Index
+   * - Extinction_Index(1)
      - Extinction coefficient, dimensionless
    * - Absorption(1/cm)
      - Absorption coefficient in inverse centimetres
-   * - Reflectivity
+   * - Reflectivity(1)
      - Reflectivity as a dimensionless fraction
 
-Import CSV with a comma separator and a decimal point, or DAT with a
-whitespace separator. The first row contains column names. No Python or
+Import DAT with a whitespace separator and a decimal point. The first row
+contains column names. No Python or
 JSON knowledge is needed to inspect, edit or plot these numerical data in
 Excel, Origin or another analysis program.
 
-``--plot`` reads either optical table directly and creates four standard
+``--plot`` reads the optical table directly and creates four standard
 figures. It checks the column header, finite values and increasing
 nonnegative photon-energy grid. It does not apply another scissors shift,
 smoothing or energy reference change, or recompute derived columns. An
 edited table is plotted as saved if it passes these numerical checks.
-Older seven-column DAT tables remain usable without CSV companions.
+Older seven-column optical DAT and legacy CSV tables remain readable.
 Raw dielectric-response files with fewer columns are not accepted.
 
-DOS CSV files retain their saved energy reference. For spin-resolved DOS,
+DOS DAT files retain their saved energy reference. For spin-resolved DOS,
 selecting either Up or Down reads and validates both sibling files and
 plots Down below zero. The full saved energy range is shown. Band,
 projected-band and PDOS files are not yet accepted by this command.

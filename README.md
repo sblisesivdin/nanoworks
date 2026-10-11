@@ -114,7 +114,7 @@ dftsolve -p <cores> -g <geometry.cif> -a
 *   `-a, --auto`: Auto mode. Automatically generate input parameters based on geometry.
 *   `--check`: Validate the workflow, executables, pseudopotentials, and saved-state dependencies without starting calculations or creating the output directory.
 *   `--json`: Print `--check` results as versioned machine-readable JSON.
-*   `--plot RESULT`: Regenerate figures beside an optical DAT/CSV table or DOS CSV without running DFT.
+*   `--plot RESULT`: Regenerate figures beside an optical or DOS DAT table without running DFT.
 *   `--dry-run`: Write QE input files, a JSON execution plan, and a shell script without running calculations.
 *   `--scheduler {local,slurm}`: Generate a local or Slurm execution script for `--dry-run`.
 *   `--cluster-profile`: Load reusable Slurm settings from a JSON file or a named user profile.
@@ -122,7 +122,7 @@ dftsolve -p <cores> -g <geometry.cif> -a
 *   `--slurm-memory`, `--slurm-partition`, `--slurm-account`, `--slurm-qos`, `--slurm-job-name`: Optional Slurm resource settings.
 *   `--slurm-module`: Module to load in the generated script; repeat the option to load multiple modules.
 
-Optical workflows export matching DAT and CSV tables with column names and units for Excel, Origin and manual analysis. `--plot` reads these tables directly; JSON summaries are optional.
+Nanoworks numerical results use one DAT table with a unit-bearing header and whitespace-separated columns for Excel, Origin and manual analysis. `--plot` reads these tables directly; JSON summaries are optional.
 
 Check an input before submitting a calculation:
 
@@ -283,7 +283,7 @@ dftconverge -p 4 -g structure.cif -i convergence.py
 dftconverge --plot-results results/convergence-results.json
 ```
 
-The workflow prints every completed point and saves JSON, CSV, optimized
+The workflow prints every completed point and saves JSON, DAT, optimized
 structure, cutoff, k-point, and fitted energy-volume results and figures. See the
 [convergence documentation](https://nanoworks.readthedocs.io/en/latest/dftconverge.html)
 for input keywords and examples. The `--plot-results` form recreates the

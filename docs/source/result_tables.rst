@@ -1,0 +1,41 @@
+Numerical Result Tables
+=======================
+
+Nanoworks-generated numerical results use a single ``.dat`` table rather
+than duplicate DAT and CSV copies. The first line contains one English
+column name and unit per column. Each name is one token: internal spaces
+are replaced by underscores, and units are attached without spaces.
+
+.. code-block:: text
+
+   Energy(eV) DOS(states/eV)
+   -1.000000 0.125000
+   0.000000 0.250000
+
+Data columns use whitespace separators, decimal points and no thousands
+separators. ``(1)`` denotes a dimensionless quantity or identifier. Each
+band and phonon branch has a separate numbered header. Missing values are
+``nan``, which retains the correct column position. Text fields containing
+spaces or delimiters use percent escapes, for example ``Spin%20Up``;
+original projection labels are also retained in the calculation metadata.
+
+In Excel or Origin, select a whitespace separator and use the first row as
+column names. Treat consecutive spaces as one delimiter. In NumPy, use
+``numpy.loadtxt(filename, skiprows=1)`` for fully numerical tables. Band
+tables may contain blank lines between path or band segments.
+
+In convergence tables, ``ParameterValue`` has the unit identified by
+``parameter_type``: cutoff in eV, k-point density in points per angstrom,
+mesh as an integer tuple, or a dimensionless lattice factor. Elastic tensor
+rows and columns follow the Voigt ordering recorded in the summary.
+
+JSON summaries remain optional metadata for numerical analysis; the DAT
+tables contain the numerical results. ``dftsolve --plot`` accepts optical
+and DOS DAT tables directly and continues reading older optical and DOS
+CSV files. Other table types are available for manual analysis but are not
+yet supported by that plotting command.
+
+Native GPAW, QE and LAMMPS files, structure formats such as CIF/CUBE,
+trajectories, binary arrays, restart files and diagnostic logs retain their
+required formats. The DAT standard applies to the numerical analysis
+tables exported by Nanoworks, not to those engine or structure formats.

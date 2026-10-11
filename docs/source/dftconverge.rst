@@ -233,7 +233,7 @@ Outputs
 The work directory contains per-point GPAW or QE calculation folders plus:
 
 * ``convergence-results.json`` with the selected parameters and all points;
-* ``convergence-results.csv`` with energies and lattice-point cell volumes;
+* ``convergence-results.dat`` with energies and lattice-point cell volumes;
 * ``convergence-cutoff.png`` with energy relative to the last cutoff point;
 * ``convergence-kpoints.png`` with energy relative to the last k-point point;
 * ``convergence-lattice.png`` with calculated energy-volume points, the

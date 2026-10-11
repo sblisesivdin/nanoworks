@@ -74,7 +74,7 @@ LAMMPS can compute mean squared displacement during the MD run. See `sampleinput
 
     mdsolve -i sampleinput_msd.py -g argon_fcc_4x4x4.cif
 
-The analysis writes both the native LAMMPS MSD data file and a Nanoworks `*-MSD.csv` file.
+The analysis writes both the native LAMMPS MSD data file and a Nanoworks `*-MSD.dat` file.
 
 
 ## RDF analysis
@@ -83,7 +83,7 @@ LAMMPS can compute a total radial distribution function during the MD run. See `
 
     mdsolve -i sampleinput_rdf.py -g argon_fcc_4x4x4.cif
 
-The workflow writes both the native LAMMPS RDF data and a Nanoworks `*-RDF.csv` file.
+The workflow writes both the native LAMMPS RDF data and a Nanoworks `*-RDF.dat` file.
 
 
 ## VACF analysis
@@ -92,7 +92,7 @@ LAMMPS can compute the velocity autocorrelation function during the MD run. See 
 
     mdsolve -i sampleinput_vacf.py -g argon_fcc_4x4x4.cif
 
-The workflow writes both the native LAMMPS VACF data and a Nanoworks `*-VACF.csv` file.
+The workflow writes both the native LAMMPS VACF data and a Nanoworks `*-VACF.dat` file.
 
 
 ## Diffusion coefficient
@@ -101,7 +101,7 @@ Nanoworks can estimate a diffusion coefficient from the linear part of the MSD c
 
     mdsolve -i sampleinput_diffusion.py -g argon_fcc_4x4x4.cif
 
-The result is written to `*-Diffusion.csv`. The chosen fit window and diffusion dimensionality should be treated as scientific analysis parameters, not automatic convergence criteria.
+The result is written to `*-Diffusion.dat`. The chosen fit window and diffusion dimensionality should be treated as scientific analysis parameters, not automatic convergence criteria.
 
 
 ## Species-resolved MSD
@@ -110,12 +110,12 @@ For multicomponent systems, MSD can be calculated separately for selected elemen
 
     mdsolve -i sampleinput_species_msd.py -g argon_fcc_4x4x4.cif
 
-For example, a Li-containing oxide could use `MSD_species = ['Li', 'O']`. The combined output is written to `*-MSD-Species.csv`.
+For example, a Li-containing oxide could use `MSD_species = ['Li', 'O']`. The combined output is written to `*-MSD-Species.dat`.
 
 
 ### Species-resolved diffusion
 
-If `Diffusion_calc = True` is combined with `MSD_species`, Nanoworks also estimates a diffusion coefficient for each selected element and writes `*-Diffusion-Species.csv` using the same fit window and dimensionality as the total diffusion analysis.
+If `Diffusion_calc = True` is combined with `MSD_species`, Nanoworks also estimates a diffusion coefficient for each selected element and writes `*-Diffusion-Species.dat` using the same fit window and dimensionality as the total diffusion analysis.
 
 
 ## Pair-resolved RDF
@@ -129,7 +129,7 @@ The total VACF can be integrated to estimate a Green-Kubo diffusion coefficient.
 
     mdsolve -i sampleinput_vacf_diffusion.py -g argon_fcc_4x4x4.cif
 
-The result is written to `*-Diffusion-VACF.csv`.
+The result is written to `*-Diffusion-VACF.dat`.
 
 
 ## Restart and checkpointing
