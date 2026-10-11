@@ -6421,6 +6421,7 @@ class dftsolve:
                     txt=self.struct+'-OPTICAL-GPAW-Log-Calculation.txt',
                     nbands=self.Opt_num_of_bands,
                     smearing=self.Opt_FD_smearing,
+                    spinpol=self.Spin_calc,
                     kpoint_density=opt_kpoint_density,
                     kpoint_size=opt_kpoint_size,
                     gamma=opt_gamma,

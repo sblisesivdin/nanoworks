@@ -739,6 +739,31 @@ class TestGPAWEngine(unittest.TestCase):
             weight=50,
         )
         
+    @patch('nanoworks.engine.gpaw.load_gpaw_calc')
+    def test_optical_spin_mismatch_stops_before_fixed_density(self, load_calc):
+        for hybrid in (False, True):
+            for spinpol, saved_spins in ((False, 2), (True, 1)):
+                with self.subTest(hybrid=hybrid, spinpol=spinpol):
+                    load_calc.reset_mock()
+                    load_calc.return_value.get_number_of_spins.return_value = saved_spins
+                    with self.assertRaisesRegex(ValueError, 'optical ground state.*spin channels'):
+                        prepare_optical_calc('state.gpw', hybrid, 'opt.txt', 16,
+                                             .05, None, (4, 4, 4), True, spinpol=spinpol)
+                    load_calc.return_value.fixed_density.assert_not_called()
+
+    @patch('nanoworks.engine.gpaw.load_gpaw_calc')
+    def test_optical_matching_saved_spin_channels(self, load_calc):
+        for hybrid in (False, True):
+            for spinpol in (False, True):
+                with self.subTest(hybrid=hybrid, spinpol=spinpol):
+                    load_calc.reset_mock()
+                    calc = load_calc.return_value
+                    calc.get_number_of_spins.return_value = 2 if spinpol else 1
+                    result = prepare_optical_calc('state.gpw', hybrid, 'opt.txt', 16,
+                                                 .05, None, (4, 4, 4), True, spinpol=spinpol)
+                    self.assertIs(result, calc if hybrid else calc.fixed_density.return_value)
+                    calc.get_number_of_spins.assert_called_once()
+
     @patch('nanoworks.engine.gpaw.FermiDirac')
     @patch('nanoworks.engine.gpaw.load_gpaw_calc')
     def test_regular_optical_calc_uses_fixed_density(

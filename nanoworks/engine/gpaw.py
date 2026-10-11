@@ -443,6 +443,7 @@ def prepare_optical_calc(
     kpoint_density,
     kpoint_size,
     gamma,
+    spinpol=None,
 ):
     """Prepare a GPAW calculator for optical-response calculations."""
     parallel = {
@@ -450,16 +451,29 @@ def prepare_optical_calc(
     }
 
     if hybrid:
-        return load_gpaw_calc(
+        calc = load_gpaw_calc(
             filename,
             hybrid=True,
             txt=txt,
             parallel=parallel,
         )
+    else:
+        calc = load_gpaw_calc(filename)
 
-    return load_gpaw_calc(
-        filename,
-    ).fixed_density(
+    if spinpol is not None:
+        expected_spins = 2 if spinpol else 1
+        saved_spins = calc.get_number_of_spins()
+        if saved_spins != expected_spins:
+            raise ValueError(
+                f'GPAW optical ground state has {saved_spins} spin channels; '
+                f'Spin_calc={spinpol} requires {expected_spins}. '
+                'Use matching optical settings or recalculate the ground state.'
+            )
+
+    if hybrid:
+        return calc
+
+    return calc.fixed_density(
         txt=txt,
         nbands=nbands,
         parallel=parallel,

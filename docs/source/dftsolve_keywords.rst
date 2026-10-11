@@ -1829,6 +1829,10 @@ Optical Calculations Keywords
     tuples, ranges and integer NumPy arrays are accepted. Explicit ordering
     is preserved; a band may occur in both selections. These checks do not
     infer occupations or choose the physical valence/conduction window.
+    GPAW optical preparation also checks the saved ground state's spin
+    channels against ``Spin_calc`` before fixed-density preparation. Changing
+    only the optical input does not convert a spin-polarized saved state
+    into a spin-paired BSE reference.
 
 .. code-block:: python
 

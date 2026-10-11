@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- GPAW optics checks saved ground-state spin channels before preparing wavefunctions, including hybrid-state reuse.
+
 - GPAW BSE validates band selections before wavefunction preparation and rejects empty, duplicate or out-of-range indices.
 
 - GPAW BSE now applies Opt_shift_en as a scissors correction without shifting the requested photon-energy grid.
