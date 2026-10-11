@@ -11,6 +11,97 @@ from io import StringIO
 import numpy as np
 
 
+def _save_figure(figure, filename):
+    """Replace a saved PNG only after Matplotlib finishes writing it."""
+    filename = Path(filename)
+    temporary = filename.with_name(filename.name + '.tmp')
+    try:
+        figure.savefig(temporary, format='png', dpi=300)
+        temporary.replace(filename)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def load_band_table(filename):
+    """Read long band blocks or wide XYYY columns without a calculator state."""
+    filename = Path(filename)
+    lines = filename.read_text(encoding='utf-8-sig').splitlines()
+    wide = filename.stem.endswith('-XYYY')
+    if lines and lines[0].strip().removeprefix('#').strip().startswith('KPointIndex('):
+        header = lines.pop(0).strip().removeprefix('#').strip().split()
+        if wide:
+            if (len(header) < 2 or header[0] != 'KPointIndex(1)'
+                    or header[1:] != [f'Band_{i + 1}(eV)' for i in range(len(header) - 1)]):
+                raise ValueError('Invalid wide band table header.')
+        elif header != ['KPointIndex(1)', 'Energy(eV)']:
+            raise ValueError('Invalid long band table header.')
+    else:
+        header = None  # Older Nanoworks band tables had no header.
+    if wide:
+        table = np.loadtxt(StringIO('\n'.join(lines)), ndmin=2)
+        if table.shape[1] < 2 or (header is not None and table.shape[1] != len(header)):
+            raise ValueError('Wide band tables must match their numbered energy columns.')
+        indices, energies = table[:, 0], table[:, 1:]
+    else:
+        blocks, current = [], []
+        for line in lines + ['']:
+            if line.strip():
+                current.append(line)
+            elif current:
+                block = np.loadtxt(StringIO('\n'.join(current)), ndmin=2)
+                if block.shape[1] != 2:
+                    raise ValueError('Long band tables require two columns per band block.')
+                blocks.append(block)
+                current = []
+        if not blocks or any(not np.array_equal(block[:, 0], blocks[0][:, 0]) for block in blocks):
+            raise ValueError('Band blocks must have identical k-point grids.')
+        indices = blocks[0][:, 0]
+        energies = np.column_stack([block[:, 1] for block in blocks])
+    if (len(indices) < 2 or not np.isfinite(indices).all() or not np.isfinite(energies).all()
+            or np.any(indices < 0) or np.any(indices != np.floor(indices))
+            or np.any(np.diff(indices) <= 0)):
+        raise ValueError('Band tables require finite energies on increasing nonnegative integer k-point indices.')
+    return indices, energies
+
+
+def plot_band_result(filename):
+    """Draw saved band energies on their recorded k-point index axis."""
+    filename = Path(filename).expanduser().resolve()
+    match = re.fullmatch(r'(.+-BAND-(?:GPAW|QE))-Result-Band(?:-(Up|Down))?(-XYYY)?\.dat', filename.name)
+    if match is None:
+        raise ValueError('Expected a Nanoworks *-BAND-GPAW/QE-Result-Band[-Up/Down][-XYYY].dat file.')
+    prefix, spin, wide = match.groups()
+    if spin:
+        tables = [load_band_table(filename.with_name(prefix + '-Result-Band-' + channel
+                                                   + (wide or '') + '.dat')) for channel in ('Up', 'Down')]
+        if (not np.array_equal(tables[0][0], tables[1][0])
+                or tables[0][1].shape != tables[1][1].shape):
+            raise ValueError('Spin-resolved band tables must have identical k-point grids and band counts.')
+    else:
+        tables = [load_band_table(filename)]
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    output = filename.with_name(prefix + '-Graph-Band-Index.png')
+    fig, ax = plt.subplots(figsize=(8, 6))
+    try:
+        for (indices, energies), color, label in zip(tables, ('blue', 'red'), ('Spin Up', 'Spin Down')):
+            for band in range(energies.shape[1]):
+                ax.plot(indices, energies[:, band], color=color, linewidth=1,
+                        label=label if spin and band == 0 else None)
+        ax.set_xlabel('K-point index')
+        ax.set_ylabel('Energy relative to saved reference (eV)')
+        ax.axhline(0, color='k', linestyle='--', linewidth=.8)
+        ax.set_xlim(tables[0][0][0], tables[0][0][-1])
+        if spin:
+            ax.legend()
+        fig.tight_layout()
+        _save_figure(fig, output)
+    finally:
+        plt.close(fig)
+    return {'figure_files': {'Band': [str(output)]}, 'output_directory': str(filename.parent)}
+
+
 def load_optical_table(filename):
     """Read a seven-column optical DAT/CSV using its explicit column header."""
     from nanoworks.optical import OPTICAL_TABLE_HEADER, LEGACY_OPTICAL_TABLE_HEADER, validate_optical_table
@@ -84,7 +175,7 @@ def plot_dos_result(filename):
         if spin:
             ax.legend()
         fig.tight_layout()
-        fig.savefig(output, dpi=300)
+        _save_figure(fig, output)
     finally:
         plt.close(fig)
     return {'figure_files': {'DOS': [str(output)]}, 'output_directory': str(filename.parent)}
@@ -96,10 +187,12 @@ def plot_saved_result(filename):
     if filename.suffix.lower() == '.json':
         from nanoworks.optical import plot_optical_summary
         return plot_optical_summary(filename)
+    if re.fullmatch(r'.+-BAND-(?:GPAW|QE)-Result-Band(?:-(Up|Down))?(-XYYY)?\.dat', filename.name):
+        return plot_band_result(filename)
     if filename.suffix.lower() in ('.dat', '.csv') and re.fullmatch(
             r'.+-DOS-(?:GPAW|QE)-Result-DOS(?:-(Up|Down))?\.(?:dat|csv)', filename.name):
         return plot_dos_result(filename)
     if filename.suffix.lower() in ('.dat', '.csv'):
         return plot_optical_table(filename)
-    raise ValueError('Supported saved results are optical DAT/CSV tables and Nanoworks DOS DAT files (legacy CSV is supported); '
+    raise ValueError('Supported saved results are optical, DOS and band DAT files (legacy CSV is supported); '
                      'optical summary JSON files are optional.')

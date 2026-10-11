@@ -31,8 +31,9 @@ rows and columns follow the Voigt ordering recorded in the summary.
 
 JSON summaries remain optional metadata for numerical analysis; the DAT
 tables contain the numerical results. ``dftsolve --plot`` accepts optical
-and DOS DAT tables directly and continues reading older optical and DOS
-CSV files. Other table types are available for manual analysis but are not
+DOS and band DAT tables directly and continues reading older optical and DOS
+CSV files. Band replotting uses saved k-point indices; high-symmetry labels require
+path metadata that these tables do not contain. Other table types are available for manual analysis but are not
 yet supported by that plotting command.
 
 Native GPAW, QE and LAMMPS files, structure formats such as CIF/CUBE,

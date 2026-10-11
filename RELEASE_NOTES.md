@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- --plot redraws saved GPAW/QE band DAT files, including spin channels, without calculator states.
+
 - Numerical result tables use DAT with one unit-bearing header token per column; no duplicate CSV is produced.
 
 - Optical and DOS DAT tables can be replotted directly; legacy CSV reading remains supported.

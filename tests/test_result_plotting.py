@@ -9,10 +9,59 @@ from unittest.mock import patch
 
 import numpy as np
 
-from nanoworks.result_plotting import load_dos_table, plot_dos_result, plot_saved_result
+from nanoworks.result_plotting import (
+    load_dos_table, plot_dos_result, plot_saved_result, load_band_table, plot_band_result,
+)
 
 
 class TestSavedResultPlotting(unittest.TestCase):
+    def test_long_and_wide_band_tables_preserve_saved_energies(self):
+        with tempfile.TemporaryDirectory() as directory:
+            long = Path(directory) / 'Si-BAND-GPAW-Result-Band.dat'
+            wide = long.with_name('Si-BAND-GPAW-Result-Band-XYYY.dat')
+            long.write_text('KPointIndex(1) Energy(eV)\n0 -2\n1 -1\n\n0 3\n1 4\n')
+            wide.write_text('KPointIndex(1) Band_1(eV) Band_2(eV)\n0 -2 3\n1 -1 4\n')
+            for path in (long, wide):
+                indices, energies = load_band_table(path)
+                np.testing.assert_array_equal(indices, [0, 1])
+                np.testing.assert_array_equal(energies, [[-2, 3], [-1, 4]])
+            long.write_text('0 -2\n1 -1\n\n0 3\n1 4\n')
+            np.testing.assert_array_equal(load_band_table(long)[1], [[-2, 3], [-1, 4]])
+
+    def test_inconsistent_or_nonfinite_band_blocks_are_rejected(self):
+        cases = ['0 1\n1 2\n\n0 3\n2 4\n', '0 1\n1 nan\n',
+                 '0.5 1\n1.5 2\n', '1 1\n0 2\n']
+        for content in cases:
+            with self.subTest(content=content), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / 'Si-BAND-QE-Result-Band.dat'
+                path.write_text(content)
+                with self.assertRaises(ValueError):
+                    load_band_table(path)
+
+    def test_band_save_failure_preserves_existing_png_and_closes_figure(self):
+        import matplotlib.pyplot as plt
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'Si-BAND-QE-Result-Band.dat'
+            path.write_text('KPointIndex(1) Energy(eV)\n0 -1\n1 1\n')
+            output = path.with_name('Si-BAND-QE-Graph-Band-Index.png')
+            output.write_bytes(b'previous figure')
+            before = set(plt.get_fignums())
+            with patch('matplotlib.figure.Figure.savefig', side_effect=OSError('disk full')):
+                with self.assertRaises(OSError):
+                    plot_band_result(path)
+            self.assertEqual(output.read_bytes(), b'previous figure')
+            self.assertEqual(set(plt.get_fignums()), before)
+            self.assertFalse(Path(str(output) + '.tmp').exists())
+
+    def test_missing_spin_band_partner_is_rejected_before_drawing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'Si-BAND-GPAW-Result-Band-Up.dat'
+            path.write_text('KPointIndex(1) Energy(eV)\n0 -1\n1 1\n')
+            with patch('nanoworks.result_plotting._save_figure') as save:
+                with self.assertRaises(OSError):
+                    plot_saved_result(path)
+            save.assert_not_called()
+
     def test_dos_energy_reference_is_preserved(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'Si-DOS-QE-Result-DOS.csv'

@@ -11,6 +11,7 @@ file, geometry, GPAW installation or QE executables:
 
    dftsolve --plot path/to/Si-OPTICAL-GPAW-Result-Calculation-BSE-AllData.dat
    dftsolve --plot path/to/Si-DOS-QE-Result-DOS.dat
+   dftsolve --plot path/to/Si-BAND-QE-Result-Band-XYYY.dat
 
 Use the actual filename produced by your calculation. Figures are written
 beside the selected table; repeat plotting replaces its generated images.
@@ -57,8 +58,15 @@ Raw dielectric-response files with fewer columns are not accepted.
 
 DOS DAT files retain their saved energy reference. For spin-resolved DOS,
 selecting either Up or Down reads and validates both sibling files and
-plots Down below zero. The full saved energy range is shown. Band,
-projected-band and PDOS files are not yet accepted by this command.
+plots Down below zero. The full saved energy range is shown.
+
+Band DAT files are supported in long block format and wide ``-XYYY``
+format, including older tables without headers. Selecting either Up or
+Down validates both spin channels before plotting. Saved energies are
+used unchanged on the recorded k-point index axis; the table does not
+contain reciprocal path distances or high-symmetry tick labels. The new
+``-Graph-Band-Index.png`` leaves the calculation's path-labeled plot intact.
+Projected-band and PDOS files are not yet accepted by this command.
 
 The optical summary JSON is optional bookkeeping for settings and file
 hashes. It is not the numerical data file and is not required for table
