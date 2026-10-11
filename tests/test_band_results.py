@@ -5,10 +5,59 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 
-from nanoworks.band_results import BAND_PATH_COLUMNS, load_band_path_table, write_band_path_table
+from nanoworks.band_results import (
+    BAND_PATH_COLUMNS, load_band_path_table, write_band_path_table,
+    write_band_energy_tables,
+)
+from nanoworks.result_plotting import load_band_table
+
+
+class TestBandEnergyTables(unittest.TestCase):
+    def test_long_and_wide_tables_preserve_every_spin_energy(self):
+        energies = np.array([[[-2., 1.], [-1., 2.], [0., 3.]],
+                             [[-3., 4.], [-2., 5.], [-1., 6.]]])
+        with tempfile.TemporaryDirectory() as directory:
+            paths = write_band_energy_tables(Path(directory) / 'Ni-BAND-GPAW',
+                                             energies, ['Down', 'Up'])
+            self.assertEqual(len(paths), 4)
+            for path, expected in zip(paths, [energies[0], energies[0], energies[1], energies[1]]):
+                indices, values = load_band_table(path)
+                np.testing.assert_array_equal(indices, np.arange(3))
+                np.testing.assert_array_equal(values, expected)
+
+    def test_staging_failure_preserves_all_existing_tables(self):
+        with tempfile.TemporaryDirectory() as directory:
+            prefix = Path(directory) / 'Si-BAND-GPAW'
+            paths = write_band_energy_tables(prefix, np.ones((1, 3, 2)))
+            previous = {path: Path(path).read_bytes() for path in paths}
+            original = Path.open
+
+            def fail_wide(path, *args, **kwargs):
+                if str(path).endswith('-XYYY.dat.tmp'):
+                    raise OSError('injected write failure')
+                return original(path, *args, **kwargs)
+
+            with patch.object(Path, 'open', fail_wide):
+                with self.assertRaises(OSError):
+                    write_band_energy_tables(prefix, np.zeros((1, 3, 2)))
+            self.assertEqual(previous, {path: Path(path).read_bytes() for path in paths})
+            self.assertFalse(list(Path(directory).glob('*.tmp')))
+
+    def test_invalid_energies_and_labels_do_not_replace_tables(self):
+        with tempfile.TemporaryDirectory() as directory:
+            prefix = Path(directory) / 'Si-BAND-GPAW'
+            paths = write_band_energy_tables(prefix, np.ones((1, 3, 2)))
+            previous = {path: Path(path).read_bytes() for path in paths}
+            for energies, labels in [(np.full((1, 3, 2), np.nan), None),
+                                     (np.ones((2, 3, 2)), ['Up', 'Up']),
+                                     (np.ones((1, 1, 2)), None)]:
+                with self.assertRaises(ValueError):
+                    write_band_energy_tables(prefix, energies, labels)
+            self.assertEqual(previous, {path: Path(path).read_bytes() for path in paths})
 
 
 class TestBandPathTables(unittest.TestCase):

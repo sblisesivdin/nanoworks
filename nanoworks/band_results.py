@@ -15,6 +15,54 @@ from nanoworks.tableio import DatWriter
 BAND_PATH_COLUMNS = ['KPointIndex(1)', 'Distance(1/A)', 'BreakBefore(1)', 'Label(1)']
 
 
+def write_band_energy_tables(prefix, energies, spin_labels=None):
+    """Stage long and wide DAT tables directly from one referenced energy array.
+
+    Call on the output rank only. All channels are validated and staged before
+    replacing any existing table; no process needs to read another rank's output.
+    Explicit labels preserve the caller's established spin convention.
+    """
+    energies = np.asarray(energies, dtype=float)
+    if (energies.ndim != 3 or energies.shape[0] not in (1, 2)
+            or energies.shape[1] < 2 or energies.shape[2] < 1
+            or not np.isfinite(energies).all()):
+        raise ValueError('Band energies require finite (1 or 2 spins, kpoints, bands) data.')
+    labels = list(spin_labels) if spin_labels is not None else ['']
+    if (len(labels) != energies.shape[0]
+            or (energies.shape[0] == 1 and labels != [''])
+            or (energies.shape[0] == 2 and set(labels) != {'Up', 'Down'})):
+        raise ValueError('Band spin labels must match the energy channels.')
+    staged = []
+    try:
+        for label, channel in zip(labels, energies):
+            suffix = '-' + label if label else ''
+            for wide in (False, True):
+                filename = Path(str(prefix) + '-Result-Band' + suffix
+                                + ('-XYYY' if wide else '') + '.dat')
+                filename.parent.mkdir(parents=True, exist_ok=True)
+                temporary = filename.with_name(filename.name + '.tmp')
+                staged.append((temporary, filename))
+                with temporary.open('w', encoding='utf-8') as stream:
+                    writer = DatWriter(stream)
+                    if wide:
+                        writer.writerow(['KPointIndex(1)'] + [
+                            f'Band_{band + 1}(eV)' for band in range(channel.shape[1])])
+                        for index, row in enumerate(channel):
+                            writer.writerow([index] + [format(value, '.17g') for value in row])
+                    else:
+                        writer.writerow(['KPointIndex(1)', 'Energy(eV)'])
+                        for band in range(channel.shape[1]):
+                            for index, value in enumerate(channel[:, band]):
+                                writer.writerow([index, format(value, '.17g')])
+                            stream.write('\n')
+        for temporary, filename in staged:
+            temporary.replace(filename)
+    finally:
+        for temporary, _ in staged:
+            temporary.unlink(missing_ok=True)
+    return [str(filename) for _, filename in staged]
+
+
 def _validate_axis(indices, distances, breaks):
     if (indices.ndim != 1 or distances.shape != indices.shape or breaks.shape != indices.shape
             or len(indices) < 2 or not np.isfinite(indices).all()
