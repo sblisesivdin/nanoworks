@@ -1824,6 +1824,11 @@ Optical Calculations Keywords
     Valence bands used in BSE calculation. Nanoworks GPAW BSE requires
     ``Mode = 'PW'`` and ``Spin_calc = False``; incompatible settings are
     rejected before wavefunction preparation and full diagonalization.
+    Both BSE band selections must be nonempty one-dimensional sequences of
+    unique integer indices in ``0 <= index < Opt_num_of_bands``. Lists,
+    tuples, ranges and integer NumPy arrays are accepted. Explicit ordering
+    is preserved; a band may occur in both selections. These checks do not
+    infer occupations or choose the physical valence/conduction window.
 
 .. code-block:: python
 

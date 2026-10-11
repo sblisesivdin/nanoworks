@@ -248,7 +248,7 @@ from nanoworks.engine import (
 )
 from nanoworks.optical import (
     validate_optical_settings, validate_optical_table, run_optical_exports,
-    derive_optical_table, write_optical_table, validate_gpaw_optical_workflow,
+    derive_optical_table, write_optical_table,
 )
 from nanoworks.dos import (
     resolve_dos_settings,
@@ -6379,7 +6379,8 @@ class dftsolve:
             else self.Ground_gamma
         )
         
-        self.Opt_calc_type = validate_gpaw_optical_workflow(self)
+        for name, value in validate_optical_settings(self).items():
+            setattr(self, name, value)
         response_blocks = None
         if self.Opt_calc_type == 'RPA':
             response_blocks = resolve_gpaw_optical_blocks(self.Opt_nblocks, world.size)

@@ -13,7 +13,8 @@ class TestOpticalSettings(unittest.TestCase):
         values = dict(Engine='GPAW', Opt_calc_type='RPA', Opt_num_of_bands=16,
             Opt_eta=.05, Opt_FD_smearing=.05, Opt_min_en=0., Opt_max_en=20.,
             Opt_num_of_data=401, Opt_shift_en=0., Opt_cut_of_energy=100.,
-            Opt_domega0=.05, Opt_omega2=5.)
+            Opt_domega0=.05, Opt_omega2=5.,
+            Opt_BSE_valence=range(0, 3), Opt_BSE_conduction=range(4, 7))
         values.update(changes)
         return SimpleNamespace(**values)
 
@@ -35,6 +36,31 @@ class TestOpticalSettings(unittest.TestCase):
                 self.assertEqual(validate_optical_settings(self.config(
                     Engine=engine, Opt_calc_type=method, Opt_shift_en=shift))['Opt_shift_en'], shift)
         validate_optical_settings(self.config(Opt_shift_en=float('nan')))
+
+    def test_bse_rejects_invalid_band_selections(self):
+        import numpy as np
+        invalid = ([], [0, 0], [-1], [16], [1.5], [True],
+                   [np.bool_(False)], [[1]], np.array([[1]]),
+                   np.array([1.0]), '1', 1, {1}, {1: 2})
+        for name in ('Opt_BSE_valence', 'Opt_BSE_conduction'):
+            for bands in invalid:
+                with self.subTest(name=name, bands=bands), self.assertRaisesRegex(ValueError, name):
+                    validate_optical_settings(self.config(Opt_calc_type='BSE', **{name: bands}))
+
+    def test_bse_preserves_explicit_band_order_and_allows_shared_bands(self):
+        import numpy as np
+        result = validate_optical_settings(self.config(Opt_calc_type='BSE',
+            Opt_BSE_valence=np.array([2, 0], dtype=np.int64),
+            Opt_BSE_conduction=(2, 3)))
+        self.assertEqual(result['Opt_BSE_valence'], [2, 0])
+        self.assertEqual(result['Opt_BSE_conduction'], [2, 3])
+        validate_optical_settings(self.config(Opt_calc_type='BSE',
+            Opt_BSE_valence=range(3), Opt_BSE_conduction=range(4, 16)))
+
+    def test_unused_bse_selections_do_not_block_rpa(self):
+        for engine in ('GPAW', 'QE'):
+            validate_optical_settings(self.config(Engine=engine,
+                Opt_BSE_valence=[], Opt_BSE_conduction='unused'))
 
     def test_invalid_common_parameters(self):
         for engine in ('GPAW', 'QE'):

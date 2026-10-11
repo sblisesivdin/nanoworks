@@ -5,6 +5,7 @@
 """Backend-independent validation of optical inputs and numerical results."""
 
 import math
+from collections.abc import Sequence
 from numbers import Integral, Real
 
 import numpy as np
@@ -48,6 +49,26 @@ def validate_optical_settings(config):
         result[name] = int(value)
 
     count('Opt_num_of_bands', 1)
+    if config.Engine == 'GPAW' and method == 'BSE':
+        for name in ('Opt_BSE_valence', 'Opt_BSE_conduction'):
+            bands = getattr(config, name)
+            if (isinstance(bands, (str, bytes))
+                    or not isinstance(bands, (Sequence, np.ndarray))):
+                raise ValueError(f'{name} must be a nonempty sequence of integer band indices.')
+            if isinstance(bands, np.ndarray) and bands.ndim != 1:
+                raise ValueError(f'{name} must be a one-dimensional sequence of band indices.')
+            if len(bands) == 0:
+                raise ValueError(f'{name} must contain at least one band index.')
+            indices = []
+            for band in bands:
+                if (isinstance(band, (bool, np.bool_)) or not isinstance(band, Integral)
+                        or not 0 <= band < result['Opt_num_of_bands']):
+                    raise ValueError(f'{name} indices must be integers from 0 to '
+                                     f"Opt_num_of_bands - 1 ({result['Opt_num_of_bands'] - 1}).")
+                indices.append(int(band))
+            if len(set(indices)) != len(indices):
+                raise ValueError(f'{name} must not contain duplicate band indices.')
+            result[name] = indices
     number('Opt_eta', 0., strict=config.Engine == 'QE')
     number('Opt_FD_smearing', 0., strict=config.Engine == 'QE')
     if config.Engine == 'QE' or method == 'BSE':

@@ -2587,6 +2587,21 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                         DFTSolver('sample', config)
                 load.assert_not_called()
 
+    def test_invalid_bse_bands_stop_before_engine_loading_and_optical_preparation(self):
+        config = DFTConfig(Engine='GPAW', Optical_calc=True, Opt_calc_type='BSE')
+        # Validate again after an existing configuration is edited.
+        config.Opt_BSE_conduction = [config.Opt_num_of_bands]
+        with patch('nanoworks.dftsolve.load_engine_module') as load:
+            with self.assertRaisesRegex(ValueError, 'Opt_BSE_conduction'):
+                DFTSolver('sample', config)
+        load.assert_not_called()
+        solver = object.__new__(DFTSolver)
+        solver.__dict__.update(vars(config))
+        solver.engine = Mock()
+        with self.assertRaisesRegex(ValueError, 'Opt_BSE_conduction'):
+            solver._opticalcalc_gpaw()
+        solver.engine.prepare_optical_calc.assert_not_called()
+
     def test_gpaw_bse_passes_optical_shift_to_response_without_shifting_grid(self):
         import numpy as np
         for shift in (0., 1.25, -.5):
