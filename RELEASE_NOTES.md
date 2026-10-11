@@ -2,6 +2,10 @@
 
 ### Development Version
 
+- GPAW DOS/PDOS uses the prepared DOS state; total and SOC DOS use GPAW state weights.
+
+- GPAW spin labels and dimensionless density polarization are corrected; regenerate older spin-labelled results.
+
 - GPAW band DAT exports avoid MPI file races and report write failures; QE projected-band writes preserve existing tables on failure.
 
 - GPAW/QE bands export KPath DAT coordinates and symmetry labels for JSON-free replotting.

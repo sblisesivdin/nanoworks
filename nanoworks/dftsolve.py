@@ -2922,8 +2922,7 @@ class dftsolve:
             # SPIN DOWN CALCULATIONS
             # ==========================================
             parprint("Calculating and saving Raw PDOS for spin down...")
-            
-            
+
             energies = rawdos.get_energies(npoints=self.DOS_npoints)
             shifted_energies = energies - ef
 
@@ -2946,18 +2945,18 @@ class dftsolve:
             with paropen(self.struct+'-DOS-GPAW-Result-Raw-PDOS-Each-Atom-Down.dat', "w") as fd:
                 print("AtomIndex(1) Element(1) " + table_header('Energy, s-total, p-total, pz, px, py, d-total, d3z2_r2, dzx, dyz, dx2_y2, dxy, f-total, TOTAL'), file=fd)
                 for j in range(0, self.bulk_configuration.get_global_number_of_atoms()):
-                    pdoss = rawdos.raw_pdos(energies, a=j, l=0, m=None, spin=0, width=dos_settings['width_ev'])
-                    pdosp = rawdos.raw_pdos(energies, a=j, l=1, m=None, spin=0, width=dos_settings['width_ev'])
-                    pdospx = rawdos.raw_pdos(energies, a=j, l=1, m=2, spin=0, width=dos_settings['width_ev'])
-                    pdospy = rawdos.raw_pdos(energies, a=j, l=1, m=0, spin=0, width=dos_settings['width_ev'])
-                    pdospz = rawdos.raw_pdos(energies, a=j, l=1, m=1, spin=0, width=dos_settings['width_ev'])
-                    pdosd = rawdos.raw_pdos(energies, a=j, l=2, m=None, spin=0, width=dos_settings['width_ev'])
-                    pdosdxy = rawdos.raw_pdos(energies, a=j, l=2, m=0, spin=0, width=dos_settings['width_ev'])
-                    pdosdyz = rawdos.raw_pdos(energies, a=j, l=2, m=1, spin=0, width=dos_settings['width_ev'])
-                    pdosd3z2_r2 = rawdos.raw_pdos(energies, a=j, l=2, m=2, spin=0, width=dos_settings['width_ev'])
-                    pdosdzx = rawdos.raw_pdos(energies, a=j, l=2, m=3, spin=0, width=dos_settings['width_ev'])
-                    pdosdx2_y2 = rawdos.raw_pdos(energies, a=j, l=2, m=4, spin=0, width=dos_settings['width_ev'])
-                    pdosf = rawdos.raw_pdos(energies, a=j, l=3, m=None, spin=0, width=dos_settings['width_ev'])
+                    pdoss = rawdos.raw_pdos(energies, a=j, l=0, m=None, spin=1, width=dos_settings['width_ev'])
+                    pdosp = rawdos.raw_pdos(energies, a=j, l=1, m=None, spin=1, width=dos_settings['width_ev'])
+                    pdospx = rawdos.raw_pdos(energies, a=j, l=1, m=2, spin=1, width=dos_settings['width_ev'])
+                    pdospy = rawdos.raw_pdos(energies, a=j, l=1, m=0, spin=1, width=dos_settings['width_ev'])
+                    pdospz = rawdos.raw_pdos(energies, a=j, l=1, m=1, spin=1, width=dos_settings['width_ev'])
+                    pdosd = rawdos.raw_pdos(energies, a=j, l=2, m=None, spin=1, width=dos_settings['width_ev'])
+                    pdosdxy = rawdos.raw_pdos(energies, a=j, l=2, m=0, spin=1, width=dos_settings['width_ev'])
+                    pdosdyz = rawdos.raw_pdos(energies, a=j, l=2, m=1, spin=1, width=dos_settings['width_ev'])
+                    pdosd3z2_r2 = rawdos.raw_pdos(energies, a=j, l=2, m=2, spin=1, width=dos_settings['width_ev'])
+                    pdosdzx = rawdos.raw_pdos(energies, a=j, l=2, m=3, spin=1, width=dos_settings['width_ev'])
+                    pdosdx2_y2 = rawdos.raw_pdos(energies, a=j, l=2, m=4, spin=1, width=dos_settings['width_ev'])
+                    pdosf = rawdos.raw_pdos(energies, a=j, l=3, m=None, spin=1, width=dos_settings['width_ev'])
                     dosspdf = pdoss + pdosp + pdosd + pdosf
                     pdossweightsdown = pdossweightsdown + pdoss
                     pdospweightsdown = pdospweightsdown + pdosp
@@ -2978,7 +2977,7 @@ class dftsolve:
 
             # Writing DOS
             parprint("Saving DOS for spin down...")
-            dosweightsdown = rawdos.raw_dos(energies, spin=0, width=dos_settings['width_ev'])
+            dosweightsdown = rawdos.raw_dos(energies, spin=1, width=dos_settings['width_ev'])
             with paropen(self.struct+f'-DOS-{self.Engine}-Result-DOS-Down.dat', "w") as fd:
                 print("Energy(eV) DOS(states/eV)", file=fd)
                 for x in zip(shifted_energies, dosweightsdown):
@@ -3017,18 +3016,18 @@ class dftsolve:
             with paropen(self.struct+'-DOS-GPAW-Result-Raw-PDOS-Each-Atom-Up.dat', "w") as fd:
                 print("AtomIndex(1) Element(1) " + table_header('Energy, s-total, p-total, pz, px, py, d-total, d3z2_r2, dzx, dyz, dx2_y2, dxy, f-total, TOTAL'), file=fd)
                 for j in range(0, self.bulk_configuration.get_global_number_of_atoms()):
-                    pdoss = rawdos.raw_pdos(energies, a=j, l=0, m=None, spin=1, width=dos_settings['width_ev'])
-                    pdosp = rawdos.raw_pdos(energies, a=j, l=1, m=None, spin=1, width=dos_settings['width_ev'])
-                    pdospx = rawdos.raw_pdos(energies, a=j, l=1, m=2, spin=1, width=dos_settings['width_ev'])
-                    pdospy = rawdos.raw_pdos(energies, a=j, l=1, m=0, spin=1, width=dos_settings['width_ev'])
-                    pdospz = rawdos.raw_pdos(energies, a=j, l=1, m=1, spin=1, width=dos_settings['width_ev'])
-                    pdosd = rawdos.raw_pdos(energies, a=j, l=2, m=None, spin=1, width=dos_settings['width_ev'])
-                    pdosdxy = rawdos.raw_pdos(energies, a=j, l=2, m=0, spin=1, width=dos_settings['width_ev'])
-                    pdosdyz = rawdos.raw_pdos(energies, a=j, l=2, m=1, spin=1, width=dos_settings['width_ev'])
-                    pdosd3z2_r2 = rawdos.raw_pdos(energies, a=j, l=2, m=2, spin=1, width=dos_settings['width_ev'])
-                    pdosdzx = rawdos.raw_pdos(energies, a=j, l=2, m=3, spin=1, width=dos_settings['width_ev'])
-                    pdosdx2_y2 = rawdos.raw_pdos(energies, a=j, l=2, m=4, spin=1, width=dos_settings['width_ev'])
-                    pdosf = rawdos.raw_pdos(energies, a=j, l=3, m=None, spin=1, width=dos_settings['width_ev'])
+                    pdoss = rawdos.raw_pdos(energies, a=j, l=0, m=None, spin=0, width=dos_settings['width_ev'])
+                    pdosp = rawdos.raw_pdos(energies, a=j, l=1, m=None, spin=0, width=dos_settings['width_ev'])
+                    pdospx = rawdos.raw_pdos(energies, a=j, l=1, m=2, spin=0, width=dos_settings['width_ev'])
+                    pdospy = rawdos.raw_pdos(energies, a=j, l=1, m=0, spin=0, width=dos_settings['width_ev'])
+                    pdospz = rawdos.raw_pdos(energies, a=j, l=1, m=1, spin=0, width=dos_settings['width_ev'])
+                    pdosd = rawdos.raw_pdos(energies, a=j, l=2, m=None, spin=0, width=dos_settings['width_ev'])
+                    pdosdxy = rawdos.raw_pdos(energies, a=j, l=2, m=0, spin=0, width=dos_settings['width_ev'])
+                    pdosdyz = rawdos.raw_pdos(energies, a=j, l=2, m=1, spin=0, width=dos_settings['width_ev'])
+                    pdosd3z2_r2 = rawdos.raw_pdos(energies, a=j, l=2, m=2, spin=0, width=dos_settings['width_ev'])
+                    pdosdzx = rawdos.raw_pdos(energies, a=j, l=2, m=3, spin=0, width=dos_settings['width_ev'])
+                    pdosdx2_y2 = rawdos.raw_pdos(energies, a=j, l=2, m=4, spin=0, width=dos_settings['width_ev'])
+                    pdosf = rawdos.raw_pdos(energies, a=j, l=3, m=None, spin=0, width=dos_settings['width_ev'])
                     dosspdf = pdoss + pdosp + pdosd + pdosf
                     pdossweightsup = pdossweightsup + pdoss
                     pdospweightsup = pdospweightsup + pdosp
@@ -3049,7 +3048,7 @@ class dftsolve:
 
             # Writing DOS
             parprint("Saving DOS for spin up...")
-            dosweightsup = rawdos.raw_dos(energies, spin=1, width=dos_settings['width_ev'])
+            dosweightsup = rawdos.raw_dos(energies, spin=0, width=dos_settings['width_ev'])
             with paropen(self.struct+f'-DOS-{self.Engine}-Result-DOS-Up.dat', "w") as fd:
                 print("Energy(eV) DOS(states/eV)", file=fd)
                 for x in zip(shifted_energies, dosweightsup):
@@ -3067,8 +3066,7 @@ class dftsolve:
             # NON-SPIN CALCULATIONS
             # ==========================================
             parprint("Calculating and saving Raw PDOS...")
-            
-            
+
             energies = rawdos.get_energies(npoints=self.DOS_npoints)
             shifted_energies = energies - ef
 
@@ -5043,8 +5041,8 @@ class dftsolve:
             eps_skn = np.array([[calc.get_eigenvalues(k, spin)
                                  for k in range(band_npoints)]
                                 for spin in range(2)]) - ef
-            # Preserve the existing GPAW DAT channel naming convention.
-            spin_labels = ['Down', 'Up']
+            # GPAW spin 0 is Up and spin 1 is Down, as in projected bands.
+            spin_labels = ['Up', 'Down']
         else:
             spin_labels = None
             if self.SOC_calc:
@@ -5253,16 +5251,18 @@ class dftsolve:
         calc = self.engine.load_gpaw_calc(self.struct+'-GROUND-GPAW-Result-State.gpw', txt=self.struct+'-EDENSITY-GPAW-Log-Calculation.txt')
         self.bulk_configuration.calc = calc
         if self.Spin_calc == True:
-            np = calc.get_pseudo_density()
+            pseudo_density = calc.get_pseudo_density()
             n = calc.get_all_electron_density(gridrefinement=self.Refine_grid)
             # For spins
-            npdown = calc.get_pseudo_density(spin=0)
-            ndown = calc.get_all_electron_density(spin=0, gridrefinement=self.Refine_grid)
-            npup = calc.get_pseudo_density(spin=1)
-            nup = calc.get_all_electron_density(spin=1, gridrefinement=self.Refine_grid)
+            npdown = calc.get_pseudo_density(spin=1)
+            ndown = calc.get_all_electron_density(spin=1, gridrefinement=self.Refine_grid)
+            npup = calc.get_pseudo_density(spin=0)
+            nup = calc.get_all_electron_density(spin=0, gridrefinement=self.Refine_grid)
             # Zeta
-            nzeta = (nup - ndown) / (nup + ndown)
-            npzeta = (npup - npdown) / (npup + npdown)
+            nzeta = np.divide(nup - ndown, nup + ndown,
+                             out=np.zeros_like(nup), where=(nup + ndown) != 0)
+            npzeta = np.divide(npup - npdown, npup + npdown,
+                              out=np.zeros_like(npup), where=(npup + npdown) != 0)
             # Writing spin down pseudo and all electron densities to cube file with Bohr unit
             write(self.struct+'-EDENSITY-GPAW-Result-All-electron_nall-Down.cube', self.bulk_configuration, data=ndown * Bohr**3)
             write(self.struct+'-EDENSITY-GPAW-Result-All-electron_npseudo-Down.cube', self.bulk_configuration, data=npdown * Bohr**3)
@@ -5271,16 +5271,16 @@ class dftsolve:
             write(self.struct+'-EDENSITY-GPAW-Result-All-electron_npseudo-Up.cube', self.bulk_configuration, data=npup * Bohr**3)
             # Writing total pseudo and all electron densities to cube file with Bohr unit
             write(self.struct+'-EDENSITY-GPAW-Result-All-electron_nall-Total.cube', self.bulk_configuration, data=n * Bohr**3)
-            write(self.struct+'-EDENSITY-GPAW-Result-All-electron_npseudo-Total.cube', self.bulk_configuration, data=np * Bohr**3)
-            # Writing zeta pseudo and all electron densities to cube file with Bohr unit
-            write(self.struct+'-EDENSITY-GPAW-Result-All-electron_nall-Zeta.cube', self.bulk_configuration, data=nzeta * Bohr**3)
-            write(self.struct+'-EDENSITY-GPAW-Result-All-electron_npseudo-Zeta.cube', self.bulk_configuration, data=npzeta * Bohr**3)
+            write(self.struct+'-EDENSITY-GPAW-Result-All-electron_npseudo-Total.cube', self.bulk_configuration, data=pseudo_density * Bohr**3)
+            # Zeta is dimensionless; vacuum grid points use zero polarization.
+            write(self.struct+'-EDENSITY-GPAW-Result-All-electron_nall-Zeta.cube', self.bulk_configuration, data=nzeta)
+            write(self.struct+'-EDENSITY-GPAW-Result-All-electron_npseudo-Zeta.cube', self.bulk_configuration, data=npzeta)
         else:
-            np = calc.get_pseudo_density()
+            pseudo_density = calc.get_pseudo_density()
             n = calc.get_all_electron_density(gridrefinement=self.Refine_grid)
             # Writing pseudo and all electron densities to cube file with Bohr unit
             write(self.struct+'-EDENSITY-GPAW-Result-All-electron_nall-Total.cube', self.bulk_configuration, data=n * Bohr**3)
-            write(self.struct+'-EDENSITY-GPAW-Result-All-electron_npseudo-Total.cube', self.bulk_configuration, data=np * Bohr**3)
+            write(self.struct+'-EDENSITY-GPAW-Result-All-electron_npseudo-Total.cube', self.bulk_configuration, data=pseudo_density * Bohr**3)
             
         # Finish Density calc
         time42 = time.time()

@@ -83,7 +83,7 @@ class TestGPAWDOSWorkflow(unittest.TestCase):
             with self.subTest(spin=spin):
                 self.solver.Spin_calc = spin
                 self.run_dos()
-                expected = [('DOS-Down', 'PDOS-Down', 10.), ('DOS-Up', 'PDOS-Up', 20.)] if spin else [('DOS', 'PDOS', 30.)]
+                expected = [('DOS-Down', 'PDOS-Down', 20.), ('DOS-Up', 'PDOS-Up', 10.)] if spin else [('DOS', 'PDOS', 30.)]
                 for dos_name, pdos_name, value in expected:
                     np.testing.assert_array_equal(self.table(dos_name)[:, 1], np.full(3, value))
                     self.assertTrue(np.all(self.table(pdos_name)[:, -1] < value))
@@ -123,3 +123,61 @@ class TestGPAWDOSWorkflow(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     self.run_dos()
                 self.assertEqual(output.read_bytes(), b'previous spectrum')
+
+    def test_spin_pdos_labels_match_gpaw_channels(self):
+        self.solver.Spin_calc = True
+        self.run_dos()
+        np.testing.assert_allclose(self.table('PDOS-Up')[:, 1], .2)
+        np.testing.assert_allclose(self.table('PDOS-Down')[:, 1], .4)
+
+    def test_band_spin_files_match_the_same_channels(self):
+        from nanoworks.result_plotting import load_band_table
+        self.solver.Spin_calc = True
+        self.solver.Band_path = 'GX'
+        self.solver.Band_npoints = 99
+        self.solver.Band_num_of_bands = 2
+        self.solver.Projected_band_plot = False
+        bs = types.SimpleNamespace(path=types.SimpleNamespace(
+            kpts=np.zeros((3, 3)), get_linear_kpoint_axis=lambda: ([0., .5, 1.], [0., 1.], ['G', 'X'])),
+            write=Mock())
+        self.calc.band_structure.return_value = bs
+        self.calc.get_number_of_bands.return_value = 2
+        self.calc.get_eigenvalues.side_effect = lambda k, spin: np.array([k + spin * 10., k + spin * 10. + 1.])
+        self.engine.prepare_band_calc.return_value = self.calc
+        with patch.object(self.module, 'world', types.SimpleNamespace(rank=1)), \
+                patch.object(self.module, 'paropen', open), patch.object(self.module, 'parprint'), \
+                patch.object(self.module, 'run_optical_exports', side_effect=lambda callback: callback()):
+            self.module.dftsolve._bandcalc_gpaw(self.solver)
+        for label, spin in [('Up', 0), ('Down', 1)]:
+            expected = np.array([[k + spin * 10. - 2., k + spin * 10. - 1.] for k in range(3)])
+            for suffix in ['', '-XYYY']:
+                _, values = load_band_table(self.solver.struct + '-BAND-GPAW-Result-Band-' + label + suffix + '.dat')
+                np.testing.assert_array_equal(values, expected)
+
+    def test_density_spin_labels_and_polarization_have_correct_sign(self):
+        self.solver.Spin_calc = True
+        self.solver.Refine_grid = 2
+        self.engine.load_gpaw_calc.return_value = self.calc
+        self.calc.get_pseudo_density.side_effect = lambda spin=None: np.full((2, 2, 2), {None: 4., 0: 3., 1: 1.}[spin])
+        self.calc.get_all_electron_density.side_effect = lambda spin=None, **kw: np.full((2, 2, 2), {None: 4., 0: 3., 1: 1.}[spin])
+        with patch.object(self.module, 'paropen', open), patch.object(self.module, 'parprint'), \
+                patch.object(self.module, 'write') as write:
+            self.module.dftsolve._densitycalc_gpaw(self.solver)
+        for call in write.call_args_list:
+            name = str(call.args[0])
+            expected = 3. if '-Up.cube' in name else 1. if '-Down.cube' in name else .5 if '-Zeta.cube' in name else 4.
+            scale = 1. if '-Zeta.cube' in name else self.module.Bohr ** 3
+            np.testing.assert_allclose(call.kwargs['data'], expected * scale)
+
+    def test_density_polarization_is_finite_in_vacuum(self):
+        self.solver.Spin_calc = True
+        self.solver.Refine_grid = 2
+        self.engine.load_gpaw_calc.return_value = self.calc
+        self.calc.get_pseudo_density.side_effect = lambda **kw: np.zeros((2, 2, 2))
+        self.calc.get_all_electron_density.side_effect = lambda **kw: np.zeros((2, 2, 2))
+        with patch.object(self.module, 'paropen', open), patch.object(self.module, 'parprint'), \
+                patch.object(self.module, 'write') as write, np.errstate(divide='raise', invalid='raise'):
+            self.module.dftsolve._densitycalc_gpaw(self.solver)
+        for call in write.call_args_list:
+            self.assertTrue(np.isfinite(call.kwargs['data']).all())
+            np.testing.assert_array_equal(call.kwargs['data'], np.zeros((2, 2, 2)))

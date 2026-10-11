@@ -46,3 +46,25 @@ Native GPAW, QE and LAMMPS files, structure formats such as CIF/CUBE,
 trajectories, binary arrays, restart files and diagnostic logs retain their
 required formats. The DAT standard applies to the numerical analysis
 tables exported by Nanoworks, not to those engine or structure formats.
+
+GPAW DOS and spin conventions
+-----------------------------
+
+GPAW DOS/PDOS tables use the calculator prepared for the DOS stage, including
+its requested k-point mesh and band count. Hybrid DOS retains the converged
+ground-state eigenvalues because fixed-density hybrid NSCF is not supported.
+The standalone DOS table contains the total electronic DOS from GPAW;
+``TOTAL(states/eV)`` in a PDOS table is the sum of the selected atom-centred
+s/p/d/f projections and need not equal the electronic DOS.
+
+SOC-DOS uses GPAW's k-point weights and the requested Gaussian width without
+a minimum-width override. Exported energies remain relative to the Fermi level.
+
+GPAW channel 0 is Up and channel 1 is Down across DOS, PDOS, band and density
+outputs, matching projected-band plots. Earlier GPAW DOS/PDOS, band and density
+files had these labels reversed. Regenerate those results before comparing
+spin-labelled outputs; existing files are not automatically relabelled.
+
+The GPAW Zeta CUBE contains dimensionless ``(n_up - n_down)/(n_up + n_down)``
+values, without a density-unit conversion. Zero-density grid points use zero
+polarization to keep the field finite in vacuum.
