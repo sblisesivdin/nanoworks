@@ -216,3 +216,38 @@ class TestGPAWDOSWorkflow(unittest.TestCase):
             with patch.object(self.module, 'parprint'), self.assertRaisesRegex(ValueError, 'finite'):
                 self.module.dftsolve._bandcalc_gpaw(self.solver)
         self.assertFalse(list(Path(self.directory.name).glob('*BAND*')))
+
+    def test_magnetic_soc_bands_export_soc_eigenstates(self):
+        from nanoworks.result_plotting import load_band_table
+        self.solver.Spin_calc = self.solver.SOC_calc = True
+        self.solver.Band_path = 'GX'
+        self.solver.Band_npoints = 3
+        self.solver.Band_num_of_bands = 2
+        self.solver.Projected_band_plot = False
+        bs = types.SimpleNamespace(path=types.SimpleNamespace(kpts=np.zeros((3, 3)),
+            get_linear_kpoint_axis=lambda: ([0., .5, 1.], [0., 1.], ['G', 'X'])))
+        self.calc.band_structure.return_value = bs
+        self.calc.get_number_of_bands.return_value = 2
+        self.engine.prepare_band_calc.return_value = self.calc
+        values = np.arange(12.).reshape(3, 4)
+        soc_module = types.ModuleType('gpaw.spinorbit')
+        soc_module.soc_eigenstates = Mock(return_value=types.SimpleNamespace(eigenvalues=lambda: values))
+        ase_module = types.ModuleType('ase.spectrum.band_structure')
+        ase_module.BandStructure = Mock(return_value=types.SimpleNamespace(write=Mock(), plot=Mock()))
+        with patch.dict(sys.modules, {'gpaw': types.ModuleType('gpaw'), 'gpaw.spinorbit': soc_module,
+                                     'ase.spectrum.band_structure': ase_module}), \
+                patch.object(self.module, 'paropen', open), patch.object(self.module, 'parprint'), \
+                patch.object(self.module, 'run_optical_exports', side_effect=lambda callback: callback()):
+            self.module.dftsolve._bandcalc_gpaw(self.solver)
+        _, actual = load_band_table(self.solver.struct + '-BAND-GPAW-Result-Band-XYYY.dat')
+        np.testing.assert_array_equal(actual, values - 2.)
+        self.calc.get_eigenvalues.assert_not_called()
+        self.assertFalse(list(Path(self.directory.name).glob('*Band-Up*')))
+
+    def test_soc_projected_bands_stop_before_engine_preparation(self):
+        self.solver.SOC_calc = self.solver.Projected_band_plot = True
+        with self.assertRaisesRegex(NotImplementedError, 'SOC projected'):
+            self.module.dftsolve._bandcalc_gpaw(self.solver)
+        self.engine.prepare_band_calc.assert_not_called()
+        with self.assertRaisesRegex(NotImplementedError, 'SOC projected'):
+            self.module.dftsolve._draw_projectedband(self.solver, self.calc)

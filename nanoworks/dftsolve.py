@@ -625,6 +625,11 @@ class DFTConfig:
                 'GPAW SOC DOS currently requires '
                 "DOS_integration = 'smearing'."
             )
+        if (self.Engine == 'GPAW' and self.SOC_calc
+                and self.Band_calc and self.Projected_band_plot):
+            raise NotImplementedError(
+                'GPAW SOC projected bands are not supported; scalar projector '
+                'weights cannot represent SOC eigenstates.')
         geometry_optimizer = str(
             self.Geometry_optimizer
         ).strip().lower().replace('_', '-')
@@ -4994,6 +4999,9 @@ class dftsolve:
         # BAND STRUCTURE CALCULATION
         # -------------------------------------------------------------
 
+        if self.SOC_calc and self.Projected_band_plot:
+            raise NotImplementedError('GPAW SOC projected bands are not supported.')
+
         # Start Band calc
         time31 = time.time()
         parprint("Starting band structure calculation...")
@@ -5025,23 +5033,22 @@ class dftsolve:
         run_optical_exports(lambda: write_band_path_table(
             self.struct + '-BAND-GPAW-Result-KPath.dat', distances, special_distances, labels))
 
-        if self.Spin_calc:
+        if self.SOC_calc:
+            from gpaw.spinorbit import soc_eigenstates
+            parprint("Applying Spin-Orbit Coupling to Band Structure...")
+            soc = soc_eigenstates(calc)
+            eps_skn = np.array([np.real(soc.eigenvalues())]) - ef
+            # SOC eigenstates mix the collinear spin channels.
+            spin_labels = None
+        elif self.Spin_calc:
             eps_skn = np.array([[calc.get_eigenvalues(k, spin)
                                  for k in range(band_npoints)]
                                 for spin in range(2)]) - ef
-            # GPAW spin 0 is Up and spin 1 is Down, as in projected bands.
             spin_labels = ['Up', 'Down']
         else:
+            eps_skn = np.array([[calc.get_eigenvalues(k, 0)
+                                for k in range(band_npoints)]]) - ef
             spin_labels = None
-            if self.SOC_calc:
-                from gpaw.spinorbit import soc_eigenstates
-                parprint("Applying Spin-Orbit Coupling to Band Structure...")
-                soc = soc_eigenstates(calc)
-                soc_evals = np.real(soc.eigenvalues())
-                eps_skn = np.array([soc_evals]) - ef
-            else:
-                eps_skn = np.array([[calc.get_eigenvalues(k, 0)
-                                    for k in range(band_npoints)]]) - ef
 
         # The output rank writes both formats from memory. Propagate failures
         # to every MPI rank instead of reading partially written shared files.
@@ -5077,6 +5084,9 @@ class dftsolve:
         """
         Internal method for dftsolve class to plot projected band structures.
         """
+
+        if self.SOC_calc:
+            raise NotImplementedError('GPAW SOC projected bands are not supported.')
 
         from gpaw.utilities.dos import get_angular_projectors
         
