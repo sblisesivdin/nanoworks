@@ -2,6 +2,49 @@
 
 There are some example calculations given with different usage scenarios. Please send us more calculations to include here.
 
+## Queue the DFT examples with GPAW and QE
+
+Use the script from the current checkout; an existing `--install-examples`
+copy is not refreshed automatically. Activate the Nanoworks environment, then:
+
+```bash
+tsp -S 1
+bash nanoworks/examples/do_all_examples.sh
+tsp
+```
+
+The script can also be called by absolute path from another working directory.
+It queues 43 DFT cases, including heavy optical, hybrid, elastic and phonon
+calculations. Each calculation requests four processes (`CORENUMBER` at the
+top of the script). A single task-spooler slot prevents different cases from
+competing for memory. GPAW needs its PAW datasets; QE needs its UPFs and the
+executables for the requested stages, including `thermo_pw.x` for elasticity.
+MD and ML calculations remain separate; follow their own README commands.
+
+Each invocation creates a fresh `example-runs-XXXXXXXX/` folder beside the
+script, with separate `GPAW/` and `QE/` case directories. Only inputs, CIFs and
+the example README are copied, so earlier results are not reused. Optical
+ground/RPA/BSE stages share one case and execute in order; BSE is GPAW only.
+Preflight runs before each calculation. A failed preflight or calculation
+stops that case while independent queue jobs can continue.
+
+The QE variants use `-E QE`. Their DOS integration is tetrahedron. The
+LDA/LCAO examples additionally use `XC_calc=PBE` and `Mode=PW` where needed
+for the managed PBE pseudopotentials and the QE backend. These overrides are
+recorded in the commands; changed setups should not be interpreted as a
+controlled numerical comparison between engines. WSe2 SOC uses the dedicated
+QE input, and the native QE Fe, Si elasticity, NiO phonon and ZnO inputs are
+included as additional cases.
+
+`jobs.dat` lists the task-spooler job IDs and case names. Each case contains
+`run-case.sh`, `status.txt`, the numerical outputs, and per-stage
+`*-command.sh`, `*.log` and `*-exit-code.txt` files. `status.txt` changes from
+`QUEUED` to `RUNNING`, then `SUCCESS` or `FAILED` with the stage and exit code.
+External interruption can leave it at `RUNNING`; check the task-spooler status
+as well. `SUCCESS` means the commands completed, not that the parameters are
+scientifically converged. After all jobs finish, keep the entire run folder
+together when sharing results for diagnosis.
+
 ## dftsolve.py Example List
 
 | Name              | Notes  | 

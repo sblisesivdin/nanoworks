@@ -150,13 +150,24 @@ Running the Examples
 --------------------
 
 Begin with one tutorial and its required engine. The batch script below
-queues a broad collection of examples with different engine and resource
-requirements; it is not a minimal installation check:
+queues 43 DFT cases with GPAW and QE, including heavy hybrid, optical,
+elastic and phonon cases; it is not a minimal installation check. MD and ML
+examples are run separately using their README commands:
 
 .. code-block:: bash
 
     (.venv_nw) $ cd ~/.nanoworks/examples
+    (.venv_nw) $ tsp -S 1
     (.venv_nw) $ bash do_all_examples.sh
+    (.venv_nw) $ tsp
+
+Use the script from the current checkout if the installed examples are older.
+Every invocation creates a fresh ``example-runs-XXXXXXXX/`` folder beside the
+script. Engine and case folders keep inputs, outputs, commands, logs and exit
+codes separate. Dependent optical stages run in order within one case; a failed
+stage stops that case. The example-directory README explains QE overrides and
+the status files. GPAW LCAO/LDA examples become PW/PBE workflow variants in QE,
+and QE DOS uses tetrahedron integration; BSE remains GPAW only.
 
 Alternatively, you can navigate into any specific folder and read the README.md file. Readme files includes all commands necessary for the calculations. For example:
 

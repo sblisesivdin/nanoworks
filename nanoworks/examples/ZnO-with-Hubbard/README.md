@@ -42,7 +42,7 @@ dftsolve -p 4 -i ZnO_woHubbard.py
 Run the QE example with:
 
 ```bash
-dftsolve -p 4 -i ZnO_QE_withHubbard.py
+dftsolve -p 4 -i ZnO_QE_Hubbard.py
 ```
 
 The QE example uses a higher plane-wave cutoff appropriate for the installed PseudoDojo pseudopotentials. Geometry optimization is disabled by default to keep the example reasonably short.
