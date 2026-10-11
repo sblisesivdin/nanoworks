@@ -262,3 +262,123 @@ def load_optical_summary(summary_file):
             raise ValueError(f'Optical table grid differs from the summary: {filename}.')
         tables[label] = table
     return report, tables
+
+
+def generate_optical_figures(data, file_prefix, title_suffix, translate=None):
+    """
+    Helper method to generate 4 standard optical figures from parsed array data.
+    Forces the 'Agg' backend for matplotlib to prevent X11 server errors on clusters.
+
+    Args:
+        data (numpy.ndarray): 2D array containing the optical data.
+                              Col 0: Energy, Col 1: Eps_real, Col 2: Eps_img,
+                              Col 3: Refractive_Index, Col 4: Extinction_Index,
+                              Col 5: Absorption, Col 6: Reflectivity
+        file_prefix (str): Prefix string for the saved .png files.
+        title_suffix (str): String appended to the plot titles (e.g., 'BSE' or 'RPA LFC (x)').
+    """
+    data = validate_optical_table(data)
+
+    import matplotlib
+    matplotlib.use('Agg') # Essential for headless cluster/HPC environments
+    import matplotlib.pyplot as plt
+
+    if translate is None:
+        labels = {'fig_optical_xlabel': 'Photon energy (eV)',
+                  'fig_optical_abs': 'Absorption (1/cm)',
+                  'fig_optical_ref': 'Reflectivity'}
+        translate = lambda key: labels.get(key, key)
+
+    def save_figure(fig, filename):
+        try:
+            fig.savefig(filename, dpi=300)
+        finally:
+            plt.close(fig)
+
+    # Extract columns based on the .dat file structure generated in opticalcalc
+    energy = data[:, 0]
+    eps_real = data[:, 1]
+    eps_img = data[:, 2]
+    n_idx = data[:, 3]
+    k_idx = data[:, 4]
+    absorption = data[:, 5]
+    reflectivity = data[:, 6]
+
+    # ---------------------------------------------------------
+    # 1. Plot Complex Dielectric Function (Epsilon Real & Imag)
+    # ---------------------------------------------------------
+    fig, ax = plt.subplots(figsize=(8, 6))
+    ax.plot(energy, eps_real, label=r'$\epsilon_1$ (Re)', color='blue', linewidth=2)
+    ax.plot(energy, eps_img, label=r'$\epsilon_2$ (Im)', color='red', linestyle='--', linewidth=2)
+    ax.set_xlabel(translate("fig_optical_xlabel"))
+    ax.set_ylabel('Dielectric Function')
+    ax.set_xlim(left=0)
+    ax.axhline(y=0, color='black', linestyle='-', linewidth=0.8)
+    ax.legend(loc='upper right', frameon=True)
+    ax.grid(True, linestyle=':', alpha=0.7)
+    fig.tight_layout()
+    save_figure(fig, f"{file_prefix}-Dielectric.png")
+
+    # ---------------------------------------------------------
+    # 2. Plot Complex Refractive Index (n & k)
+    # ---------------------------------------------------------
+    fig, ax = plt.subplots(figsize=(8, 6))
+    ax.plot(energy, n_idx, label='n', color='darkgreen', linewidth=2)
+    ax.plot(energy, k_idx, label='k', color='orange', linestyle='--', linewidth=2)
+    ax.set_xlabel(translate("fig_optical_xlabel"))
+    ax.set_ylabel('n,k')
+    ax.set_xlim(left=0)
+    ax.legend(loc='upper right', frameon=True)
+    ax.grid(True, linestyle=':', alpha=0.7)
+    fig.tight_layout()
+    save_figure(fig, f"{file_prefix}-n-and-k.png")
+
+    # ---------------------------------------------------------
+    # 3. Plot Absorption Coefficient
+    # ---------------------------------------------------------
+    fig, ax = plt.subplots(figsize=(8, 6))
+    ax.plot(energy, absorption, label=r'Abs ($\alpha$)', color='purple', linewidth=2)
+    ax.set_xlabel(translate("fig_optical_xlabel"))
+    ax.set_ylabel(translate("fig_optical_abs"))
+    ax.set_xlim(left=0)
+    ax.set_ylim(bottom=0)
+    ax.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+    ax.legend(loc='upper right', frameon=True)
+    ax.grid(True, linestyle=':', alpha=0.7)
+    fig.tight_layout()
+    save_figure(fig, f"{file_prefix}-Absorption.png")
+
+    # ---------------------------------------------------------
+    # 4. Plot Reflectivity
+    # ---------------------------------------------------------
+    fig, ax = plt.subplots(figsize=(8, 6))
+    ax.plot(energy, reflectivity, label='Ref (R)', color='teal', linewidth=2)
+    ax.set_xlabel(translate("fig_optical_xlabel"))
+    ax.set_ylabel(translate("fig_optical_ref"))
+    ax.set_xlim(left=0)
+    ax.set_ylim(bottom=0)
+    ax.legend(loc='upper right', frameon=True)
+    ax.grid(True, linestyle=':', alpha=0.7)
+    fig.tight_layout()
+    save_figure(fig, f"{file_prefix}-Reflectivity.png")
+    return [f'{file_prefix}-{suffix}.png' for suffix in
+            ('Dielectric', 'n-and-k', 'Absorption', 'Reflectivity')]
+
+
+def plot_optical_summary(summary_file, output_directory=None):
+    """Regenerate figures from verified results without starting a DFT engine."""
+    summary_file = Path(summary_file).expanduser().resolve()
+    report, tables = load_optical_summary(summary_file)
+    # All input tables are checked before creating directories or figures.
+    output_directory = (summary_file.parent / 'optical-plots' if output_directory is None
+                        else Path(output_directory).expanduser().resolve())
+    output_directory.mkdir(parents=True, exist_ok=True)
+    figures = {}
+    for index, (label, table) in enumerate(tables.items(), start=1):
+        safe_label = re.sub(r'[^A-Za-z0-9_-]+', '_', label).strip('_')[:100] or 'table'
+        prefix = output_directory / f"optical-{report['engine']}-{report['method']}-{index}-{safe_label}"
+        figures[label] = generate_optical_figures(table, str(prefix),
+                                                  f"{report['engine']} {report['method']} ({label})")
+    return {'summary_file': str(summary_file), 'engine': report['engine'],
+            'method': report['method'], 'figure_files': figures,
+            'output_directory': str(output_directory)}

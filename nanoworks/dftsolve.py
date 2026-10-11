@@ -249,6 +249,7 @@ from nanoworks.engine import (
 from nanoworks.optical import (
     validate_optical_settings, validate_optical_table, run_optical_exports,
     derive_optical_table, write_optical_table, write_optical_summary,
+    generate_optical_figures,
 )
 from nanoworks.dos import (
     resolve_dos_settings,
@@ -6535,94 +6536,8 @@ class dftsolve:
         return run_optical_exports(export)
 
     def _generate_optical_figures(self, data, file_prefix, title_suffix):
-        """
-        Helper method to generate 4 standard optical figures from parsed array data.
-        Forces the 'Agg' backend for matplotlib to prevent X11 server errors on clusters.
-        
-        Args:
-            data (numpy.ndarray): 2D array containing the optical data.
-                                  Col 0: Energy, Col 1: Eps_real, Col 2: Eps_img,
-                                  Col 3: Refractive_Index, Col 4: Extinction_Index,
-                                  Col 5: Absorption, Col 6: Reflectivity
-            file_prefix (str): Prefix string for the saved .png files.
-            title_suffix (str): String appended to the plot titles (e.g., 'BSE' or 'RPA LFC (x)').
-        """
-        data = validate_optical_table(data)
-
-        import matplotlib
-        matplotlib.use('Agg') # Essential for headless cluster/HPC environments
-        import matplotlib.pyplot as plt
-
-        # Extract columns based on the .dat file structure generated in opticalcalc
-        energy = data[:, 0]
-        eps_real = data[:, 1]
-        eps_img = data[:, 2]
-        n_idx = data[:, 3]
-        k_idx = data[:, 4]
-        absorption = data[:, 5]
-        reflectivity = data[:, 6]
-
-        # ---------------------------------------------------------
-        # 1. Plot Complex Dielectric Function (Epsilon Real & Imag)
-        # ---------------------------------------------------------
-        fig, ax = plt.subplots(figsize=(8, 6))
-        ax.plot(energy, eps_real, label=r'$\epsilon_1$ (Re)', color='blue', linewidth=2)
-        ax.plot(energy, eps_img, label=r'$\epsilon_2$ (Im)', color='red', linestyle='--', linewidth=2)
-        ax.set_xlabel(self._t("fig_optical_xlabel"))
-        ax.set_ylabel('Dielectric Function')
-        ax.set_xlim(left=0) 
-        ax.axhline(y=0, color='black', linestyle='-', linewidth=0.8) 
-        ax.legend(loc='upper right', frameon=True)
-        ax.grid(True, linestyle=':', alpha=0.7)
-        fig.tight_layout()
-        fig.savefig(f"{file_prefix}-Dielectric.png", dpi=300)
-        plt.close(fig)
-
-        # ---------------------------------------------------------
-        # 2. Plot Complex Refractive Index (n & k)
-        # ---------------------------------------------------------
-        fig, ax = plt.subplots(figsize=(8, 6))
-        ax.plot(energy, n_idx, label='n', color='darkgreen', linewidth=2)
-        ax.plot(energy, k_idx, label='k', color='orange', linestyle='--', linewidth=2)
-        ax.set_xlabel(self._t("fig_optical_xlabel"))
-        ax.set_ylabel('n,k')
-        ax.set_xlim(left=0)
-        ax.legend(loc='upper right', frameon=True)
-        ax.grid(True, linestyle=':', alpha=0.7)
-        fig.tight_layout()
-        fig.savefig(f"{file_prefix}-n-and-k.png", dpi=300)
-        plt.close(fig)
-
-        # ---------------------------------------------------------
-        # 3. Plot Absorption Coefficient
-        # ---------------------------------------------------------
-        fig, ax = plt.subplots(figsize=(8, 6))
-        ax.plot(energy, absorption, label=r'Abs ($\alpha$)', color='purple', linewidth=2)
-        ax.set_xlabel(self._t("fig_optical_xlabel"))
-        ax.set_ylabel(self._t("fig_optical_abs"))
-        ax.set_xlim(left=0)
-        ax.set_ylim(bottom=0) 
-        ax.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-        ax.legend(loc='upper right', frameon=True)
-        ax.grid(True, linestyle=':', alpha=0.7)
-        fig.tight_layout()
-        fig.savefig(f"{file_prefix}-Absorption.png", dpi=300)
-        plt.close(fig)
-
-        # ---------------------------------------------------------
-        # 4. Plot Reflectivity
-        # ---------------------------------------------------------
-        fig, ax = plt.subplots(figsize=(8, 6))
-        ax.plot(energy, reflectivity, label='Ref (R)', color='teal', linewidth=2)
-        ax.set_xlabel(self._t("fig_optical_xlabel"))
-        ax.set_ylabel(self._t("fig_optical_ref"))
-        ax.set_xlim(left=0)
-        ax.set_ylim(bottom=0)
-        ax.legend(loc='upper right', frameon=True)
-        ax.grid(True, linestyle=':', alpha=0.7)
-        fig.tight_layout()
-        fig.savefig(f"{file_prefix}-Reflectivity.png", dpi=300)
-        plt.close(fig)
+        """Use the common GPAW/QE/offline plotting implementation."""
+        return generate_optical_figures(data, file_prefix, title_suffix, self._t)
 
     def _plot_optical_results(self):
         """Plot required files for the active method; share failures across MPI."""

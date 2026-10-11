@@ -207,6 +207,50 @@ class TestOpticalSummaryLoading(unittest.TestCase):
                 load_optical_summary(summary)
 
 
+class TestOpticalOfflinePlots(unittest.TestCase):
+    def test_verified_summary_plots_without_engine_loading(self):
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        from nanoworks.optical import plot_optical_summary
+        with tempfile.TemporaryDirectory() as directory:
+            summary, _ = TestOpticalSummaryLoading().make_results(directory)
+            with patch('nanoworks.optical.generate_optical_figures', return_value=['figure.png']) as plot:
+                with patch('nanoworks.engine.load_engine_module') as engine:
+                    result = plot_optical_summary(summary)
+            engine.assert_not_called()
+            plot.assert_called_once()
+            self.assertEqual(result['figure_files']['x'], ['figure.png'])
+            self.assertEqual(Path(result['output_directory']), summary.parent / 'optical-plots')
+
+    def test_invalid_inputs_do_not_create_output_directory(self):
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        from nanoworks.optical import plot_optical_summary
+        with tempfile.TemporaryDirectory() as directory:
+            summary, table = TestOpticalSummaryLoading().make_results(directory)
+            table.write_text('altered')
+            output = Path(directory) / 'new-figures'
+            with patch('nanoworks.optical.generate_optical_figures') as plot:
+                with self.assertRaisesRegex(ValueError, 'content differs'):
+                    plot_optical_summary(summary, output)
+            plot.assert_not_called()
+            self.assertFalse(output.exists())
+
+    def test_shared_plotter_closes_figure_when_save_fails(self):
+        import numpy as np
+        import matplotlib.pyplot as plt
+        from unittest.mock import patch
+        from nanoworks.optical import generate_optical_figures
+        before = set(plt.get_fignums())
+        table = np.array([[0, 3, 4, 2, 1, 0, .2], [1, 3, 4, 2, 1, 100, .2]])
+        with patch('matplotlib.figure.Figure.savefig', side_effect=OSError('disk full')):
+            with self.assertRaisesRegex(OSError, 'disk full'):
+                generate_optical_figures(table, 'unused', 'RPA')
+        self.assertEqual(set(plt.get_fignums()), before)
+
+
 class TestOpticalTables(unittest.TestCase):
     def test_finite_negative_dielectric_values_are_preserved(self):
         import numpy as np

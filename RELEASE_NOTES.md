@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- GPAW/QE and saved optical results share one plotter; failed figure writes release Matplotlib resources.
+
 - Optical summaries store portable relative table paths; the reader verifies table hashes and supports older summaries.
 
 - Silicon optical examples add combined Ground+BSE and clarify band windows, fresh-process execution and result checks.
