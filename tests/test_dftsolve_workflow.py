@@ -3670,7 +3670,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             workflow['thermal_data_file'],
             Path(
                 solver.struct
-                + '-PHONON-QE-Result-Thermal-Properties.csv'
+                + '-PHONON-QE-Result-Thermal-Properties.dat'
             ),
         )
 

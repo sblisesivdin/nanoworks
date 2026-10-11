@@ -46,7 +46,7 @@ def test_eos_recovers_known_bulk_properties_and_preserves_input(tmp_path):
     assert report['result']['bulk_modulus_GPa'] == pytest.approx(0.7 / GPa, rel=1e-5)
     assert report['result']['bulk_modulus_pressure_derivative'] == pytest.approx(4.1, rel=1e-4)
     assert report['result']['fit_rmse_eV'] < 1e-8
-    data = np.loadtxt(tmp_path / 'Cu-ML-EOS-Result.dat')
+    data = np.loadtxt(tmp_path / 'Cu-ML-EOS-Result.dat', skiprows=1)
     assert data.shape == (11, 5)
     assert data[:, 1] == pytest.approx(data[:, 0] * 10)
     assert (tmp_path / 'Cu-ML-EOS-Graph.png').stat().st_size > 0
@@ -109,7 +109,7 @@ def test_calculator_failure_keeps_completed_samples(tmp_path):
     assert report['status'] == 'failed'
     assert len(report['samples']) == 2
     assert 'result' not in report
-    assert np.loadtxt(tmp_path / 'Cu-ML-EOS-Result.dat').shape == (2, 5)
+    assert np.loadtxt(tmp_path / 'Cu-ML-EOS-Result.dat', skiprows=1).shape == (2, 5)
 
 
 def test_cli_rejects_invalid_eos_before_loading_model(tmp_path, monkeypatch):

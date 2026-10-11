@@ -61,17 +61,22 @@ class TestSavedResultPlotting(unittest.TestCase):
             self.assertEqual(plot_saved_result('summary.json'), {})
             optical.assert_called_once_with(Path('summary.json').resolve())
 
-    def test_optical_dat_and_csv_export_identical_numeric_columns(self):
+    def test_optical_exports_one_dat_with_units_and_no_csv_duplicate(self):
         from nanoworks.optical import write_optical_table, OPTICAL_TABLE_HEADER
         from nanoworks.result_plotting import load_optical_table
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'Si-OPTICAL-QE-Result-AllData.dat'
             data = np.array([[0, 3, 4, 2, 1, 0, .2], [1, 3, 4, 2, 1, 100, .2]])
             write_optical_table(path, data)
-            csv = path.with_suffix('.csv')
-            self.assertEqual(csv.read_text().splitlines()[0].split(','), OPTICAL_TABLE_HEADER.split())
+            self.assertFalse(path.with_suffix('.csv').exists())
+            self.assertEqual(path.read_text().splitlines()[0].split(), OPTICAL_TABLE_HEADER.split())
             np.testing.assert_array_equal(load_optical_table(path), data)
-            np.testing.assert_array_equal(load_optical_table(csv), data)
+
+    def test_new_dos_dat_header_is_skipped_and_reference_preserved(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'Si-DOS-QE-Result-DOS.dat'
+            path.write_text('Energy(eV) DOS(states/eV)\n-3 1\n2 4\n')
+            np.testing.assert_array_equal(load_dos_table(path), [[-3, 1], [2, 4]])
 
     def test_standalone_table_plots_without_summary_and_preserves_values(self):
         from nanoworks.optical import OPTICAL_TABLE_HEADER

@@ -100,12 +100,12 @@ class TestGPAWPhononResults(unittest.TestCase):
         self.assertEqual(report['mesh_modes_below_reporting_threshold'], 1)
         self.assertAlmostEqual(report['weighted_mesh_fraction_below_reporting_threshold'], .25)
         self.assertAlmostEqual(report['minimum_band_frequency_thz'], -.3)
-        np.testing.assert_allclose(np.loadtxt(report['mesh_data_file'])[:, 4:],
+        np.testing.assert_allclose(np.loadtxt(report['mesh_data_file'], skiprows=1)[:, 4:],
                                    self.phonon.mesh.frequencies)
-        np.testing.assert_allclose(np.loadtxt(report['dos_data_file'])[:, 0], [-.3, 0., .5])
+        np.testing.assert_allclose(np.loadtxt(report['dos_data_file'], skiprows=1)[:, 0], [-.3, 0., .5])
         np.testing.assert_allclose(np.loadtxt(report['band_data_file'], skiprows=1)[:, 1:],
                                    self.phonon.get_band_structure_dict.return_value['frequencies'][0])
-        thermal = np.loadtxt(report['thermal_data_file'], delimiter=',', skiprows=1)
+        thermal = np.loadtxt(report['thermal_data_file'], skiprows=1)
         np.testing.assert_array_equal(thermal[:, 0], [0, 100])
         self.phonon.write_yaml_band_structure.assert_called_once()
         self.phonon.write_yaml_thermal_properties.assert_called_once()
@@ -155,7 +155,7 @@ class TestGPAWPhononResults(unittest.TestCase):
         self.phonon.get_thermal_properties_dict.return_value['free_energy'] = [[.1, .2], [.3, .4]]
         with self.assertRaisesRegex(ValueError, 'four matching finite arrays'):
             write_gpaw_phonon_results(self.phonon, self.prefix, self.band_path, [2, 2, 2], [0, 100, 100])
-        self.assertFalse(Path(self.prefix + '-Result-Thermal-Properties.csv').exists())
+        self.assertFalse(Path(self.prefix + '-Result-Thermal-Properties.dat').exists())
         self.phonon.write_yaml_thermal_properties.assert_not_called()
 
     def test_thermal_output_is_optional(self):

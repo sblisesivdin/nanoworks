@@ -100,7 +100,7 @@ def run_eos(atoms, config, struct, optimizer_class=None):
         data = [[row['volume_ratio'], row['volume_A3'], row['energy_eV'],
                  row['energy_per_atom_eV'], int(row['converged'])] for row in rows]
         np.savetxt(raw_path, np.asarray(data).reshape(-1, 5),
-                   header='V/Vinitial Volume[A^3] Energy[eV/cell] Energy[eV/atom] Converged',
+                   comments='', header='VolumeRatio(1) Volume(A^3) Energy(eV/cell) EnergyPerAtom(eV/atom) Converged(1)',
                    fmt=['%.10f', '%.10f', '%.12f', '%.12f', '%d'])
 
     save_report()

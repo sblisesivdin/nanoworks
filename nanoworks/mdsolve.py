@@ -37,6 +37,7 @@ from pathlib import Path
 from numbers import Number
 from itertools import product
 from ase import *
+from nanoworks.tableio import table_header, csv_line_to_dat
 from ase.data import atomic_numbers, atomic_masses
 from ase.io import read, write
 from ase.io.cif import write_cif
@@ -578,7 +579,7 @@ def _write_energy_csv(path, records):
     "Pressure(GPa),Volume(A^3)"
 )
     with open(path, 'w') as fd:
-        fd.write(header + "\n")
+        fd.write(table_header(header) + "\n")
         for rec in records:
             temperature_damp = rec.get(
                 'temperature_damp'
@@ -604,13 +605,13 @@ def _write_energy_csv(path, records):
             )
 
             fd.write(
-                f"{rec['step']},{rec['cycle']},"
+                csv_line_to_dat(f"{rec['step']},{rec['cycle']},"
                 f"{rec['epot']:.6f},{rec['ekin']:.6f},"
                 f"{rec['total']:.6f},"
                 f"{rec['temperature']:.6f},"
                 f"{rec['timestep']:.6f},"
                 f"{temperature_damp_text},"
-                f"{pressure_text},{volume_text}\n"
+                f"{pressure_text},{volume_text}\n")
             )
 
 
@@ -1753,7 +1754,7 @@ def _write_lammps_msd_csv(
     """Convert LAMMPS MSD output to a Nanoworks CSV file."""
 
     source_file = struct_prefix + '-LAMMPS-MSD.dat'
-    csv_file = struct_prefix + '-MSD.csv'
+    csv_file = struct_prefix + '-MSD.dat'
 
     if not os.path.isfile(source_file):
         raise FileNotFoundError(
@@ -1802,18 +1803,17 @@ def _write_lammps_msd_csv(
 
     with open(csv_file, 'w') as fd:
         fd.write(
-            'Step,Time(ps),MSD_X(A^2),MSD_Y(A^2),'
-            'MSD_Z(A^2),MSD_Total(A^2)\n'
+            table_header('Step,Time(ps),MSD_X(A^2),MSD_Y(A^2),MSD_Z(A^2),MSD_Total(A^2)') + "\n"
         )
 
         for record in records:
             fd.write(
-                f'{record[0]},'
+                csv_line_to_dat(f'{record[0]},'
                 f'{record[1]:.10g},'
                 f'{record[2]:.10g},'
                 f'{record[3]:.10g},'
                 f'{record[4]:.10g},'
-                f'{record[5]:.10g}\n'
+                f'{record[5]:.10g}\n')
             )
 
     return csv_file, records
@@ -1826,7 +1826,7 @@ def _write_lammps_species_msd_csv(
 ):
     """Combine element-resolved LAMMPS MSD outputs into one CSV."""
 
-    csv_file = struct_prefix + '-MSD-Species.csv'
+    csv_file = struct_prefix + '-MSD-Species.dat'
     records = []
 
     for symbol in requested_species:
@@ -1885,20 +1885,18 @@ def _write_lammps_species_msd_csv(
 
     with open(csv_file, 'w') as fd:
         fd.write(
-            'Species,Step,Time(ps),'
-            'MSD_X(A^2),MSD_Y(A^2),'
-            'MSD_Z(A^2),MSD_Total(A^2)\n'
+            table_header('Species,Step,Time(ps),MSD_X(A^2),MSD_Y(A^2),MSD_Z(A^2),MSD_Total(A^2)') + "\n"
         )
 
         for record in records:
             fd.write(
-                f'{record[0]},'
+                csv_line_to_dat(f'{record[0]},'
                 f'{record[1]},'
                 f'{record[2]:.10g},'
                 f'{record[3]:.10g},'
                 f'{record[4]:.10g},'
                 f'{record[5]:.10g},'
-                f'{record[6]:.10g}\n'
+                f'{record[6]:.10g}\n')
             )
 
     return csv_file, records
@@ -2037,19 +2035,15 @@ def _write_diffusion_summary(
     )
 
     output_file = (
-        struct_prefix + '-Diffusion.csv'
+        struct_prefix + '-Diffusion.dat'
     )
 
     with open(output_file, 'w') as fd:
         fd.write(
-            'Dimensions,FitStartFraction,'
-            'FitStartTime(ps),FitEndTime(ps),'
-            'Samples,Slope(A^2/ps),'
-            'Diffusion(A^2/ps),'
-            'Diffusion(cm^2/s),R_squared\n'
+            table_header('Dimensions,FitStartFraction,FitStartTime(ps),FitEndTime(ps),Samples,Slope(A^2/ps),Diffusion(A^2/ps),Diffusion(cm^2/s),R_squared') + "\n"
         )
         fd.write(
-            f'{int(dimensions)},'
+            csv_line_to_dat(f'{int(dimensions)},'
             f'{float(start_fraction):.6f},'
             f"{fit['fit_start_time']:.10g},"
             f"{fit['fit_end_time']:.10g},"
@@ -2057,7 +2051,7 @@ def _write_diffusion_summary(
             f"{fit['slope']:.10g},"
             f"{fit['diffusion_a2_per_ps']:.10g},"
             f"{fit['diffusion_cm2_per_s']:.10g},"
-            f"{fit['r_squared']:.10g}\n"
+            f"{fit['r_squared']:.10g}\n")
         )
 
     return output_file
@@ -2071,7 +2065,7 @@ def _write_species_diffusion_summary(
     """Estimate element-resolved diffusion coefficients from MSD."""
 
     output_file = (
-        struct_prefix + '-Diffusion-Species.csv'
+        struct_prefix + '-Diffusion-Species.dat'
     )
 
     grouped = {}
@@ -2084,11 +2078,7 @@ def _write_species_diffusion_summary(
 
     with open(output_file, 'w') as fd:
         fd.write(
-            'Species,Dimensions,FitStartFraction,'
-            'FitStartTime(ps),FitEndTime(ps),'
-            'Samples,Slope(A^2/ps),'
-            'Diffusion(A^2/ps),'
-            'Diffusion(cm^2/s),R_squared\n'
+            table_header('Species,Dimensions,FitStartFraction,FitStartTime(ps),FitEndTime(ps),Samples,Slope(A^2/ps),Diffusion(A^2/ps),Diffusion(cm^2/s),R_squared') + "\n"
         )
 
         for symbol in sorted(grouped):
@@ -2110,7 +2100,7 @@ def _write_species_diffusion_summary(
             )
 
             fd.write(
-                f'{symbol},'
+                csv_line_to_dat(f'{symbol},'
                 f'{int(dimensions)},'
                 f'{float(start_fraction):.6f},'
                 f"{fit['fit_start_time']:.10g},"
@@ -2119,7 +2109,7 @@ def _write_species_diffusion_summary(
                 f"{fit['slope']:.10g},"
                 f"{fit['diffusion_a2_per_ps']:.10g},"
                 f"{fit['diffusion_cm2_per_s']:.10g},"
-                f"{fit['r_squared']:.10g}\n"
+                f"{fit['r_squared']:.10g}\n")
             )
 
     return output_file
@@ -2131,7 +2121,7 @@ def _write_lammps_rdf_csv(
     """Convert LAMMPS RDF output to a Nanoworks CSV file."""
 
     source_file = struct_prefix + '-LAMMPS-RDF.dat'
-    csv_file = struct_prefix + '-RDF.csv'
+    csv_file = struct_prefix + '-RDF.dat'
 
     if not os.path.isfile(source_file):
         raise FileNotFoundError(
@@ -2216,18 +2206,17 @@ def _write_lammps_rdf_csv(
 
     with open(csv_file, 'w') as fd:
         fd.write(
-            'Pair,Step,Bin,R(A),g(r),'
-            'CoordinationNumber\n'
+            table_header('Pair,Step,Bin,R(A),g(r),CoordinationNumber') + "\n"
         )
 
         for record in records:
             fd.write(
-                f'{record[0]},'
+                csv_line_to_dat(f'{record[0]},'
                 f'{record[1]},'
                 f'{record[2]},'
                 f'{record[3]:.10g},'
                 f'{record[4]:.10g},'
-                f'{record[5]:.10g}\n'
+                f'{record[5]:.10g}\n')
             )
 
     return csv_file
@@ -2240,7 +2229,7 @@ def _write_lammps_vacf_csv(
     """Convert LAMMPS VACF output to a Nanoworks CSV file."""
 
     source_file = struct_prefix + '-LAMMPS-VACF.dat'
-    csv_file = struct_prefix + '-VACF.csv'
+    csv_file = struct_prefix + '-VACF.dat'
 
     if not os.path.isfile(source_file):
         raise FileNotFoundError(
@@ -2289,21 +2278,17 @@ def _write_lammps_vacf_csv(
 
     with open(csv_file, 'w') as fd:
         fd.write(
-            'Step,Time(ps),'
-            'VACF_X(A^2/ps^2),'
-            'VACF_Y(A^2/ps^2),'
-            'VACF_Z(A^2/ps^2),'
-            'VACF_Total(A^2/ps^2)\n'
+            table_header('Step,Time(ps),VACF_X(A^2/ps^2),VACF_Y(A^2/ps^2),VACF_Z(A^2/ps^2),VACF_Total(A^2/ps^2)') + "\n"
         )
 
         for record in records:
             fd.write(
-                f'{record[0]},'
+                csv_line_to_dat(f'{record[0]},'
                 f'{record[1]:.10g},'
                 f'{record[2]:.10g},'
                 f'{record[3]:.10g},'
                 f'{record[4]:.10g},'
-                f'{record[5]:.10g}\n'
+                f'{record[5]:.10g}\n')
             )
 
     return csv_file, records
@@ -2392,21 +2377,15 @@ def _write_vacf_diffusion_summary(
 
     output_file = (
         struct_prefix
-        + '-Diffusion-VACF.csv'
+        + '-Diffusion-VACF.dat'
     )
 
     with open(output_file, 'w') as fd:
         fd.write(
-            'Dimensions,EndTime(ps),Samples,'
-            'IntegralX(A^2/ps),'
-            'IntegralY(A^2/ps),'
-            'IntegralZ(A^2/ps),'
-            'IntegralTotal(A^2/ps),'
-            'Diffusion(A^2/ps),'
-            'Diffusion(cm^2/s)\n'
+            table_header('Dimensions,EndTime(ps),Samples,IntegralX(A^2/ps),IntegralY(A^2/ps),IntegralZ(A^2/ps),IntegralTotal(A^2/ps),Diffusion(A^2/ps),Diffusion(cm^2/s)') + "\n"
         )
         fd.write(
-            f'{dimensions},'
+            csv_line_to_dat(f'{dimensions},'
             f'{times[-1]:.10g},'
             f'{len(times)},'
             f'{component_integrals[0]:.10g},'
@@ -2414,7 +2393,7 @@ def _write_vacf_diffusion_summary(
             f'{component_integrals[2]:.10g},'
             f'{total_integral:.10g},'
             f'{diffusion_a2_per_ps:.10g},'
-            f'{diffusion_cm2_per_s:.10g}\n'
+            f'{diffusion_cm2_per_s:.10g}\n')
         )
 
     return output_file
@@ -3741,7 +3720,7 @@ def main():
         )
 
         # PRINT TO FILE PART -----------------------------------
-        _write_energy_csv(struct_prefix+'-Energy.csv', energy_records)
+        _write_energy_csv(struct_prefix+'-Energy.dat', energy_records)
 
         with open(struct_prefix+'Results.py', 'w') as f:
             f.write("bulk_configuration = Atoms(\n")

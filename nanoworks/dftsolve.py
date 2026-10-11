@@ -246,6 +246,7 @@ from nanoworks.engine import (
     resolve_stage_kpoint_settings,
     load_engine_module,
 )
+from nanoworks.tableio import table_header
 from nanoworks.optical import (
     validate_optical_settings, validate_optical_table, run_optical_exports,
     derive_optical_table, write_optical_table, write_optical_summary,
@@ -2867,7 +2868,7 @@ class dftsolve:
         else:
             ef = calc.get_fermi_level()
 
-        # Keep GPAW CSV energies on the same E - Ef axis as the DOS graph and QE exports.
+        # Keep GPAW DAT energies on the same E - Ef axis as the DOS graph and QE exports.
         chem_sym = self.bulk_configuration.get_chemical_symbols()
 
         if self.SOC_calc:
@@ -2908,9 +2909,10 @@ class dftsolve:
                 parprint("WARNING: Computed SOC-DOS array is empty or NaN. Matplotlib crash prevented.")
                 dos[:] = 0.0
 
-            with paropen(self.struct+'-DOS-GPAW-Result-DOS-SOC.csv', "w") as fd:
+            with paropen(self.struct+'-DOS-GPAW-Result-DOS-SOC.dat', "w") as fd:
+                print("Energy(eV) DOS(states/eV)", file=fd)
                 for en, d in zip(energies, dos):
-                    print(f"{en}, {d}", file=fd)
+                    print(en, d, file=fd)
 
             # Use explicit figure creation to avoid memory overlap
             if world.rank == 0:
@@ -2962,10 +2964,9 @@ class dftsolve:
             totaldosweightsdown = [0.0] * self.DOS_npoints
 
             # Writing RawPDOS
-            with paropen(self.struct+'-DOS-GPAW-Result-Raw-PDOS-Each-Atom-Down.csv', "w") as fd:
-                print("Energy, s-total, p-total, pz, px, py, d-total, d3z2_r2, dzx, dyz, dx2_y2, dxy, f-total, TOTAL", file=fd)
+            with paropen(self.struct+'-DOS-GPAW-Result-Raw-PDOS-Each-Atom-Down.dat', "w") as fd:
+                print("AtomIndex(1) Element(1) " + table_header('Energy, s-total, p-total, pz, px, py, d-total, d3z2_r2, dzx, dyz, dx2_y2, dxy, f-total, TOTAL'), file=fd)
                 for j in range(0, self.bulk_configuration.get_global_number_of_atoms()):
-                    print(f"Atom no: {j+1}, Atom Symbol: {chem_sym[j]} --------------------", file=fd)
                     pdoss = rawdos.raw_pdos(energies, a=j, l=0, m=None, spin=0, width=self.DOS_width)
                     pdosp = rawdos.raw_pdos(energies, a=j, l=1, m=None, spin=0, width=self.DOS_width)
                     pdospx = rawdos.raw_pdos(energies, a=j, l=1, m=2, spin=0, width=self.DOS_width)
@@ -2994,20 +2995,21 @@ class dftsolve:
                     totaldosweightsdown = totaldosweightsdown + dosspdf
 
                     for x in zip(shifted_energies, pdoss, pdosp, pdospz, pdospx, pdospy, pdosd, pdosd3z2_r2, pdosdzx, pdosdyz, pdosdx2_y2, pdosdxy, pdosf, dosspdf):
-                        print(*x, sep=", ", file=fd)
+                        print(j + 1, chem_sym[j], *x, sep=" ", file=fd)
 
             # Writing DOS
             parprint("Saving DOS for spin down...")
-            with paropen(self.struct+f'-DOS-{self.Engine}-Result-DOS-Down.csv', "w") as fd:
+            with paropen(self.struct+f'-DOS-{self.Engine}-Result-DOS-Down.dat', "w") as fd:
+                print("Energy(eV) DOS(states/eV)", file=fd)
                 for x in zip(shifted_energies, totaldosweightsdown):
-                    print(*x, sep=", ", file=fd)
+                    print(*x, sep=" ", file=fd)
 
             # Writing PDOS
             parprint("Saving PDOS for spin down...")
-            with paropen(self.struct+f'-DOS-{self.Engine}-Result-PDOS-Down.csv', "w") as fd:
-                print("Energy, s-total, p-total, pz, px, py, d-total, d3z2_r2, dzx, dyz, dx2_y2, dxy, f-total, TOTAL", file=fd)
+            with paropen(self.struct+f'-DOS-{self.Engine}-Result-PDOS-Down.dat', "w") as fd:
+                print(table_header('Energy, s-total, p-total, pz, px, py, d-total, d3z2_r2, dzx, dyz, dx2_y2, dxy, f-total, TOTAL'), file=fd)
                 for x in zip(shifted_energies, pdossweightsdown, pdospweightsdown, pdospzweightsdown, pdospxweightsdown, pdospyweightsdown, pdosdweightsdown, pdosd3z2_r2weightsdown, pdosdzxweightsdown, pdosdyzweightsdown, pdosdx2_y2weightsdown, pdosdxyweightsdown, pdosfweightsdown, totaldosweightsdown):
-                    print(*x, sep=", ", file=fd)
+                    print(*x, sep=" ", file=fd)
 
             # ==========================================
             # SPIN UP CALCULATIONS
@@ -3033,10 +3035,9 @@ class dftsolve:
             totaldosweightsup = [0.0] * self.DOS_npoints
 
             # Writing RawPDOS
-            with paropen(self.struct+'-DOS-GPAW-Result-Raw-PDOS-Each-Atom-Up.csv', "w") as fd:
-                print("Energy, s-total, p-total, pz, px, py, d-total, d3z2_r2, dzx, dyz, dx2_y2, dxy, f-total, TOTAL", file=fd)
+            with paropen(self.struct+'-DOS-GPAW-Result-Raw-PDOS-Each-Atom-Up.dat', "w") as fd:
+                print("AtomIndex(1) Element(1) " + table_header('Energy, s-total, p-total, pz, px, py, d-total, d3z2_r2, dzx, dyz, dx2_y2, dxy, f-total, TOTAL'), file=fd)
                 for j in range(0, self.bulk_configuration.get_global_number_of_atoms()):
-                    print(f"Atom no: {j+1}, Atom Symbol: {chem_sym[j]} --------------------", file=fd)
                     pdoss = rawdos.raw_pdos(energies, a=j, l=0, m=None, spin=1, width=self.DOS_width)
                     pdosp = rawdos.raw_pdos(energies, a=j, l=1, m=None, spin=1, width=self.DOS_width)
                     pdospx = rawdos.raw_pdos(energies, a=j, l=1, m=2, spin=1, width=self.DOS_width)
@@ -3065,20 +3066,21 @@ class dftsolve:
                     totaldosweightsup = totaldosweightsup + dosspdf
 
                     for x in zip(shifted_energies, pdoss, pdosp, pdospz, pdospx, pdospy, pdosd, pdosd3z2_r2, pdosdzx, pdosdyz, pdosdx2_y2, pdosdxy, pdosf, dosspdf):
-                        print(*x, sep=", ", file=fd)
+                        print(j + 1, chem_sym[j], *x, sep=" ", file=fd)
 
             # Writing DOS
             parprint("Saving DOS for spin up...")
-            with paropen(self.struct+f'-DOS-{self.Engine}-Result-DOS-Up.csv', "w") as fd:
+            with paropen(self.struct+f'-DOS-{self.Engine}-Result-DOS-Up.dat', "w") as fd:
+                print("Energy(eV) DOS(states/eV)", file=fd)
                 for x in zip(shifted_energies, totaldosweightsup):
-                    print(*x, sep=", ", file=fd)
+                    print(*x, sep=" ", file=fd)
 
             # Writing PDOS
             parprint("Saving PDOS for spin up...")
-            with paropen(self.struct+f'-DOS-{self.Engine}-Result-PDOS-Up.csv', "w") as fd:
-                print("Energy, s-total, p-total, pz, px, py, d-total, d3z2_r2, dzx, dyz, dx2_y2, dxy, f-total, TOTAL", file=fd)
+            with paropen(self.struct+f'-DOS-{self.Engine}-Result-PDOS-Up.dat', "w") as fd:
+                print(table_header('Energy, s-total, p-total, pz, px, py, d-total, d3z2_r2, dzx, dyz, dx2_y2, dxy, f-total, TOTAL'), file=fd)
                 for x in zip(shifted_energies, pdossweightsup, pdospweightsup, pdospzweightsup, pdospxweightsup, pdospyweightsup, pdosdweightsup, pdosd3z2_r2weightsup, pdosdzxweightsup, pdosdyzweightsup, pdosdx2_y2weightsup, pdosdxyweightsup, pdosfweightsup, totaldosweightsup):
-                    print(*x, sep=", ", file=fd)
+                    print(*x, sep=" ", file=fd)
 
         else:
             # ==========================================
@@ -3107,8 +3109,8 @@ class dftsolve:
             pdosfweights = [0.0] * self.DOS_npoints
 
             # Writing RawPDOS
-            with paropen(self.struct+'-DOS-GPAW-Result-Raw-PDOS-Each-Atom.csv', "w") as fd:
-                print("Energy, s-total, p-total, pz, px, py, d-total, d3z2_r2, dzx, dyz, dx2_y2, dxy, f-total, TOTAL", file=fd)
+            with paropen(self.struct+'-DOS-GPAW-Result-Raw-PDOS-Each-Atom.dat', "w") as fd:
+                print("AtomIndex(1) Element(1) " + table_header('Energy, s-total, p-total, pz, px, py, d-total, d3z2_r2, dzx, dyz, dx2_y2, dxy, f-total, TOTAL'), file=fd)
                 for j in range(0, self.bulk_configuration.get_global_number_of_atoms()):
                     print(f"Atom no: {j+1}, Atom Symbol: {chem_sym[j]} ----------------------------------------", file=fd)
                     pdoss = rawdos.raw_pdos(energies, a=j, l=0, m=None, spin=None, width=self.DOS_width)
@@ -3142,20 +3144,21 @@ class dftsolve:
                     totaldosweights = totaldosweights + dosspdf
 
                     for x in zip(shifted_energies, pdoss, pdosp, pdospz, pdospx, pdospy, pdosd, pdosd3z2_r2, pdosdzx, pdosdyz, pdosdx2_y2, pdosdxy, pdosf, dosspdf):
-                        print(*x, sep=", ", file=fd)
+                        print(j + 1, chem_sym[j], *x, sep=" ", file=fd)
 
             # Writing DOS
             parprint("Saving DOS...")
-            with paropen(self.struct+f'-DOS-{self.Engine}-Result-DOS.csv', "w") as fd:
+            with paropen(self.struct+f'-DOS-{self.Engine}-Result-DOS.dat', "w") as fd:
+                print("Energy(eV) DOS(states/eV)", file=fd)
                 for x in zip(shifted_energies, totaldosweights):
-                    print(*x, sep=", ", file=fd)
+                    print(*x, sep=" ", file=fd)
 
             # Writing PDOS
             parprint("Saving PDOS...")
-            with paropen(self.struct+f'-DOS-{self.Engine}-Result-PDOS.csv', "w") as fd:
-                print("Energy, s-total, p-total, pz, px, py, d-total, d3z2_r2, dzx, dyz, dx2_y2, dxy, f-total, TOTAL", file=fd)
+            with paropen(self.struct+f'-DOS-{self.Engine}-Result-PDOS.dat', "w") as fd:
+                print(table_header('Energy, s-total, p-total, pz, px, py, d-total, d3z2_r2, dzx, dyz, dx2_y2, dxy, f-total, TOTAL'), file=fd)
                 for x in zip(shifted_energies, pdossweights, pdospweights, pdospzweights, pdospxweights, pdospyweights, pdosdweights, pdosd3z2_r2weights, pdosdzxweights, pdosdyzweights, pdosdx2_y2weights, pdosdxyweights, pdosfweights, totaldosweights):
-                    print(*x, sep=", ", file=fd)
+                    print(*x, sep=" ", file=fd)
 
         # Finish DOS calc
         time22 = time.time()
@@ -3169,8 +3172,8 @@ class dftsolve:
             fig, ax = plt.subplots(figsize=(8, 6))
 
             if self.Spin_calc == True:
-                downf = pd.read_csv(self.struct+f'-DOS-{self.Engine}-Result-DOS-Down.csv', header=None)
-                upf = pd.read_csv(self.struct+f'-DOS-{self.Engine}-Result-DOS-Up.csv', header=None)
+                downf = pd.read_csv(self.struct+f'-DOS-{self.Engine}-Result-DOS-Down.dat', header=None, sep=r'\s+', skiprows=1)
+                upf = pd.read_csv(self.struct+f'-DOS-{self.Engine}-Result-DOS-Up.dat', header=None, sep=r'\s+', skiprows=1)
 
                 ax.plot(downf[0], -1.0*downf[1], 'r', linewidth=1.5, label='Spin Down')
                 ax.plot(upf[0], upf[1], 'b', linewidth=1.5, label='Spin Up')
@@ -3179,7 +3182,7 @@ class dftsolve:
                 ax.fill_between(upf[0], 0, upf[1], facecolor='blue', alpha=0.2)
 
             else:
-                dosf = pd.read_csv(self.struct+f'-DOS-{self.Engine}-Result-DOS.csv', header=None)
+                dosf = pd.read_csv(self.struct+f'-DOS-{self.Engine}-Result-DOS.dat', header=None, sep=r'\s+', skiprows=1)
 
                 ax.plot(dosf[0], dosf[1], 'b', linewidth=1.5)
                 ax.fill_between(dosf[0], 0, dosf[1], facecolor='blue', alpha=0.2)
@@ -3634,18 +3637,19 @@ class dftsolve:
         if self.Spin_calc:
             dos_up_file = Path(
                 self.struct
-                + f'-DOS-{self.Engine}-Result-DOS-Up.csv'
+                + f'-DOS-{self.Engine}-Result-DOS-Up.dat'
             )
 
             dos_down_file = Path(
                 self.struct
-                + f'-DOS-{self.Engine}-Result-DOS-Down.csv'
+                + f'-DOS-{self.Engine}-Result-DOS-Down.dat'
             )
 
             with dos_up_file.open(
                 'w',
                 encoding='utf-8',
             ) as fd:
+                print("Energy(eV) DOS(states/eV)", file=fd)
                 for energy, dos_value in zip(
                     shifted_energies,
                     dos_result['dos_up'],
@@ -3653,7 +3657,7 @@ class dftsolve:
                     print(
                         energy,
                         dos_value,
-                        sep=', ',
+                        sep=' ',
                         file=fd,
                     )
 
@@ -3661,6 +3665,7 @@ class dftsolve:
                 'w',
                 encoding='utf-8',
             ) as fd:
+                print("Energy(eV) DOS(states/eV)", file=fd)
                 for energy, dos_value in zip(
                     shifted_energies,
                     dos_result['dos_down'],
@@ -3668,7 +3673,7 @@ class dftsolve:
                     print(
                         energy,
                         dos_value,
-                        sep=', ',
+                        sep=' ',
                         file=fd,
                     )
 
@@ -3679,13 +3684,14 @@ class dftsolve:
         else:
             csv_file = Path(
                 self.struct
-                + f'-DOS-{self.Engine}-Result-DOS.csv'
+                + f'-DOS-{self.Engine}-Result-DOS.dat'
             )
 
             with csv_file.open(
                 'w',
                 encoding='utf-8',
             ) as fd:
+                print("Energy(eV) DOS(states/eV)", file=fd)
                 for energy, dos_value in zip(
                     shifted_energies,
                     dos_result['dos'],
@@ -3693,7 +3699,7 @@ class dftsolve:
                     print(
                         energy,
                         dos_value,
-                        sep=', ',
+                        sep=' ',
                         file=fd,
                     )
 
@@ -3892,20 +3898,7 @@ class dftsolve:
                 encoding='utf-8',
             ) as fd:
                 print(
-                    "Energy, "
-                    "s-total, "
-                    "p-total, "
-                    "pz, "
-                    "px, "
-                    "py, "
-                    "d-total, "
-                    "d3z2_r2, "
-                    "dxz, "
-                    "dyz, "
-                    "dx2_y2, "
-                    "dxy, "
-                    "f-total, "
-                    "TOTAL",
+                    table_header('Energy, s-total, p-total, pz, px, py, d-total, d3z2_r2, dxz, dyz, dx2_y2, dxy, f-total, TOTAL'),
                     file=fd,
                 )
 
@@ -3927,7 +3920,7 @@ class dftsolve:
                 ):
                     print(
                         *values,
-                        sep=', ',
+                        sep=' ',
                         file=fd,
                     )
 
@@ -3949,15 +3942,15 @@ class dftsolve:
             ) as fd:
                 print(
                     *(
-                        'Energy',
-                        's-total',
-                        'p-total',
-                        'd-total',
-                        'f-total',
-                        *j_labels,
-                        'TOTAL',
+                        'Energy(eV)',
+                        's-total(states/eV)',
+                        'p-total(states/eV)',
+                        'd-total(states/eV)',
+                        'f-total(states/eV)',
+                        *(label + '(states/eV)' for label in j_labels),
+                        'TOTAL(states/eV)',
                     ),
-                    sep=', ',
+                    sep=' ',
                     file=fd,
                 )
 
@@ -3977,14 +3970,14 @@ class dftsolve:
                             ),
                             projection['total'][index],
                         ),
-                        sep=', ',
+                        sep=' ',
                         file=fd,
                     )
 
         if self.SOC_calc:
             pdos_csv_file = Path(
                 self.struct
-                + f'-DOS-{self.Engine}-Result-PDOS.csv'
+                + f'-DOS-{self.Engine}-Result-PDOS.dat'
             )
 
             write_soc_pdos_csv(
@@ -4004,12 +3997,12 @@ class dftsolve:
         elif self.Spin_calc:
             pdos_up_file = Path(
                 self.struct
-                + f'-DOS-{self.Engine}-Result-PDOS-Up.csv'
+                + f'-DOS-{self.Engine}-Result-PDOS-Up.dat'
             )
 
             pdos_down_file = Path(
                 self.struct
-                + f'-DOS-{self.Engine}-Result-PDOS-Down.csv'
+                + f'-DOS-{self.Engine}-Result-PDOS-Down.dat'
             )
 
             write_pdos_csv(
@@ -4039,7 +4032,7 @@ class dftsolve:
         else:
             pdos_csv_file = Path(
                 self.struct
-                + f'-DOS-{self.Engine}-Result-PDOS.csv'
+                + f'-DOS-{self.Engine}-Result-PDOS.dat'
             )
 
             write_pdos_csv(
@@ -4513,6 +4506,7 @@ class dftsolve:
                 band_file,
                 'w',
             ) as fd:
+                print('KPointIndex(1) Energy(eV)', file=fd)
                 for band_index in range(
                     band_data['nbands']
                 ):
@@ -4544,6 +4538,7 @@ class dftsolve:
                 xyyy_file,
                 'w',
             ) as fd:
+                print('KPointIndex(1) ' + ' '.join(f'Band_{i + 1}(eV)' for i in range(band_data['nbands'])), file=fd)
                 for kpoint_index, values in enumerate(
                     eigenvalues
                 ):
@@ -4824,12 +4819,12 @@ class dftsolve:
             csv_suffix = '' if spin_label is None else f'-{spin_label}'
             projection_csv = self.engine.write_qe_band_projection_csv(
                 self.struct + '-BAND-QE-Result-Projected-Band'
-                + csv_suffix + '.csv',
+                + csv_suffix + '.dat',
                 distances=distances,
                 eigenvalues=eigenvalues,
                 projection_data=projection_data,
             )
-            parprint(f'QE projected-band CSV saved to: {projection_csv}')
+            parprint(f'QE projected-band DAT saved to: {projection_csv}')
 
             expected_shape = (
                 band_data['nkpoints'],
@@ -5072,12 +5067,14 @@ class dftsolve:
                                 for s in range(2)]) - ef
             parprint(eps_skn.shape)
             with paropen(self.struct+f'-BAND-{self.Engine}-Result-Band-Down.dat', 'w') as f1:
+                print("KPointIndex(1) Energy(eV)", file=f1)
                 for n1 in range(Band_num_of_bands):
                     for k1 in range(self.Band_npoints):
                         print(k1, eps_skn[0, k1, n1], end="\n", file=f1)
                     print (end="\n", file=f1)
 
             with paropen(self.struct+f'-BAND-{self.Engine}-Result-Band-Up.dat', 'w') as f2:
+                print("KPointIndex(1) Energy(eV)", file=f2)
                 for n2 in range(Band_num_of_bands):
                     for k2 in range(self.Band_npoints):
                         print(k2, eps_skn[1, k2, n2], end="\n", file=f2)
@@ -5086,6 +5083,7 @@ class dftsolve:
             # Thanks to Andrej Kesely (https://stackoverflow.com/users/10035985/andrej-kesely) for helping the problem of general XYYY writer
             currentd, all_groupsd = [], []
             with open(self.struct+f'-BAND-{self.Engine}-Result-Band-Down.dat', 'r') as f_in1:
+                next(f_in1)  # Skip the column header before grouping bands.
                 for line in map(str.strip, f_in1):
                     if line == "" and currentd:
                         all_groupsd.append(currentd)
@@ -5098,6 +5096,7 @@ class dftsolve:
 
             try:
                 with paropen(self.struct+f'-BAND-{self.Engine}-Result-Band-Down-XYYY.dat', 'w') as f1:
+                    print("KPointIndex(1) " + " ".join(f"Band_{i + 1}(eV)" for i in range(Band_num_of_bands)), file=f1)
                     for g in zip(*all_groupsd):
                         print('{} {} {}'.format(g[0][0], g[0][1], ' '.join(v for _, v in g[1:])), file=f1)
             except Exception as e:
@@ -5106,6 +5105,7 @@ class dftsolve:
 
             currentu, all_groupsu = [], []
             with open(self.struct+f'-BAND-{self.Engine}-Result-Band-Up.dat', 'r') as f_in2:
+                next(f_in2)  # Skip the column header before grouping bands.
                 for line in map(str.strip, f_in2):
                     if line == "" and currentu:
                         all_groupsu.append(currentu)
@@ -5117,6 +5117,7 @@ class dftsolve:
                 all_groupsu.append(currentu)
             try:
                 with paropen(self.struct+f'-BAND-{self.Engine}-Result-Band-Up-XYYY.dat', 'w') as f2:
+                    print("KPointIndex(1) " + " ".join(f"Band_{i + 1}(eV)" for i in range(Band_num_of_bands)), file=f2)
                     for g in zip(*all_groupsu):
                         print('{} {} {}'.format(g[0][0], g[0][1], ' '.join(v for _, v in g[1:])), file=f2)
             except Exception as e:
@@ -5138,6 +5139,7 @@ class dftsolve:
                                 for k in range(self.Band_npoints)]
                                 for s in range(1)]) - ef
             with paropen(self.struct+f'-BAND-{self.Engine}-Result-Band.dat', 'w') as f:
+                print("KPointIndex(1) Energy(eV)", file=f)
                 for n in range(Band_num_of_bands):
                     for k in range(self.Band_npoints):
                         print(k, eps_skn[0, k, n], end="\n", file=f)
@@ -5146,6 +5148,7 @@ class dftsolve:
             # Thanks to Andrej Kesely (https://stackoverflow.com/users/10035985/andrej-kesely) for helping the problem of general XYYY writer
             current, all_groups = [], []
             with open(self.struct+f'-BAND-{self.Engine}-Result-Band.dat', 'r') as f_in:
+                next(f_in)  # Skip the column header before grouping bands.
                 for line in map(str.strip, f_in):
                     if line == "" and current:
                         all_groups.append(current)
@@ -5157,6 +5160,7 @@ class dftsolve:
                 all_groups.append(current)
             try:
                 with paropen(self.struct+f'-BAND-{self.Engine}-Result-Band-XYYY.dat', 'w') as f1:
+                    print("KPointIndex(1) " + " ".join(f"Band_{i + 1}(eV)" for i in range(Band_num_of_bands)), file=f1)
                     for g in zip(*all_groups):
                         print('{} {} {}'.format(g[0][0], g[0][1], ' '.join(v for _, v in g[1:])), file=f1)
             except Exception as e:
@@ -5913,7 +5917,7 @@ class dftsolve:
                 self.engine.write_phonon_thermal_properties(
                     output_file=Path(
                         self.struct
-                        + '-PHONON-QE-Result-Thermal-Properties.csv'
+                        + '-PHONON-QE-Result-Thermal-Properties.dat'
                     ),
                     thermal_data=thermal_data,
                 )
@@ -9022,7 +9026,7 @@ def main():
     parser.add_argument("--check", dest="check", action='store_true', help="Validate the selected workflow without running calculations")
     parser.add_argument("--json", dest="json", action='store_true', help="Print --check results as machine-readable JSON")
     parser.add_argument("--dry-run", dest="dry_run", action='store_true', help="Write QE inputs and an execution plan without running calculations")
-    parser.add_argument('--plot', metavar='RESULT', help='Regenerate figures beside an optical DAT/CSV table or DOS CSV without DFT calculations')
+    parser.add_argument('--plot', metavar='RESULT', help='Regenerate figures beside an optical or DOS DAT table without DFT calculations')
     parser.add_argument("--scheduler", choices=('local', 'slurm'), help="Execution script type generated by --dry-run")
     parser.add_argument("--cluster-profile", help="Slurm profile JSON file or named profile from ~/.config/nanoworks/clusters")
     parser.add_argument("--slurm-time", help="Slurm wall time (HH:MM:SS or D-HH:MM:SS)")

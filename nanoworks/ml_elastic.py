@@ -4,7 +4,7 @@
 
 """ASE stress-strain elastic tensors from machine-learned potentials."""
 
-import csv
+from nanoworks.tableio import DatWriter
 import json
 from numbers import Integral
 from pathlib import Path
@@ -126,7 +126,7 @@ def run_elastic(atoms, config, struct, optimizer_class=None):
     directory.mkdir(parents=True, exist_ok=True)
     prefix = directory / (Path(struct).name + '-ML-ELASTIC')
     summary_path = Path(str(prefix) + '-Result.json')
-    raw_path = Path(str(prefix) + '-Samples.csv')
+    raw_path = Path(str(prefix) + '-Samples.dat')
     tensor_path = Path(str(prefix) + '-Tensor.dat')
     if tensor_path.exists():
         tensor_path.unlink()
@@ -149,7 +149,7 @@ def run_elastic(atoms, config, struct, optimizer_class=None):
     def save():
         summary_path.write_text(json.dumps(report, indent=2, default=_json_value, allow_nan=False) + '\n', encoding='utf-8')
         with raw_path.open('w', newline='', encoding='utf-8') as handle:
-            writer = csv.writer(handle)
+            writer = DatWriter(handle)
             writer.writerow(['mode', 'engineering_strain', 'energy_eV', 'converged'] + ['stress_' + name + '_GPa' for name in LABELS])
             for row in samples:
                 writer.writerow([row['mode'], row['strain'], row['energy_eV'], int(row['converged'])] + row['stress_gpa'])
@@ -226,7 +226,7 @@ def run_elastic(atoms, config, struct, optimizer_class=None):
         if not is_2d:
             result['full_tensor_gpa'] = tensor
         report.update(status='success', result=result)
-        np.savetxt(tensor_path, matrix, header=f'Symmetric stiffness [{units}], Voigt order: ' + ','.join(report['voigt_labels']))
+        np.savetxt(tensor_path, matrix, comments='', header=' '.join(f'C_{label}({units})' for label in report['voigt_labels']))
         save()
         print(f'Elastic tensor [{units}]:\n{matrix}\nSummary: {summary_path}\nRaw samples: {raw_path}')
         return 0

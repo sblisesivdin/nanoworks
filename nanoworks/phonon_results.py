@@ -201,9 +201,9 @@ def write_mesh_data(prefix, qpoints, weights, frequencies):
             np.sum(weights[:, None] * below_threshold) / (weights.sum() * frequencies.shape[1])),
     }
     path = Path(prefix + '-Result-Mesh-THz.dat')
-    header = 'qx qy qz Weight ' + ' '.join(
+    header = 'qx(1) qy(1) qz(1) Weight(1) ' + ' '.join(
         f'Frequency_{index + 1}(THz)' for index in range(frequencies.shape[1]))
-    np.savetxt(path, np.column_stack([qpoints, weights, frequencies]), header=header, fmt='%.10f')
+    np.savetxt(path, np.column_stack([qpoints, weights, frequencies]), header=header, comments='', fmt='%.10f')
     return path, report
 
 
@@ -241,7 +241,7 @@ def write_gpaw_phonon_results(phonon, prefix, band_path, mesh, temperature=None)
         raise ValueError('Phonopy total DOS must contain matching finite frequency and DOS arrays.')
     dos_file = Path(prefix + '-Result-DOS.dat')
     np.savetxt(dos_file, np.column_stack([frequencies, values]),
-        header='Frequency(THz) DOS(1/THz)', fmt='%.10f')
+        header='Frequency(THz) DOS(1/THz)', comments='', fmt='%.10f')
 
     phonon.run_band_structure(qpoints, path_connections=connections, labels=labels)
     band = phonon.get_band_structure_dict()
@@ -261,7 +261,7 @@ def write_gpaw_phonon_results(phonon, prefix, band_path, mesh, temperature=None)
         tables.append(np.column_stack([distance, frequency]))
     band_file = Path(prefix + '-Result-Band.dat')
     with band_file.open('w', encoding='utf-8') as stream:
-        stream.write('Distance(1/A)    Frequencies(THz)...\n')
+        stream.write('Distance(1/A) ' + ' '.join(f'Frequency_{i + 1}(THz)' for i in range(len(gamma))) + '\n')
         for table in tables:
             np.savetxt(stream, table, fmt='%.6f', delimiter='    ')
             stream.write('\n')
@@ -281,9 +281,9 @@ def write_gpaw_phonon_results(phonon, prefix, band_path, mesh, temperature=None)
         phonon.run_thermal_properties(t_min=temperature[0], t_max=temperature[1], t_step=temperature[2])
         thermal = phonon.get_thermal_properties_dict()
         table = validate_thermal_table(thermal)
-        thermal_file = prefix + '-Result-Thermal-Properties.csv'
-        np.savetxt(thermal_file, table, delimiter=',', fmt='%.6f', comments='',
-            header='T(K),Free_Energy(kJ/mol),Entropy(J/K/mol),Cv(J/K/mol)')
+        thermal_file = prefix + '-Result-Thermal-Properties.dat'
+        np.savetxt(thermal_file, table, delimiter=' ', fmt='%.6f', comments='',
+            header='T(K) Free_Energy(kJ/mol) Entropy(J/K/mol) Cv(J/K/mol)')
         thermal_yaml = prefix + '-Result-Thermal-Properties.yaml'
         phonon.write_yaml_thermal_properties(filename=thermal_yaml)
     report = {'status': 'complete', 'engine': 'GPAW', 'method': 'finite-displacement',

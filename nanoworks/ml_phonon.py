@@ -152,14 +152,14 @@ def run_phonon(atoms, config, struct):
             raise ValueError('Nonfinite phonon frequencies.')
         distances, ticks, labels = path.get_linear_kpoint_axis()
         np.savetxt(outputs['bands'], np.column_stack((distances, path.kpts, bands)),
-                   header='path_distance[1/A] q1 q2 q3 signed_branch_frequencies[THz]')
+                   comments='', header='Distance(1/A) q1(1) q2(1) q3(1) ' + ' '.join(f'Frequency_{i + 1}(THz)' for i in range(bands.shape[1])))
         np.savetxt(outputs['mesh'], np.column_stack((mesh, frequencies)),
-                   header='q1 q2 q3 signed_branch_frequencies[THz]')
+                   comments='', header='q1(1) q2(1) q3(1) ' + ' '.join(f'Frequency_{i + 1}(THz)' for i in range(frequencies.shape[1])))
         counts, edges = np.histogram(frequencies.ravel(), bins=config.phonon_dos_bins)
         centers = (edges[:-1] + edges[1:]) / 2
         dos = counts / len(mesh) / np.diff(edges)
         np.savetxt(outputs['dos'], np.column_stack((centers, dos, edges[:-1], edges[1:])),
-                   header='signed_frequency[THz] DOS[modes/cell/THz] bin_left[THz] bin_right[THz]')
+                   comments='', header='Frequency(THz) DOS(modes/cell/THz) BinLeft(THz) BinRight(THz)')
         sampled = np.concatenate((bands.ravel(), frequencies.ravel(), gamma))
         report.update(minimum_frequency_THz=float(sampled.min()), gamma_frequencies_THz=gamma.tolist(),
                       imaginary_modes_on_mesh=int(np.count_nonzero(frequencies < -config.phonon_imaginary_tolerance)),

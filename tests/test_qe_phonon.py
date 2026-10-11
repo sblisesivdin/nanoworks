@@ -52,7 +52,7 @@ class TestQEForceParser(unittest.TestCase):
             self.assertEqual(report['negative_mesh_mode_count'], 3)
             self.assertEqual(report['mesh_modes_below_reporting_threshold'], 2)
             self.assertAlmostEqual(report['weighted_mesh_fraction_below_reporting_threshold'], .5)
-            np.testing.assert_allclose(np.loadtxt(path)[:, 4:], frequencies)
+            np.testing.assert_allclose(np.loadtxt(path, skiprows=1)[:, 4:], frequencies)
 
     def test_last_force_block_units_and_fortran_exponents(self):
         text = '''Forces acting on atoms (cartesian axes, Ry/au):

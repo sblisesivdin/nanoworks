@@ -514,7 +514,7 @@ class TestDFTConvergeCLI(unittest.TestCase):
                 encoding='utf-8',
                 newline='',
             ) as fd:
-                rows = list(csv.DictReader(fd))
+                rows = list(csv.DictReader(fd, delimiter=' '))
             optimized_structure_exists = (
                 artifacts['optimized_structure'].is_file()
             )
@@ -588,12 +588,12 @@ class TestDFTConvergeCLI(unittest.TestCase):
             {'density': 2.0, 'gamma': True},
         )
         self.assertEqual(len(rows), 11)
-        self.assertEqual(rows[-1]['task'], 'lattice')
+        self.assertEqual(rows[-1]['task(1)'], 'lattice')
         self.assertGreater(
-            float(rows[-1]['cell_volume_angstrom3']),
+            float(rows[-1]['CellVolume(A^3)']),
             0.0,
         )
-        self.assertEqual(rows[0]['cell_volume_angstrom3'], '')
+        self.assertEqual(rows[0]['CellVolume(A^3)'], 'nan')
         self.assertTrue(optimized_structure_exists)
         self.assertTrue(plot_files_are_png)
         self.assertEqual(

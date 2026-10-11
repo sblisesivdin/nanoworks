@@ -454,7 +454,7 @@ def _postprocess(plan):
         thermal_data = qe.calculate_phonon_thermal_properties(dos_data,
             t_min=temperature[0], t_max=temperature[1], t_step=temperature[2])
         thermal_file = qe.write_phonon_thermal_properties(
-            prefix + '-Result-Thermal-Properties.csv', thermal_data)
+            prefix + '-Result-Thermal-Properties.dat', thermal_data)
     report = {'status': 'complete', 'method': 'finite-displacement', 'engine': 'QE',
         'xc': plan['xc'], 'hubbard_u': plan['hubbard_u'], 'spin_polarized': plan['spin_polarized'],
         'pw_executable_sha256': next(iter(binary_hashes)),

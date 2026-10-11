@@ -4,7 +4,7 @@
 
 """Quantum ESPRESSO computation engine helpers."""
 
-import csv
+from nanoworks.tableio import DatWriter
 import math
 import operator
 import re
@@ -4616,7 +4616,7 @@ def write_matdyn_band_data(output_file, band_path, frequencies):
             for index in range(nmodes)
         )
         print(
-            "# Distance(1/Angstrom) qx qy qz "
+            "Distance(1/Angstrom) qx(1) qy(1) qz(1) "
             + mode_columns,
             file=fd,
         )
@@ -4715,7 +4715,7 @@ def write_matdyn_dos_data(output_file, dos_data):
             for index in range(natoms)
         )
         print(
-            "# Frequency(THz) DOS(1/THz) "
+            "Frequency(THz) DOS(1/THz) "
             + projected_columns,
             file=fd,
         )
@@ -4986,7 +4986,7 @@ def calculate_phonon_thermal_properties(
 
 
 def write_phonon_thermal_properties(output_file, thermal_data):
-    """Write QE harmonic phonon thermal properties to CSV."""
+    """Write QE harmonic phonon thermal properties to DAT."""
     output_file = Path(
         output_file
     )
@@ -5017,14 +5017,14 @@ def write_phonon_thermal_properties(output_file, thermal_data):
         encoding='utf-8',
     ) as fd:
         print(
-            "T(K),Free_Energy(kJ/mol),Internal_Energy(kJ/mol),"
-            "Entropy(J/K/mol),Cv(J/K/mol)",
+            "T(K) Free_Energy(kJ/mol) Internal_Energy(kJ/mol) "
+            "Entropy(J/K/mol) Cv(J/K/mol)",
             file=fd,
         )
 
         for row in zip(*columns):
             print(
-                ','.join(
+                ' '.join(
                     f"{float(value):.10f}"
                     for value in row
                 ),
@@ -6949,7 +6949,7 @@ def write_qe_band_projection_csv(
     eigenvalues,
     projection_data,
 ):
-    """Export referenced energies and selected weights in long CSV form."""
+    """Export referenced energies and selected weights in long DAT form."""
     nkpoints = projection_data['nkpoints']
     nbands = projection_data['nbands']
     energies = np.asarray(eigenvalues, dtype=float)
@@ -6960,21 +6960,21 @@ def write_qe_band_projection_csv(
         for selection in selections
     ]
     if energies.shape != (nkpoints, nbands) or xvalues.shape != (nkpoints,):
-        raise ValueError('QE projected-band CSV dimensions are inconsistent.')
+        raise ValueError('QE projected-band DAT dimensions are inconsistent.')
     if any(values.shape != energies.shape for values in weights):
-        raise ValueError('QE projected-band CSV weight dimensions are inconsistent.')
+        raise ValueError('QE projected-band DAT weight dimensions are inconsistent.')
     if (
         not np.isfinite(energies).all()
         or not np.isfinite(xvalues).all()
         or any(not np.isfinite(values).all() or (values < 0).any()
                for values in weights)
     ):
-        raise ValueError('QE projected-band CSV data must be finite with nonnegative weights.')
+        raise ValueError('QE projected-band DAT data must be finite with nonnegative weights.')
 
     output_file = Path(output_file)
     output_file.parent.mkdir(parents=True, exist_ok=True)
     with output_file.open('w', encoding='utf-8', newline='') as stream:
-        writer = csv.writer(stream)
+        writer = DatWriter(stream)
         writer.writerow([
             'kpoint_index', 'band_index', 'distance', 'energy_ev',
             'projection_index', 'label', 'atoms', 'orbital', 'j',

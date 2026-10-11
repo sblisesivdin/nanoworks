@@ -2119,8 +2119,8 @@ class TestQEEngine(unittest.TestCase):
 
         self.assertEqual(
             x_lines[0],
-            'Energy(eV) Eps_real Eps_img Refractive_Index '
-            'Extinction_Index Absorption(1/cm) Reflectivity',
+            'Energy(eV) Eps_real(1) Eps_img(1) Refractive_Index(1) '
+            'Extinction_Index(1) Absorption(1/cm) Reflectivity(1)',
         )
         self.assertEqual(
             len(x_lines),
@@ -6731,19 +6731,19 @@ class TestQEEngine(unittest.TestCase):
         }
         with tempfile.TemporaryDirectory() as tmpdir:
             output = write_qe_band_projection_csv(
-                Path(tmpdir) / 'projections.csv', [0.0],
+                Path(tmpdir) / 'projections.dat', [0.0],
                 [[-1.0, 2.0]], projection,
             )
             with output.open(newline='', encoding='utf-8') as stream:
-                rows = list(csv.DictReader(stream))
+                rows = list(csv.DictReader(stream, delimiter=' '))
         self.assertEqual(len(rows), 2)
-        self.assertEqual(rows[0]['label'], 'W d, j=5/2')
-        self.assertEqual(rows[0]['atoms'], '0;1')
-        self.assertEqual(rows[0]['j'], '2.5')
-        self.assertEqual(rows[0]['energy_ev'], '-1.0')
-        self.assertEqual(rows[1]['weight'], '0.75')
-        self.assertEqual(rows[0]['projection_basis'], 'total-angular-momentum')
-        self.assertEqual(rows[0]['selected_state_count'], '6')
+        self.assertEqual(rows[0]['label(1)'], 'W%20d%2C%20j=5/2')
+        self.assertEqual(rows[0]['atoms(1)'], '0;1')
+        self.assertEqual(rows[0]['j(1)'], '2.5')
+        self.assertEqual(rows[0]['Energy(eV)'], '-1.0')
+        self.assertEqual(rows[1]['Weight(1)'], '0.75')
+        self.assertEqual(rows[0]['projection_basis(1)'], 'total-angular-momentum')
+        self.assertEqual(rows[0]['selected_state_count(1)'], '6')
 
     def test_prepare_qe_band_projection_warns_for_unmatched_selection(self):
         for spin_orbit in (False, True):
@@ -6780,7 +6780,7 @@ class TestQEEngine(unittest.TestCase):
     def test_write_qe_band_projection_csv_rejects_invalid_weights(self):
         for invalid in (-0.1, float('nan'), float('inf')):
             with self.subTest(weight=invalid), tempfile.TemporaryDirectory() as tmpdir:
-                output = Path(tmpdir) / 'projections.csv'
+                output = Path(tmpdir) / 'projections.dat'
                 with self.assertRaisesRegex(ValueError, 'finite'):
                     write_qe_band_projection_csv(output, [0.0], [[1.0]], {
                         'nkpoints': 1, 'nbands': 1,
@@ -9182,7 +9182,7 @@ class TestQEEngine(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             output_file = (
                 Path(tmpdir)
-                / 'thermal.csv'
+                / 'thermal.dat'
             )
             result = write_phonon_thermal_properties(
                 output_file,
@@ -9198,13 +9198,13 @@ class TestQEEngine(unittest.TestCase):
         )
         self.assertEqual(
             lines[0],
-            'T(K),Free_Energy(kJ/mol),Internal_Energy(kJ/mol),'
-            'Entropy(J/K/mol),Cv(J/K/mol)',
+            'T(K) Free_Energy(kJ/mol) Internal_Energy(kJ/mol) '
+            'Entropy(J/K/mol) Cv(J/K/mol)',
         )
         self.assertEqual(
             lines[2],
-            '300.0000000000,-2.0000000000,3.0000000000,'
-            '10.0000000000,8.0000000000',
+            '300.0000000000 -2.0000000000 3.0000000000 '
+            '10.0000000000 8.0000000000',
         )
 
     def test_run_ph_uses_existing_ground_state(self):

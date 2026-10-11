@@ -1631,7 +1631,7 @@ def write_convergence_results(
         encoding='utf-8',
     )
 
-    csv_file = workdir / 'convergence-results.csv'
+    csv_file = workdir / 'convergence-results.dat'
     fieldnames = (
         'task',
         'parameter_type',
@@ -1640,10 +1640,12 @@ def write_convergence_results(
         'total_energy_ev',
         'energy_ev_per_atom',
     )
-    with csv_file.open('w', encoding='utf-8', newline='') as fd:
-        writer = csv.DictWriter(fd, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(_result_rows(result))
+    from nanoworks.tableio import DatWriter
+    with csv_file.open('w', encoding='utf-8') as fd:
+        writer = DatWriter(fd)
+        writer.writerow(fieldnames)
+        for row in _result_rows(result):
+            writer.writerow([row.get(name) for name in fieldnames])
 
     artifacts = {
         'summary': summary_file,

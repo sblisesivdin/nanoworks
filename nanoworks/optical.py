@@ -157,29 +157,26 @@ def derive_optical_table(energies, epsilon_real, epsilon_imaginary):
     return validate_optical_table(table)
 
 
-OPTICAL_TABLE_HEADER = ('Energy(eV) Eps_real Eps_img Refractive_Index '
-                        'Extinction_Index Absorption(1/cm) Reflectivity')
+LEGACY_OPTICAL_TABLE_HEADER = ('Energy(eV) Eps_real Eps_img Refractive_Index '
+                               'Extinction_Index Absorption(1/cm) Reflectivity')
+OPTICAL_TABLE_HEADER = ('Energy(eV) Eps_real(1) Eps_img(1) Refractive_Index(1) '
+                        'Extinction_Index(1) Absorption(1/cm) Reflectivity(1)')
 
 
 def write_optical_table(path, data):
-    """Publish optical DAT and spreadsheet-ready CSV tables with column units."""
+    """Publish one optical DAT table with a unit-bearing column header."""
     from pathlib import Path
     table = validate_optical_table(data)
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    targets = [path]
-    if path.suffix.lower() == '.dat':
-        targets.append(path.with_suffix('.csv'))
-    for target in targets:
-        delimiter = ',' if target.suffix.lower() == '.csv' else ' '
-        temporary = Path(str(target) + '.tmp')
-        try:
-            with temporary.open('w', encoding='utf-8') as stream:
-                np.savetxt(stream, table, fmt='%.12g', delimiter=delimiter,
-                           header=delimiter.join(OPTICAL_TABLE_HEADER.split()), comments='')
-            temporary.replace(target)
-        finally:
-            temporary.unlink(missing_ok=True)
+    temporary = Path(str(path) + '.tmp')
+    try:
+        with temporary.open('w', encoding='utf-8') as stream:
+            np.savetxt(stream, table, fmt='%.12g', delimiter=' ',
+                       header=OPTICAL_TABLE_HEADER, comments='')
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
     return path
 
 
@@ -233,7 +230,7 @@ def load_optical_summary(summary_file):
             or report.get('engine') not in ('GPAW', 'QE')
             or report.get('method') not in ('RPA', 'BSE')
             or (report['engine'] == 'QE' and report['method'] != 'RPA')
-            or report.get('columns') != OPTICAL_TABLE_HEADER.split()
+            or report.get('columns') not in (OPTICAL_TABLE_HEADER.split(), LEGACY_OPTICAL_TABLE_HEADER.split())
             or not isinstance(report.get('tables'), dict) or not report['tables']):
         raise ValueError('Unsupported or incomplete optical summary.')
     tables = {}
