@@ -4,6 +4,9 @@ dftconverge
 ``dftconverge`` runs the same ordered convergence workflow with GPAW or
 Quantum ESPRESSO:
 
+For a first run, follow :ref:`tutorial-convergence` using the existing silicon
+inputs. The tutorial explains the candidate lists and the resulting files.
+
 .. code-block:: console
 
    $ dftconverge --check -p 4 -g structure.cif -i convergence.py
@@ -135,6 +138,9 @@ each fixed or swept wavefunction cutoff.
 
 ``Convergence_consecutive_points``
    Required number of consecutive changes below the tolerance. Default: ``2``.
+   The selected candidate is the first one whose incoming energy difference
+   and subsequent differences form the required stable window. This counts
+   differences, not calculated points.
 
 ``Convergence_workdir``
    Output directory, resolved relative to the input file. The default is

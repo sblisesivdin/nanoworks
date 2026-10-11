@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- Explain the silicon convergence example, parameter propagation and selection versus plot references.
+
 - Keep tutorials focused on Nanoworks commands, outputs and brief physical interpretation.
 
 - Clarify release/development installation and add step-by-step silicon and QE spin tutorials with DAT result interpretation.
