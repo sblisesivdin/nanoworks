@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- Optical summaries store portable relative table paths; the reader verifies table hashes and supports older summaries.
+
 - Silicon optical examples add combined Ground+BSE and clarify band windows, fresh-process execution and result checks.
 
 - GPAW/QE optics exports JSON summaries with active settings, actual energy grids and completed table hashes.

@@ -6,6 +6,9 @@
 
 import math
 import hashlib
+import json
+import os
+import re
 from io import StringIO
 from pathlib import Path
 from collections.abc import Sequence
@@ -178,6 +181,7 @@ def write_optical_summary(path, config, table_files):
     """Archive active settings and validated table identities after optical exports."""
     from nanoworks.phonon_cache import write_json_atomic
     settings = validate_optical_settings(config)
+    path = Path(path).resolve()
     tables = {}
     if not table_files:
         raise ValueError('Optical summaries require at least one completed table.')
@@ -188,14 +192,14 @@ def write_optical_summary(path, config, table_files):
         table = validate_optical_table(np.loadtxt(
             StringIO(content.decode('utf-8')), skiprows=1))
         tables[str(label)] = {
-            'file': str(filename),
+            'file': os.path.relpath(filename.resolve(), path.parent),
             'sha256': hashlib.sha256(content).hexdigest(),
             'npoints': len(table),
             'energy_min_ev': float(table[0, 0]),
             'energy_max_ev': float(table[-1, 0]),
         }
     report = {
-        'schema_version': 1,
+        'schema_version': 2,
         'status': 'completed',
         'engine': config.Engine,
         'method': settings['Opt_calc_type'],
@@ -210,3 +214,51 @@ def write_optical_summary(path, config, table_files):
     path.parent.mkdir(parents=True, exist_ok=True)
     write_json_atomic(path, report)
     return str(path)
+
+
+def load_optical_summary(summary_file):
+    """Read moved optical results and verify all tables before plotting anything."""
+    summary_file = Path(summary_file).expanduser().resolve()
+    report = json.loads(summary_file.read_text(encoding='utf-8'))
+    if (not isinstance(report, dict)
+            or type(report.get('schema_version')) is not int
+            or report['schema_version'] not in (1, 2)
+            or report.get('status') != 'completed'
+            or report.get('engine') not in ('GPAW', 'QE')
+            or report.get('method') not in ('RPA', 'BSE')
+            or (report['engine'] == 'QE' and report['method'] != 'RPA')
+            or report.get('columns') != OPTICAL_TABLE_HEADER.split()
+            or not isinstance(report.get('tables'), dict) or not report['tables']):
+        raise ValueError('Unsupported or incomplete optical summary.')
+    tables = {}
+    for label, record in report['tables'].items():
+        if (not isinstance(label, str) or not label or not isinstance(record, dict)
+                or not isinstance(record.get('file'), str) or not record['file']
+                or not isinstance(record.get('sha256'), str)
+                or not re.fullmatch(r'[0-9a-f]{64}', record['sha256'])
+                or type(record.get('npoints')) is not int or record['npoints'] < 2):
+            raise ValueError(f'Invalid optical table record: {label}.')
+        stored = Path(record['file'])
+        if report['schema_version'] == 2:
+            if stored.is_absolute():
+                raise ValueError('Version 2 optical table paths must be relative to the summary.')
+            candidates = [summary_file.parent / stored]
+        else:
+            # Version 1 wrote either absolute paths or working-directory paths.
+            # Prefer the sibling table when the result directory has been moved.
+            candidates = [summary_file.parent / stored.name,
+                          stored if stored.is_absolute() else summary_file.parent / stored,
+                          stored]
+        filename = next((candidate for candidate in candidates if candidate.is_file()), None)
+        if filename is None:
+            raise FileNotFoundError(f'Optical table is missing: {record["file"]}.')
+        content = filename.read_bytes()
+        if hashlib.sha256(content).hexdigest() != record['sha256']:
+            raise ValueError(f'Optical table content differs from the summary: {filename}.')
+        table = validate_optical_table(np.loadtxt(StringIO(content.decode('utf-8')), skiprows=1))
+        if (len(table) != record['npoints'] or
+                float(table[0, 0]) != record.get('energy_min_ev') or
+                float(table[-1, 0]) != record.get('energy_max_ev')):
+            raise ValueError(f'Optical table grid differs from the summary: {filename}.')
+        tables[label] = table
+    return report, tables

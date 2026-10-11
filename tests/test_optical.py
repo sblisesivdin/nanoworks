@@ -110,7 +110,8 @@ class TestOpticalSummary(unittest.TestCase):
             path = Path(directory) / 'summary.json'
             self.assertEqual(write_optical_summary(path, config, {'x': table}), str(path))
             report = json.loads(path.read_text())
-            self.assertEqual(report['schema_version'], 1)
+            self.assertEqual(report['schema_version'], 2)
+            self.assertEqual(report['tables']['x']['file'], 'x.dat')
             self.assertEqual(report['engine'], 'QE')
             self.assertEqual(report['method'], 'RPA')
             self.assertEqual(report['tables']['x']['npoints'], 2)
@@ -134,6 +135,76 @@ class TestOpticalSummary(unittest.TestCase):
             self.assertEqual(summary.read_text(), 'previous completed summary')
             with self.assertRaisesRegex(ValueError, 'at least one'):
                 write_optical_summary(summary, config, {})
+
+
+class TestOpticalSummaryLoading(unittest.TestCase):
+    def make_results(self, directory):
+        from pathlib import Path
+        from nanoworks.optical import write_optical_summary
+        directory = Path(directory)
+        table = directory / 'x.dat'
+        table.write_text('columns\n0 3 4 2 1 0 .2\n1 3 4 2 1 100 .2\n')
+        summary = directory / 'summary.json'
+        config = TestOpticalSettings().config(Engine='QE', XC_calc='PBE', Spin_calc=False)
+        write_optical_summary(summary, config, {'x': table})
+        return summary, table
+
+    def test_moved_results_use_paths_relative_to_summary(self):
+        import tempfile
+        from pathlib import Path
+        from nanoworks.optical import load_optical_summary
+        with tempfile.TemporaryDirectory() as directory:
+            original = Path(directory) / 'original'; original.mkdir()
+            summary, _ = self.make_results(original)
+            moved = Path(directory) / 'moved'
+            original.rename(moved)
+            report, tables = load_optical_summary(moved / summary.name)
+            self.assertEqual(report['schema_version'], 2)
+            self.assertEqual(tables['x'].shape, (2, 7))
+
+    def test_legacy_summary_finds_relocated_sibling_table(self):
+        import json
+        import tempfile
+        from nanoworks.optical import load_optical_summary
+        with tempfile.TemporaryDirectory() as directory:
+            summary, _ = self.make_results(directory)
+            report = json.loads(summary.read_text())
+            report['schema_version'] = 1
+            report['tables']['x']['file'] = '/old-computer/results/x.dat'
+            summary.write_text(json.dumps(report))
+            _, tables = load_optical_summary(summary)
+            self.assertIn('x', tables)
+
+    def test_changed_or_missing_table_is_rejected(self):
+        import tempfile
+        from nanoworks.optical import load_optical_summary
+        with tempfile.TemporaryDirectory() as directory:
+            summary, table = self.make_results(directory)
+            table.write_text(table.read_text().replace('100', '200'))
+            with self.assertRaisesRegex(ValueError, 'content differs'):
+                load_optical_summary(summary)
+            table.unlink()
+            with self.assertRaisesRegex(FileNotFoundError, 'missing'):
+                load_optical_summary(summary)
+
+    def test_malformed_schema_and_grid_metadata_are_rejected(self):
+        import json
+        import tempfile
+        from nanoworks.optical import load_optical_summary
+        with tempfile.TemporaryDirectory() as directory:
+            summary, _ = self.make_results(directory)
+            original = json.loads(summary.read_text())
+            for field, value in (('schema_version', True), ('schema_version', 99),
+                                 ('status', 'failed'), ('columns', []), ('tables', {})):
+                with self.subTest(field=field):
+                    report = dict(original); report[field] = value
+                    summary.write_text(json.dumps(report))
+                    with self.assertRaises(ValueError):
+                        load_optical_summary(summary)
+            original['tables']['x']['npoints'] = 3
+            summary.write_text(json.dumps(original))
+            with self.assertRaisesRegex(ValueError, 'grid differs'):
+                load_optical_summary(summary)
 
 
 class TestOpticalTables(unittest.TestCase):

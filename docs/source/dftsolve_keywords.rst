@@ -1936,6 +1936,8 @@ Optical Calculations Keywords
     point count and SHA-256 hash of each seven-column table. The summary
     describes numerical completion, not spectral convergence. GPAW RPA
     distinguishes NLFC and LFC tables; only the active method is recorded.
+    Version 2 table paths are relative to the summary, allowing the whole
+    result directory to be moved without changing those paths.
     Enabled optical workflows validate finite numeric settings before engine
     execution. QE and GPAW BSE require an increasing photon-energy range and
     at least two integer grid points. GPAW RPA validates its nonlinear grid
