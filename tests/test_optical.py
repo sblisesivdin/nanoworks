@@ -221,9 +221,9 @@ class TestOpticalOfflinePlots(unittest.TestCase):
             engine.assert_not_called()
             plot.assert_called_once()
             self.assertEqual(result['figure_files']['x'], ['figure.png'])
-            self.assertEqual(Path(result['output_directory']), summary.parent / 'optical-plots')
+            self.assertEqual(Path(result['output_directory']), summary.parent)
 
-    def test_invalid_inputs_do_not_create_output_directory(self):
+    def test_invalid_inputs_do_not_update_existing_figures(self):
         import tempfile
         from pathlib import Path
         from unittest.mock import patch
@@ -231,12 +231,13 @@ class TestOpticalOfflinePlots(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             summary, table = TestOpticalSummaryLoading().make_results(directory)
             table.write_text('altered')
-            output = Path(directory) / 'new-figures'
+            output = Path(directory) / 'existing.png'
+            output.write_bytes(b'original figure')
             with patch('nanoworks.optical.generate_optical_figures') as plot:
                 with self.assertRaisesRegex(ValueError, 'content differs'):
-                    plot_optical_summary(summary, output)
+                    plot_optical_summary(summary)
             plot.assert_not_called()
-            self.assertFalse(output.exists())
+            self.assertEqual(output.read_bytes(), b'original figure')
 
     def test_shared_plotter_closes_figure_when_save_fails(self):
         import numpy as np

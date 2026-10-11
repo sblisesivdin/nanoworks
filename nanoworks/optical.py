@@ -365,14 +365,12 @@ def generate_optical_figures(data, file_prefix, title_suffix, translate=None):
             ('Dielectric', 'n-and-k', 'Absorption', 'Reflectivity')]
 
 
-def plot_optical_summary(summary_file, output_directory=None):
+def plot_optical_summary(summary_file):
     """Regenerate figures from verified results without starting a DFT engine."""
     summary_file = Path(summary_file).expanduser().resolve()
     report, tables = load_optical_summary(summary_file)
-    # All input tables are checked before creating directories or figures.
-    output_directory = (summary_file.parent / 'optical-plots' if output_directory is None
-                        else Path(output_directory).expanduser().resolve())
-    output_directory.mkdir(parents=True, exist_ok=True)
+    # All input tables are checked before updating figures beside the summary.
+    output_directory = summary_file.parent
     figures = {}
     for index, (label, table) in enumerate(tables.items(), start=1):
         safe_label = re.sub(r'[^A-Za-z0-9_-]+', '_', label).strip('_')[:100] or 'table'

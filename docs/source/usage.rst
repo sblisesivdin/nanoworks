@@ -1,31 +1,37 @@
 Usage
 =====
 
-Regenerate Saved Optical Figures
--------------------------------
+Regenerate Saved Figures
+------------------------
 
-Completed GPAW and QE optical workflows save seven-column tables and an
-``*-OPTICAL-<engine>-Result-Summary.json`` file. Regenerate their four
-standard figures per table without an input file, geometry, ground state,
-GPAW installation or QE executables:
+Use one command for completed optical and DOS results, without an input
+file, geometry, GPAW installation or QE executables:
 
 .. code-block:: bash
 
-   dftsolve --plot-optical path/to/Si-OPTICAL-QE-Result-Summary.json
-   dftsolve --plot-optical path/to/Si-OPTICAL-QE-Result-Summary.json --plot-output-dir figures
+   dftsolve --plot path/to/Si-OPTICAL-QE-Result-Summary.json
+   dftsolve --plot path/to/Si-DOS-GPAW-Result-DOS.csv
+   dftsolve --plot path/to/Si-DOS-QE-Result-DOS-Up.csv
 
-The default output is ``optical-plots`` beside the summary. This separate
-folder preserves the original calculation figures. Repeat plotting into
-the same folder replaces its generated images. Tables and summaries are
-read without modification. The command checks all recorded table hashes,
-dimensions and energy ranges before creating output; missing or altered
-results produce an error rather than plotting a different spectrum.
+Figures are written in the result directory. No output directory option
+is needed. Repeat plotting replaces the generated images; source tables
+and summaries are read without modification.
+
+Optical summaries produce four standard figures per table. All recorded
+table hashes, dimensions and energy ranges are checked before plotting;
+missing or altered results produce an error. DOS CSV files use their
+saved energy reference without another Fermi shift or smoothing. For
+spin-resolved DOS, selecting either Up or Down reads and validates both
+sibling files and plots Down below zero. These older DOS tables do not
+have summary hashes. The full saved energy range is shown.
+
+Band, projected-band and PDOS files are not yet accepted by this command.
 
 Keep the summary together with its tables when copying results between
 computers. Version 2 paths are relative to the summary. The reader also
 supports version 1 summaries, preferring relocated sibling tables and
 still checking their hashes. Summaries are only available for workflows
-that produced them; the command does not infer a summary from old raw files.
+that produced them; optical plotting does not infer a summary from old raw files.
 
 This mode does not accept calculation, MPI or scheduler options and does
 not need ``-i`` or ``-g``. It preserves the recorded spectrum and does not
