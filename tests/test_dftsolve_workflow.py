@@ -2421,6 +2421,10 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 ),
             ):
                 result = solver._opticalcalc_qe()
+                summary = json.loads(Path(result['summary_file']).read_text())
+                self.assertEqual(summary['engine'], 'QE')
+                self.assertEqual(set(summary['tables']), {'x', 'y', 'z'})
+                self.assertEqual(summary['tables']['x']['npoints'], 2)
 
         nscf_call = solver.engine.run_nscf.call_args.kwargs
         self.assertEqual(
@@ -2615,9 +2619,12 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                                                  prepare_optical_calc=Mock(return_value=Mock()))
                 solver._export_gpaw_optical_tables = Mock()
                 solver._plot_optical_results = Mock()
+                solver._write_optical_summary = Mock()
+                solver._export_gpaw_optical_tables.return_value = []
                 bse = Mock()
                 with patch.dict(sys.modules, {'gpaw.response.bse': SimpleNamespace(BSE=bse)}):
                     solver._opticalcalc_gpaw()
+                solver._write_optical_summary.assert_called_once_with({})
                 self.assertEqual(bse.call_args.kwargs['eshift'], shift)
                 grid = bse.return_value.get_dielectric_function.call_args.kwargs['w_w']
                 np.testing.assert_array_equal(grid, np.linspace(

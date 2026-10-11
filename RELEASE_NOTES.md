@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- GPAW/QE optics exports JSON summaries with active settings, actual energy grids and completed table hashes.
+
 - GPAW optics checks saved ground-state spin channels before preparing wavefunctions, including hybrid-state reuse.
 
 - GPAW BSE validates band selections before wavefunction preparation and rejects empty, duplicate or out-of-range indices.

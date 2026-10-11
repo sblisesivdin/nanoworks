@@ -248,7 +248,7 @@ from nanoworks.engine import (
 )
 from nanoworks.optical import (
     validate_optical_settings, validate_optical_table, run_optical_exports,
-    derive_optical_table, write_optical_table,
+    derive_optical_table, write_optical_table, write_optical_summary,
 )
 from nanoworks.dos import (
     resolve_dos_settings,
@@ -6351,7 +6351,9 @@ class dftsolve:
                 file=fd,
             )
 
+        summary_file = self._write_optical_summary(table_files)
         return {
+            'summary_file': summary_file,
             'nscf': nscf_workflow,
             'epsilon': epsilon_workflow,
             'table_files': table_files,
@@ -6455,7 +6457,7 @@ class dftsolve:
                 bse.get_dielectric_function(filename=self.struct+'-OPTICAL-GPAW-Result-Calculation-BSE_dielec.csv',
                                             eta=self.Opt_eta, w_w=np.linspace(self.Opt_min_en, self.Opt_max_en, self.Opt_num_of_data),
                                             write_eig=self.struct+'-OPTICAL-GPAW-Result-Calculation-BSE_eig.dat')
-                self._export_gpaw_optical_tables()
+                table_files = self._export_gpaw_optical_tables()
 
             elif self.Opt_calc_type == 'RPA':
                 parprint('Starting RPA calculations')
@@ -6473,7 +6475,7 @@ class dftsolve:
                 df.get_dielectric_function(direction='y', filename=self.struct+'-OPTICAL-GPAW-Result-Calculation-RPA_dielec_ydirection.csv')
                 df.get_dielectric_function(direction='z', filename=self.struct+'-OPTICAL-GPAW-Result-Calculation-RPA_dielec_zdirection.csv')
 
-                self._export_gpaw_optical_tables()
+                table_files = self._export_gpaw_optical_tables()
 
             else:
                 parprint('\033[91mERROR:\033[0mUnknown optical calculation type.')
@@ -6491,6 +6493,15 @@ class dftsolve:
         
         # Plot generated optical data
         self._plot_optical_results()
+        return {'table_files': table_files,
+                'summary_file': self._write_optical_summary({
+                    Path(filename).name: filename for filename in table_files})}
+
+    def _write_optical_summary(self, table_files):
+        """Publish a completion summary on MPI root and share errors with all ranks."""
+        return run_optical_exports(lambda: write_optical_summary(
+            self.struct + f'-OPTICAL-{self.Engine}-Result-Summary.json',
+            self, table_files))
     
     def _export_gpaw_optical_tables(self):
         """Convert raw GPAW spectra on root using the shared optical formulas."""

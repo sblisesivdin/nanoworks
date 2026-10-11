@@ -96,6 +96,46 @@ class TestOpticalSettings(unittest.TestCase):
             validate_optical_settings(self.config(Engine='QE', Opt_eta=0))
 
 
+class TestOpticalSummary(unittest.TestCase):
+    def test_summary_records_settings_actual_grid_and_table_hash(self):
+        import hashlib
+        import json
+        import tempfile
+        from pathlib import Path
+        from nanoworks.optical import write_optical_summary
+        with tempfile.TemporaryDirectory() as directory:
+            table = Path(directory) / 'x.dat'
+            table.write_text('columns\n0 3 4 2 1 0 .2\n1 3 4 2 1 100 .2\n')
+            config = TestOpticalSettings().config(Engine='QE', XC_calc='PBE', Spin_calc=False)
+            path = Path(directory) / 'summary.json'
+            self.assertEqual(write_optical_summary(path, config, {'x': table}), str(path))
+            report = json.loads(path.read_text())
+            self.assertEqual(report['schema_version'], 1)
+            self.assertEqual(report['engine'], 'QE')
+            self.assertEqual(report['method'], 'RPA')
+            self.assertEqual(report['tables']['x']['npoints'], 2)
+            self.assertEqual(report['tables']['x']['energy_max_ev'], 1.)
+            self.assertEqual(report['tables']['x']['sha256'], hashlib.sha256(table.read_bytes()).hexdigest())
+            self.assertEqual(report['settings']['Opt_num_of_data'], 401)
+            self.assertEqual(report['columns'][5], 'Absorption(1/cm)')
+
+    def test_invalid_table_retains_previous_summary(self):
+        import tempfile
+        from pathlib import Path
+        from nanoworks.optical import write_optical_summary
+        with tempfile.TemporaryDirectory() as directory:
+            summary = Path(directory) / 'summary.json'
+            summary.write_text('previous completed summary')
+            table = Path(directory) / 'invalid.dat'
+            table.write_text('columns\n0 1 2\n1 2 3\n')
+            config = TestOpticalSettings().config(Engine='QE', XC_calc='PBE', Spin_calc=False)
+            with self.assertRaisesRegex(ValueError, 'Optical tables'):
+                write_optical_summary(summary, config, {'x': table})
+            self.assertEqual(summary.read_text(), 'previous completed summary')
+            with self.assertRaisesRegex(ValueError, 'at least one'):
+                write_optical_summary(summary, config, {})
+
+
 class TestOpticalTables(unittest.TestCase):
     def test_finite_negative_dielectric_values_are_preserved(self):
         import numpy as np

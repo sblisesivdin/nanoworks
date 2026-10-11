@@ -5,6 +5,9 @@
 """Backend-independent validation of optical inputs and numerical results."""
 
 import math
+import hashlib
+from io import StringIO
+from pathlib import Path
 from collections.abc import Sequence
 from numbers import Integral, Real
 
@@ -169,3 +172,41 @@ def write_optical_table(path, data):
     finally:
         temporary.unlink(missing_ok=True)
     return path
+
+
+def write_optical_summary(path, config, table_files):
+    """Archive active settings and validated table identities after optical exports."""
+    from nanoworks.phonon_cache import write_json_atomic
+    settings = validate_optical_settings(config)
+    tables = {}
+    if not table_files:
+        raise ValueError('Optical summaries require at least one completed table.')
+    for label, filename in table_files.items():
+        filename = Path(filename)
+        # Parse and hash the same bytes rather than separately rereading the file.
+        content = filename.read_bytes()
+        table = validate_optical_table(np.loadtxt(
+            StringIO(content.decode('utf-8')), skiprows=1))
+        tables[str(label)] = {
+            'file': str(filename),
+            'sha256': hashlib.sha256(content).hexdigest(),
+            'npoints': len(table),
+            'energy_min_ev': float(table[0, 0]),
+            'energy_max_ev': float(table[-1, 0]),
+        }
+    report = {
+        'schema_version': 1,
+        'status': 'completed',
+        'engine': config.Engine,
+        'method': settings['Opt_calc_type'],
+        'xc': str(config.XC_calc),
+        'spin_polarized': bool(config.Spin_calc),
+        'settings': settings,
+        'columns': OPTICAL_TABLE_HEADER.split(),
+        'tables': tables,
+        'note': 'Numerical completion does not establish convergence of the optical spectrum.',
+    }
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    write_json_atomic(path, report)
+    return str(path)
