@@ -4,6 +4,31 @@ This directory contains combined GPAW and native Quantum ESPRESSO RPA smoke
 workflows plus separate GPAW RPA and BSE inputs. Optical calculations can run
 in the same input as the ground-state and electronic post-processing stages.
 
+## First run: electronic results before optics
+
+Start with `Si-Step1-ground_dos_band.py` if this is your first Nanoworks run.
+It uses GPAW PBE, a 340 eV cutoff and a 4x4x4 ground mesh, and runs Ground,
+DOS/PDOS, Band and Density without optical calculations. Copy the input and
+`Si_mp-149_primitive_Example.cif` to a fresh working folder, then check and run:
+
+```bash
+dftsolve -E GPAW -i Si-Step1-ground_dos_band.py -g Si_mp-149_primitive_Example.cif --check
+dftsolve -E GPAW -i Si-Step1-ground_dos_band.py -g Si_mp-149_primitive_Example.cif
+```
+
+Outputs are in `Si-results/`, prefixed by the CIF stem
+`Si_mp-149_primitive_Example`. Read the ground SCF log, then the DOS and band
+PNGs. Numerical DAT tables have one header row with column names and units;
+import them in Excel/Origin using a whitespace separator. Electronic energies
+are `E - Ef`. These small settings require convergence before research use.
+The input is a configuration: `python Si-Step1-ground_dos_band.py` does not
+run the Nanoworks calculation.
+
+Follow the [silicon tutorial](https://nanoworks.readthedocs.io/en/latest/tutorials.html#tutorial-silicon)
+for the output-file map, saved-state DOS rerun and manual table interpretation.
+The optical exercises below are later steps; a completed ground run alone does
+not establish optical convergence or sufficient memory for a larger BSE run.
+
 ## Combined RPA workflow
 
 `Si-Combined-RPA-smoke.py` runs the following stages in one command:
