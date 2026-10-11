@@ -32,6 +32,11 @@ Cluster Execution
 Electronic Properties & Basic DFT
 ---------------------------------
 
+The ``Si-2atoms-optical`` folder includes combined GPAW Ground+BSE and
+GPAW/QE RPA exercises, plus focused GPAW optical reruns from a saved ground
+state. Its README explains band windows, NLFC/LFC outputs, common JSON
+summaries and the convergence checks needed before scientific use.
+
 * **Silicon Convergence (GPAW and QE):**
   Runs the same ordered cutoff, k-point, and lattice-scale workflow with both
   engines and writes JSON, CSV, and optimized-CIF results. (Folder:

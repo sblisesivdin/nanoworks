@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- Silicon optical examples add combined Ground+BSE and clarify band windows, fresh-process execution and result checks.
+
 - GPAW/QE optics exports JSON summaries with active settings, actual energy grids and completed table hashes.
 
 - GPAW optics checks saved ground-state spin channels before preparing wavefunctions, including hybrid-state reuse.

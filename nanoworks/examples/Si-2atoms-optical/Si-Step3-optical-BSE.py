@@ -2,35 +2,31 @@
 # SPDX-License-Identifier: MIT
 # See LICENSE.md in the project root for license terms.
 
+# Optical-only rerun: first run Si-Step1-ground_dos_band.py.
+Engine = 'GPAW'
+Mode = 'PW'
 Outdirname = 'Si-results'
-from ase.parallel import world
-# -------------------------------------------------------------
-Mode = 'PW'             # Use PW, PW-GW, LCAO, FD  (PW is more accurate, LCAO is quicker mostly.)
-# -------------------------------------------------------------
-Optical_calc = True     # Calculate the optical properties
+Ground_calc = False
+Optical_calc = True
+Spin_calc = False
+XC_calc = 'PBE'
 
-# -------------------------------------------------------------
-# Parameters
-# -------------------------------------------------------------
-
-Spin_calc = False        # Spin polarized calculation?
-
-# OPTICAL
-Opt_calc_type = 'BSE'      # BSE or RPA
-Opt_shift_en = 0.0         # Shifting of the energy
-Opt_BSE_valence = range(0,3)    # Valence bands that will be used in BSE calculation
-Opt_BSE_conduction = range(4,7) # Conduction bands that will be used in BSE calculation
-Opt_BSE_min_en = 0.0       # Results will be started from this energy (BSE only)
-Opt_BSE_max_en = 20.0      # Results will be ended at this energy (BSE only)
-Opt_BSE_num_of_data = 1001 # Number of data points in BSE  calculation
-Opt_num_of_bands = 8	   # Number of bands
-Opt_FD_smearing = 0.05     # Fermi Dirac smearing for optical calculations
-Opt_eta = 0.05             # Eta for Optical calculations
-Opt_domega0 = 0.05         # Domega0 for Optical calculations
-Opt_omega2 = 5.0           # Frequency at which the non-lin freq grid has doubled the spacing
-Opt_cut_of_energy = 100    # Cut-off energy for optical calculations
-Opt_nblocks = world.size   # Split matrices in nblocks blocks and distribute them G-vectors
-                           # or frequencies over processes or can use world.size
-
-#GENERAL
-Localization = "en_UK"  # Localization setting for figures. en_UK is default.
+Opt_calc_type = 'BSE'
+# Transition-energy scissors correction; the photon grid is unchanged.
+Opt_shift_en = 0.0
+# Two Si atoms supply eight valence electrons: four spin-paired filled bands.
+# These deliberately small windows still need convergence.
+Opt_BSE_valence = range(0, 4)
+Opt_BSE_conduction = range(4, 8)
+Opt_num_of_bands = 8
+Opt_min_en = 0.0
+Opt_max_en = 20.0
+Opt_num_of_data = 1001
+Opt_FD_smearing = 0.05
+Opt_eta = 0.05
+Opt_cut_of_energy = 100
+Opt_kpts_x = 4
+Opt_kpts_y = 4
+Opt_kpts_z = 4
+Opt_gamma = True
+Localization = 'en_UK'
