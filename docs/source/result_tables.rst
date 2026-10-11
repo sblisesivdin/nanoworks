@@ -32,9 +32,15 @@ rows and columns follow the Voigt ordering recorded in the summary.
 JSON summaries remain optional metadata for numerical analysis; the DAT
 tables contain the numerical results. ``dftsolve --plot`` accepts optical
 DOS, PDOS and band DAT tables directly and continues reading older optical and DOS
-CSV files. Band replotting uses saved k-point indices; high-symmetry labels require
-path metadata that these tables do not contain. Other table types are available for manual analysis but are not
-yet supported by that plotting command.
+CSV files. New band workflows save one ``-Result-KPath.dat`` coordinate table shared
+by all energy tables. Its columns are ``KPointIndex(1)``, ``Distance(1/A)``,
+``BreakBefore(1)`` and ``Label(1)``. Labels use ``-`` at ordinary points;
+coincident high-symmetry labels share one token. A break flag of 1 prevents
+connecting two disconnected path segments. This table supplies reciprocal
+distances and tick labels to ``--plot`` without JSON. Older results without
+it can still be plotted against k-point indices. Other table types are
+available for manual analysis but are not yet supported by that plotting
+command.
 
 Native GPAW, QE and LAMMPS files, structure formats such as CIF/CUBE,
 trajectories, binary arrays, restart files and diagnostic logs retain their

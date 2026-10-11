@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- GPAW/QE bands export KPath DAT coordinates and symmetry labels for JSON-free replotting.
+
 - --plot supports PDOS and SOC-DOS tables; DOS/PDOS/band figure writes preserve existing PNGs on failure.
 
 - --plot redraws saved GPAW/QE band DAT files, including spin channels, without calculator states.

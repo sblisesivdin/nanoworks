@@ -63,10 +63,19 @@ plots Down below zero. The full saved energy range is shown.
 
 Band DAT files are supported in long block format and wide ``-XYYY``
 format, including older tables without headers. Selecting either Up or
-Down validates both spin channels before plotting. Saved energies are
-used unchanged on the recorded k-point index axis; the table does not
-contain reciprocal path distances or high-symmetry tick labels. The new
-``-Graph-Band-Index.png`` leaves the calculation's path-labeled plot intact.
+Down validates both spin channels before plotting. New GPAW/QE band runs
+also export ``*-BAND-<engine>-Result-KPath.dat`` with k-point indices,
+reciprocal path distances, segment-break flags and high-symmetry labels.
+Keep this small coordinate table beside the energy tables to regenerate
+an axis with the saved labels, without JSON or ASE calculator states.
+The replot is written to ``-Graph-Band-Saved.png`` and leaves the original
+calculation plot intact. Disconnected segments are separated in the plot.
+
+For older results without a KPath DAT, plotting uses k-point indices and
+writes ``-Graph-Band-Index.png``. If a KPath file is present but does not
+match the energy table, plotting stops before changing figures. It never
+silently substitutes an index axis for a corrupt coordinate table.
+Saved energies are used unchanged; no new Fermi shift is applied.
 PDOS DAT files and legacy PDOS CSV files are also supported. The graph
 shows saved s/p/d/f orbital totals and total PDOS where present. Individual
 orbital and SOC j-resolved columns remain in the source table for manual
