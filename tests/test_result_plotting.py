@@ -16,6 +16,30 @@ from nanoworks.result_plotting import (
 
 
 class TestSavedResultPlotting(unittest.TestCase):
+    def test_band_replot_uses_optional_dat_path_without_json(self):
+        from nanoworks.band_results import write_band_path_table
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'Si-BAND-QE-Result-Band-XYYY.dat'
+            path.write_text('KPointIndex(1) Band_1(eV)\n0 -1\n1 0\n2 1\n')
+            axis = path.with_name('Si-BAND-QE-Result-KPath.dat')
+            write_band_path_table(axis, [0, .25, 1], [0, 1], ['G', 'X'])
+            with patch('nanoworks.result_plotting._save_figure') as save:
+                result = plot_saved_result(path)
+                figure = save.call_args.args[0]
+                np.testing.assert_array_equal(figure.axes[0].lines[0].get_xdata(), [0, .25, 1])
+                self.assertEqual([label.get_text() for label in figure.axes[0].get_xticklabels()], ['G', 'X'])
+            self.assertTrue(result['figure_files']['Band'][0].endswith('-Graph-Band-Saved.png'))
+
+    def test_invalid_present_band_path_does_not_fall_back_to_index_plot(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'Si-BAND-GPAW-Result-Band.dat'
+            path.write_text('KPointIndex(1) Energy(eV)\n0 -1\n1 1\n')
+            path.with_name('Si-BAND-GPAW-Result-KPath.dat').write_text('invalid path header\n')
+            with patch('nanoworks.result_plotting._save_figure') as save:
+                with self.assertRaisesRegex(ValueError, 'band-path DAT header'):
+                    plot_saved_result(path)
+            save.assert_not_called()
+
     def test_new_and_legacy_pdos_headers_preserve_all_orbital_columns(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'Si-DOS-QE-Result-PDOS.dat'

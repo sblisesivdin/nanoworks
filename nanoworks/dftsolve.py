@@ -247,6 +247,7 @@ from nanoworks.engine import (
     load_engine_module,
 )
 from nanoworks.tableio import table_header
+from nanoworks.band_results import write_band_path_table
 from nanoworks.optical import (
     validate_optical_settings, validate_optical_table, run_optical_exports,
     derive_optical_table, write_optical_table, write_optical_summary,
@@ -4463,6 +4464,10 @@ class dftsolve:
             'distances'
         ]
 
+        run_optical_exports(lambda: write_band_path_table(
+            self.struct + '-BAND-QE-Result-KPath.dat', distances,
+            band_data['special_distances'], band_data['labels']))
+
         if band_data['spin_polarized']:
             band_channels = [
                 (
@@ -5039,20 +5044,12 @@ class dftsolve:
             ef = calc.get_fermi_level()
 
         calc.get_potential_energy()
-
-        # For hybrids, refine the reference now that the calculator is
-        # populated, in case the ground-state value was unavailable above.
-        if hybrid and (ef is None or ef == 0.0):
-            ef = self.hybrid_fermi_level(calc)
-
-        bs = calc.band_structure()
-
-        calc.get_potential_energy()
         # For hybrids, refine the reference now that the calculator is
         # populated, in case the ground-state value was unavailable above.
         if hybrid and (ef is None or ef == 0.0):
             ef = self.hybrid_fermi_level(calc)
         bs = calc.band_structure()
+        band_npoints = len(bs.path.kpts)
             
         Band_num_of_bands = calc.get_number_of_bands()
         parprint('Num of bands:'+str(Band_num_of_bands))
@@ -5061,22 +5058,26 @@ class dftsolve:
         #calc.write(self.struct+'-BAND-GPAW-Result-Band.gpw')
         bs.write(self.struct+'-BAND-GPAW-Result-State.json')
 
+        distances, special_distances, labels = bs.path.get_linear_kpoint_axis()
+        run_optical_exports(lambda: write_band_path_table(
+            self.struct + '-BAND-GPAW-Result-KPath.dat', distances, special_distances, labels))
+
         if self.Spin_calc == True:
             eps_skn = np.array([[calc.get_eigenvalues(k,s)
-                                for k in range(self.Band_npoints)]
+                                for k in range(band_npoints)]
                                 for s in range(2)]) - ef
             parprint(eps_skn.shape)
             with paropen(self.struct+f'-BAND-{self.Engine}-Result-Band-Down.dat', 'w') as f1:
                 print("KPointIndex(1) Energy(eV)", file=f1)
                 for n1 in range(Band_num_of_bands):
-                    for k1 in range(self.Band_npoints):
+                    for k1 in range(band_npoints):
                         print(k1, eps_skn[0, k1, n1], end="\n", file=f1)
                     print (end="\n", file=f1)
 
             with paropen(self.struct+f'-BAND-{self.Engine}-Result-Band-Up.dat', 'w') as f2:
                 print("KPointIndex(1) Energy(eV)", file=f2)
                 for n2 in range(Band_num_of_bands):
-                    for k2 in range(self.Band_npoints):
+                    for k2 in range(band_npoints):
                         print(k2, eps_skn[1, k2, n2], end="\n", file=f2)
                     print (end="\n", file=f2)
 
@@ -5136,12 +5137,12 @@ class dftsolve:
                 Band_num_of_bands = eps_skn.shape[2]
             else:
                 eps_skn = np.array([[calc.get_eigenvalues(k,s)
-                                for k in range(self.Band_npoints)]
+                                for k in range(band_npoints)]
                                 for s in range(1)]) - ef
             with paropen(self.struct+f'-BAND-{self.Engine}-Result-Band.dat', 'w') as f:
                 print("KPointIndex(1) Energy(eV)", file=f)
                 for n in range(Band_num_of_bands):
-                    for k in range(self.Band_npoints):
+                    for k in range(band_npoints):
                         print(k, eps_skn[0, k, n], end="\n", file=f)
                     print (end="\n", file=f)
 

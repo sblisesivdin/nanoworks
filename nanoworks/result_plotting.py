@@ -65,7 +65,7 @@ def load_band_table(filename):
 
 
 def plot_band_result(filename):
-    """Draw saved band energies on their recorded k-point index axis."""
+    """Use a saved DAT path when available, otherwise the recorded index axis."""
     filename = Path(filename).expanduser().resolve()
     match = re.fullmatch(r'(.+-BAND-(?:GPAW|QE))-Result-Band(?:-(Up|Down))?(-XYYY)?\.dat', filename.name)
     if match is None:
@@ -79,20 +79,38 @@ def plot_band_result(filename):
             raise ValueError('Spin-resolved band tables must have identical k-point grids and band counts.')
     else:
         tables = [load_band_table(filename)]
+    path_file = filename.with_name(prefix + '-Result-KPath.dat')
+    axis = None
+    if path_file.exists():
+        from nanoworks.band_results import load_band_path_table
+        axis = load_band_path_table(path_file, tables[0][0])
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
-    output = filename.with_name(prefix + '-Graph-Band-Index.png')
+    output = filename.with_name(prefix + ('-Graph-Band-Saved.png' if axis else '-Graph-Band-Index.png'))
     fig, ax = plt.subplots(figsize=(8, 6))
     try:
         for (indices, energies), color, label in zip(tables, ('blue', 'red'), ('Spin Up', 'Spin Down')):
             for band in range(energies.shape[1]):
-                ax.plot(indices, energies[:, band], color=color, linewidth=1,
+                x, y = indices, energies[:, band]
+                if axis is not None:
+                    x = axis['distances']
+                    # Separate disconnected path segments without altering table values.
+                    insert_at = np.flatnonzero(axis['breaks'])
+                    x = np.insert(x, insert_at, np.nan)
+                    y = np.insert(y, insert_at, np.nan)
+                ax.plot(x, y, color=color, linewidth=1,
                         label=label if spin and band == 0 else None)
-        ax.set_xlabel('K-point index')
+        ax.set_xlabel('Wave-vector path distance (1/Angstrom)' if axis else 'K-point index')
         ax.set_ylabel('Energy relative to saved reference (eV)')
         ax.axhline(0, color='k', linestyle='--', linewidth=.8)
-        ax.set_xlim(tables[0][0][0], tables[0][0][-1])
+        if axis is not None:
+            ax.set_xlim(axis['distances'][0], axis['distances'][-1])
+            ax.set_xticks(axis['ticks'], axis['labels'])
+            for position in axis['ticks']:
+                ax.axvline(position, color='grey', linewidth=.5)
+        else:
+            ax.set_xlim(tables[0][0][0], tables[0][0][-1])
         if spin:
             ax.legend()
         fig.tight_layout()
