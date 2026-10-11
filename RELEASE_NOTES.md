@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- --plot supports PDOS and SOC-DOS tables; DOS/PDOS/band figure writes preserve existing PNGs on failure.
+
 - --plot redraws saved GPAW/QE band DAT files, including spin channels, without calculator states.
 
 - Numerical result tables use DAT with one unit-bearing header token per column; no duplicate CSV is produced.

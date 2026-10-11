@@ -11,10 +11,56 @@ import numpy as np
 
 from nanoworks.result_plotting import (
     load_dos_table, plot_dos_result, plot_saved_result, load_band_table, plot_band_result,
+    load_pdos_table, plot_pdos_result,
 )
 
 
 class TestSavedResultPlotting(unittest.TestCase):
+    def test_new_and_legacy_pdos_headers_preserve_all_orbital_columns(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'Si-DOS-QE-Result-PDOS.dat'
+            path.write_text('Energy(eV) s-total(states/eV) p_j0.5(states/eV) TOTAL(states/eV)\n'
+                            '-1 1 2 3\n1 2 3 5\n')
+            csv = path.with_suffix('.csv')
+            csv.write_text('Energy,s-total,p_j0.5,TOTAL\n-1,1,2,3\n1,2,3,5\n')
+            columns, data = load_pdos_table(path)
+            legacy_columns, legacy_data = load_pdos_table(csv)
+            self.assertEqual(columns, legacy_columns)
+            np.testing.assert_array_equal(data, legacy_data)
+
+    def test_spin_pdos_column_mismatch_preserves_existing_figure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            up = Path(directory) / 'Si-DOS-GPAW-Result-PDOS-Up.dat'
+            down = up.with_name('Si-DOS-GPAW-Result-PDOS-Down.dat')
+            up.write_text('Energy(eV) s-total(states/eV)\n-1 1\n1 2\n')
+            down.write_text('Energy(eV) p-total(states/eV)\n-1 1\n1 2\n')
+            output = up.with_name('Si-DOS-GPAW-Graph-PDOS.png')
+            output.write_bytes(b'previous figure')
+            with patch('nanoworks.result_plotting._save_figure') as save:
+                with self.assertRaisesRegex(ValueError, 'identical columns'):
+                    plot_pdos_result(up)
+            save.assert_not_called()
+            self.assertEqual(output.read_bytes(), b'previous figure')
+
+    def test_malformed_pdos_header_and_grid_are_rejected(self):
+        cases = ['Energy(meV) s-total(states/eV)\n0 1\n1 2\n',
+                 'Energy(eV) s-total(states/eV)\n0 1\n0 2\n',
+                 'Energy(eV) s-total(states/eV)\n0 nan\n1 2\n']
+        for content in cases:
+            with self.subTest(content=content), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / 'Si-DOS-QE-Result-PDOS.dat'
+                path.write_text(content)
+                with self.assertRaises(ValueError):
+                    load_pdos_table(path)
+
+    def test_soc_dos_uses_one_saved_channel(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'WSe2-DOS-GPAW-Result-DOS-SOC.dat'
+            path.write_text('Energy(eV) DOS(states/eV)\n-1 1\n1 2\n')
+            with patch('nanoworks.result_plotting._save_figure') as save:
+                plot_saved_result(path)
+            self.assertEqual(save.call_args.args[1], path.with_name('WSe2-DOS-GPAW-Graph-DOS-SOC.png'))
+
     def test_long_and_wide_band_tables_preserve_saved_energies(self):
         with tempfile.TemporaryDirectory() as directory:
             long = Path(directory) / 'Si-BAND-GPAW-Result-Band.dat'

@@ -12,6 +12,7 @@ file, geometry, GPAW installation or QE executables:
    dftsolve --plot path/to/Si-OPTICAL-GPAW-Result-Calculation-BSE-AllData.dat
    dftsolve --plot path/to/Si-DOS-QE-Result-DOS.dat
    dftsolve --plot path/to/Si-BAND-QE-Result-Band-XYYY.dat
+   dftsolve --plot path/to/Si-DOS-GPAW-Result-PDOS.dat
 
 Use the actual filename produced by your calculation. Figures are written
 beside the selected table; repeat plotting replaces its generated images.
@@ -66,7 +67,16 @@ Down validates both spin channels before plotting. Saved energies are
 used unchanged on the recorded k-point index axis; the table does not
 contain reciprocal path distances or high-symmetry tick labels. The new
 ``-Graph-Band-Index.png`` leaves the calculation's path-labeled plot intact.
-Projected-band and PDOS files are not yet accepted by this command.
+PDOS DAT files and legacy PDOS CSV files are also supported. The graph
+shows saved s/p/d/f orbital totals and total PDOS where present. Individual
+orbital and SOC j-resolved columns remain in the source table for manual
+analysis. Selecting either Up or Down requires both spin tables to have
+identical columns and energy grids. DOS-SOC files contain one channel and
+do not require an Up/Down partner. Projected-band weight tables are not
+yet accepted by this command.
+
+DOS, PDOS and band PNG files are replaced only after a successful write;
+a failed save retains the previous image and releases plotting resources.
 
 The optical summary JSON is optional bookkeeping for settings and file
 hashes. It is not the numerical data file and is not required for table

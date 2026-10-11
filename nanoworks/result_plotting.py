@@ -102,6 +102,75 @@ def plot_band_result(filename):
     return {'figure_files': {'Band': [str(output)]}, 'output_directory': str(filename.parent)}
 
 
+def load_pdos_table(filename):
+    """Read named PDOS columns, including legacy comma-separated headers."""
+    from nanoworks.tableio import table_header
+    filename = Path(filename)
+    delimiter = ',' if filename.suffix.lower() == '.csv' else None
+    with filename.open(encoding='utf-8-sig') as stream:
+        header = stream.readline().strip().removeprefix('#').strip()
+        columns = table_header(header).split() if delimiter else header.split()
+        if delimiter:
+            columns = [name.removesuffix('(1)') + '(states/eV)'
+                       if re.fullmatch(r'[spdf]_j\d+(?:\.\d+)?\(1\)', name) else name
+                       for name in columns]
+        if (len(columns) < 2 or columns[0] != 'Energy(eV)' or len(set(columns)) != len(columns)
+                or any(not name.endswith('(states/eV)') for name in columns[1:])):
+            raise ValueError('PDOS tables require Energy(eV) and named states/eV columns.')
+        table = np.loadtxt(stream, delimiter=delimiter, ndmin=2)
+    if (table.shape[1] != len(columns) or len(table) < 2 or not np.isfinite(table).all()
+            or np.any(np.diff(table[:, 0]) <= 0)):
+        raise ValueError('PDOS columns must match finite data on an increasing energy grid.')
+    return columns, table
+
+
+def plot_pdos_result(filename):
+    """Plot saved orbital totals; validate both spin channels before drawing."""
+    filename = Path(filename).expanduser().resolve()
+    match = re.fullmatch(r'(.+-DOS-(?:GPAW|QE))-Result-PDOS(?:-(Up|Down))?\.(?:dat|csv)', filename.name)
+    if match is None:
+        raise ValueError('Expected a Nanoworks *-DOS-GPAW/QE-Result-PDOS[-Up/Down].dat file.')
+    prefix, spin = match.groups()
+    if spin:
+        loaded = [load_pdos_table(filename.with_name(prefix + '-Result-PDOS-' + channel
+                                                   + filename.suffix)) for channel in ('Up', 'Down')]
+        if loaded[0][0] != loaded[1][0] or not np.array_equal(loaded[0][1][:, 0], loaded[1][1][:, 0]):
+            raise ValueError('Spin-resolved PDOS tables must have identical columns and energy grids.')
+    else:
+        loaded = [load_pdos_table(filename)]
+    columns = loaded[0][0]
+    totals = {'s-total', 'p-total', 'd-total', 'f-total', 'TOTAL'}
+    selected = [i for i, name in enumerate(columns[1:], start=1) if name.split('(')[0] in totals]
+    if not selected:
+        selected = list(range(1, len(columns)))
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    output = filename.with_name(prefix + '-Graph-PDOS.png')
+    fig, ax = plt.subplots(figsize=(8, 6))
+    try:
+        colors = plt.get_cmap('tab10')
+        for channel, (_, table) in enumerate(loaded):
+            sign = -1. if channel == 1 else 1.
+            for color_index, index in enumerate(selected):
+                name = columns[index].split('(')[0]
+                label = name + ((' Up' if channel == 0 else ' Down') if spin else '')
+                ax.plot(table[:, 0], sign * table[:, index],
+                        color='black' if name == 'TOTAL' else colors(color_index % 10),
+                        linestyle='--' if channel == 1 else '-', linewidth=1.5, label=label)
+        ax.set_xlabel('Energy relative to saved reference (eV)')
+        ax.set_ylabel('Projected density of states (states/eV)')
+        ax.axvline(0, color='k', linestyle='--', linewidth=.8)
+        ax.axhline(0, color='k', linewidth=.8)
+        ax.set_xlim(loaded[0][1][0, 0], loaded[0][1][-1, 0])
+        ax.legend(fontsize='small', ncol=2)
+        fig.tight_layout()
+        _save_figure(fig, output)
+    finally:
+        plt.close(fig)
+    return {'figure_files': {'PDOS': [str(output)]}, 'output_directory': str(filename.parent)}
+
+
 def load_optical_table(filename):
     """Read a seven-column optical DAT/CSV using its explicit column header."""
     from nanoworks.optical import OPTICAL_TABLE_HEADER, LEGACY_OPTICAL_TABLE_HEADER, validate_optical_table
@@ -133,6 +202,9 @@ def load_dos_table(filename):
     lines = filename.read_text(encoding='utf-8-sig').splitlines()
     delimiter = ',' if filename.suffix.lower() == '.csv' else None
     if lines and lines[0].strip().removeprefix('#').strip().startswith('Energy('):
+        columns = lines[0].strip().removeprefix('#').strip().split(delimiter)
+        if [column.strip() for column in columns] != ['Energy(eV)', 'DOS(states/eV)']:
+            raise ValueError('DOS table headers must specify Energy(eV) and DOS(states/eV).')
         lines = lines[1:]
     table = np.loadtxt(StringIO('\n'.join(lines)), delimiter=delimiter, ndmin=2)
     if (table.ndim != 2 or table.shape[1] != 2 or len(table) < 2
@@ -144,24 +216,25 @@ def load_dos_table(filename):
 def plot_dos_result(filename):
     """Validate both spin channels before replacing the existing DOS figure."""
     filename = Path(filename).expanduser().resolve()
-    match = re.fullmatch(r'(.+-DOS-(?:GPAW|QE))-Result-DOS(?:-(Up|Down))?\.(?:dat|csv)', filename.name)
+    match = re.fullmatch(r'(.+-DOS-(?:GPAW|QE))-Result-DOS(?:-(Up|Down|SOC))?\.(?:dat|csv)', filename.name)
     if match is None:
         raise ValueError('Expected a Nanoworks *-DOS-GPAW/QE-Result-DOS[-Up/Down].dat file (legacy CSV is accepted).')
     prefix, spin = match.groups()
     extension = filename.suffix
-    if spin:
+    spin_resolved = spin in ('Up', 'Down')
+    if spin_resolved:
         up = load_dos_table(filename.with_name(prefix + '-Result-DOS-Up' + extension))
         down = load_dos_table(filename.with_name(prefix + '-Result-DOS-Down' + extension))
         if up.shape != down.shape or not np.array_equal(up[:, 0], down[:, 0]):
             raise ValueError('Spin-resolved DOS tables must have identical energy grids.')
         channels = [(up, 1., 'Spin Up', 'blue'), (down, -1., 'Spin Down', 'red')]
     else:
-        channels = [(load_dos_table(filename), 1., 'DOS', 'blue')]
+        channels = [(load_dos_table(filename), 1., 'DOS (SOC)' if spin == 'SOC' else 'DOS', 'blue')]
 
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
-    output = filename.with_name(prefix + '-Graph-DOS.png')
+    output = filename.with_name(prefix + '-Graph-DOS' + ('-SOC' if spin == 'SOC' else '') + '.png')
     fig, ax = plt.subplots(figsize=(8, 6))
     try:
         for table, sign, label, color in channels:
@@ -172,7 +245,7 @@ def plot_dos_result(filename):
         ax.axvline(0, color='k', linestyle='--', linewidth=1)
         ax.axhline(0, color='k', linewidth=.8)
         ax.set_xlim(channels[0][0][0, 0], channels[0][0][-1, 0])
-        if spin:
+        if spin is not None:
             ax.legend()
         fig.tight_layout()
         _save_figure(fig, output)
@@ -189,10 +262,12 @@ def plot_saved_result(filename):
         return plot_optical_summary(filename)
     if re.fullmatch(r'.+-BAND-(?:GPAW|QE)-Result-Band(?:-(Up|Down))?(-XYYY)?\.dat', filename.name):
         return plot_band_result(filename)
+    if re.fullmatch(r'.+-DOS-(?:GPAW|QE)-Result-PDOS(?:-(Up|Down))?\.(?:dat|csv)', filename.name):
+        return plot_pdos_result(filename)
     if filename.suffix.lower() in ('.dat', '.csv') and re.fullmatch(
-            r'.+-DOS-(?:GPAW|QE)-Result-DOS(?:-(Up|Down))?\.(?:dat|csv)', filename.name):
+            r'.+-DOS-(?:GPAW|QE)-Result-DOS(?:-(Up|Down|SOC))?\.(?:dat|csv)', filename.name):
         return plot_dos_result(filename)
     if filename.suffix.lower() in ('.dat', '.csv'):
         return plot_optical_table(filename)
-    raise ValueError('Supported saved results are optical, DOS and band DAT files (legacy CSV is supported); '
+    raise ValueError('Supported saved results are optical, DOS, PDOS and band DAT files (legacy CSV is supported); '
                      'optical summary JSON files are optional.')

@@ -114,7 +114,7 @@ dftsolve -p <cores> -g <geometry.cif> -a
 *   `-a, --auto`: Auto mode. Automatically generate input parameters based on geometry.
 *   `--check`: Validate the workflow, executables, pseudopotentials, and saved-state dependencies without starting calculations or creating the output directory.
 *   `--json`: Print `--check` results as versioned machine-readable JSON.
-*   `--plot RESULT`: Regenerate figures beside an optical, DOS or band DAT table without running DFT.
+*   `--plot RESULT`: Regenerate figures beside an optical, DOS, PDOS or band DAT table without running DFT.
 *   `--dry-run`: Write QE input files, a JSON execution plan, and a shell script without running calculations.
 *   `--scheduler {local,slurm}`: Generate a local or Slurm execution script for `--dry-run`.
 *   `--cluster-profile`: Load reusable Slurm settings from a JSON file or a named user profile.
