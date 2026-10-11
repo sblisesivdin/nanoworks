@@ -5025,7 +5025,7 @@ class dftsolve:
             raise ValueError('GPAW bands require a finite Fermi-level reference.')
         bs = calc.band_structure()
         band_npoints = len(bs.path.kpts)
-            
+
         Band_num_of_bands = calc.get_number_of_bands()
         parprint('Num of bands:'+str(Band_num_of_bands))
 
@@ -5088,13 +5088,13 @@ class dftsolve:
         if self.SOC_calc:
             raise NotImplementedError('GPAW SOC projected bands are not supported.')
 
-        from gpaw.utilities.dos import get_angular_projectors
-        
+        from gpaw.dos import get_projector_numbers
+
         # Get number of spins (1 for non-magnetic, 2 for spin-polarized)
         nspins = calc.get_number_of_spins()
-        
+
         filename = f"{self.struct}-BAND-GPAW-Graph-Projected-Band.png"
-        
+
         Projections = self.Projections
 
         if not Projections:
@@ -5116,14 +5116,16 @@ class dftsolve:
                 'color': 'blue',
                 'label': 'Total Contribution',
             }]
-        
+
         bs = calc.band_structure()
         reference_energy = bs.reference if reference_energy is None else reference_energy
         if reference_energy is None or not np.isfinite(reference_energy):
             raise ValueError('GPAW projected bands require a finite energy reference.')
 
         x, x_special, labels = bs.path.get_linear_kpoint_axis()
-        
+
+        band_slice = calc.wfs.bd.get_slice()
+
         # Loop over each spin channel
         for spin_index in range(nspins):
             # Dynamic filename based on spin index
@@ -5132,21 +5134,28 @@ class dftsolve:
             else:
                 spin_label = "Up" if spin_index == 0 else "Down"
                 filename = f"{self.struct}-BAND-GPAW-Graph-Projected-Band-Spin-{spin_label}.png"
-            
-            energies = bs.energies[spin_index] - reference_energy  
+
+            energies = bs.energies[spin_index] - reference_energy
             nbands = energies.shape[1]
             projection_data = []
-            
-            
+
+
             for proj in Projections:
                 atom_indices = proj.get('atoms', [])
                 orbital = proj.get('orbital', None)
+                if isinstance(orbital, str):
+                    orbital = orbital.strip().lower()
+                    if orbital not in ('s', 'p', 'd', 'f'):
+                        raise ValueError('Projected-band orbitals must be s/p/d/f.')
+                    orbital = 'spdf'.index(orbital)
+                if orbital is not None and (isinstance(orbital, bool) or orbital not in (0, 1, 2, 3)):
+                    raise ValueError('Projected-band orbitals must be s/p/d/f or 0/1/2/3.')
                 color = proj.get('color', 'blue')
                 label = proj.get('label', f"Atoms: {atom_indices}")
-                
+
                 # local weights matrice
                 weights_local = np.zeros(energies.shape)
-                
+
                 for kpt in calc.wfs.kpt_u:
                     # Skip if the k-point doesn't belong to the current spin channel
                     if kpt.s != spin_index:
@@ -5157,73 +5166,79 @@ class dftsolve:
                         if a in P_ani:
                             if orbital is not None:
                                 setup = calc.wfs.setups[a]
-                                proj_indices = get_angular_projectors(setup, orbital, type='bound')
+                                proj_indices = get_projector_numbers(setup, orbital)
                                 w_n = np.sum(np.abs(P_ani[a][:, proj_indices])**2, axis=1)
                             else:
                                 w_n = np.sum(np.abs(P_ani[a])**2, axis=1)
                             # write weights to local k-point index
-                            weights_local[k, :] += w_n
+                            weights_local[k, band_slice] += w_n
 
-                world.sum(weights_local)
-                
+                calc.world.sum(weights_local)
+                if not np.isfinite(weights_local).all() or (weights_local < 0).any():
+                    raise ValueError('GPAW projected-band weights must be finite and nonnegative.')
+
                 projection_data.append((weights_local, color, label))
 
             legend_handles = []
             # draw
-            if world.rank == 0:
+            def export_projected_plot():
                 import matplotlib.pyplot as plt
                 from matplotlib.lines import Line2D
                 fig, ax = plt.subplots(figsize=(8, 6))
-                
-                # background standard bands
-                for n in range(nbands):
-                    ax.plot(x, energies[:, n], color='gray', lw=0.5, zorder=1)
-                    
-                # Projections are scatters
-                for weights, color, label in projection_data:
-                    # Draw all scatter points without legend labels
+
+                try:
+                    # background standard bands
                     for n in range(nbands):
-                        ax.scatter(
-                            x,
-                            energies[:, n],
-                            s=weights[:, n] * 80,
-                            color=color,
-                            zorder=2,
-                            alpha=0.6,
-                            edgecolors='none'
+                        ax.plot(x, energies[:, n], color='gray', lw=0.5, zorder=1)
+
+                    # Projections are scatters
+                    for weights, color, label in projection_data:
+                        # Draw all scatter points without legend labels
+                        for n in range(nbands):
+                            ax.scatter(
+                                x,
+                                energies[:, n],
+                                s=weights[:, n] * 80,
+                                color=color,
+                                zorder=2,
+                                alpha=0.6,
+                                edgecolors='none'
+                            )
+
+                        # One fixed-size legend entry
+                        legend_handles.append(
+                            Line2D(
+                                [0], [0],
+                                marker='o',
+                                linestyle='None',
+                                markerfacecolor=color,
+                                markeredgecolor='none',
+                                markersize=8,
+                                label=label
+                            )
                         )
 
-                    # One fixed-size legend entry
-                    legend_handles.append(
-                        Line2D(
-                            [0], [0],
-                            marker='o',
-                            linestyle='None',
-                            markerfacecolor=color,
-                            markeredgecolor='none',
-                            markersize=8,
-                            label=label
-                        )
-                    )
+                    ax.set_xticks(x_special)
+                    ax.set_xticklabels(labels)
+                    ax.set_ylabel(self._t("fig_band_ylabel"))
+                    ax.set_ylim(self.Energy_min, self.Energy_max)
+                    ax.set_xlim(x[0], x[-1])
+                    ax.axhline(0, color='black', lw=1.0, ls='-')
+                    for x_loc in x_special:
+                        ax.axvline(x_loc, color='black', lw=0.5, ls='--')
 
-                ax.set_xticks(x_special)
-                ax.set_xticklabels(labels)
-                ax.set_ylabel(self._t("fig_band_ylabel"))
-                ax.set_ylim(self.Energy_min, self.Energy_max)
-                ax.set_xlim(x[0], x[-1])
-                ax.axhline(0, color='black', lw=1.0, ls='-')
-                for x_loc in x_special:
-                    ax.axvline(x_loc, color='black', lw=0.5, ls='--')
-                
-                if legend_handles:
-                    ax.legend(handles=legend_handles,
-                              loc='lower left',
-                              frameon=True,
-                              fontsize=10)
-                    
-                plt.tight_layout()
-                plt.savefig(filename, dpi=300)
-                plt.close()
+                    if legend_handles:
+                        ax.legend(handles=legend_handles,
+                                  loc='lower left',
+                                  frameon=True,
+                                  fontsize=10)
+
+                    plt.tight_layout()
+                    plt.savefig(filename, dpi=300)
+                finally:
+                    plt.close(fig)
+            run_optical_exports(export_projected_plot)
+
 
     def densitycalc(self):
         """Run the electron-density workflow for the selected engine."""

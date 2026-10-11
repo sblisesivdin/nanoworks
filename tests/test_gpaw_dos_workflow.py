@@ -251,3 +251,53 @@ class TestGPAWDOSWorkflow(unittest.TestCase):
         self.engine.prepare_band_calc.assert_not_called()
         with self.assertRaisesRegex(NotImplementedError, 'SOC projected'):
             self.module.dftsolve._draw_projectedband(self.solver, self.calc)
+
+    def run_projected(self, save_error=None, invalid_weight=False):
+        import matplotlib.pyplot as plt
+        self.solver.Projections = [{'atoms': [0], 'orbital': 'p', 'label': 'Si p'}]
+        self.calc.get_number_of_spins.return_value = 1
+        path = types.SimpleNamespace(get_linear_kpoint_axis=lambda: ([0., .5, 1.], [0., 1.], ['G', 'X']))
+        self.calc.band_structure.return_value = types.SimpleNamespace(
+            path=path, energies=np.tile([3., 4., 5., 6.], (1, 3, 1)), reference=100.)
+        amplitudes = np.array([[np.nan if invalid_weight else 1.], [2.]])
+        self.calc.wfs = types.SimpleNamespace(
+            bd=types.SimpleNamespace(get_slice=lambda: slice(2, 4)), setups=['Si setup'],
+            kpt_u=[types.SimpleNamespace(s=0, k=k, P_ani={0: amplitudes}) for k in range(3)])
+        self.local_weights = []
+        def reduce(values):
+            self.local_weights.append(values.copy())
+            values[:, :2] = [.25, .5]
+        self.calc.world = types.SimpleNamespace(sum=Mock(side_effect=reduce))
+        gpaw_dos = types.ModuleType('gpaw.dos')
+        self.projectors = Mock(return_value=[0])
+        gpaw_dos.get_projector_numbers = self.projectors
+        self.projected_axes = Mock()
+        figure = Mock()
+        self.projected_close = Mock()
+        with patch.dict(sys.modules, {'gpaw': types.ModuleType('gpaw'), 'gpaw.dos': gpaw_dos}), \
+                patch.object(self.module, 'run_optical_exports', side_effect=lambda callback: callback()), \
+                patch.object(plt, 'subplots', return_value=(figure, self.projected_axes)), \
+                patch.object(plt, 'tight_layout'), patch.object(plt, 'savefig', side_effect=save_error), \
+                patch.object(plt, 'close', self.projected_close):
+            self.module.dftsolve._draw_projectedband(self.solver, self.calc, reference_energy=2.)
+        self.projected_close.assert_called_once_with(figure)
+
+    def test_projected_bands_reduce_local_band_slices_and_use_referenced_energies(self):
+        self.run_projected()
+        np.testing.assert_array_equal(self.local_weights[0], np.tile([0., 0., 1., 4.], (3, 1)))
+        self.calc.world.sum.assert_called_once()
+        self.assertTrue(all(call.args == ('Si setup', 1) for call in self.projectors.call_args_list))
+        for index, call in enumerate(self.projected_axes.scatter.call_args_list):
+            np.testing.assert_array_equal(call.args[1], np.full(3, index + 1.))
+            np.testing.assert_array_equal(call.kwargs['s'], np.full(3, [20., 40., 80., 320.][index]))
+        self.projected_axes.set_ylim.assert_called_once_with(-1., 1.)
+
+    def test_projected_plot_failure_closes_the_figure(self):
+        with self.assertRaisesRegex(OSError, 'disk full'):
+            self.run_projected(save_error=OSError('disk full'))
+        self.projected_close.assert_called_once()
+
+    def test_nonfinite_projected_weights_stop_before_plotting(self):
+        with self.assertRaisesRegex(ValueError, 'finite'):
+            self.run_projected(invalid_weight=True)
+        self.projected_axes.scatter.assert_not_called()

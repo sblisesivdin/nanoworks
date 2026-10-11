@@ -68,3 +68,16 @@ spin-labelled outputs; existing files are not automatically relabelled.
 The GPAW Zeta CUBE contains dimensionless ``(n_up - n_down)/(n_up + n_down)``
 values, without a density-unit conversion. Zero-density grid points use zero
 polarization to keep the field finite in vacuum.
+
+GPAW band references and SOC
+----------------------------
+
+Live band plots, saved ASE band JSON and band DAT tables share the same
+``E - Ef`` energy axis and the requested energy limits. Projected-band plots
+use that reference too. Hybrid calculations require a finite reference from
+the ground state or calculator; unavailable references are not replaced by zero.
+
+SOC band calculations export SOC eigenvalues even for a spin-polarized ground
+state. The resulting mixed-spin spectrum uses the unsuffixed band DAT filename.
+GPAW SOC projected bands are rejected before calculation because scalar PAW
+projector weights do not describe the SOC eigenstates.

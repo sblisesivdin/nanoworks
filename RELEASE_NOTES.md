@@ -2,6 +2,12 @@
 
 ### Development Version
 
+- GPAW band plots and tables share E-Ef; unavailable hybrid references stop the calculation.
+
+- GPAW magnetic bands apply SOC; unsupported SOC projected bands stop before calculation.
+
+- GPAW projected bands assemble distributed band weights and propagate plot failures.
+
 - GPAW DOS/PDOS uses the prepared DOS state; total and SOC DOS use GPAW state weights.
 
 - GPAW spin labels and dimensionless density polarization are corrected; regenerate older spin-labelled results.
