@@ -247,7 +247,7 @@ from nanoworks.engine import (
     load_engine_module,
 )
 from nanoworks.tableio import table_header
-from nanoworks.band_results import write_band_path_table
+from nanoworks.band_results import write_band_path_table, write_band_energy_tables
 from nanoworks.optical import (
     validate_optical_settings, validate_optical_table, run_optical_exports,
     derive_optical_table, write_optical_table, write_optical_summary,
@@ -5062,112 +5062,29 @@ class dftsolve:
         run_optical_exports(lambda: write_band_path_table(
             self.struct + '-BAND-GPAW-Result-KPath.dat', distances, special_distances, labels))
 
-        if self.Spin_calc == True:
-            eps_skn = np.array([[calc.get_eigenvalues(k,s)
-                                for k in range(band_npoints)]
-                                for s in range(2)]) - ef
-            parprint(eps_skn.shape)
-            with paropen(self.struct+f'-BAND-{self.Engine}-Result-Band-Down.dat', 'w') as f1:
-                print("KPointIndex(1) Energy(eV)", file=f1)
-                for n1 in range(Band_num_of_bands):
-                    for k1 in range(band_npoints):
-                        print(k1, eps_skn[0, k1, n1], end="\n", file=f1)
-                    print (end="\n", file=f1)
-
-            with paropen(self.struct+f'-BAND-{self.Engine}-Result-Band-Up.dat', 'w') as f2:
-                print("KPointIndex(1) Energy(eV)", file=f2)
-                for n2 in range(Band_num_of_bands):
-                    for k2 in range(band_npoints):
-                        print(k2, eps_skn[1, k2, n2], end="\n", file=f2)
-                    print (end="\n", file=f2)
-
-            # Thanks to Andrej Kesely (https://stackoverflow.com/users/10035985/andrej-kesely) for helping the problem of general XYYY writer
-            currentd, all_groupsd = [], []
-            with open(self.struct+f'-BAND-{self.Engine}-Result-Band-Down.dat', 'r') as f_in1:
-                next(f_in1)  # Skip the column header before grouping bands.
-                for line in map(str.strip, f_in1):
-                    if line == "" and currentd:
-                        all_groupsd.append(currentd)
-                        currentd = []
-                    else:
-                        currentd.append(line.split(maxsplit=1))
-
-            if currentd:
-                all_groupsd.append(currentd)
-
-            try:
-                with paropen(self.struct+f'-BAND-{self.Engine}-Result-Band-Down-XYYY.dat', 'w') as f1:
-                    print("KPointIndex(1) " + " ".join(f"Band_{i + 1}(eV)" for i in range(Band_num_of_bands)), file=f1)
-                    for g in zip(*all_groupsd):
-                        print('{} {} {}'.format(g[0][0], g[0][1], ' '.join(v for _, v in g[1:])), file=f1)
-            except Exception as e:
-                print("\033[93mWARNING:\033[0m A problem occurred during writing XYYY formatted spin down Band file. Mostly, the file is created without any problem.")
-                print(e)
-
-            currentu, all_groupsu = [], []
-            with open(self.struct+f'-BAND-{self.Engine}-Result-Band-Up.dat', 'r') as f_in2:
-                next(f_in2)  # Skip the column header before grouping bands.
-                for line in map(str.strip, f_in2):
-                    if line == "" and currentu:
-                        all_groupsu.append(currentu)
-                        currentu = []
-                    else:
-                        currentu.append(line.split(maxsplit=1))
-
-            if currentu:
-                all_groupsu.append(currentu)
-            try:
-                with paropen(self.struct+f'-BAND-{self.Engine}-Result-Band-Up-XYYY.dat', 'w') as f2:
-                    print("KPointIndex(1) " + " ".join(f"Band_{i + 1}(eV)" for i in range(Band_num_of_bands)), file=f2)
-                    for g in zip(*all_groupsu):
-                        print('{} {} {}'.format(g[0][0], g[0][1], ' '.join(v for _, v in g[1:])), file=f2)
-            except Exception as e:
-                print("\033[93mWARNING:\033[0m A problem occurred during writing XYYY formatted spin up Band file. Mostly, the file is created without any problem.")
-                print(e)
-
+        if self.Spin_calc:
+            eps_skn = np.array([[calc.get_eigenvalues(k, spin)
+                                 for k in range(band_npoints)]
+                                for spin in range(2)]) - ef
+            # Preserve the existing GPAW DAT channel naming convention.
+            spin_labels = ['Down', 'Up']
         else:
+            spin_labels = None
             if self.SOC_calc:
                 from gpaw.spinorbit import soc_eigenstates
                 parprint("Applying Spin-Orbit Coupling to Band Structure...")
-                # Spin-Orbit perturbation
                 soc = soc_eigenstates(calc)
-                soc_evals = np.real(soc.eigenvalues()) # Taking only real parts
-                # GPAW returns SOC eigenvalues ​​as a single spin channel (nkpts, 2*nbands)
+                soc_evals = np.real(soc.eigenvalues())
                 eps_skn = np.array([soc_evals]) - ef
-                Band_num_of_bands = eps_skn.shape[2]
             else:
-                eps_skn = np.array([[calc.get_eigenvalues(k,s)
-                                for k in range(band_npoints)]
-                                for s in range(1)]) - ef
-            with paropen(self.struct+f'-BAND-{self.Engine}-Result-Band.dat', 'w') as f:
-                print("KPointIndex(1) Energy(eV)", file=f)
-                for n in range(Band_num_of_bands):
-                    for k in range(band_npoints):
-                        print(k, eps_skn[0, k, n], end="\n", file=f)
-                    print (end="\n", file=f)
+                eps_skn = np.array([[calc.get_eigenvalues(k, 0)
+                                    for k in range(band_npoints)]]) - ef
 
-            # Thanks to Andrej Kesely (https://stackoverflow.com/users/10035985/andrej-kesely) for helping the problem of general XYYY writer
-            current, all_groups = [], []
-            with open(self.struct+f'-BAND-{self.Engine}-Result-Band.dat', 'r') as f_in:
-                next(f_in)  # Skip the column header before grouping bands.
-                for line in map(str.strip, f_in):
-                    if line == "" and current:
-                        all_groups.append(current)
-                        current = []
-                    else:
-                        current.append(line.split(maxsplit=1))
+        # The output rank writes both formats from memory. Propagate failures
+        # to every MPI rank instead of reading partially written shared files.
+        run_optical_exports(lambda: write_band_energy_tables(
+            self.struct + '-BAND-GPAW', eps_skn, spin_labels))
 
-            if current:
-                all_groups.append(current)
-            try:
-                with paropen(self.struct+f'-BAND-{self.Engine}-Result-Band-XYYY.dat', 'w') as f1:
-                    print("KPointIndex(1) " + " ".join(f"Band_{i + 1}(eV)" for i in range(Band_num_of_bands)), file=f1)
-                    for g in zip(*all_groups):
-                        print('{} {} {}'.format(g[0][0], g[0][1], ' '.join(v for _, v in g[1:])), file=f1)
-            except Exception as e:
-                print("\033[93mWARNING:\033[0m A problem occurred during writing XYYY formatted Band file. Mostly, the file is created without any problem.")
-                print(e)
-                
         # Finish Band calc
         time32 = time.time()
         # Write timings of calculation
