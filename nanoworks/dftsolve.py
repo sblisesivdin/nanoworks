@@ -2972,18 +2972,18 @@ class dftsolve:
             with paropen(self.struct+'-DOS-GPAW-Result-Raw-PDOS-Each-Atom-Down.dat', "w") as fd:
                 print("AtomIndex(1) Element(1) " + table_header('Energy, s-total, p-total, pz, px, py, d-total, d3z2_r2, dzx, dyz, dx2_y2, dxy, f-total, TOTAL'), file=fd)
                 for j in range(0, self.bulk_configuration.get_global_number_of_atoms()):
-                    pdoss = rawdos.raw_pdos(energies, a=j, l=0, m=None, spin=0, width=self.DOS_width)
-                    pdosp = rawdos.raw_pdos(energies, a=j, l=1, m=None, spin=0, width=self.DOS_width)
-                    pdospx = rawdos.raw_pdos(energies, a=j, l=1, m=2, spin=0, width=self.DOS_width)
-                    pdospy = rawdos.raw_pdos(energies, a=j, l=1, m=0, spin=0, width=self.DOS_width)
-                    pdospz = rawdos.raw_pdos(energies, a=j, l=1, m=1, spin=0, width=self.DOS_width)
-                    pdosd = rawdos.raw_pdos(energies, a=j, l=2, m=None, spin=0, width=self.DOS_width)
-                    pdosdxy = rawdos.raw_pdos(energies, a=j, l=2, m=0, spin=0, width=self.DOS_width)
-                    pdosdyz = rawdos.raw_pdos(energies, a=j, l=2, m=1, spin=0, width=self.DOS_width)
-                    pdosd3z2_r2 = rawdos.raw_pdos(energies, a=j, l=2, m=2, spin=0, width=self.DOS_width)
-                    pdosdzx = rawdos.raw_pdos(energies, a=j, l=2, m=3, spin=0, width=self.DOS_width)
-                    pdosdx2_y2 = rawdos.raw_pdos(energies, a=j, l=2, m=4, spin=0, width=self.DOS_width)
-                    pdosf = rawdos.raw_pdos(energies, a=j, l=3, m=None, spin=0, width=self.DOS_width)
+                    pdoss = rawdos.raw_pdos(energies, a=j, l=0, m=None, spin=0, width=dos_settings['width_ev'])
+                    pdosp = rawdos.raw_pdos(energies, a=j, l=1, m=None, spin=0, width=dos_settings['width_ev'])
+                    pdospx = rawdos.raw_pdos(energies, a=j, l=1, m=2, spin=0, width=dos_settings['width_ev'])
+                    pdospy = rawdos.raw_pdos(energies, a=j, l=1, m=0, spin=0, width=dos_settings['width_ev'])
+                    pdospz = rawdos.raw_pdos(energies, a=j, l=1, m=1, spin=0, width=dos_settings['width_ev'])
+                    pdosd = rawdos.raw_pdos(energies, a=j, l=2, m=None, spin=0, width=dos_settings['width_ev'])
+                    pdosdxy = rawdos.raw_pdos(energies, a=j, l=2, m=0, spin=0, width=dos_settings['width_ev'])
+                    pdosdyz = rawdos.raw_pdos(energies, a=j, l=2, m=1, spin=0, width=dos_settings['width_ev'])
+                    pdosd3z2_r2 = rawdos.raw_pdos(energies, a=j, l=2, m=2, spin=0, width=dos_settings['width_ev'])
+                    pdosdzx = rawdos.raw_pdos(energies, a=j, l=2, m=3, spin=0, width=dos_settings['width_ev'])
+                    pdosdx2_y2 = rawdos.raw_pdos(energies, a=j, l=2, m=4, spin=0, width=dos_settings['width_ev'])
+                    pdosf = rawdos.raw_pdos(energies, a=j, l=3, m=None, spin=0, width=dos_settings['width_ev'])
                     dosspdf = pdoss + pdosp + pdosd + pdosf
                     pdossweightsdown = pdossweightsdown + pdoss
                     pdospweightsdown = pdospweightsdown + pdosp
@@ -3004,9 +3004,10 @@ class dftsolve:
 
             # Writing DOS
             parprint("Saving DOS for spin down...")
+            dosweightsdown = rawdos.raw_dos(energies, spin=0, width=dos_settings['width_ev'])
             with paropen(self.struct+f'-DOS-{self.Engine}-Result-DOS-Down.dat', "w") as fd:
                 print("Energy(eV) DOS(states/eV)", file=fd)
-                for x in zip(shifted_energies, totaldosweightsdown):
+                for x in zip(shifted_energies, dosweightsdown):
                     print(*x, sep=" ", file=fd)
 
             # Writing PDOS
@@ -3042,18 +3043,18 @@ class dftsolve:
             with paropen(self.struct+'-DOS-GPAW-Result-Raw-PDOS-Each-Atom-Up.dat', "w") as fd:
                 print("AtomIndex(1) Element(1) " + table_header('Energy, s-total, p-total, pz, px, py, d-total, d3z2_r2, dzx, dyz, dx2_y2, dxy, f-total, TOTAL'), file=fd)
                 for j in range(0, self.bulk_configuration.get_global_number_of_atoms()):
-                    pdoss = rawdos.raw_pdos(energies, a=j, l=0, m=None, spin=1, width=self.DOS_width)
-                    pdosp = rawdos.raw_pdos(energies, a=j, l=1, m=None, spin=1, width=self.DOS_width)
-                    pdospx = rawdos.raw_pdos(energies, a=j, l=1, m=2, spin=1, width=self.DOS_width)
-                    pdospy = rawdos.raw_pdos(energies, a=j, l=1, m=0, spin=1, width=self.DOS_width)
-                    pdospz = rawdos.raw_pdos(energies, a=j, l=1, m=1, spin=1, width=self.DOS_width)
-                    pdosd = rawdos.raw_pdos(energies, a=j, l=2, m=None, spin=1, width=self.DOS_width)
-                    pdosdxy = rawdos.raw_pdos(energies, a=j, l=2, m=0, spin=1, width=self.DOS_width)
-                    pdosdyz = rawdos.raw_pdos(energies, a=j, l=2, m=1, spin=1, width=self.DOS_width)
-                    pdosd3z2_r2 = rawdos.raw_pdos(energies, a=j, l=2, m=2, spin=1, width=self.DOS_width)
-                    pdosdzx = rawdos.raw_pdos(energies, a=j, l=2, m=3, spin=1, width=self.DOS_width)
-                    pdosdx2_y2 = rawdos.raw_pdos(energies, a=j, l=2, m=4, spin=1, width=self.DOS_width)
-                    pdosf = rawdos.raw_pdos(energies, a=j, l=3, m=None, spin=1, width=self.DOS_width)
+                    pdoss = rawdos.raw_pdos(energies, a=j, l=0, m=None, spin=1, width=dos_settings['width_ev'])
+                    pdosp = rawdos.raw_pdos(energies, a=j, l=1, m=None, spin=1, width=dos_settings['width_ev'])
+                    pdospx = rawdos.raw_pdos(energies, a=j, l=1, m=2, spin=1, width=dos_settings['width_ev'])
+                    pdospy = rawdos.raw_pdos(energies, a=j, l=1, m=0, spin=1, width=dos_settings['width_ev'])
+                    pdospz = rawdos.raw_pdos(energies, a=j, l=1, m=1, spin=1, width=dos_settings['width_ev'])
+                    pdosd = rawdos.raw_pdos(energies, a=j, l=2, m=None, spin=1, width=dos_settings['width_ev'])
+                    pdosdxy = rawdos.raw_pdos(energies, a=j, l=2, m=0, spin=1, width=dos_settings['width_ev'])
+                    pdosdyz = rawdos.raw_pdos(energies, a=j, l=2, m=1, spin=1, width=dos_settings['width_ev'])
+                    pdosd3z2_r2 = rawdos.raw_pdos(energies, a=j, l=2, m=2, spin=1, width=dos_settings['width_ev'])
+                    pdosdzx = rawdos.raw_pdos(energies, a=j, l=2, m=3, spin=1, width=dos_settings['width_ev'])
+                    pdosdx2_y2 = rawdos.raw_pdos(energies, a=j, l=2, m=4, spin=1, width=dos_settings['width_ev'])
+                    pdosf = rawdos.raw_pdos(energies, a=j, l=3, m=None, spin=1, width=dos_settings['width_ev'])
                     dosspdf = pdoss + pdosp + pdosd + pdosf
                     pdossweightsup = pdossweightsup + pdoss
                     pdospweightsup = pdospweightsup + pdosp
@@ -3074,9 +3075,10 @@ class dftsolve:
 
             # Writing DOS
             parprint("Saving DOS for spin up...")
+            dosweightsup = rawdos.raw_dos(energies, spin=1, width=dos_settings['width_ev'])
             with paropen(self.struct+f'-DOS-{self.Engine}-Result-DOS-Up.dat', "w") as fd:
                 print("Energy(eV) DOS(states/eV)", file=fd)
-                for x in zip(shifted_energies, totaldosweightsup):
+                for x in zip(shifted_energies, dosweightsup):
                     print(*x, sep=" ", file=fd)
 
             # Writing PDOS
@@ -3114,18 +3116,18 @@ class dftsolve:
             with paropen(self.struct+'-DOS-GPAW-Result-Raw-PDOS-Each-Atom.dat', "w") as fd:
                 print("AtomIndex(1) Element(1) " + table_header('Energy, s-total, p-total, pz, px, py, d-total, d3z2_r2, dzx, dyz, dx2_y2, dxy, f-total, TOTAL'), file=fd)
                 for j in range(0, self.bulk_configuration.get_global_number_of_atoms()):
-                    pdoss = rawdos.raw_pdos(energies, a=j, l=0, m=None, spin=None, width=self.DOS_width)
-                    pdosp = rawdos.raw_pdos(energies, a=j, l=1, m=None, spin=None, width=self.DOS_width)
-                    pdospx = rawdos.raw_pdos(energies, a=j, l=1, m=2, spin=None, width=self.DOS_width)
-                    pdospy = rawdos.raw_pdos(energies, a=j, l=1, m=0, spin=None, width=self.DOS_width)
-                    pdospz = rawdos.raw_pdos(energies, a=j, l=1, m=1, spin=None, width=self.DOS_width)
-                    pdosd = rawdos.raw_pdos(energies, a=j, l=2, m=None, spin=None, width=self.DOS_width)
-                    pdosdxy = rawdos.raw_pdos(energies, a=j, l=2, m=0, spin=None, width=self.DOS_width)
-                    pdosdyz = rawdos.raw_pdos(energies, a=j, l=2, m=1, spin=None, width=self.DOS_width)
-                    pdosd3z2_r2 = rawdos.raw_pdos(energies, a=j, l=2, m=2, spin=None, width=self.DOS_width)
-                    pdosdzx = rawdos.raw_pdos(energies, a=j, l=2, m=3, spin=None, width=self.DOS_width)
-                    pdosdx2_y2 = rawdos.raw_pdos(energies, a=j, l=2, m=4, spin=None, width=self.DOS_width)
-                    pdosf = rawdos.raw_pdos(energies, a=j, l=3, m=None, spin=None, width=self.DOS_width)
+                    pdoss = rawdos.raw_pdos(energies, a=j, l=0, m=None, spin=None, width=dos_settings['width_ev'])
+                    pdosp = rawdos.raw_pdos(energies, a=j, l=1, m=None, spin=None, width=dos_settings['width_ev'])
+                    pdospx = rawdos.raw_pdos(energies, a=j, l=1, m=2, spin=None, width=dos_settings['width_ev'])
+                    pdospy = rawdos.raw_pdos(energies, a=j, l=1, m=0, spin=None, width=dos_settings['width_ev'])
+                    pdospz = rawdos.raw_pdos(energies, a=j, l=1, m=1, spin=None, width=dos_settings['width_ev'])
+                    pdosd = rawdos.raw_pdos(energies, a=j, l=2, m=None, spin=None, width=dos_settings['width_ev'])
+                    pdosdxy = rawdos.raw_pdos(energies, a=j, l=2, m=0, spin=None, width=dos_settings['width_ev'])
+                    pdosdyz = rawdos.raw_pdos(energies, a=j, l=2, m=1, spin=None, width=dos_settings['width_ev'])
+                    pdosd3z2_r2 = rawdos.raw_pdos(energies, a=j, l=2, m=2, spin=None, width=dos_settings['width_ev'])
+                    pdosdzx = rawdos.raw_pdos(energies, a=j, l=2, m=3, spin=None, width=dos_settings['width_ev'])
+                    pdosdx2_y2 = rawdos.raw_pdos(energies, a=j, l=2, m=4, spin=None, width=dos_settings['width_ev'])
+                    pdosf = rawdos.raw_pdos(energies, a=j, l=3, m=None, spin=None, width=dos_settings['width_ev'])
 
                     dosspdf = pdoss + pdosp + pdosd + pdosf
 
@@ -3149,9 +3151,10 @@ class dftsolve:
 
             # Writing DOS
             parprint("Saving DOS...")
+            dosweights = rawdos.raw_dos(energies, spin=None, width=dos_settings['width_ev'])
             with paropen(self.struct+f'-DOS-{self.Engine}-Result-DOS.dat', "w") as fd:
                 print("Energy(eV) DOS(states/eV)", file=fd)
-                for x in zip(shifted_energies, totaldosweights):
+                for x in zip(shifted_energies, dosweights):
                     print(*x, sep=" ", file=fd)
 
             # Writing PDOS

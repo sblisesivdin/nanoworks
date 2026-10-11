@@ -77,3 +77,22 @@ class TestGPAWDOSWorkflow(unittest.TestCase):
                     self.assertEqual(len(rows), 7)
                     self.assertTrue(all(len(row.split()) == len(rows[0].split()) for row in rows))
                     self.assertEqual([row.split()[0] for row in rows[1:]], ['1'] * 3 + ['2'] * 3)
+
+    def test_total_dos_is_not_the_sum_of_atomic_projections(self):
+        for spin in (False, True):
+            with self.subTest(spin=spin):
+                self.solver.Spin_calc = spin
+                self.run_dos()
+                expected = [('DOS-Down', 'PDOS-Down', 10.), ('DOS-Up', 'PDOS-Up', 20.)] if spin else [('DOS', 'PDOS', 30.)]
+                for dos_name, pdos_name, value in expected:
+                    np.testing.assert_array_equal(self.table(dos_name)[:, 1], np.full(3, value))
+                    self.assertTrue(np.all(self.table(pdos_name)[:, -1] < value))
+                for call in self.rawdos.raw_dos.call_args_list:
+                    self.assertEqual(call.kwargs['width'], .001)
+
+    def test_tetrahedron_passes_zero_width_to_both_dos_and_pdos(self):
+        self.solver.DOS_integration = 'tetrahedron'
+        self.run_dos()
+        for mock in (self.rawdos.raw_dos, self.rawdos.raw_pdos):
+            self.assertTrue(mock.called)
+            self.assertTrue(all(call.kwargs['width'] == 0. for call in mock.call_args_list))
