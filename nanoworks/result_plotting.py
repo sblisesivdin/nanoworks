@@ -10,6 +10,31 @@ import re
 import numpy as np
 
 
+def load_optical_table(filename):
+    """Read a seven-column optical DAT/CSV using its explicit column header."""
+    from nanoworks.optical import OPTICAL_TABLE_HEADER, validate_optical_table
+    filename = Path(filename)
+    delimiter = ',' if filename.suffix.lower() == '.csv' else None
+    with filename.open(encoding='utf-8-sig') as stream:
+        header = stream.readline().strip().removeprefix('#').strip()
+        columns = [column.strip() for column in header.split(delimiter)]
+        if columns != OPTICAL_TABLE_HEADER.split():
+            raise ValueError('Expected a seven-column optical table with Energy(eV), '
+                             'dielectric, refractive/extinction, Absorption(1/cm) and Reflectivity headers.')
+        table = np.loadtxt(stream, delimiter=delimiter, ndmin=2)
+    return validate_optical_table(table)
+
+
+def plot_optical_table(filename):
+    """Plot a standalone optical table without a summary or calculator state."""
+    from nanoworks.optical import generate_optical_figures
+    filename = Path(filename).expanduser().resolve()
+    table = load_optical_table(filename)
+    prefix = filename.with_suffix('')
+    figures = generate_optical_figures(table, str(prefix), 'Optical')
+    return {'figure_files': {'Optical': figures}, 'output_directory': str(filename.parent)}
+
+
 def load_dos_table(filename):
     """Read the common GPAW/QE DOS CSV, retaining its saved energy reference."""
     table = np.loadtxt(filename, delimiter=',', ndmin=2)
@@ -64,6 +89,10 @@ def plot_saved_result(filename):
     if filename.suffix.lower() == '.json':
         from nanoworks.optical import plot_optical_summary
         return plot_optical_summary(filename)
-    if filename.suffix.lower() == '.csv':
+    if filename.suffix.lower() == '.csv' and re.fullmatch(
+            r'.+-DOS-(?:GPAW|QE)-Result-DOS(?:-(Up|Down))?\.csv', filename.name):
         return plot_dos_result(filename)
-    raise ValueError('Supported saved results are optical summary JSON files and Nanoworks DOS CSV files.')
+    if filename.suffix.lower() in ('.dat', '.csv'):
+        return plot_optical_table(filename)
+    raise ValueError('Supported saved results are optical DAT/CSV tables and Nanoworks DOS CSV files; '
+                     'optical summary JSON files are optional.')

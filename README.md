@@ -114,13 +114,15 @@ dftsolve -p <cores> -g <geometry.cif> -a
 *   `-a, --auto`: Auto mode. Automatically generate input parameters based on geometry.
 *   `--check`: Validate the workflow, executables, pseudopotentials, and saved-state dependencies without starting calculations or creating the output directory.
 *   `--json`: Print `--check` results as versioned machine-readable JSON.
-*   `--plot RESULT`: Regenerate figures beside a saved optical summary or DOS CSV without running DFT.
+*   `--plot RESULT`: Regenerate figures beside an optical DAT/CSV table or DOS CSV without running DFT.
 *   `--dry-run`: Write QE input files, a JSON execution plan, and a shell script without running calculations.
 *   `--scheduler {local,slurm}`: Generate a local or Slurm execution script for `--dry-run`.
 *   `--cluster-profile`: Load reusable Slurm settings from a JSON file or a named user profile.
 *   `--slurm-time`: Slurm wall time in `HH:MM:SS` or `D-HH:MM:SS` form.
 *   `--slurm-memory`, `--slurm-partition`, `--slurm-account`, `--slurm-qos`, `--slurm-job-name`: Optional Slurm resource settings.
 *   `--slurm-module`: Module to load in the generated script; repeat the option to load multiple modules.
+
+Optical workflows export matching DAT and CSV tables with column names and units for Excel, Origin and manual analysis. `--plot` reads these tables directly; JSON summaries are optional.
 
 Check an input before submitting a calculation:
 

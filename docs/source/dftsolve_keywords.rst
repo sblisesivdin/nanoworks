@@ -1930,6 +1930,11 @@ Optical Calculations Keywords
     publishes each table by atomic file replacement. GPAW plots only the
     active optical method; missing spectra and plotting errors stop the
     workflow and propagate to all MPI ranks.
+    Each derived optical DAT table has a matching comma-separated CSV copy
+    with identical numerical values, column names and units for Excel and
+    Origin. ``dftsolve --plot <table.dat>`` or ``<table.csv>`` regenerates
+    figures directly from those seven columns without a summary JSON.
+    JSON is optional bookkeeping, not a requirement for numerical analysis.
     Completed GPAW/QE optical workflows also write
     ``-OPTICAL-<engine>-Result-Summary.json`` with a versioned schema,
     active numerical settings, XC/spin mode and the actual energy range,

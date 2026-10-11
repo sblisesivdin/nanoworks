@@ -162,18 +162,24 @@ OPTICAL_TABLE_HEADER = ('Energy(eV) Eps_real Eps_img Refractive_Index '
 
 
 def write_optical_table(path, data):
-    """Publish a validated optical table without truncating a previous result."""
+    """Publish optical DAT and spreadsheet-ready CSV tables with column units."""
     from pathlib import Path
     table = validate_optical_table(data)
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = Path(str(path) + '.tmp')
-    try:
-        with temporary.open('w', encoding='utf-8') as stream:
-            np.savetxt(stream, table, fmt='%.12g', header=OPTICAL_TABLE_HEADER, comments='')
-        temporary.replace(path)
-    finally:
-        temporary.unlink(missing_ok=True)
+    targets = [path]
+    if path.suffix.lower() == '.dat':
+        targets.append(path.with_suffix('.csv'))
+    for target in targets:
+        delimiter = ',' if target.suffix.lower() == '.csv' else ' '
+        temporary = Path(str(target) + '.tmp')
+        try:
+            with temporary.open('w', encoding='utf-8') as stream:
+                np.savetxt(stream, table, fmt='%.12g', delimiter=delimiter,
+                           header=delimiter.join(OPTICAL_TABLE_HEADER.split()), comments='')
+            temporary.replace(target)
+        finally:
+            temporary.unlink(missing_ok=True)
     return path
 
 

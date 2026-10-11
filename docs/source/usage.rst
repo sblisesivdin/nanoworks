@@ -4,38 +4,73 @@ Usage
 Regenerate Saved Figures
 ------------------------
 
-Use one command for completed optical and DOS results, without an input
+Use one command for completed optical and DOS tables, without an input
 file, geometry, GPAW installation or QE executables:
 
 .. code-block:: bash
 
-   dftsolve --plot path/to/Si-OPTICAL-QE-Result-Summary.json
-   dftsolve --plot path/to/Si-DOS-GPAW-Result-DOS.csv
-   dftsolve --plot path/to/Si-DOS-QE-Result-DOS-Up.csv
+   dftsolve --plot path/to/Si-OPTICAL-GPAW-Result-Calculation-BSE-AllData.dat
+   dftsolve --plot path/to/Si-OPTICAL-GPAW-Result-Calculation-BSE-AllData.csv
+   dftsolve --plot path/to/Si-DOS-QE-Result-DOS.csv
 
-Figures are written in the result directory. No output directory option
-is needed. Repeat plotting replaces the generated images; source tables
-and summaries are read without modification.
+Use the actual filename produced by your calculation. Figures are written
+beside the selected table; repeat plotting replaces its generated images.
+Source tables are read without modification.
 
-Optical summaries produce four standard figures per table. All recorded
-table hashes, dimensions and energy ranges are checked before plotting;
-missing or altered results produce an error. DOS CSV files use their
-saved energy reference without another Fermi shift or smoothing. For
-spin-resolved DOS, selecting either Up or Down reads and validates both
-sibling files and plots Down below zero. These older DOS tables do not
-have summary hashes. The full saved energy range is shown.
+Optical Data for Excel and Origin
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Band, projected-band and PDOS files are not yet accepted by this command.
+Completed GPAW and QE optical workflows produce whitespace-separated DAT
+and comma-separated CSV copies of each derived spectrum. Both contain the
+same numerical values, with one header row and seven columns:
 
-Keep the summary together with its tables when copying results between
-computers. Version 2 paths are relative to the summary. The reader also
-supports version 1 summaries, preferring relocated sibling tables and
-still checking their hashes. Summaries are only available for workflows
-that produced them; optical plotting does not infer a summary from old raw files.
+.. list-table:: Optical result columns
+   :header-rows: 1
+
+   * - Header
+     - Meaning and unit
+   * - Energy(eV)
+     - Photon energy in eV
+   * - Eps_real
+     - Real dielectric function, dimensionless
+   * - Eps_img
+     - Imaginary dielectric function, dimensionless
+   * - Refractive_Index
+     - Refractive index, dimensionless
+   * - Extinction_Index
+     - Extinction coefficient, dimensionless
+   * - Absorption(1/cm)
+     - Absorption coefficient in inverse centimetres
+   * - Reflectivity
+     - Reflectivity as a dimensionless fraction
+
+Import CSV with a comma separator and a decimal point, or DAT with a
+whitespace separator. The first row contains column names. No Python or
+JSON knowledge is needed to inspect, edit or plot these numerical data in
+Excel, Origin or another analysis program.
+
+``--plot`` reads either optical table directly and creates four standard
+figures. It checks the column header, finite values and increasing
+nonnegative photon-energy grid. It does not apply another scissors shift,
+smoothing or energy reference change, or recompute derived columns. An
+edited table is plotted as saved if it passes these numerical checks.
+Older seven-column DAT tables remain usable without CSV companions.
+Raw dielectric-response files with fewer columns are not accepted.
+
+DOS CSV files retain their saved energy reference. For spin-resolved DOS,
+selecting either Up or Down reads and validates both sibling files and
+plots Down below zero. The full saved energy range is shown. Band,
+projected-band and PDOS files are not yet accepted by this command.
+
+The optical summary JSON is optional bookkeeping for settings and file
+hashes. It is not the numerical data file and is not required for table
+plotting, spreadsheet import or manual analysis. Selecting the summary
+with ``--plot`` remains supported when hash verification of the original
+recorded tables is desired. Keep it together with its tables if using
+that optional mode after moving the result folder.
 
 This mode does not accept calculation, MPI or scheduler options and does
-not need ``-i`` or ``-g``. It preserves the recorded spectrum and does not
-apply another scissors shift, smoothing or energy reference change.
+not need ``-i`` or ``-g``.
 
 .. _usage:
 

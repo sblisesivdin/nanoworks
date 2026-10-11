@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- Optical results export matching DAT/CSV tables for Excel and Origin; --plot reads them directly without JSON.
+
 - dftsolve --plot redraws saved optical and DOS results in their result directory without DFT calculations.
 
 - GPAW/QE and saved optical results share one plotter; failed figure writes release Matplotlib resources.

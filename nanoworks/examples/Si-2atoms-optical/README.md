@@ -111,19 +111,20 @@ Inspect memory use before moving to a dense mesh or a large BSE Hamiltonian.
 
 ## Regenerate figures without repeating DFT
 
-After a completed optical workflow, use its summary to recreate figures:
+After a completed optical workflow, use its numerical table to recreate figures:
 
 ```bash
-dftsolve --plot Si-BSE-smoke-results/Si_mp-149_primitive_Example-OPTICAL-GPAW-Result-Summary.json
+dftsolve --plot Si-BSE-smoke-results/Si_mp-149_primitive_Example-OPTICAL-GPAW-Result-Calculation-BSE-AllData.dat
 ```
 
-Use the actual structure-prefixed summary filename in your result folder;
-the geometry file's basename is not guaranteed to be the output prefix.
-No `-i`, `-g`, `-p`, GPAW installation or QE executables are required.
-The figures are written beside the summary. Repeat plotting replaces the
-generated images. Copy the summary and tables
-together to plot on another computer. All table hashes are checked first.
-The command keeps the saved photon energies and values unchanged.
+Use the actual structure-prefixed filename in your result folder. A matching
+`.csv` file contains the same seven columns with names and units, ready for
+Excel or Origin (comma separator, decimal point). Either DAT or CSV can be
+passed to `--plot`. Older DAT results do not need a CSV copy to be plotted.
+No JSON summary, input, geometry or DFT engine is needed. Figures are written
+beside the selected table, and saved energies and values are preserved.
+Repeat plotting replaces its generated images. The summary JSON is optional
+bookkeeping; the numerical tables remain independently usable.
 
 RPA and especially BSE production calculations may require substantially more
 memory. Increase k-point, band, and response cutoffs only after monitoring the

@@ -56,12 +56,51 @@ class TestSavedResultPlotting(unittest.TestCase):
             self.assertTrue(output.is_file())
             self.assertEqual(set(plt.get_fignums()), before)
 
-    def test_common_command_dispatches_optical_and_rejects_band_dat(self):
+    def test_common_command_still_accepts_optional_optical_summary(self):
         with patch('nanoworks.optical.plot_optical_summary', return_value={}) as optical:
             self.assertEqual(plot_saved_result('summary.json'), {})
             optical.assert_called_once_with(Path('summary.json').resolve())
-        with self.assertRaisesRegex(ValueError, 'Supported saved results'):
-            plot_saved_result('Si-BAND-QE-Result-Band.dat')
+
+    def test_optical_dat_and_csv_export_identical_numeric_columns(self):
+        from nanoworks.optical import write_optical_table, OPTICAL_TABLE_HEADER
+        from nanoworks.result_plotting import load_optical_table
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'Si-OPTICAL-QE-Result-AllData.dat'
+            data = np.array([[0, 3, 4, 2, 1, 0, .2], [1, 3, 4, 2, 1, 100, .2]])
+            write_optical_table(path, data)
+            csv = path.with_suffix('.csv')
+            self.assertEqual(csv.read_text().splitlines()[0].split(','), OPTICAL_TABLE_HEADER.split())
+            np.testing.assert_array_equal(load_optical_table(path), data)
+            np.testing.assert_array_equal(load_optical_table(csv), data)
+
+    def test_standalone_table_plots_without_summary_and_preserves_values(self):
+        from nanoworks.optical import OPTICAL_TABLE_HEADER
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'manually-edited.csv'
+            data = np.array([[0, -3, 4, 2, 1, 0, .2], [1, 3, 4, 2, 1, 100, .2]])
+            np.savetxt(path, data, delimiter=',', header=','.join(OPTICAL_TABLE_HEADER.split()), comments='')
+            original = path.read_bytes()
+            with patch('nanoworks.optical.generate_optical_figures', return_value=['figure.png']) as plot:
+                with patch('nanoworks.optical.load_optical_summary') as summary:
+                    result = plot_saved_result(path)
+            summary.assert_not_called()
+            np.testing.assert_array_equal(plot.call_args.args[0], data)
+            self.assertEqual(plot.call_args.args[1], str(path.with_suffix('')))
+            self.assertEqual(result['output_directory'], directory)
+            self.assertEqual(path.read_bytes(), original)
+
+    def test_invalid_optical_header_or_grid_does_not_plot(self):
+        from nanoworks.optical import OPTICAL_TABLE_HEADER
+        cases = ['kpoint energy\n0 1\n1 2\n',
+                 OPTICAL_TABLE_HEADER + '\n0 3 4 2 1 0 .2\n0 3 4 2 1 100 .2\n']
+        for content in cases:
+            with self.subTest(content=content), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / 'table.dat'
+                path.write_text(content)
+                with patch('nanoworks.optical.generate_optical_figures') as plot:
+                    with self.assertRaises(ValueError):
+                        plot_saved_result(path)
+                plot.assert_not_called()
 
 
 if __name__ == '__main__':
