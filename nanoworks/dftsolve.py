@@ -2937,15 +2937,19 @@ class dftsolve:
             parprint("Spin-Orbit Total DOS is computed. PDOS is not computed for SOC.")
             return
 
+        from gpaw.dos import DOSCalculator
+        # Use the DOS-stage eigenvalues, k-point grid and projector weights.
+        # Hybrid preparation deliberately returns the converged ground state.
+        rawdos = DOSCalculator.from_calculator(
+            calc, soc=False, theta=0.0, phi=0.0, shift_fermi_level=False)
+
         if self.Spin_calc == True:
             # ==========================================
             # SPIN DOWN CALCULATIONS
             # ==========================================
             parprint("Calculating and saving Raw PDOS for spin down...")
             
-            from gpaw.dos import DOSCalculator
             
-            rawdos = DOSCalculator.from_calculator(filename=self.struct+'-GROUND-GPAW-Result-State.gpw', soc=False, theta=0.0, phi=0.0, shift_fermi_level=False)
             energies = rawdos.get_energies(npoints=self.DOS_npoints)
             shifted_energies = energies - ef
 
@@ -3016,7 +3020,6 @@ class dftsolve:
             # SPIN UP CALCULATIONS
             # ==========================================
             parprint("Calculating and saving Raw PDOS for spin up...")
-            rawdos = DOSCalculator.from_calculator(self.struct+'-GROUND-GPAW-Result-State.gpw', soc=False, theta=0.0, phi=0.0, shift_fermi_level=False)
             energies = rawdos.get_energies(npoints=self.DOS_npoints)
             shifted_energies = energies - ef
 
@@ -3089,9 +3092,7 @@ class dftsolve:
             # ==========================================
             parprint("Calculating and saving Raw PDOS...")
             
-            from gpaw.dos import DOSCalculator
             
-            rawdos = DOSCalculator.from_calculator(self.struct+'-GROUND-GPAW-Result-State.gpw', soc=False, theta=0.0, phi=0.0, shift_fermi_level=False)
             energies = rawdos.get_energies(npoints=self.DOS_npoints)
             shifted_energies = energies - ef
 
@@ -3113,7 +3114,6 @@ class dftsolve:
             with paropen(self.struct+'-DOS-GPAW-Result-Raw-PDOS-Each-Atom.dat', "w") as fd:
                 print("AtomIndex(1) Element(1) " + table_header('Energy, s-total, p-total, pz, px, py, d-total, d3z2_r2, dzx, dyz, dx2_y2, dxy, f-total, TOTAL'), file=fd)
                 for j in range(0, self.bulk_configuration.get_global_number_of_atoms()):
-                    print(f"Atom no: {j+1}, Atom Symbol: {chem_sym[j]} ----------------------------------------", file=fd)
                     pdoss = rawdos.raw_pdos(energies, a=j, l=0, m=None, spin=None, width=self.DOS_width)
                     pdosp = rawdos.raw_pdos(energies, a=j, l=1, m=None, spin=None, width=self.DOS_width)
                     pdospx = rawdos.raw_pdos(energies, a=j, l=1, m=2, spin=None, width=self.DOS_width)
