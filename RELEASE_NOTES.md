@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- dftsolve --plot-optical regenerates verified GPAW/QE figures from saved summaries without DFT engines or geometry inputs.
+
 - GPAW/QE and saved optical results share one plotter; failed figure writes release Matplotlib resources.
 
 - Optical summaries store portable relative table paths; the reader verifies table hashes and supports older summaries.

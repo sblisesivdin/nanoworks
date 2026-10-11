@@ -388,6 +388,54 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             self.assertEqual(main(), 0)
         self.assertEqual(loader.call_args.kwargs['overrides'], {'Engine': 'QE', 'DOS_calc': True})
 
+    def test_main_plots_saved_optics_without_input_or_engine(self):
+        with (
+            patch.object(sys, 'argv', ['dftsolve', '--plot-optical', 'summary.json',
+                                      '--plot-output-dir', 'figures']),
+            patch('nanoworks.dftsolve.REQUESTED_PARALLEL', None),
+            patch('nanoworks.dftsolve.plot_optical_summary', return_value={
+                'figure_files': {'x': ['one.png']}, 'output_directory': 'figures'}) as plot,
+            patch('nanoworks.dftsolve.struct_from_file') as loader,
+            patch('nanoworks.dftsolve.load_engine_module') as engine,
+            patch('nanoworks.dftsolve.parprint'),
+        ):
+            self.assertEqual(main(), 0)
+        plot.assert_called_once_with('summary.json', 'figures')
+        loader.assert_not_called()
+        engine.assert_not_called()
+
+    def test_offline_plot_cli_rejects_conflicting_calculation_options(self):
+        for extra in (['-i', 'input.py'], ['--check'], ['-s', 'DOS_calc=True'],
+                      ['--scheduler', 'slurm'], ['-p', '2'], ['--slurm-module', 'qe']):
+            with (
+                self.subTest(extra=extra),
+                patch.object(sys, 'argv', ['dftsolve', '--plot-optical', 'summary.json', *extra]),
+                patch('nanoworks.dftsolve.REQUESTED_PARALLEL', None),
+                patch('nanoworks.dftsolve.plot_optical_summary') as plot,
+                patch('nanoworks.dftsolve.parprint'),
+            ):
+                self.assertEqual(main(), 2)
+            plot.assert_not_called()
+
+    def test_offline_plot_cli_returns_error_for_invalid_results(self):
+        with (
+            patch.object(sys, 'argv', ['dftsolve', '--plot-optical', 'summary.json']),
+            patch('nanoworks.dftsolve.REQUESTED_PARALLEL', None),
+            patch('nanoworks.dftsolve.plot_optical_summary', side_effect=ValueError('table content differs')),
+            patch('nanoworks.dftsolve.parprint') as output,
+        ):
+            self.assertEqual(main(), 2)
+        self.assertIn('table content differs', output.call_args.args[0])
+
+    def test_plot_output_directory_requires_saved_optical_mode(self):
+        with (
+            patch.object(sys, 'argv', ['dftsolve', '--plot-output-dir', 'figures']),
+            patch('nanoworks.dftsolve.parprint'),
+            patch('nanoworks.dftsolve.struct_from_file') as loader,
+        ):
+            self.assertEqual(main(), 2)
+        loader.assert_not_called()
+
     def test_invalid_override_check_json_stays_machine_readable(self):
         with (
             patch.object(sys, 'argv', ['dftsolve', '-s', 'DOS_calc=false', '--check', '--json']),

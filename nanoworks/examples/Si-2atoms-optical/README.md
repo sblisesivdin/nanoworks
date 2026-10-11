@@ -109,6 +109,22 @@ empty-band count. For GPAW also converge the response cutoff and BSE band
 windows. Check broadening separately from those convergence parameters.
 Inspect memory use before moving to a dense mesh or a large BSE Hamiltonian.
 
+## Regenerate figures without repeating DFT
+
+After a completed optical workflow, use its summary to recreate figures:
+
+```bash
+dftsolve --plot-optical Si-BSE-smoke-results/Si_mp-149_primitive_Example-OPTICAL-GPAW-Result-Summary.json
+```
+
+Use the actual structure-prefixed summary filename in your result folder;
+the geometry file's basename is not guaranteed to be the output prefix.
+No `-i`, `-g`, `-p`, GPAW installation or QE executables are required.
+The new figures go into `optical-plots` beside the summary, or select a
+directory with `--plot-output-dir figures`. Copy the summary and tables
+together to plot on another computer. All table hashes are checked first.
+The command keeps the saved photon energies and values unchanged.
+
 RPA and especially BSE production calculations may require substantially more
 memory. Increase k-point, band, and response cutoffs only after monitoring the
 memory use of the small example.

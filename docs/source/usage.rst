@@ -1,6 +1,36 @@
 Usage
 =====
 
+Regenerate Saved Optical Figures
+-------------------------------
+
+Completed GPAW and QE optical workflows save seven-column tables and an
+``*-OPTICAL-<engine>-Result-Summary.json`` file. Regenerate their four
+standard figures per table without an input file, geometry, ground state,
+GPAW installation or QE executables:
+
+.. code-block:: bash
+
+   dftsolve --plot-optical path/to/Si-OPTICAL-QE-Result-Summary.json
+   dftsolve --plot-optical path/to/Si-OPTICAL-QE-Result-Summary.json --plot-output-dir figures
+
+The default output is ``optical-plots`` beside the summary. This separate
+folder preserves the original calculation figures. Repeat plotting into
+the same folder replaces its generated images. Tables and summaries are
+read without modification. The command checks all recorded table hashes,
+dimensions and energy ranges before creating output; missing or altered
+results produce an error rather than plotting a different spectrum.
+
+Keep the summary together with its tables when copying results between
+computers. Version 2 paths are relative to the summary. The reader also
+supports version 1 summaries, preferring relocated sibling tables and
+still checking their hashes. Summaries are only available for workflows
+that produced them; the command does not infer a summary from old raw files.
+
+This mode does not accept calculation, MPI or scheduler options and does
+not need ``-i`` or ``-g``. It preserves the recorded spectrum and does not
+apply another scissors shift, smoothing or energy reference change.
+
 .. _usage:
 
 Usage
