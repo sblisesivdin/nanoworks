@@ -25,6 +25,8 @@ with patch.object(
         DFTConfig,
         _wrap_gpaw_dispersion,
         _freeze_elastic_calculator,
+        _elastic_cache_signature,
+        _elastic_cache_matches,
         convert_atoms_to_ase,
         convert_atoms_to_phonopy,
         GPAW_STAGE_GROUP_ENV,
@@ -52,6 +54,24 @@ with patch.object(
 
 
 class TestDFTSolveWorkflow(unittest.TestCase):
+    def test_elastic_cache_tracks_settings_and_rejects_legacy_records(self):
+        from ase.calculators.singlepoint import SinglePointCalculator
+
+        settings = {'cutoff': 400, 'kpoints': [4, 4, 4], 'ground_state': [100, 123]}
+        signature = _elastic_cache_signature(settings)
+        atoms = Atoms('Si', cell=[5, 5, 5], pbc=True)
+        atoms.calc = SinglePointCalculator(
+            atoms, energy=-5.0, stress=[1.0, 2.0, 3.0, 0.0, 0.0, 0.0],
+        )
+        self.assertFalse(_elastic_cache_matches([atoms], signature))
+        atoms.info['nanoworks_elastic_signature'] = signature
+        self.assertTrue(_elastic_cache_matches([atoms], signature))
+        for key, value in [('cutoff', 500), ('kpoints', [6, 6, 6]), ('ground_state', [100, 124])]:
+            with self.subTest(key=key):
+                changed = _elastic_cache_signature(dict(settings, **{key: value}))
+                self.assertFalse(_elastic_cache_matches([atoms], changed))
+        self.assertFalse(_elastic_cache_matches([], signature))
+
     def test_elastic_results_release_original_calculator(self):
         from ase.calculators.singlepoint import SinglePointCalculator
 

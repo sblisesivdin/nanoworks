@@ -22,6 +22,7 @@ import ast
 import gc
 import importlib.util
 import json
+import hashlib
 import math
 import shlex
 import shutil
@@ -1201,6 +1202,22 @@ def _wrap_gpaw_dispersion(calculator, vdw_calc, xc_calc):
         from ase.calculators.dftd3 import DFTD3
         return DFTD3(dft=calculator, xc=xc_calc)
     return calculator
+
+
+def _elastic_cache_signature(settings):
+    """Bind cached stresses to the reference state and deformation model."""
+    encoded = json.dumps(settings, sort_keys=True, allow_nan=False).encode('utf-8')
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _elastic_cache_matches(systems, signature):
+    """Legacy, stale and incomplete deformation records are not reusable."""
+    return bool(systems) and all(
+        atoms.info.get('nanoworks_elastic_signature') == signature
+        and np.isfinite(atoms.get_stress()).all()
+        and np.isfinite(atoms.get_potential_energy())
+        for atoms in systems
+    )
 
 
 def _freeze_elastic_calculator(atoms, stress):
@@ -2645,10 +2662,41 @@ class dftsolve:
         if str(self.config.vdW_calc).strip().upper() == 'D3':
             # Older D3 caches contain uncorrected stresses; do not reuse them.
             cache_file = self.struct + '-ELASTIC-GPAW-Result-Elastic-deformations-D3.traj'
+        ground_stat = Path(self.struct + '-GROUND-GPAW-Result-State.gpw').stat()
+        cache_signature = _elastic_cache_signature({
+            'schema': 1,
+            'ground_state': [ground_stat.st_size, ground_stat.st_mtime_ns],
+            'gpaw_version': getattr(sys.modules.get('gpaw'), '__version__', None),
+            'strain_points': strain_n,
+            'strain_magnitude': strain_mag,
+            'cutoff': self.config.Wavefunction_cutoff,
+            'xc': elastic_xc,
+            'setups': resolved_setups,
+            'spin': self.config.Spin_calc,
+            'charge': self.config.Total_charge,
+            'dispersion': str(self.config.vdW_calc).strip().upper(),
+            'kpoint_density': elastic_kpoint_density,
+            'kpoint_size': elastic_kpoint_size,
+            'gamma': elastic_gamma,
+            'scf': self.scf_settings,
+            'occupation': self.config.Occupation_scheme,
+            'smearing': self.config.Smearing_width,
+            'symbols': bulk_atoms.get_chemical_symbols(),
+            'cell': bulk_atoms.cell.tolist(),
+            'positions': bulk_atoms.positions.tolist(),
+        })
+        systems = None
         if os.path.exists(cache_file):
-            parprint("Loading deformed systems from cache.")
-            systems = read(cache_file, index=':')
-        else:
+            try:
+                cached = read(cache_file, index=':')
+                if _elastic_cache_matches(cached, cache_signature):
+                    systems = cached
+                    parprint("Loading verified deformed systems from cache.")
+                else:
+                    parprint("Elastic deformation cache is stale or unverified; recalculating.")
+            except (OSError, ValueError, RuntimeError, KeyError, EOFError):
+                parprint("Elastic deformation cache is unreadable; recalculating.")
+        if systems is None:
             systems = []
             # For each strain mode, sample strain_n values linearly from -strain_mag to +strain_mag.
             for mode, strain in enumerate(strain_matrices):
@@ -2692,6 +2740,8 @@ class dftsolve:
                 if not success:
                     parprint(f"WARNING: Mode {mode_label}: Skipping strain {eps:.4f} for current mode.")
             # Write deformed systems to cache file so that next time they can be loaded
+            for atoms in systems:
+                atoms.info['nanoworks_elastic_signature'] = cache_signature
             write(cache_file, systems)
             parprint(f"Deformed systems saved to cache file: {cache_file}")
 
