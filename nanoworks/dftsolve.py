@@ -6037,16 +6037,11 @@ class dftsolve:
 
         ground_path = Path(self.struct+'-GROUND-GPAW-Result-State.gpw')
         calc = self.engine.load_gpaw_calc(str(ground_path))
+        self.bulk_configuration = _gpaw_saved_reference_atoms(
+            calc, self.Spin_calc, self.bulk_configuration,
+        )
+        self.config.bulk_configuration = self.bulk_configuration
         self.bulk_configuration.calc = calc
-        # Use the converged magnetic ordering as the supercell SCF seed.
-        if self.Spin_calc:
-            if calc.get_number_of_spins() != 2:
-                raise ValueError('GPAW phonons require a spin-polarized ground state when Spin_calc=True.')
-            self.bulk_configuration.set_initial_magnetic_moments(
-                calc.get_magnetic_moments()
-            )
-        elif calc.get_number_of_spins() != 1:
-            raise ValueError('GPAW ground-state spin does not match Spin_calc=False.')
 
         # Pre-process
         bulk_configuration_ph = convert_atoms_to_phonopy(self.bulk_configuration)

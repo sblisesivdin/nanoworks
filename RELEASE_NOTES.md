@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- Build GPAW phonon displacements from saved ground-state geometry, retaining configured isotope masses and converged spin order.
+
 - Use saved GPAW geometry for density exports and reject incompatible atom/spin records while preserving isotope masses.
 
 - Use saved ground-state geometry and converged magnetic order for GPAW elastic deformations.
