@@ -1213,11 +1213,16 @@ def _wrap_gpaw_dispersion(calculator, vdw_calc, xc_calc):
     return calculator
 
 
-def _gpaw_elastic_reference_atoms(calculator, spin_polarized):
-    """Use the saved relaxed cell and converged magnetic order for strains."""
+def _gpaw_saved_reference_atoms(calculator, spin_polarized, input_atoms=None):
+    """Restore saved geometry/spin while preserving compatible isotope masses."""
     atoms = calculator.get_atoms()
+    if input_atoms is not None:
+        if atoms.get_chemical_symbols() != input_atoms.get_chemical_symbols():
+            raise ValueError('Saved GPAW state atom count or element order differs from the input.')
+        if input_atoms.has('masses'):
+            atoms.set_masses(input_atoms.get_masses())
     if calculator.get_number_of_spins() != (2 if spin_polarized else 1):
-        raise ValueError('GPAW elastic ground-state spin channels do not match Spin_calc.')
+        raise ValueError('GPAW ground-state spin channels do not match Spin_calc.')
     if spin_polarized:
         atoms.set_initial_magnetic_moments(calculator.get_magnetic_moments())
     return atoms
@@ -2657,8 +2662,11 @@ class dftsolve:
             self.struct + '-GROUND-GPAW-Result-State.gpw',
             hybrid=hybrid,
         )
-        bulk_atoms = _gpaw_elastic_reference_atoms(ref_calc, self.config.Spin_calc)
+        bulk_atoms = _gpaw_saved_reference_atoms(
+            ref_calc, self.config.Spin_calc, self.bulk_configuration,
+        )
         self.bulk_configuration = bulk_atoms
+        self.config.bulk_configuration = bulk_atoms
         bulk_atoms.calc = _wrap_gpaw_dispersion(
             ref_calc, self.config.vdW_calc, self.config.XC_calc,
         )
@@ -5371,6 +5379,10 @@ class dftsolve:
         time41 = time.time()
         parprint("Starting All-electron density calculation...")
         calc = self.engine.load_gpaw_calc(self.struct+'-GROUND-GPAW-Result-State.gpw', txt=self.struct+'-EDENSITY-GPAW-Log-Calculation.txt')
+        self.bulk_configuration = _gpaw_saved_reference_atoms(
+            calc, self.Spin_calc, self.bulk_configuration,
+        )
+        self.config.bulk_configuration = self.bulk_configuration
         self.bulk_configuration.calc = calc
         if self.Spin_calc == True:
             pseudo_density = calc.get_pseudo_density()

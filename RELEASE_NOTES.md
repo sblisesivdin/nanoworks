@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- Use saved GPAW geometry for density exports and reject incompatible atom/spin records while preserving isotope masses.
+
 - Use saved ground-state geometry and converged magnetic order for GPAW elastic deformations.
 
 - Stop GPAW workflows when geometry optimization reaches the step limit without convergence.

@@ -29,7 +29,7 @@ with patch.object(
         _elastic_cache_matches,
         _write_elastic_cache,
         _run_gpaw_geometry_optimizer,
-        _gpaw_elastic_reference_atoms,
+        _gpaw_saved_reference_atoms,
         convert_atoms_to_ase,
         convert_atoms_to_phonopy,
         GPAW_STAGE_GROUP_ENV,
@@ -57,6 +57,24 @@ with patch.object(
 
 
 class TestDFTSolveWorkflow(unittest.TestCase):
+    def test_saved_gpaw_geometry_preserves_input_isotope_masses(self):
+        saved = Atoms('Si2', cell=[5.4, 5.4, 5.4], pbc=True)
+        supplied = Atoms('Si2', cell=[5.0, 5.0, 5.0], pbc=True,
+                         masses=[29.0, 30.0])
+        calculator = Mock()
+        calculator.get_atoms.return_value = saved
+        calculator.get_number_of_spins.return_value = 1
+        result = _gpaw_saved_reference_atoms(calculator, False, supplied)
+        self.assertIs(result, saved)
+        self.assertEqual(result.cell.lengths().tolist(), [5.4, 5.4, 5.4])
+        self.assertEqual(result.get_masses().tolist(), [29.0, 30.0])
+
+    def test_saved_gpaw_geometry_rejects_element_order_mismatch(self):
+        calculator = Mock()
+        calculator.get_atoms.return_value = Atoms('SiO')
+        with self.assertRaisesRegex(ValueError, 'element order differs'):
+            _gpaw_saved_reference_atoms(calculator, False, Atoms('OSi'))
+
     def test_elastic_reference_uses_saved_geometry_and_converged_spin(self):
         saved = Atoms('Fe2', positions=[[0, 0, 0], [1.4, 1.4, 1.4]],
                       cell=[2.8, 2.8, 2.8], pbc=True)
@@ -64,7 +82,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         calculator.get_atoms.return_value = saved
         calculator.get_number_of_spins.return_value = 2
         calculator.get_magnetic_moments.return_value = [2.1, -2.1]
-        result = _gpaw_elastic_reference_atoms(calculator, True)
+        result = _gpaw_saved_reference_atoms(calculator, True)
         self.assertIs(result, saved)
         self.assertEqual(result.cell.lengths().tolist(), [2.8, 2.8, 2.8])
         self.assertEqual(result.get_initial_magnetic_moments().tolist(), [2.1, -2.1])
@@ -73,13 +91,13 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         calculator = Mock()
         calculator.get_number_of_spins.return_value = 1
         with self.assertRaisesRegex(ValueError, 'do not match Spin_calc'):
-            _gpaw_elastic_reference_atoms(calculator, True)
+            _gpaw_saved_reference_atoms(calculator, True)
 
     def test_elastic_reference_rejects_magnetic_state_for_nonspin_run(self):
         calculator = Mock()
         calculator.get_number_of_spins.return_value = 2
         with self.assertRaisesRegex(ValueError, 'do not match Spin_calc'):
-            _gpaw_elastic_reference_atoms(calculator, False)
+            _gpaw_saved_reference_atoms(calculator, False)
 
     def test_unconverged_gpaw_geometry_stops_workflow(self):
         optimizer = Mock()
