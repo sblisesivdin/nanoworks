@@ -1196,6 +1196,15 @@ def autoscale_y(ax, margin=0.1):
         bots, tops = zip(*bot_top)
         ax.set_ylim(min(bots), max(tops))
 
+def _run_gpaw_geometry_optimizer(optimizer, force_tolerance, max_steps):
+    """Stop the workflow when the requested geometry remains unconverged."""
+    if not optimizer.run(fmax=force_tolerance, steps=max_steps):
+        raise RuntimeError(
+            f'GPAW geometry optimization did not converge within {max_steps} steps. '
+            'Inspect the optimization log and trajectory before continuing.'
+        )
+
+
 def _wrap_gpaw_dispersion(calculator, vdw_calc, xc_calc):
     """Retain the configured dispersion in derived force/stress stages."""
     if str(vdw_calc).strip().upper() == 'D3':
@@ -2117,9 +2126,8 @@ class dftsolve:
                         relax = self._create_gpaw_geometry_optimizer(
                             self.bulk_configuration
                         )
-                    relax.run(
-                        fmax=self.Geometry_force_tolerance,
-                        steps=self.Geometry_max_steps,
+                    _run_gpaw_geometry_optimizer(
+                        relax, self.Geometry_force_tolerance, self.Geometry_max_steps,
                     )
 
                 else:
@@ -2216,9 +2224,8 @@ class dftsolve:
                         relax = self._create_gpaw_geometry_optimizer(
                             self.bulk_configuration
                         )
-                    relax.run(
-                        fmax=self.Geometry_force_tolerance,
-                        steps=self.Geometry_max_steps,
+                    _run_gpaw_geometry_optimizer(
+                        relax, self.Geometry_force_tolerance, self.Geometry_max_steps,
                     )
                 else:
                     self.bulk_configuration.set_calculator(calc)

@@ -28,6 +28,7 @@ with patch.object(
         _elastic_cache_signature,
         _elastic_cache_matches,
         _write_elastic_cache,
+        _run_gpaw_geometry_optimizer,
         convert_atoms_to_ase,
         convert_atoms_to_phonopy,
         GPAW_STAGE_GROUP_ENV,
@@ -55,6 +56,19 @@ with patch.object(
 
 
 class TestDFTSolveWorkflow(unittest.TestCase):
+    def test_unconverged_gpaw_geometry_stops_workflow(self):
+        optimizer = Mock()
+        optimizer.run.return_value = False
+        with self.assertRaisesRegex(RuntimeError, 'did not converge within 100 steps'):
+            _run_gpaw_geometry_optimizer(optimizer, 0.05, 100)
+        optimizer.run.assert_called_once_with(fmax=0.05, steps=100)
+
+    def test_converged_gpaw_geometry_can_continue(self):
+        optimizer = Mock()
+        optimizer.run.return_value = True
+        _run_gpaw_geometry_optimizer(optimizer, 0.05, 100)
+        optimizer.run.assert_called_once_with(fmax=0.05, steps=100)
+
     def test_failed_elastic_cache_write_preserves_previous_trajectory(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'deformations.traj'
