@@ -29,6 +29,7 @@ with patch.object(
         _elastic_cache_matches,
         _write_elastic_cache,
         _run_gpaw_geometry_optimizer,
+        _gpaw_elastic_reference_atoms,
         convert_atoms_to_ase,
         convert_atoms_to_phonopy,
         GPAW_STAGE_GROUP_ENV,
@@ -56,6 +57,30 @@ with patch.object(
 
 
 class TestDFTSolveWorkflow(unittest.TestCase):
+    def test_elastic_reference_uses_saved_geometry_and_converged_spin(self):
+        saved = Atoms('Fe2', positions=[[0, 0, 0], [1.4, 1.4, 1.4]],
+                      cell=[2.8, 2.8, 2.8], pbc=True)
+        calculator = Mock()
+        calculator.get_atoms.return_value = saved
+        calculator.get_number_of_spins.return_value = 2
+        calculator.get_magnetic_moments.return_value = [2.1, -2.1]
+        result = _gpaw_elastic_reference_atoms(calculator, True)
+        self.assertIs(result, saved)
+        self.assertEqual(result.cell.lengths().tolist(), [2.8, 2.8, 2.8])
+        self.assertEqual(result.get_initial_magnetic_moments().tolist(), [2.1, -2.1])
+
+    def test_elastic_reference_rejects_nonmagnetic_state_for_spin_run(self):
+        calculator = Mock()
+        calculator.get_number_of_spins.return_value = 1
+        with self.assertRaisesRegex(ValueError, 'do not match Spin_calc'):
+            _gpaw_elastic_reference_atoms(calculator, True)
+
+    def test_elastic_reference_rejects_magnetic_state_for_nonspin_run(self):
+        calculator = Mock()
+        calculator.get_number_of_spins.return_value = 2
+        with self.assertRaisesRegex(ValueError, 'do not match Spin_calc'):
+            _gpaw_elastic_reference_atoms(calculator, False)
+
     def test_unconverged_gpaw_geometry_stops_workflow(self):
         optimizer = Mock()
         optimizer.run.return_value = False

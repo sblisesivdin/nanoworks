@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- Use saved ground-state geometry and converged magnetic order for GPAW elastic deformations.
+
 - Stop GPAW workflows when geometry optimization reaches the step limit without convergence.
 
 - Publish elastic trajectory caches atomically and propagate write failures across MPI ranks.

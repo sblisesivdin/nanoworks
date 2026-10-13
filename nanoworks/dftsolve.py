@@ -1213,6 +1213,16 @@ def _wrap_gpaw_dispersion(calculator, vdw_calc, xc_calc):
     return calculator
 
 
+def _gpaw_elastic_reference_atoms(calculator, spin_polarized):
+    """Use the saved relaxed cell and converged magnetic order for strains."""
+    atoms = calculator.get_atoms()
+    if calculator.get_number_of_spins() != (2 if spin_polarized else 1):
+        raise ValueError('GPAW elastic ground-state spin channels do not match Spin_calc.')
+    if spin_polarized:
+        atoms.set_initial_magnetic_moments(calculator.get_magnetic_moments())
+    return atoms
+
+
 def _elastic_cache_signature(settings):
     """Bind cached stresses to the reference state and deformation model."""
     encoded = json.dumps(settings, sort_keys=True, allow_nan=False).encode('utf-8')
@@ -2643,11 +2653,12 @@ class dftsolve:
             )
         
         # Load the optimized (reference) structure
-        bulk_atoms = self.bulk_configuration
         ref_calc = self.engine.load_gpaw_calc(
             self.struct + '-GROUND-GPAW-Result-State.gpw',
             hybrid=hybrid,
         )
+        bulk_atoms = _gpaw_elastic_reference_atoms(ref_calc, self.config.Spin_calc)
+        self.bulk_configuration = bulk_atoms
         bulk_atoms.calc = _wrap_gpaw_dispersion(
             ref_calc, self.config.vdW_calc, self.config.XC_calc,
         )
@@ -2709,6 +2720,7 @@ class dftsolve:
             'symbols': bulk_atoms.get_chemical_symbols(),
             'cell': bulk_atoms.cell.tolist(),
             'positions': bulk_atoms.positions.tolist(),
+            'magmoms': bulk_atoms.get_initial_magnetic_moments().tolist(),
         })
         systems = None
         if os.path.exists(cache_file):
