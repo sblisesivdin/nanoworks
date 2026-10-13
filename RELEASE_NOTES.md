@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- Fix new GPAW phonon parameter access, NiO input validation and missing D3 preflight checks; correct Cr2O example output descriptions.
+
 - Queue GPAW/QE DFT examples in isolated run folders with per-stage logs and failure status; fix the ZnO QE example command.
 
 - Explain the silicon convergence example, parameter propagation and selection versus plot references.

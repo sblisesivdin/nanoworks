@@ -51,7 +51,7 @@ together when sharing results for diagnosis.
 | ----------------- | ------ |
 | Convergence       | Common GPAW/QE cutoff, k-point, and lattice-scale optimization workflow for bulk Si |
 | Bulk-GaAs-noCIF   | Ground, DOS, and Band calculations of bulk GaAs with PW. Positions are given with an Atom object.          |
-| Cr2O-spin         |Spin-dependent electronic properties of CrO2 |
+| Cr2O-spin         | Spin-dependent electronic properties of Cr2O |
 | Fe-QE-spin-smoke  | Native QE Ground/DOS/PDOS/Band/PBand/Density smoke workflow for ferromagnetic bcc Fe |
 | Si-QE-elastic     | Native QE 7.4.1/thermo_pw 2.1.0 elastic smoke workflow for bulk Si |
 | Graphene-LCAO     | Pristine graphene and graphene with a defect with LCAO. Uses a single config for two calculations. |
