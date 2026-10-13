@@ -27,6 +27,7 @@ with patch.object(
         _freeze_elastic_calculator,
         _elastic_cache_signature,
         _elastic_cache_matches,
+        _write_elastic_cache,
         convert_atoms_to_ase,
         convert_atoms_to_phonopy,
         GPAW_STAGE_GROUP_ENV,
@@ -54,6 +55,21 @@ with patch.object(
 
 
 class TestDFTSolveWorkflow(unittest.TestCase):
+    def test_failed_elastic_cache_write_preserves_previous_trajectory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'deformations.traj'
+            path.write_bytes(b'previous trajectory')
+
+            def fail(temporary, systems, **kwargs):
+                Path(temporary).write_bytes(b'partial trajectory')
+                raise OSError('simulated disk write failure')
+
+            with patch('nanoworks.dftsolve.write', side_effect=fail):
+                with self.assertRaisesRegex(OSError, 'disk write failure'):
+                    _write_elastic_cache(path, [])
+            self.assertEqual(path.read_bytes(), b'previous trajectory')
+            self.assertEqual(list(Path(directory).iterdir()), [path])
+
     def test_elastic_cache_tracks_settings_and_rejects_legacy_records(self):
         from ase.calculators.singlepoint import SinglePointCalculator
 

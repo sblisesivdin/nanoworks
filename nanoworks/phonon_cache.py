@@ -128,5 +128,5 @@ def collective_cache_call(callback, *args):
             error = f'{type(exc).__name__}: {exc}'
     error, result = broadcast((error, result), root=0, comm=world)
     if error is not None:
-        raise RuntimeError('Phonon cache I/O failed: ' + error)
+        raise RuntimeError('Cache I/O failed: ' + error)
     return result

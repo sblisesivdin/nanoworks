@@ -1211,13 +1211,31 @@ def _elastic_cache_signature(settings):
 
 
 def _elastic_cache_matches(systems, signature):
-    """Legacy, stale and incomplete deformation records are not reusable."""
+    """Legacy, stale and nonfinite deformation records are not reusable."""
     return bool(systems) and all(
         atoms.info.get('nanoworks_elastic_signature') == signature
         and np.isfinite(atoms.get_stress()).all()
         and np.isfinite(atoms.get_potential_energy())
         for atoms in systems
     )
+
+
+def _write_elastic_cache(path, systems):
+    """Publish a complete trajectory without truncating an earlier cache."""
+    import tempfile
+
+    path = Path(path)
+    descriptor, name = tempfile.mkstemp(
+        prefix=path.name + '.', suffix='.traj', dir=path.parent,
+    )
+    os.close(descriptor)
+    temporary = Path(name)
+    try:
+        # Called on the root rank through collective_cache_call.
+        write(temporary, systems, format='traj', parallel=False)
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def _freeze_elastic_calculator(atoms, stress):
@@ -2742,7 +2760,7 @@ class dftsolve:
             # Write deformed systems to cache file so that next time they can be loaded
             for atoms in systems:
                 atoms.info['nanoworks_elastic_signature'] = cache_signature
-            write(cache_file, systems)
+            collective_cache_call(_write_elastic_cache, cache_file, systems)
             parprint(f"Deformed systems saved to cache file: {cache_file}")
 
         expected = len(strain_matrices) * strain_n

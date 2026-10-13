@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- Publish elastic trajectory caches atomically and propagate write failures across MPI ranks.
+
 - Validate elastic deformation caches against ground state, strain sampling and electronic settings; recompute unverified or stale records.
 
 - Preserve GPAW D3 in phonon forces and invalidate force caches when dispersion changes.
