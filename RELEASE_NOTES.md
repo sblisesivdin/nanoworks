@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- Reject incompatible GPAW band-state spin channels and atom ordering before writing labelled band results.
+
 - Validate GPAW DOS/PDOS atom ordering and spin channels against the loaded state before exporting tables.
 
 - Build GPAW phonon displacements from saved ground-state geometry, retaining configured isotope masses and converged spin order.

@@ -5135,6 +5135,10 @@ class dftsolve:
         )
 
         calc.get_potential_energy()
+        self.bulk_configuration = _gpaw_saved_reference_atoms(
+            calc, self.Spin_calc, self.bulk_configuration,
+        )
+        self.config.bulk_configuration = self.bulk_configuration
         ef = self.hybrid_fermi_level(calc) if hybrid else calc.get_fermi_level()
         if ef is None or not np.isfinite(ef):
             raise ValueError('GPAW bands require a finite Fermi-level reference.')
