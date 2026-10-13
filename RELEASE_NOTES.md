@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- Apply GPAW D3 to reference and strained elastic stresses; avoid older uncorrected D3 deformation caches.
+
 - Fix new GPAW phonon parameter access, NiO input validation and missing D3 preflight checks; correct Cr2O example output descriptions.
 
 - Queue GPAW/QE DFT examples in isolated run folders with per-stage logs and failure status; fix the ZnO QE example command.

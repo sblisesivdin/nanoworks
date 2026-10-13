@@ -23,6 +23,7 @@ with patch.object(
 ):
     from nanoworks.dftsolve import (
         DFTConfig,
+        _wrap_gpaw_elastic_dispersion,
         convert_atoms_to_ase,
         convert_atoms_to_phonopy,
         GPAW_STAGE_GROUP_ENV,
@@ -50,6 +51,22 @@ with patch.object(
 
 
 class TestDFTSolveWorkflow(unittest.TestCase):
+    @patch('ase.calculators.dftd3.DFTD3')
+    def test_elastic_dispersion_wraps_calculator_and_preserves_xc(self, d3):
+        calculator = object()
+        corrected = _wrap_gpaw_elastic_dispersion(calculator, ' d3 ', 'PBE')
+        self.assertIs(corrected, d3.return_value)
+        d3.assert_called_once_with(dft=calculator, xc='PBE')
+
+    @patch('ase.calculators.dftd3.DFTD3')
+    def test_elastic_without_dispersion_retains_calculator(self, d3):
+        calculator = object()
+        self.assertIs(
+            _wrap_gpaw_elastic_dispersion(calculator, 'None', 'PBE'),
+            calculator,
+        )
+        d3.assert_not_called()
+
 
     def test_phonon_settings_rejected_before_calculation_configuration_completes(self):
         for engine in ('GPAW', 'QE'):

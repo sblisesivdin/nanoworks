@@ -1195,6 +1195,14 @@ def autoscale_y(ax, margin=0.1):
         bots, tops = zip(*bot_top)
         ax.set_ylim(min(bots), max(tops))
 
+def _wrap_gpaw_elastic_dispersion(calculator, vdw_calc, xc_calc):
+    """Apply the same dispersion model to reference and strained stresses."""
+    if str(vdw_calc).strip().upper() == 'D3':
+        from ase.calculators.dftd3 import DFTD3
+        return DFTD3(dft=calculator, xc=xc_calc)
+    return calculator
+
+
 class dftsolve:
     """
     The dftsolve class is a high-level interaction script for GPAW calculations.
@@ -2561,7 +2569,7 @@ class dftsolve:
             )
 
         def make_elastic_calc():
-            return self.engine.create_elastic_calc(
+            calculator = self.engine.create_elastic_calc(
                 cutoff=self.config.Wavefunction_cutoff,
                 xc=elastic_xc,
                 setups=resolved_setups,
@@ -2578,6 +2586,9 @@ class dftsolve:
                 occupations=self.Occupation,
                 hybrid=hybrid,
             )
+            return _wrap_gpaw_elastic_dispersion(
+                calculator, self.config.vdW_calc, self.config.XC_calc,
+            )
         
         # Load the optimized (reference) structure
         bulk_atoms = self.bulk_configuration
@@ -2585,7 +2596,9 @@ class dftsolve:
             self.struct + '-GROUND-GPAW-Result-State.gpw',
             hybrid=hybrid,
         )
-        bulk_atoms.set_calculator(ref_calc)
+        bulk_atoms.calc = _wrap_gpaw_elastic_dispersion(
+            ref_calc, self.config.vdW_calc, self.config.XC_calc,
+        )
         parprint('Optimized (reference) structure is loaded.')
         try:
             ref_stress = bulk_atoms.get_stress(voigt=False)
@@ -2619,6 +2632,9 @@ class dftsolve:
         strain_names = ['ε_xx', 'ε_yy', 'ε_zz', 'ε_xy', 'ε_xz', 'ε_yz']
         # --- Cache file for deformed systems ---
         cache_file = self.struct + '-ELASTIC-GPAW-Result-Elastic-deformations.traj'
+        if str(self.config.vdW_calc).strip().upper() == 'D3':
+            # Older D3 caches contain uncorrected stresses; do not reuse them.
+            cache_file = self.struct + '-ELASTIC-GPAW-Result-Elastic-deformations-D3.traj'
         if os.path.exists(cache_file):
             parprint("Loading deformed systems from cache.")
             systems = read(cache_file, index=':')
@@ -2634,10 +2650,10 @@ class dftsolve:
                         parprint(f"Mode {mode_label}: Using ground-state stress for strain {eps:.4f}")
                         ref_atoms = bulk_atoms.copy()
                         # Use the previously computed reference values:
-                        ref_atoms.set_calculator(SinglePointCalculator(ref_atoms, 
+                        ref_atoms.calc = SinglePointCalculator(ref_atoms,
                                                 energy=bulk_atoms.get_potential_energy(), 
                                                 stress=ref_stress, 
-                                                forces=bulk_atoms.get_forces()))
+                                                forces=bulk_atoms.get_forces())
                         systems.append(ref_atoms)
                         continue
                     success = False
@@ -2648,20 +2664,8 @@ class dftsolve:
                         strain_tensor = np.eye(3) + current_eps * strain
                         deformed_atoms.set_cell(deformed_atoms.cell @ strain_tensor, scale_atoms=True)
             
-                        # Attach a new GPAW calculator for the deformed structure using PBE.
-                        deformed_atoms.set_calculator(
-                            make_elastic_calc()
-                        )
-                        # Wrapping for vdW
-                        if hasattr(self.config, 'vdW_calc') and self.config.vdW_calc.upper() == 'D3':
-                            from ase.calculators.dftd3 import DFTD3
-                            gpaw_calc = deformed_atoms
-                            
-                            # wrap it
-                            calc = DFTD3(dft=gpaw_calc)
-                            calc.write = gpaw_calc.write 
-                            if hasattr(gpaw_calc, 'get_fermi_level'): calc.get_fermi_level = gpaw_calc.get_fermi_level
-                            parprint("Applying Grimme DFT-D3 via native ASE Wrapper on legacy GPAW...")
+                        # Use the resolved electronic model, including D3.
+                        deformed_atoms.calc = make_elastic_calc()
                         
                         try:
                             deformed_atoms.get_potential_energy()
