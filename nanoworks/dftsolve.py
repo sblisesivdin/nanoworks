@@ -1203,6 +1203,16 @@ def _wrap_gpaw_elastic_dispersion(calculator, vdw_calc, xc_calc):
     return calculator
 
 
+def _freeze_elastic_calculator(atoms, stress):
+    """Keep strain results without retaining each GPAW wave-function state."""
+    atoms.calc = SinglePointCalculator(
+        atoms,
+        energy=atoms.get_potential_energy(),
+        stress=stress,
+        forces=atoms.get_forces(),
+    )
+
+
 class dftsolve:
     """
     The dftsolve class is a high-level interaction script for GPAW calculations.
@@ -2673,6 +2683,7 @@ class dftsolve:
                             deformed_atoms.calc.calculate(deformed_atoms, properties=['stress'])
                             stress_tensor = deformed_atoms.get_stress(voigt=False)
                             parprint(f"Mode {mode_label}: Computed stress for strain {eps:.4f} (factor {factor}):\n{stress_tensor}")
+                            _freeze_elastic_calculator(deformed_atoms, stress_tensor)
                             systems.append(deformed_atoms)
                             success = True
                             break

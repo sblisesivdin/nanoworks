@@ -24,6 +24,7 @@ with patch.object(
     from nanoworks.dftsolve import (
         DFTConfig,
         _wrap_gpaw_elastic_dispersion,
+        _freeze_elastic_calculator,
         convert_atoms_to_ase,
         convert_atoms_to_phonopy,
         GPAW_STAGE_GROUP_ENV,
@@ -51,6 +52,22 @@ with patch.object(
 
 
 class TestDFTSolveWorkflow(unittest.TestCase):
+    def test_elastic_results_release_original_calculator(self):
+        from ase.calculators.singlepoint import SinglePointCalculator
+
+        atoms = Atoms('Si', cell=[5, 5, 5], pbc=True)
+        original = SinglePointCalculator(
+            atoms, energy=-5.0, forces=[[0.1, 0.2, 0.3]],
+            stress=[1.0, 2.0, 3.0, 0.0, 0.0, 0.0],
+        )
+        atoms.calc = original
+        stress = atoms.get_stress(voigt=False)
+        _freeze_elastic_calculator(atoms, stress)
+        self.assertIsNot(atoms.calc, original)
+        self.assertEqual(atoms.get_potential_energy(), -5.0)
+        self.assertEqual(atoms.get_forces().tolist(), [[0.1, 0.2, 0.3]])
+        self.assertEqual(atoms.get_stress(voigt=False).tolist(), stress.tolist())
+
     @patch('ase.calculators.dftd3.DFTD3')
     def test_elastic_dispersion_wraps_calculator_and_preserves_xc(self, d3):
         calculator = object()

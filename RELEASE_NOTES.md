@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- Release full GPAW calculators after each elastic deformation while retaining energy, force and stress results.
+
 - Apply GPAW D3 to reference and strained elastic stresses; avoid older uncorrected D3 deformation caches.
 
 - Fix new GPAW phonon parameter access, NiO input validation and missing D3 preflight checks; correct Cr2O example output descriptions.
