@@ -23,7 +23,7 @@ with patch.object(
 ):
     from nanoworks.dftsolve import (
         DFTConfig,
-        _wrap_gpaw_elastic_dispersion,
+        _wrap_gpaw_dispersion,
         _freeze_elastic_calculator,
         convert_atoms_to_ase,
         convert_atoms_to_phonopy,
@@ -71,7 +71,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
     @patch('ase.calculators.dftd3.DFTD3')
     def test_elastic_dispersion_wraps_calculator_and_preserves_xc(self, d3):
         calculator = object()
-        corrected = _wrap_gpaw_elastic_dispersion(calculator, ' d3 ', 'PBE')
+        corrected = _wrap_gpaw_dispersion(calculator, ' d3 ', 'PBE')
         self.assertIs(corrected, d3.return_value)
         d3.assert_called_once_with(dft=calculator, xc='PBE')
 
@@ -79,7 +79,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
     def test_elastic_without_dispersion_retains_calculator(self, d3):
         calculator = object()
         self.assertIs(
-            _wrap_gpaw_elastic_dispersion(calculator, 'None', 'PBE'),
+            _wrap_gpaw_dispersion(calculator, 'None', 'PBE'),
             calculator,
         )
         d3.assert_not_called()

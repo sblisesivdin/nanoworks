@@ -1195,8 +1195,8 @@ def autoscale_y(ax, margin=0.1):
         bots, tops = zip(*bot_top)
         ax.set_ylim(min(bots), max(tops))
 
-def _wrap_gpaw_elastic_dispersion(calculator, vdw_calc, xc_calc):
-    """Apply the same dispersion model to reference and strained stresses."""
+def _wrap_gpaw_dispersion(calculator, vdw_calc, xc_calc):
+    """Retain the configured dispersion in derived force/stress stages."""
     if str(vdw_calc).strip().upper() == 'D3':
         from ase.calculators.dftd3 import DFTD3
         return DFTD3(dft=calculator, xc=xc_calc)
@@ -2596,7 +2596,7 @@ class dftsolve:
                 occupations=self.Occupation,
                 hybrid=hybrid,
             )
-            return _wrap_gpaw_elastic_dispersion(
+            return _wrap_gpaw_dispersion(
                 calculator, self.config.vdW_calc, self.config.XC_calc,
             )
         
@@ -2606,7 +2606,7 @@ class dftsolve:
             self.struct + '-GROUND-GPAW-Result-State.gpw',
             hybrid=hybrid,
         )
-        bulk_atoms.calc = _wrap_gpaw_elastic_dispersion(
+        bulk_atoms.calc = _wrap_gpaw_dispersion(
             ref_calc, self.config.vdW_calc, self.config.XC_calc,
         )
         parprint('Optimized (reference) structure is loaded.')
@@ -5970,6 +5970,9 @@ class dftsolve:
             ground_calc=calc,
             supercell_multiplier=int(round(abs(np.linalg.det(self.Phonon_supercell)))),
         )
+        calc = _wrap_gpaw_dispersion(
+            calc, self.config.vdW_calc, self.config.XC_calc,
+        )
 
         self.bulk_configuration.calc = calc
 
@@ -5982,6 +5985,7 @@ class dftsolve:
         cache_path = Path(self.struct+'-PHONON-GPAW-Result-Cache.json')
         cache_settings = {
             'schema': 2,
+            'dispersion': str(self.config.vdW_calc).strip().upper(),
             'ground_state': [ground_path.stat().st_size, ground_path.stat().st_mtime_ns],
             'gpaw_version': getattr(sys.modules.get('gpaw'), '__version__', None),
             'phonopy_version': phonopy.__version__,
@@ -7327,7 +7331,7 @@ def check_dft_configuration(
         if (
             check_executables
             and str(config.vdW_calc).strip().upper() == 'D3'
-            and (config.Ground_calc or config.Elastic_calc)
+            and (config.Ground_calc or config.Elastic_calc or config.Phonon_calc)
         ):
             executable = shutil.which('dftd3')
             add(
