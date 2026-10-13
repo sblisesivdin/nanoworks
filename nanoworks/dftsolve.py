@@ -7309,6 +7309,18 @@ def check_dft_configuration(
                 'installed',
             )
 
+        if (
+            check_executables
+            and str(config.vdW_calc).strip().upper() == 'D3'
+            and (config.Ground_calc or config.Elastic_calc)
+        ):
+            executable = shutil.which('dftd3')
+            add(
+                'ok' if executable else 'error',
+                'executable:dftd3',
+                executable or 'dftd3 is required for GPAW Grimme-D3 calculations but was not found in PATH.',
+            )
+
         for stage, module_name in (
             ('elastic', 'elastic'),
             ('phonon', 'phonopy'),

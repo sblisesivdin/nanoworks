@@ -10,14 +10,14 @@ Mode = 'PW'
 Outdirname = 'NiO-QE-phonon-results'
 
 # Doubled rocksalt primitive cell with alternating (111) Ni layers.
-a = 4.17
+_lattice_constant = 4.17
 bulk_configuration = make_supercell(
-    bulk('NiO', 'rocksalt', a=a),
+    bulk('NiO', 'rocksalt', a=_lattice_constant),
     np.array([[1, 1, 0], [0, 1, 1], [1, 0, 1]]),
 )
 Spin_calc = True
 Magmom_per_atom = [
-    (2.0 if int(round(sum(atom.position) / a)) % 2 == 0 else -2.0)
+    (2.0 if int(round(sum(atom.position) / _lattice_constant)) % 2 == 0 else -2.0)
     if atom.symbol == 'Ni' else 0.0
     for atom in bulk_configuration
 ]
