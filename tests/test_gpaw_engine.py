@@ -63,6 +63,30 @@ class TestGPAWEngine(unittest.TestCase):
         self.assertEqual(ground.new.call_args.kwargs['nbands'], 80)
         self.assertEqual(ground.new.call_args.kwargs['charge'], 4.0)
 
+    def test_phonon_calc_accepts_new_gpaw_parameters(self):
+        class Parameters:
+            def __init__(self, values):
+                self.values = values
+
+            def todict(self):
+                return dict(self.values)
+
+        for bands in (20, '200%', None):
+            with self.subTest(bands=bands):
+                ground = MagicMock()
+                ground.parameters = Parameters({'nbands': bands, 'charge': 1.0})
+                result = create_phonon_calc(
+                    400, (2, 2, 1), 'forces.txt',
+                    ground_calc=ground, supercell_multiplier=4,
+                )
+                self.assertIs(result, ground.new.return_value)
+                kwargs = ground.new.call_args.kwargs
+                self.assertEqual(kwargs['charge'], 4.0)
+                if bands == 20:
+                    self.assertEqual(kwargs['nbands'], 80)
+                else:
+                    self.assertNotIn('nbands', kwargs)
+
     def test_hybrid_string_is_detected(self):
         self.assertTrue(is_hybrid('HSE06'))
         self.assertTrue(is_hybrid('HSE-06'))
@@ -1028,3 +1052,4 @@ class TestGPAWEngine(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+

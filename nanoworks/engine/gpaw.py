@@ -371,10 +371,14 @@ def create_phonon_calc(
         }
         # Absolute band counts belong to the unit cell. Relative counts
         # such as '200%' already adjust to the displaced supercell.
-        nbands = ground_calc.parameters.get('nbands')
+        parameters = ground_calc.parameters
+        # New GPAW exposes a Parameters object; legacy GPAW uses a mapping.
+        if hasattr(parameters, 'todict'):
+            parameters = parameters.todict()
+        nbands = parameters.get('nbands')
         if isinstance(nbands, Integral):
             kwargs['nbands'] = int(nbands) * int(supercell_multiplier)
-        charge = ground_calc.parameters.get('charge', 0.0)
+        charge = parameters.get('charge', 0.0)
         if charge:
             kwargs['charge'] = charge * int(supercell_multiplier)
         return ground_calc.new(**kwargs)
