@@ -2977,6 +2977,11 @@ class dftsolve:
             nbands=self.DOS_num_of_bands,
         )
 
+        self.bulk_configuration = _gpaw_saved_reference_atoms(
+            calc, self.Spin_calc, self.bulk_configuration,
+        )
+        self.config.bulk_configuration = self.bulk_configuration
+
         if hybrid:
             ef = self.hybrid_fermi_level(calc)
         else:
