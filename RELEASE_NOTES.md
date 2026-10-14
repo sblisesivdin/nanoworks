@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- Honor GPAW SCF iteration limits and solver profiles in elastic deformations, invalidate older caches and log every skipped strain point.
+
 - Stop GPAW elastic reporting when the fit cannot determine all independent constants or returns non-finite coefficients.
 
 - Correct GPAW cubic shear stiffness and hexagonal constant ordering when reconstructing full elastic tensors.

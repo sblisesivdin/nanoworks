@@ -2704,6 +2704,8 @@ class dftsolve:
                     + '-ELASTIC-GPAW-Log-Elastic-deformations.txt',
                 charge=self.config.Total_charge,
                 convergence=self.scf_settings['convergence'],
+                maxiter=self.scf_settings['maxiter'],
+                eigensolver=self.scf_settings['eigensolver'],
                 occupations=self.Occupation,
                 hybrid=hybrid,
             )
@@ -2762,7 +2764,8 @@ class dftsolve:
             cache_file = self.struct + '-ELASTIC-GPAW-Result-Elastic-deformations-D3.traj'
         ground_stat = Path(self.struct + '-GROUND-GPAW-Result-State.gpw').stat()
         cache_signature = _elastic_cache_signature({
-            'schema': 1,
+            # Earlier caches may have ignored the selected SCF solver/limit.
+            'schema': 2,
             'ground_state': [ground_stat.st_size, ground_stat.st_mtime_ns],
             'gpaw_version': getattr(sys.modules.get('gpaw'), '__version__', None),
             'strain_points': strain_n,
@@ -2837,8 +2840,8 @@ class dftsolve:
                             break
                         except Exception as e:
                             parprint(f"ERROR: Mode {mode_label}: Failed to compute stress for strain {eps:.4f} (factor {factor}): {e}")
-                if not success:
-                    parprint(f"WARNING: Mode {mode_label}: Skipping strain {eps:.4f} for current mode.")
+                    if not success:
+                        parprint(f"WARNING: Mode {mode_label}: Skipping strain {eps:.4f} for current mode.")
             # Write deformed systems to cache file so that next time they can be loaded
             _validate_elastic_strain_coverage(bulk_atoms, systems, strain_matrices, strain_names)
             for atoms in systems:

@@ -534,6 +534,7 @@ class TestGPAWEngine(unittest.TestCase):
         create_calc,
     ):
         mixer = object()
+        solver = object()
         calculator = object()
         create_calc.return_value = calculator
 
@@ -555,6 +556,8 @@ class TestGPAWEngine(unittest.TestCase):
                 'width': 0.05,
             },
             hybrid=False,
+            maxiter=120,
+            eigensolver=solver,
         )
 
         self.assertIs(result, calculator)
@@ -579,7 +582,8 @@ class TestGPAWEngine(unittest.TestCase):
         )
         self.assertEqual(kwargs['nbands'], '200%')
         self.assertIs(kwargs['mixer'], mixer)
-        self.assertNotIn('eigensolver', kwargs)
+        self.assertIs(kwargs['eigensolver'], solver)
+        self.assertEqual(kwargs['maxiter'], 120)
     
     @patch('nanoworks.engine.gpaw.create_gpaw_calc')
     def test_elastic_calc_uses_kpoint_density(
@@ -645,6 +649,8 @@ class TestGPAWEngine(unittest.TestCase):
             convergence={},
             occupations={},
             hybrid=True,
+            maxiter=140,
+            eigensolver=object(),
         )
 
         self.assertIs(result, calculator)
@@ -660,6 +666,7 @@ class TestGPAWEngine(unittest.TestCase):
             },
         )
         self.assertEqual(kwargs['eigensolver'].niter, 1)
+        self.assertEqual(kwargs['maxiter'], 140)
         self.assertEqual(
             kwargs['kpts'],
             {

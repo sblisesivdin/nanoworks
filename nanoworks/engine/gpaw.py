@@ -320,6 +320,8 @@ def create_elastic_calc(
     convergence,
     occupations,
     hybrid=False,
+    maxiter=None,
+    eigensolver=None,
 ):
     """Create a GPAW calculator for elastic deformations."""
     kwargs = build_ground_common_kwargs(
@@ -329,6 +331,8 @@ def create_elastic_calc(
         txt=txt,
         convergence=convergence,
         occupations=occupations,
+        maxiter=maxiter,
+        eigensolver=eigensolver,
     )
 
     kwargs.update({
