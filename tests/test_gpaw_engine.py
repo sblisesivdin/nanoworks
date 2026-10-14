@@ -451,6 +451,7 @@ class TestGPAWEngine(unittest.TestCase):
         create_calc.return_value = calculator
 
         result = create_lcao_ground_calc(
+            xc='PBE',
             setups={'Ga': 'dzp'},
             parallel={'domain': 4},
             mixer=mixer,
@@ -473,6 +474,7 @@ class TestGPAWEngine(unittest.TestCase):
 
         kwargs = create_calc.call_args.kwargs
 
+        self.assertEqual(kwargs['xc'], 'PBE')
         self.assertEqual(kwargs['mode'], 'lcao')
         self.assertEqual(kwargs['basis'], 'dzp')
         self.assertEqual(kwargs['setups'], {'Ga': 'dzp'})
@@ -511,6 +513,7 @@ class TestGPAWEngine(unittest.TestCase):
         )
 
         kwargs = create_calc.call_args.kwargs
+        self.assertEqual(kwargs['xc'], 'LDA')
 
         self.assertEqual(
             kwargs['kpts'],

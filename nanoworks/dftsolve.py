@@ -2215,6 +2215,7 @@ class dftsolve:
                     )
 
                 calc = self.engine.create_lcao_ground_calc(
+                    xc=actual_xc,
                     setups=resolved_setups,
                     parallel={'domain': world.size},
                     mixer=self.scf_mixer,
@@ -2247,7 +2248,7 @@ class dftsolve:
                     gpaw_calc = calc
                     
                     # wrap it
-                    calc = DFTD3(dft=gpaw_calc)
+                    calc = DFTD3(dft=gpaw_calc, xc=self.config.XC_calc)
                     calc.write = gpaw_calc.write 
                     if hasattr(gpaw_calc, 'get_fermi_level'): calc.get_fermi_level = gpaw_calc.get_fermi_level
                     parprint("Applying Grimme DFT-D3 via native ASE Wrapper on legacy GPAW...")

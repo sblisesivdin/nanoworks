@@ -268,6 +268,7 @@ def create_lcao_ground_calc(
     nbands=None,
     maxiter=None,
     eigensolver=None,
+    xc='LDA',
 ):
     """Create a GPAW LCAO ground-state calculator."""
     kwargs = build_ground_common_kwargs(
@@ -284,6 +285,7 @@ def create_lcao_ground_calc(
 
     kwargs.update({
         'mode': 'lcao',
+        'xc': xc,
         'basis': basis,
         'setups': setups,
         'parallel': parallel,
