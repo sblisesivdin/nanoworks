@@ -150,11 +150,20 @@ def load_qe_pseudo_manifest(
             "Run 'nanoworks --install-qe-pseudos' first."
         )
 
-    with path.open(
-        'r',
-        encoding='utf-8',
-    ) as fd:
-        return json.load(fd)
+    repair = "Run 'nanoworks --install-qe-pseudos' to repair the managed set."
+    try:
+        with path.open('r', encoding='utf-8') as fd:
+            manifest = json.load(fd)
+    except (json.JSONDecodeError, UnicodeError) as exc:
+        raise ValueError(f"QE pseudopotential manifest '{path}' is invalid. {repair}") from exc
+    files = manifest.get('files') if isinstance(manifest, dict) else None
+    if (
+        not isinstance(files, dict)
+        or not files
+        or any(not isinstance(filename, str) or not filename for filename in files.values())
+    ):
+        raise ValueError(f"QE pseudopotential manifest '{path}' has an invalid file registry. {repair}")
+    return manifest
 
 
 def _safe_extract_tar(archive, destination):
@@ -666,18 +675,18 @@ def resolve_qe_pseudopotentials(
             raise FileNotFoundError(
                 "No installed QE pseudopotential "
                 f"is registered for {symbol} in "
-                f"'{pseudo_dir}'."
+                f"'{pseudo_dir}'. Run 'nanoworks --install-qe-pseudos' to repair the managed set."
             )
 
         path = (
             pseudo_dir / filename
         )
 
-        if not path.exists():
+        if not path.is_file() or path.stat().st_size == 0:
             raise FileNotFoundError(
-                f"QE pseudopotential '{filename}' "
-                f"for {symbol} is missing from "
-                f"'{pseudo_dir}'."
+                f"QE pseudopotential '{filename}' for {symbol} is missing, empty "
+                f"or not a regular file in '{pseudo_dir}'. "
+                "Run 'nanoworks --install-qe-pseudos' to repair the managed set."
             )
 
         resolved[symbol] = filename

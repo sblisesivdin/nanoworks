@@ -32,6 +32,47 @@ from nanoworks.pseudos import (
 
 class TestPseudopotentials(unittest.TestCase):
 
+    @patch('nanoworks.pseudos.Path.home')
+    def test_invalid_manifests_report_the_repair_command(self, home):
+        invalid = ('{', '[]', 'null', '{}', '{"files": []}',
+                   '{"files": {}}', '{"files": {"Si": null}}',
+                   '{"files": {"Si": ""}}')
+        with tempfile.TemporaryDirectory() as tmp:
+            home.return_value = Path(tmp)
+            ensure_qe_pseudo_dir()
+            path = get_qe_pseudo_manifest_path()
+            for text in invalid:
+                with self.subTest(manifest=text):
+                    path.write_text(text, encoding='utf-8')
+                    with self.assertRaisesRegex(ValueError, 'nanoworks --install-qe-pseudos') as caught:
+                        load_qe_pseudo_manifest()
+                    self.assertIn(str(path), str(caught.exception))
+
+    @patch('nanoworks.pseudos.Path.home')
+    def test_resolver_rejects_missing_empty_and_directory_upf(self, home):
+        from types import SimpleNamespace
+
+        with tempfile.TemporaryDirectory() as tmp:
+            home.return_value = Path(tmp)
+            directory = ensure_qe_pseudo_dir()
+            get_qe_pseudo_manifest_path().write_text(
+                json.dumps({'files': {'Si': 'Si.upf'}}), encoding='utf-8')
+            path = directory / 'Si.upf'
+            atoms = SimpleNamespace(get_chemical_symbols=lambda: ['Si'])
+            for state in ('missing', 'empty', 'directory'):
+                with self.subTest(state=state):
+                    if state == 'empty':
+                        path.write_bytes(b'')
+                    elif state == 'directory':
+                        path.unlink()
+                        path.mkdir()
+                    with self.assertRaisesRegex(FileNotFoundError, 'nanoworks --install-qe-pseudos'):
+                        resolve_qe_pseudopotentials(atoms)
+            path.rmdir()
+            path.write_text('<UPF></UPF>', encoding='utf-8')
+            self.assertEqual(resolve_qe_pseudopotentials(atoms), {'Si': 'Si.upf'})
+
+
     @patch('nanoworks.pseudos.urlretrieve')
     @patch('nanoworks.pseudos.Path.home')
     def test_installer_repairs_incomplete_or_invalid_managed_sets(self, home, download):

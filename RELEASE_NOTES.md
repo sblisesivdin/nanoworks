@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Reject malformed QE pseudo registries and missing or empty managed UPFs before calculations, with the installation repair command in errors.
+
 - Reinstall managed QE pseudopotentials when manifests are invalid, set versions differ or registered UPF files are missing or empty.
 
 - Show a shared command-and-version startup line for dftsolve, mdsolve and mlsolve without repeating it in internal GPAW processes.
