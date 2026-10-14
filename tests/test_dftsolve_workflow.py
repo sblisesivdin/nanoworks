@@ -262,6 +262,29 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 self.assertFalse(_elastic_cache_matches([atoms], changed))
         self.assertFalse(_elastic_cache_matches([], signature))
 
+    @patch('nanoworks.dftsolve.SinglePointCalculator')
+    def test_elastic_results_reject_nonfinite_samples_before_releasing_calculator(self, snapshot):
+        import numpy as np
+
+        for field in ('energy', 'stress', 'forces'):
+            for value in (np.nan, np.inf):
+                with self.subTest(field=field, value=value):
+                    energy = value if field == 'energy' else -5.0
+                    stress = np.zeros((3, 3))
+                    forces = np.zeros((1, 3))
+                    if field == 'stress':
+                        stress[0, 0] = value
+                    if field == 'forces':
+                        forces[0, 0] = value
+                    calculator = object()
+                    atoms = Mock(calc=calculator)
+                    atoms.get_potential_energy.return_value = energy
+                    atoms.get_forces.return_value = forces
+                    with self.assertRaisesRegex(RuntimeError, 'non-finite'):
+                        _freeze_elastic_calculator(atoms, stress)
+                    self.assertIs(atoms.calc, calculator)
+        snapshot.assert_not_called()
+
     def test_elastic_results_release_original_calculator(self):
         from ase.calculators.singlepoint import SinglePointCalculator
 

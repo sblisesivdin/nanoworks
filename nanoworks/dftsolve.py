@@ -1317,11 +1317,15 @@ def _write_elastic_cache(path, systems):
 
 def _freeze_elastic_calculator(atoms, stress):
     """Keep strain results without retaining each GPAW wave-function state."""
+    energy = atoms.get_potential_energy()
+    forces = atoms.get_forces()
+    if not all(np.all(np.isfinite(value)) for value in (energy, stress, forces)):
+        raise RuntimeError('Elastic deformation returned non-finite energy, stress or forces.')
     atoms.calc = SinglePointCalculator(
         atoms,
-        energy=atoms.get_potential_energy(),
+        energy=energy,
         stress=stress,
-        forces=atoms.get_forces(),
+        forces=forces,
     )
 
 
@@ -2731,6 +2735,8 @@ class dftsolve:
             ref_stress = bulk_atoms.get_stress(voigt=False)
         except Exception as e:
             raise RuntimeError(f"ERROR: Could not compute reference stress: {e}")
+        if not np.all(np.isfinite(ref_stress)):
+            raise RuntimeError('GPAW elastic reference stress is non-finite.')
         parprint(f"Reference Stress Tensor (GPa):\n{ref_stress / GPa}")
 
         # --- Define the six independent strain matrices (Voigt components) ---
@@ -2811,10 +2817,8 @@ class dftsolve:
                         parprint(f"Mode {mode_label}: Using ground-state stress for strain {eps:.4f}")
                         ref_atoms = bulk_atoms.copy()
                         # Use the previously computed reference values:
-                        ref_atoms.calc = SinglePointCalculator(ref_atoms,
-                                                energy=bulk_atoms.get_potential_energy(), 
-                                                stress=ref_stress, 
-                                                forces=bulk_atoms.get_forces())
+                        ref_atoms.calc = bulk_atoms.calc
+                        _freeze_elastic_calculator(ref_atoms, ref_stress)
                         systems.append(ref_atoms)
                         continue
                     success = False

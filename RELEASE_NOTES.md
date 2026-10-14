@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- Reject non-finite GPAW elastic samples before caching, retry their smaller strains and stop early on invalid reference stress.
+
 - Honor GPAW SCF iteration limits and solver profiles in elastic deformations, invalidate older caches and log every skipped strain point.
 
 - Stop GPAW elastic reporting when the fit cannot determine all independent constants or returns non-finite coefficients.
