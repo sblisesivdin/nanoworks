@@ -294,7 +294,7 @@ from argparse import ArgumentParser, HelpFormatter
 from dataclasses import dataclass, field
 from typing import Optional, Dict, List, Any
 from ase import *
-from ase.spacegroup import get_spacegroup
+from ase.spacegroup.symmetrize import check_symmetry
 from ase.dft.kpoints import get_special_points
 from ase.parallel import paropen, world, parprint, broadcast
 from ase.optimize import QuasiNewton
@@ -876,6 +876,20 @@ def validate_qe_soc_pseudopotentials(pseudopotentials, pseudo_dir):
             )
 
 
+def _spacegroup_label(atoms, symprec=1e-2):
+    """Report the input structure's symmetry without standard-setting operations."""
+    symmetry = check_symmetry(atoms, symprec=symprec, verbose=False)
+    if symmetry is None:
+        raise RuntimeError('Spacegroup not found')
+    # Older ASE/spglib combinations return a dictionary. New datasets use
+    # attributes; their dictionary interface is deprecated.
+    if isinstance(symmetry, dict):
+        symbol, number = symmetry['international'], symmetry['number']
+    else:
+        symbol, number = symmetry.international, symmetry.number
+    return f'{symbol} (No. {number})'
+
+
 def ase_scalar_pressure_from_gpa(pressure_gpa):
     """Convert the portable GPa pressure to ASE's eV/Angstrom^3 unit."""
     pressure_gpa = float(pressure_gpa)
@@ -1000,7 +1014,7 @@ def struct_from_file(
         config.bulk_configuration = read(geometryfile, index='-1')
         if report_structure:
             parprint("Number of atoms imported from CIF file:"+str(config.bulk_configuration.get_global_number_of_atoms()))
-            parprint("Spacegroup of CIF file:",get_spacegroup(config.bulk_configuration, symprec=1e-2))
+            parprint("Spacegroup of CIF file:",_spacegroup_label(config.bulk_configuration, symprec=1e-2))
             parprint("Special Points usable for this spacegroup:",get_special_points(config.bulk_configuration.get_cell()))
 
     # Validate the final structure after any geometry-file override, before output or SCFs.
@@ -1672,7 +1686,7 @@ class dftsolve:
 
         with paropen(self.struct+'-STRUCTURE-ASE-Result-Spacegroup-and-SpecialPoints.txt', "w") as fd:
             print("Number of atoms imported from CIF file:"+str(self.bulk_configuration.get_global_number_of_atoms()), file=fd)
-            print("Spacegroup of CIF file:",get_spacegroup(self.bulk_configuration, symprec=1e-2), file=fd)
+            print("Spacegroup of CIF file:",_spacegroup_label(self.bulk_configuration, symprec=1e-2), file=fd)
             print("Special Points usable for this spacegroup:",get_special_points(self.bulk_configuration.get_cell()), file=fd)
 
     def groundcalc(self):
@@ -2272,7 +2286,7 @@ class dftsolve:
                 # Writes final configuration as CIF file
                 write_cif(self.struct+f'-GROUND-{self.Engine}-Result-Final.cif', self.bulk_configuration)
                 # Print final spacegroup information
-                parprint("Final Spacegroup:",get_spacegroup(self.bulk_configuration, symprec=1e-2))
+                parprint("Final Spacegroup:",_spacegroup_label(self.bulk_configuration, symprec=1e-2))
             else:
                 parprint("Passing LCAO ground state calculation...")
                 # Control the ground state GPW file
@@ -6671,7 +6685,6 @@ class dftsolve:
             return force_set
 
 # Elastic related functions
-from ase.spacegroup import get_spacegroup
 import numpy as np
 
 def reconstruct_full_tensor(independent, atoms):
@@ -6705,8 +6718,7 @@ def reconstruct_full_tensor(independent, atoms):
       - 21 independent constants: assumed triclinic; these are
         taken as the lower triangular elements (in order) and then mirrored.
     """
-    sg = get_spacegroup(atoms, symprec=1e-2)
-    symbol = sg.symbol
+    symbol = _spacegroup_label(atoms, symprec=1e-2)
     parprint(f"[DEBUG] Reconstructing tensor from {independent.size} independent constants; spacegroup: {symbol}")
     if independent.size == 3:
         # Assume cubic or isotropic system.

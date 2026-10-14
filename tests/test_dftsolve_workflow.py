@@ -23,6 +23,7 @@ with patch.object(
 ):
     from nanoworks.dftsolve import (
         DFTConfig,
+        _spacegroup_label,
         _wrap_gpaw_dispersion,
         _freeze_elastic_calculator,
         _elastic_cache_signature,
@@ -58,6 +59,33 @@ with patch.object(
 
 
 class TestDFTSolveWorkflow(unittest.TestCase):
+    @patch('nanoworks.dftsolve.check_symmetry')
+    def test_spacegroup_label_uses_dataset_attributes(self, check):
+        class AttributeDataset:
+            international = 'Fd-3m'
+            number = 227
+
+            def __getitem__(self, key):
+                raise AssertionError('Deprecated dataset dictionary access')
+
+        check.return_value = AttributeDataset()
+        atoms = Atoms('Si2', cell=[5, 5, 5], pbc=True)
+        self.assertEqual(_spacegroup_label(atoms), 'Fd-3m (No. 227)')
+        check.assert_called_once_with(atoms, symprec=1e-2, verbose=False)
+
+    @patch('nanoworks.dftsolve.check_symmetry')
+    def test_spacegroup_label_supports_legacy_dictionary(self, check):
+        check.return_value = {'international': 'P1', 'number': 1}
+        atoms = Atoms('Si', cell=[5, 5, 5], pbc=True)
+        self.assertEqual(_spacegroup_label(atoms, symprec=1e-3), 'P1 (No. 1)')
+        check.assert_called_once_with(atoms, symprec=1e-3, verbose=False)
+
+    @patch('nanoworks.dftsolve.check_symmetry')
+    def test_spacegroup_label_rejects_missing_dataset(self, check):
+        check.return_value = None
+        with self.assertRaisesRegex(RuntimeError, 'Spacegroup not found'):
+            _spacegroup_label(Atoms('Si', cell=[5, 5, 5], pbc=True))
+
     def test_elastic_fit_rejects_missing_strain_direction(self):
         import numpy as np
 
