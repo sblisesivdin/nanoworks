@@ -25,6 +25,7 @@ with patch.object(
         DFTConfig,
         _spacegroup_label,
         reconstruct_full_tensor,
+        _validate_gpaw_elastic_fit,
         _wrap_gpaw_dispersion,
         _freeze_elastic_calculator,
         _elastic_cache_signature,
@@ -60,6 +61,36 @@ with patch.object(
 
 
 class TestDFTSolveWorkflow(unittest.TestCase):
+    def test_elastic_fit_rejects_finite_but_underdetermined_solution(self):
+        import numpy as np
+
+        design = np.array([[1., 0., 0.], [0., 1., 0.], [1., 1., 0.]])
+        fit = np.linalg.lstsq(design, [150., 50., 200.], rcond=None)
+        self.assertTrue(np.all(np.isfinite(fit[0])))
+        with self.assertRaisesRegex(RuntimeError, 'rank 2 for 3 independent constants'):
+            _validate_gpaw_elastic_fit(fit[0], fit)
+
+    def test_elastic_fit_accepts_full_rank_with_empty_residuals(self):
+        import numpy as np
+
+        fit = np.linalg.lstsq(np.eye(3), [150., 50., 80.], rcond=None)
+        self.assertEqual(fit[1].size, 0)
+        _validate_gpaw_elastic_fit(fit[0], fit)
+
+    def test_elastic_fit_rejects_nonfinite_coefficients_and_constants(self):
+        import numpy as np
+
+        fit = np.linalg.lstsq(np.eye(3), [150., 50., 80.], rcond=None)
+        for invalid in (np.nan, np.inf):
+            with self.subTest(value=invalid):
+                constants = fit[0].copy()
+                constants[2] = invalid
+                with self.assertRaisesRegex(RuntimeError, 'non-finite'):
+                    _validate_gpaw_elastic_fit(constants, fit)
+                raw_fit = (constants, *fit[1:])
+                with self.assertRaisesRegex(RuntimeError, 'non-finite'):
+                    _validate_gpaw_elastic_fit(fit[0], raw_fit)
+
     @patch('nanoworks.dftsolve._spacegroup_label', return_value='Fm-3m (No. 225)')
     def test_cubic_elastic_tensor_retains_three_equal_shear_constants(self, symmetry):
         import numpy as np

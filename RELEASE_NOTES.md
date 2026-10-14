@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- Stop GPAW elastic reporting when the fit cannot determine all independent constants or returns non-finite coefficients.
+
 - Correct GPAW cubic shear stiffness and hexagonal constant ordering when reconstructing full elastic tensors.
 
 - Replace deprecated ASE spacegroup queries with structure-specific symmetry datasets in DFT structure reports and elastic diagnostics.

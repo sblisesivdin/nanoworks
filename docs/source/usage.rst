@@ -145,7 +145,9 @@ GPAW elastic trajectory caches are bound to the saved ground state, strain
 sampling and electronic settings. Older or incompatible records are
 recalculated. Every requested strain direction needs valid positive and
 negative deformations before tensor fitting; the total record count alone
-is insufficient. Inspect reported strain failures before interpreting a tensor.
+is insufficient. The fit must also determine every independent constant
+(full rank) and return finite coefficients; otherwise result reporting stops.
+Inspect reported strain failures before interpreting a tensor.
 
 For ``vdW_calc='D3'``, GPAW ground, elastic and phonon force calculations
 require ``dftd3`` on ``PATH``. The correction applies to both reference and

@@ -1258,6 +1258,24 @@ def _elastic_cache_matches(systems, signature):
     )
 
 
+def _validate_gpaw_elastic_fit(constants, fit_info):
+    """Require finite constants and enough rank to determine every fit parameter."""
+    coefficients = np.asarray(fit_info[0], dtype=float)
+    values = np.asarray(constants, dtype=float)
+    if (
+        coefficients.size == 0
+        or not np.all(np.isfinite(coefficients))
+        or not np.all(np.isfinite(values))
+    ):
+        raise RuntimeError('Elastic fit returned non-finite or missing coefficients.')
+    rank = int(fit_info[2])
+    if rank < coefficients.size:
+        raise RuntimeError(
+            f'Elastic fit is underdetermined: rank {rank} for '
+            f'{coefficients.size} independent constants.'
+        )
+
+
 def _validate_elastic_strain_coverage(reference, systems, strain_matrices, names):
     """Require both sides of every requested strain direction before fitting."""
     deformations = [
@@ -2835,6 +2853,7 @@ class dftsolve:
         # --- Compute the elastic tensor using the deformed systems ---
         _validate_elastic_strain_coverage(bulk_atoms, systems, strain_matrices, strain_names)
         Cij, fit_info = get_elastic_tensor(bulk_atoms, systems)
+        _validate_gpaw_elastic_fit(Cij, fit_info)
         Cij = np.array(Cij)
         parprint(f"Cij raw shape: {Cij.shape}")
         if Cij.size < 36:
