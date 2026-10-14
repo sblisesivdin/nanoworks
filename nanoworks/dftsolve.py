@@ -6700,15 +6700,16 @@ def reconstruct_full_tensor(independent, atoms):
       A 6x6 NumPy array representing the full elastic tensor.
       
     Implemented cases:
-      - 3 independent constants: assumed cubic or isotropic, 
+      - 3 independent constants: cubic, in order C11, C12, C44, 
         mapped as:
             C11  C12  C12   0    0    0
             C12  C11  C12   0    0    0
             C12  C12  C11   0    0    0
              0    0    0   C44   0    0
              0    0    0    0   C44   0
-             0    0    0    0    0   (C11-C12)/2
-      - 5 independent constants: assumed hexagonal, mapped as:
+             0    0    0    0    0   C44
+      - 5 independent constants: hexagonal, in Elastic order
+        C11, C33, C12, C13, C44, mapped as:
             C11  C12  C13   0    0    0
             C12  C11  C13   0    0    0
             C13  C13  C33   0    0    0
@@ -6721,7 +6722,7 @@ def reconstruct_full_tensor(independent, atoms):
     symbol = _spacegroup_label(atoms, symprec=1e-2)
     parprint(f"[DEBUG] Reconstructing tensor from {independent.size} independent constants; spacegroup: {symbol}")
     if independent.size == 3:
-        # Assume cubic or isotropic system.
+        # Cubic symmetry has equal yz, xz and xy shear stiffnesses.
         C11, C12, C44 = independent
         full = np.array([
             [C11, C12, C12, 0,   0,   0],
@@ -6729,12 +6730,12 @@ def reconstruct_full_tensor(independent, atoms):
             [C12, C12, C11, 0,   0,   0],
             [0,   0,   0,   C44, 0,   0],
             [0,   0,   0,   0,   C44, 0],
-            [0,   0,   0,   0,   0,   (C11-C12)/2]
+            [0,   0,   0,   0,   0,   C44]
         ])
         return full
     elif independent.size == 5:
         # Assume hexagonal symmetry.
-        C11, C12, C13, C33, C44 = independent
+        C11, C33, C12, C13, C44 = independent
         C66 = (C11 - C12) / 2
         full = np.array([
             [C11, C12, C13, 0,   0,   0],

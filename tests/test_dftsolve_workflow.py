@@ -24,6 +24,7 @@ with patch.object(
     from nanoworks.dftsolve import (
         DFTConfig,
         _spacegroup_label,
+        reconstruct_full_tensor,
         _wrap_gpaw_dispersion,
         _freeze_elastic_calculator,
         _elastic_cache_signature,
@@ -59,6 +60,36 @@ with patch.object(
 
 
 class TestDFTSolveWorkflow(unittest.TestCase):
+    @patch('nanoworks.dftsolve._spacegroup_label', return_value='Fm-3m (No. 225)')
+    def test_cubic_elastic_tensor_retains_three_equal_shear_constants(self, symmetry):
+        import numpy as np
+
+        tensor = reconstruct_full_tensor(np.array([150., 50., 80.]), object())
+        np.testing.assert_array_equal(np.diag(tensor), [150., 150., 150., 80., 80., 80.])
+        self.assertEqual(tensor[0, 1], 50.)
+        np.testing.assert_array_equal(tensor, tensor.T)
+        # Unequal C44 and (C11-C12)/2 must retain cubic anisotropy.
+        for axis in (3, 4, 5):
+            strain = np.zeros(6)
+            strain[axis] = 0.01
+            self.assertAlmostEqual((tensor @ strain)[axis], 0.8)
+
+    @patch('nanoworks.dftsolve._spacegroup_label', return_value='P6_3/mmc (No. 194)')
+    def test_hexagonal_elastic_tensor_uses_elastic_constant_order(self, symmetry):
+        import numpy as np
+
+        # Elastic returns C11, C33, C12, C13, C44.
+        tensor = reconstruct_full_tensor(np.array([200., 300., 60., 40., 55.]), object())
+        expected = np.array([
+            [200., 60., 40., 0., 0., 0.],
+            [60., 200., 40., 0., 0., 0.],
+            [40., 40., 300., 0., 0., 0.],
+            [0., 0., 0., 55., 0., 0.],
+            [0., 0., 0., 0., 55., 0.],
+            [0., 0., 0., 0., 0., 70.],
+        ])
+        np.testing.assert_array_equal(tensor, expected)
+
     @patch('nanoworks.dftsolve.check_symmetry')
     def test_spacegroup_label_uses_dataset_attributes(self, check):
         class AttributeDataset:

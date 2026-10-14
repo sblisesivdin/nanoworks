@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- Correct GPAW cubic shear stiffness and hexagonal constant ordering when reconstructing full elastic tensors.
+
 - Replace deprecated ASE spacegroup queries with structure-specific symmetry datasets in DFT structure reports and elastic diagnostics.
 
 - Pass the configured XC functional to GPAW LCAO ground-state calculations and their D3 correction instead of relying on calculator defaults.
