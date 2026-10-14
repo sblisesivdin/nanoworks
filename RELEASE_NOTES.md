@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- Replace deprecated ASE calculator attachment calls in GPAW ground-state and phonon force workflows.
+
 - Reject non-finite GPAW elastic samples before caching, retry their smaller strains and stop early on invalid reference stress.
 
 - Honor GPAW SCF iteration limits and solver profiles in elastic deformations, invalidate older caches and log every skipped strain point.

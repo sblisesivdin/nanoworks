@@ -2203,7 +2203,7 @@ class dftsolve:
                     )
 
                 else:
-                    self.bulk_configuration.set_calculator(calc)
+                    self.bulk_configuration.calc = calc
                     self.bulk_configuration.get_potential_energy()
 
                 # Store the ground-state Fermi level so that DOS/band methods
@@ -2301,7 +2301,7 @@ class dftsolve:
                         relax, self.Geometry_force_tolerance, self.Geometry_max_steps,
                     )
                 else:
-                    self.bulk_configuration.set_calculator(calc)
+                    self.bulk_configuration.calc = calc
                     self.bulk_configuration.get_potential_energy()
                 calc.write(self.struct+'-GROUND-GPAW-Result-State.gpw', mode="all")
 
@@ -6676,7 +6676,7 @@ class dftsolve:
 
     def run_gpaw(self, calc, cell):
         cell = convert_atoms_to_ase(cell)
-        cell.set_calculator(calc)
+        cell.calc = calc
         forces = cell.get_forces()
         drift_force = forces.sum(axis=0)
         with paropen(self.struct+'-PHONON-GPAW-Log-Phonopy.txt', 'a') as f2:
