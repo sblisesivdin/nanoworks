@@ -394,6 +394,31 @@ def read_upf_atomic_manifolds(path):
 
     return manifolds
 
+def _load_complete_pseudodojo_manifest(manifest_path, target_dir, spec):
+    """Reuse only the pinned set with all registered, nonempty UPF files."""
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+        if not isinstance(manifest, dict):
+            return None
+        expected = {'family': 'pseudodojo', 'format': 'upf'}
+        expected.update({key: spec[key] for key in
+                         ('version', 'xc', 'accuracy', 'relativistic', 'table')})
+        if any(manifest.get(key) != value for key, value in expected.items()):
+            return None
+        files = manifest.get('files')
+        if not isinstance(files, dict) or not files:
+            return None
+        for filename in files.values():
+            if not isinstance(filename, str) or not filename:
+                return None
+            path = target_dir / filename
+            if not path.is_file() or path.stat().st_size == 0:
+                return None
+        return manifest
+    except (OSError, ValueError, UnicodeError):
+        return None
+
+
 def _install_pseudodojo_set(
     relativistic,
     overwrite=False,
@@ -418,12 +443,10 @@ def _install_pseudodojo_set(
         target_dir / 'manifest.json'
     )
 
-    if (
-        manifest_path.exists()
-        and not overwrite
-    ):
-        with manifest_path.open('r', encoding='utf-8') as fd:
-            manifest = json.load(fd)
+    manifest = None if overwrite else _load_complete_pseudodojo_manifest(
+        manifest_path, target_dir, spec,
+    )
+    if manifest is not None:
         return {
             'directory': target_dir,
             'manifest': manifest_path,
@@ -518,6 +541,8 @@ def _install_pseudodojo_set(
                 target_dir / filename
             )
 
+            if destination.exists() and not destination.is_file():
+                raise RuntimeError(f"UPF destination is not a regular file: '{destination}'.")
             shutil.copy2(
                 source,
                 destination,

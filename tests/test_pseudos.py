@@ -32,6 +32,57 @@ from nanoworks.pseudos import (
 
 class TestPseudopotentials(unittest.TestCase):
 
+    @patch('nanoworks.pseudos.urlretrieve')
+    @patch('nanoworks.pseudos.Path.home')
+    def test_installer_repairs_incomplete_or_invalid_managed_sets(self, home, download):
+        def fake_download(url, destination):
+            data = b'<UPF version="2.0.1"><PP_HEADER element="Si" /></UPF>'
+            with tarfile.open(destination, 'w:gz') as archive:
+                info = tarfile.TarInfo('Si.upf')
+                info.size = len(data)
+                archive.addfile(info, io.BytesIO(data))
+
+        download.side_effect = fake_download
+        with tempfile.TemporaryDirectory() as tmp:
+            home.return_value = Path(tmp)
+            install_qe_pseudopotentials()
+            download.reset_mock()
+            results = install_qe_pseudopotentials()
+            self.assertTrue(all(result['skipped'] for result in results.values()))
+            download.assert_not_called()
+            directory = get_qe_pseudo_dir(relativistic='scalar')
+            manifest_path = directory / 'manifest.json'
+            for fault in ('missing', 'empty', 'json', 'version', 'registry'):
+                with self.subTest(fault=fault):
+                    if fault == 'missing':
+                        (directory / 'Si.upf').unlink()
+                    elif fault == 'empty':
+                        (directory / 'Si.upf').write_bytes(b'')
+                    elif fault == 'json':
+                        manifest_path.write_text('{', encoding='utf-8')
+                    else:
+                        manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+                        if fault == 'version':
+                            manifest['version'] = '0.0'
+                        else:
+                            manifest['files'] = {}
+                        manifest_path.write_text(json.dumps(manifest), encoding='utf-8')
+                    download.reset_mock()
+                    results = install_qe_pseudopotentials()
+                    self.assertFalse(results['scalar']['skipped'])
+                    self.assertTrue(results['full']['skipped'])
+                    self.assertEqual(download.call_count, 1)
+                    self.assertGreater((directory / 'Si.upf').stat().st_size, 0)
+                    self.assertEqual(load_qe_pseudo_manifest()['version'], '0.5')
+            # A directory at a UPF path must cause a clear error, not a
+            # nested copy followed by a false successful-installation report.
+            (directory / 'Si.upf').unlink()
+            (directory / 'Si.upf').mkdir()
+            with self.assertRaisesRegex(RuntimeError, 'not a regular file'):
+                install_qe_pseudopotentials()
+            self.assertTrue((directory / 'Si.upf').is_dir())
+
+
     def test_default_family_is_pseudodojo(self):
         self.assertEqual(
             DEFAULT_PSEUDO_FAMILY,
