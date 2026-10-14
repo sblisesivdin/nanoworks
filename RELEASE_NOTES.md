@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- Show a shared command-and-version startup line for dftsolve, mdsolve and mlsolve without repeating it in internal GPAW processes.
+
 - Replace deprecated ASE calculator attachment calls in GPAW ground-state and phonon force workflows.
 
 - Reject non-finite GPAW elastic samples before caching, retry their smaller strains and stop early on invalid reference stress.

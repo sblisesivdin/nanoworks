@@ -40,6 +40,7 @@ from ase import *
 from nanoworks.tableio import table_header, csv_line_to_dat
 from ase.data import atomic_numbers, atomic_masses
 from ase.io import read, write
+from ase.parallel import parprint
 from ase.io.cif import write_cif
 from ase.spacegroup.symmetrize import check_symmetry
 from asap3 import Atoms, units
@@ -2981,6 +2982,8 @@ def main():
     if not args.inputfile or not args.geometryfile:
         print('ERROR: Please provide both input (-i) and geometry (-g) files.')
         sys.exit(1)
+
+    parprint(nanoworks.format_startup_banner('mdsolve'), flush=True)
 
     Outdirname = ''
     configpath = None

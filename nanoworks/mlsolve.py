@@ -42,6 +42,7 @@ import os
 try:
     from ase import Atoms
     from ase.io import read, write
+    from ase.parallel import parprint
     from ase.optimize import BFGS, FIRE, LBFGS
     from ase.filters import FrechetCellFilter
 except ImportError as err:
@@ -255,6 +256,8 @@ def main():
 
     if not args.geometry or not args.input:
         parser.error("the following arguments are required: -g/--geometry, -i/--input")
+
+    parprint(nanoworks.format_startup_banner('mlsolve'), flush=True)
 
     # Load struct and config
     struct, config = config_from_file(inputfile=args.input, geometryfile=args.geometry)

@@ -120,6 +120,7 @@ def extract_parallel_request():
 
 
 GPAW_STAGE_GROUP_ENV = 'NANOWORKS_GPAW_STAGE_GROUP'
+STARTUP_BANNER_ENV = 'NANOWORKS_STARTUP_BANNER_SHOWN'
 
 
 def build_gpaw_process_command(
@@ -204,6 +205,7 @@ def restart_gpaw_with_mpi(
     sys.stdout.flush()
     
     child_env = os.environ.copy()
+    child_env[STARTUP_BANNER_ENV] = '1'
 
     # "gpaw python" configures the GPAW MPI backend itself.
     # Do not pass the backend selected for the original serial
@@ -6967,6 +6969,7 @@ def run_gpaw_stage_processes(
 
     for stage_group in ('electronic', 'optical'):
         child_env = os.environ.copy()
+        child_env[STARTUP_BANNER_ENV] = '1'
         child_env[GPAW_STAGE_GROUP_ENV] = stage_group
         child_env['OMP_NUM_THREADS'] = '1'
         child_env['OPENBLAS_NUM_THREADS'] = '1'
@@ -9293,6 +9296,9 @@ def main():
     except getopt.error as err:
         # output error, and return with an error code
         parprint (str(err))
+
+    if not args.check and not args.dry_run and os.environ.get(STARTUP_BANNER_ENV) != '1':
+        parprint(nanoworks.format_startup_banner('dftsolve'), flush=True)
 
     # Start time
     time0 = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time.time()))
