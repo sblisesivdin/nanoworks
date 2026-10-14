@@ -1244,6 +1244,27 @@ def _elastic_cache_matches(systems, signature):
     )
 
 
+def _validate_elastic_strain_coverage(reference, systems, strain_matrices, names):
+    """Require both sides of every requested strain direction before fitting."""
+    deformations = [
+        np.linalg.solve(np.asarray(reference.cell), np.asarray(atoms.cell)) - np.eye(3)
+        for atoms in systems
+    ]
+    for matrix, name in zip(strain_matrices, names):
+        matrix = np.asarray(matrix)
+        values = []
+        for deformation in deformations:
+            amplitude = np.sum(deformation * matrix) / np.sum(matrix * matrix)
+            if np.allclose(deformation, amplitude * matrix, rtol=0, atol=1e-8):
+                values.append(amplitude)
+        if not (any(value < -1e-12 for value in values)
+                and any(value > 1e-12 for value in values)):
+            raise RuntimeError(
+                f'Elastic strain {name} lacks valid positive and negative deformations. '
+                'Inspect the failed strain calculations before fitting the tensor.'
+            )
+
+
 def _write_elastic_cache(path, systems):
     """Publish a complete trajectory without truncating an earlier cache."""
     import tempfile
@@ -2735,6 +2756,7 @@ class dftsolve:
             try:
                 cached = read(cache_file, index=':')
                 if _elastic_cache_matches(cached, cache_signature):
+                    _validate_elastic_strain_coverage(bulk_atoms, cached, strain_matrices, strain_names)
                     systems = cached
                     parprint("Loading verified deformed systems from cache.")
                 else:
@@ -2785,6 +2807,7 @@ class dftsolve:
                 if not success:
                     parprint(f"WARNING: Mode {mode_label}: Skipping strain {eps:.4f} for current mode.")
             # Write deformed systems to cache file so that next time they can be loaded
+            _validate_elastic_strain_coverage(bulk_atoms, systems, strain_matrices, strain_names)
             for atoms in systems:
                 atoms.info['nanoworks_elastic_signature'] = cache_signature
             collective_cache_call(_write_elastic_cache, cache_file, systems)
@@ -2795,6 +2818,7 @@ class dftsolve:
             raise RuntimeError(f"ERROR: Not enough valid deformations (only {len(systems)} out of {expected}) to compute the elastic tensor.")
 
         # --- Compute the elastic tensor using the deformed systems ---
+        _validate_elastic_strain_coverage(bulk_atoms, systems, strain_matrices, strain_names)
         Cij, fit_info = get_elastic_tensor(bulk_atoms, systems)
         Cij = np.array(Cij)
         parprint(f"Cij raw shape: {Cij.shape}")

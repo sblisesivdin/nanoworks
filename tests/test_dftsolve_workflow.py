@@ -28,6 +28,7 @@ with patch.object(
         _elastic_cache_signature,
         _elastic_cache_matches,
         _write_elastic_cache,
+        _validate_elastic_strain_coverage,
         _run_gpaw_geometry_optimizer,
         _gpaw_saved_reference_atoms,
         convert_atoms_to_ase,
@@ -57,6 +58,32 @@ with patch.object(
 
 
 class TestDFTSolveWorkflow(unittest.TestCase):
+    def test_elastic_fit_rejects_missing_strain_direction(self):
+        import numpy as np
+
+        reference = Atoms('Si', cell=[5, 5, 5], pbc=True)
+        xx = np.diag([1, 0, 0])
+        yy = np.diag([0, 1, 0])
+        systems = []
+        for amplitude in [-0.01, 0.0, 0.01]:
+            atoms = reference.copy()
+            atoms.set_cell(reference.cell @ (np.eye(3) + amplitude * xx))
+            systems.append(atoms)
+        with self.assertRaisesRegex(RuntimeError, 'strain yy lacks'):
+            _validate_elastic_strain_coverage(reference, systems, [xx, yy], ['xx', 'yy'])
+
+    def test_elastic_fit_accepts_fallback_strain_amplitudes(self):
+        import numpy as np
+
+        reference = Atoms('Si', cell=[[5, 0, 0], [1, 5, 0], [0, 0, 5]], pbc=True)
+        shear = np.array([[0, 1, 0], [1, 0, 0], [0, 0, 0]])
+        systems = []
+        for amplitude in [-0.001, 0.005]:
+            atoms = reference.copy()
+            atoms.set_cell(reference.cell @ (np.eye(3) + amplitude * shear))
+            systems.append(atoms)
+        _validate_elastic_strain_coverage(reference, systems, [shear], ['xy'])
+
     def test_saved_gpaw_geometry_preserves_input_isotope_masses(self):
         saved = Atoms('Si2', cell=[5.4, 5.4, 5.4], pbc=True)
         supplied = Atoms('Si2', cell=[5.0, 5.0, 5.0], pbc=True,
