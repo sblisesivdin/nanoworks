@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # See LICENSE.md in the project root for license terms.
 
-__version__ = "26.8.0"
+__version__ = "27.2.0rc0"
 
 
 def format_startup_banner(command):

@@ -12,6 +12,8 @@
 [![Commits:](https://img.shields.io/github/commit-activity/m/sblisesivdin/nanoworks)](https://github.com/sblisesivdin/nanoworks/commits/main)
 [![Last Commit:](https://img.shields.io/github/last-commit/sblisesivdin/nanoworks)](https://github.com/sblisesivdin/nanoworks/commits/main)
 
+The current ``main`` branch targets **27.2.0** and reports **27.2.0rc0** while unreleased.
+
 ## Introduction
 **Nanoworks** is a unified, high-level Python interface for conducting Density Functional Theory (DFT), Molecular Dynamics (MD), and Machine Learning (ML) potential calculations. 
 
