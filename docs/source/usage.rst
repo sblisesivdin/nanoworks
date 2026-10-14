@@ -130,6 +130,28 @@ and, when requested, ``projwfc.x``. QE density post-processing uses ``pp.x``
 and a completed ground-state calculation. QE hybrid geometry, elastic,
 phonon, and optical workflows are not supported yet.
 
+With GPAW ``Geo_optim=True``, reaching ``Geometry_max_steps`` without force
+convergence stops the workflow. Inspect the optimization log and trajectory
+before repeating the calculation; later stages do not proceed from that run.
+
+When reusing a GPAW state, keep the same atom ordering and ``Spin_calc``.
+DOS, band, density, optical and phonon stages check the loaded state before
+writing their results. Derived stages use its saved geometry; compatible
+custom isotope masses remain those specified in the input. A same-element
+site permutation cannot be identified from element names alone, so per-site
+settings must retain their original indexing.
+
+GPAW elastic trajectory caches are bound to the saved ground state, strain
+sampling and electronic settings. Older or incompatible records are
+recalculated. Every requested strain direction needs valid positive and
+negative deformations before tensor fitting; the total record count alone
+is insufficient. Inspect reported strain failures before interpreting a tensor.
+
+For ``vdW_calc='D3'``, GPAW ground, elastic and phonon force calculations
+require ``dftd3`` on ``PATH``. The correction applies to both reference and
+strained elastic calculators and to phonon forces. Changed dispersion settings
+invalidate phonon force caches.
+
 Semilocal QE elasticity is driven by thermo_pw 2.1.0. This Nanoworks version
 supports the linked QE version 7.4.1. A different detected QE version emits
 a warning without stopping the calculation. Nanoworks does not fall back to
