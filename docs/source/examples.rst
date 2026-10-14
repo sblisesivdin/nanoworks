@@ -169,6 +169,53 @@ stage stops that case. The example-directory README explains QE overrides and
 the status files. GPAW LCAO/LDA examples become PW/PBE workflow variants in QE,
 and QE DOS uses tetrahedron integration; BSE remains GPAW only.
 
+Rechecking failed smoke cases
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Use updated inputs from the current checkout as well as the updated Python
+package. An existing run folder contains copies of the inputs from its original
+submission; upgrading the package does not update those copies. In particular,
+use the corrected ``NiO-QE-phonon.py`` rather than the old copied input.
+
+Before repeating QE cases, install the managed scalar and fully relativistic
+PBE pseudopotentials in the environment used to launch Nanoworks:
+
+.. code-block:: bash
+
+    (.venv_nw) $ nanoworks --install-qe-pseudos
+
+QE executables must also be available to that environment. QE elasticity needs
+``thermo_pw.x`` in addition to Quantum ESPRESSO; installing the pseudopotentials
+does not install either engine. GPAW ``vdW_calc = 'D3'`` needs the external
+``dftd3`` executable in ``PATH``. Run each example's ``--check`` command before
+its calculation; a successful preflight confirms the checked prerequisites,
+but does not prove SCF convergence or sufficient memory.
+
+Start with the affected workflows using their individual README commands:
+
+* ``Al-phonon/`` and ``Si-phonon/`` check the updated GPAW parameter handling
+  during displaced-supercell force calculations.
+* ``Bulk-MoS2-vdW/MoS2-with-vdW.py`` checks the D3 dependency and corrected
+  dispersion workflow after ``dftd3`` is available.
+* ``TiC-elastic-electronic/`` checks that deformation calculations finish,
+  release full calculators between samples and produce a complete elastic fit.
+* ``NiO-QE-Hubbard-phonon/`` checks the corrected input and QE force workflow
+  after pseudopotential installation.
+
+Run these in fresh working directories for validation so existing force or
+trajectory caches do not replace the calculations being checked. Keep the
+input settings and MPI process count recorded with the new logs. Use one queue
+slot when comparing memory behavior, so another calculation does not compete
+for memory. ``tsp -S 1`` controls queued jobs; the ``-p`` option controls MPI
+processes within each calculation.
+
+A process killed with ``SIGKILL`` or exit code 137 does not by itself identify
+an out-of-memory failure. If TiC is killed again, retain the calculation log
+and check system or scheduler records for the termination reason. A complete
+validation run should retain the per-stage exit codes, final result tables and
+``tsp`` output. Long hybrid examples can be repeated separately after the
+failed workflows have been checked.
+
 Alternatively, you can navigate into any specific folder and read the README.md file. Readme files includes all commands necessary for the calculations. For example:
 
 .. code-block:: bash
