@@ -6477,6 +6477,10 @@ class dftsolve:
 
             calc.get_potential_energy()
 
+            self.bulk_configuration = _gpaw_saved_reference_atoms(
+                calc, self.Spin_calc, self.bulk_configuration,
+            )
+            self.config.bulk_configuration = self.bulk_configuration
             calc.diagonalize_full_hamiltonian(nbands=self.Opt_num_of_bands)  # diagonalize Hamiltonian
             calc.write(self.struct+'-OPTICAL-GPAW-Result-State.gpw', mode= 'all')  # write wavefunctions
 

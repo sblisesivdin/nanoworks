@@ -2,6 +2,8 @@
 
 ### Development Version
 
+- Validate GPAW optical-state atom ordering and restore its saved geometry before response exports.
+
 - Reject incompatible GPAW band-state spin channels and atom ordering before writing labelled band results.
 
 - Validate GPAW DOS/PDOS atom ordering and spin channels against the loaded state before exporting tables.
