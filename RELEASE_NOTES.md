@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Read relaxed QE magnetic species such as Ag1/Ag2 as their chemical elements, preserving atom order, initial moments and isotope masses.
+
 - Reject malformed QE pseudo registries and missing or empty managed UPFs before calculations, with the installation repair command in errors.
 
 - Reinstall managed QE pseudopotentials when manifests are invalid, set versions differ or registered UPF files are missing or empty.

@@ -16,6 +16,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 import numpy as np
 from ase.units import Bohr
+from ase.io.espresso import label_to_symbol
 from ase.data import atomic_masses, atomic_numbers
 from ase.calculators.calculator import kptdensity2monkhorstpack
 from nanoworks.pseudos import (
@@ -5522,10 +5523,14 @@ def parse_pw_relaxed_structure(
         natoms,
     )
 
-    symbols = [
-        symbol
-        for symbol, values in position_rows
-    ]
+    # QE distinguishes magnetic species (e.g. Ag1/Ag2) while ASE Atoms
+    # stores chemical elements. Preserve row order and normalize labels only.
+    try:
+        symbols = [label_to_symbol(label) for label, values in position_rows]
+    except KeyError as exc:
+        raise ValueError(
+            'QE final coordinates contain an invalid atomic species label.'
+        ) from exc
 
     if symbols != atoms.get_chemical_symbols():
         raise ValueError(

@@ -5391,6 +5391,48 @@ class TestQEEngine(unittest.TestCase):
                     prefix
                 )
 
+    def test_parse_pw_relaxed_afm_species_preserves_atom_metadata(self):
+        symbols = ['Ag'] * 4 + ['F'] * 8
+        labels = ['Ag1', 'Ag2', 'Ag2', 'Ag1'] + ['F'] * 8
+        positions = np.arange(36, dtype=float).reshape(12, 3) / 100
+        atoms = Atoms(symbols, positions=positions, cell=[6, 7, 20], pbc=True)
+        moments = [0.5, -0.5, -0.5, 0.5] + [0.] * 8
+        atoms.set_initial_magnetic_moments(moments)
+        atoms.set_masses([107., 109., 107., 109.] + [19.] * 8)
+        final_cell = np.array([[6.1, 0., 0.], [-3.05, 5.3, 0.], [0., 0., 21.]])
+        for unit, variable_cell in (('angstrom', False), ('crystal', True)):
+            with self.subTest(unit=unit), tempfile.TemporaryDirectory() as tmp:
+                text = 'Begin final coordinates\n'
+                if variable_cell:
+                    text += 'CELL_PARAMETERS (angstrom)\n'
+                    text += '\n'.join(' '.join(map(str, row)) for row in final_cell) + '\n'
+                text += f'ATOMIC_POSITIONS ({unit})\n'
+                text += '\n'.join(
+                    label + ' ' + ' '.join(map(str, row))
+                    for label, row in zip(labels, positions))
+                text += '\nEnd final coordinates\n'
+                output = Path(tmp) / 'afm-relax.out'
+                output.write_text(text, encoding='utf-8')
+                relaxed = parse_pw_relaxed_structure(output, atoms)
+                self.assertEqual(relaxed.get_chemical_symbols(), symbols)
+                expected = positions @ final_cell if variable_cell else positions
+                np.testing.assert_allclose(relaxed.positions, expected)
+                np.testing.assert_allclose(relaxed.cell.array, final_cell if variable_cell else atoms.cell.array)
+                np.testing.assert_array_equal(relaxed.get_initial_magnetic_moments(), moments)
+                np.testing.assert_array_equal(relaxed.get_masses(), atoms.get_masses())
+                np.testing.assert_array_equal(atoms.positions, positions)
+
+    def test_parse_pw_relaxed_magnetic_species_rejects_wrong_element_order(self):
+        atoms = Atoms('Ag2F', positions=np.zeros((3, 3)), cell=[5, 5, 10], pbc=True)
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / 'bad-order.out'
+            output.write_text(
+                'Begin final coordinates\nATOMIC_POSITIONS (angstrom)\n'
+                'F 0 0 0\nAg2 1 1 1\nAg1 2 2 2\nEnd final coordinates\n',
+                encoding='utf-8')
+            with self.assertRaisesRegex(ValueError, 'atom ordering'):
+                parse_pw_relaxed_structure(output, atoms)
+
     def test_parse_pw_relaxed_atomic_positions(self):
         atoms = bulk(
             'Si',
