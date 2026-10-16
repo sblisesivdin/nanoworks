@@ -10228,12 +10228,41 @@ def run_pp_density(
         parallel_cores=parallel_cores
     )
 
-    execution = run_qe_program(
-        input_file=input_file,
-        output_file=output_file,
-        executable=executable,
-        launcher=launcher,
-    )
+    try:
+        execution = run_qe_program(
+            input_file=input_file,
+            output_file=output_file,
+            executable=executable,
+            launcher=launcher,
+        )
+    except RuntimeError:
+        failed_text = (output_file.read_text(encoding='utf-8', errors='replace')
+                       if output_file.is_file() else '')
+        shutdown_tail = failed_text.rsplit('JOB DONE.', 1)[-1]
+        improper_exit = re.search(
+            r'(?:mpiexec|mpirun|orterun) has exited due to process rank'
+            r'.*?exiting improperly', shutdown_tail, flags=re.IGNORECASE | re.DOTALL,
+        )
+        if (not launcher or 'JOB DONE.' not in failed_text or not improper_exit
+                or extract_qe_error_message(failed_text) is not None):
+            raise
+        # Preserve the MPI diagnostic and require a successful fresh pp.x run.
+        mpi_output_file = output_file
+        output_file = output_file.with_name(
+            output_file.stem + '-Serial-Retry' + output_file.suffix,
+        )
+        warnings.warn(
+            'QE pp.x completed but MPI exited improperly; retrying this density '
+            f'export once without MPI. Original log: {mpi_output_file}; '
+            f'serial retry log: {output_file}',
+            RuntimeWarning, stacklevel=2,
+        )
+        execution = run_qe_program(
+            input_file=input_file,
+            output_file=output_file,
+            executable=executable,
+            launcher=None,
+        )
 
     output_text = output_file.read_text(
         encoding='utf-8',

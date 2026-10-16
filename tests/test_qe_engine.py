@@ -7464,6 +7464,67 @@ class TestQEEngine(unittest.TestCase):
                     spin_orbit=True,
                 )
 
+    def test_pp_density_retries_only_completed_mpi_shutdown_failures(self):
+        import warnings
+
+        shutdown = ('JOB DONE.\nmpiexec has exited due to process rank 1 with PID 0 on\n'
+                    'node Kelvin exiting improperly.\n')
+        for case in ('recover', 'incomplete', 'qe-error', 'generic-error', 'retry-fails', 'serial'):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                output = root / 'density.txt'
+                cube = root / 'density.cube'
+                calls = []
+                failure_log = shutdown
+                if case == 'incomplete':
+                    failure_log = shutdown.replace('JOB DONE.', 'not complete')
+                elif case == 'qe-error':
+                    failure_log = '%%%%%%%%%%%%\nError in routine test (1): failed\n%%%%%%%%%%%%\n' + shutdown
+                elif case == 'generic-error':
+                    failure_log = 'JOB DONE.\nSegmentation fault\n'
+
+                def fake_run(**kwargs):
+                    calls.append(kwargs)
+                    if len(calls) == 1:
+                        Path(kwargs['output_file']).write_text(failure_log, encoding='utf-8')
+                        cube.write_text('MPI cube', encoding='utf-8')
+                        raise RuntimeError('MPI launcher returned 1')
+                    Path(kwargs['output_file']).write_text('JOB DONE.\n', encoding='utf-8')
+                    if case == 'retry-fails':
+                        raise RuntimeError('serial pp.x failed')
+                    cube.write_text('serial cube', encoding='utf-8')
+                    return {'returncode': 0}
+
+                with (
+                    patch('nanoworks.engine.qe.has_qe_state', return_value=True),
+                    patch('nanoworks.engine.qe.validate_qe_state_spin_orbit'),
+                    patch('nanoworks.engine.qe.build_qe_launcher',
+                          return_value=None if case == 'serial' else ['mpiexec', '-np', '6']),
+                    patch('nanoworks.engine.qe.run_qe_program', side_effect=fake_run),
+                    warnings.catch_warnings(record=True) as notices,
+                ):
+                    warnings.simplefilter('always')
+                    kwargs = dict(input_file=root / 'density.in', output_file=output,
+                                  state_dir=root / 'state', filplot=root / 'density.dat',
+                                  cube_file=cube, parallel_cores=6)
+                    if case == 'recover':
+                        result = run_pp_density(**kwargs)
+                        self.assertEqual(result['execution']['returncode'], 0)
+                        self.assertEqual(result['output_file'], root / 'density-Serial-Retry.txt')
+                        self.assertEqual(cube.read_text(), 'serial cube')
+                    else:
+                        expected = 'serial pp.x failed' if case == 'retry-fails' else 'MPI launcher returned 1'
+                        with self.assertRaisesRegex(RuntimeError, expected):
+                            run_pp_density(**kwargs)
+                retried = case in ('recover', 'retry-fails')
+                self.assertEqual(len(calls), 2 if retried else 1)
+                self.assertEqual(len(notices), 1 if retried else 0)
+                self.assertEqual(output.read_text(), failure_log)
+                if retried:
+                    self.assertIsNone(calls[1]['launcher'])
+                    self.assertEqual(calls[1]['input_file'], calls[0]['input_file'])
+                    self.assertEqual(calls[1]['executable'], 'pp.x')
+
     def test_run_pp_density_creates_cube_file(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir = Path(

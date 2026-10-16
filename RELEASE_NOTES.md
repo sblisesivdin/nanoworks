@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Retry pp.x density export once without MPI after a completed run reports improper MPI shutdown, retaining both logs and requiring retry success.
+
 - Resolve QE band energy references from the current ground-state result or the latest SCF, RELAX or VC-RELAX log.
 
 - Read relaxed QE magnetic species such as Ag1/Ag2 as their chemical elements, preserving atom order, initial moments and isotope masses.
