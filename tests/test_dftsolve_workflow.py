@@ -24,6 +24,7 @@ with patch.object(
     from nanoworks.dftsolve import (
         DFTConfig,
         _spacegroup_label,
+        _load_qe_ground_reference,
         reconstruct_full_tensor,
         _validate_gpaw_elastic_fit,
         _wrap_gpaw_dispersion,
@@ -61,6 +62,39 @@ with patch.object(
 
 
 class TestDFTSolveWorkflow(unittest.TestCase):
+    def test_qe_band_reference_reads_relax_logs_before_stale_scf(self):
+        import os
+
+        for label in ('RELAX', 'VC-RELAX'):
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as tmp:
+                struct = str(Path(tmp) / 'AgF2')
+                scf = Path(struct + '-GROUND-QE-Log-SCF.txt')
+                scf.write_text('old SCF', encoding='utf-8')
+                relaxed = Path(struct + f'-GROUND-QE-Log-{label}.txt')
+                relaxed.write_text('new relaxation', encoding='utf-8')
+                os.utime(scf, ns=(1000000000, 1000000000))
+                os.utime(relaxed, ns=(2000000000, 2000000000))
+                result = {'fermi_energy_ev': -4.4819}
+                engine = SimpleNamespace(parse_pw_output=Mock(return_value=result))
+                self.assertIs(_load_qe_ground_reference(struct, engine), result)
+                engine.parse_pw_output.assert_called_once_with(relaxed)
+
+    def test_qe_band_reference_keeps_scf_only_workflow(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            struct = str(Path(tmp) / 'AgF2')
+            scf = Path(struct + '-GROUND-QE-Log-SCF.txt')
+            scf.write_text('SCF output', encoding='utf-8')
+            result = {'fermi_energy_ev': 0.0}
+            engine = SimpleNamespace(parse_pw_output=Mock(return_value=result))
+            self.assertIs(_load_qe_ground_reference(struct, engine), result)
+            engine.parse_pw_output.assert_called_once_with(scf)
+
+    def test_qe_band_reference_missing_ground_log_allows_band_fallback(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            engine = SimpleNamespace(parse_pw_output=Mock())
+            self.assertIsNone(_load_qe_ground_reference(str(Path(tmp) / 'AgF2'), engine))
+            engine.parse_pw_output.assert_not_called()
+
     def test_elastic_fit_rejects_finite_but_underdetermined_solution(self):
         import numpy as np
 

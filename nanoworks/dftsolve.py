@@ -892,6 +892,17 @@ def _spacegroup_label(atoms, symprec=1e-2):
     return f'{symbol} (No. {number})'
 
 
+def _load_qe_ground_reference(struct, engine):
+    """Read the newest ground-state log, including completed relax workflows."""
+    outputs = [Path(struct + f'-GROUND-QE-Log-{label}.txt')
+               for label in ('SCF', 'RELAX', 'VC-RELAX')]
+    outputs = [path for path in outputs if path.is_file()]
+    if not outputs:
+        return None
+    latest = max(outputs, key=lambda path: path.stat().st_mtime_ns)
+    return engine.parse_pw_output(latest)
+
+
 def ase_scalar_pressure_from_gpa(pressure_gpa):
     """Convert the portable GPa pressure to ASE's eV/Angstrom^3 unit."""
     pressure_gpa = float(pressure_gpa)
@@ -2035,6 +2046,9 @@ class dftsolve:
             parprint(
                 "QE ground state calculation finished."
             )
+
+        # Keep the actual SCF/relax result for downstream energy references.
+        self._qe_ground_result = result
 
         parprint(
             "Total energy: "
@@ -4516,22 +4530,16 @@ class dftsolve:
 
         reference_candidates = []
 
-        ground_output_file = Path(
-            self.struct
-            + f'-GROUND-{self.Engine}-Log-SCF.txt'
-        )
-
         if hybrid:
             reference_candidates.append(
                 workflow['result']
             )
 
-        if ground_output_file.is_file():
-            reference_candidates.append(
-                self.engine.parse_pw_output(
-                    ground_output_file
-                )
-            )
+        ground_result = getattr(self, '_qe_ground_result', None)
+        if ground_result is None:
+            ground_result = _load_qe_ground_reference(self.struct, self.engine)
+        if ground_result is not None:
+            reference_candidates.append(ground_result)
 
         if not hybrid:
             reference_candidates.append(
