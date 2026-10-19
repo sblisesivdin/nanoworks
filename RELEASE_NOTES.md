@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Select the default band path from the calculation cell instead of assuming LGL for every lattice; explain unavailable QE path labels using the current cell's points.
+
 - Retry pp.x density export once without MPI after a completed run reports improper MPI shutdown, retaining both logs and requiring retry success.
 
 - Resolve QE band energy references from the current ground-state result or the latest SCF, RELAX or VC-RELAX log.

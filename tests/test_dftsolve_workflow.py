@@ -62,6 +62,15 @@ with patch.object(
 
 
 class TestDFTSolveWorkflow(unittest.TestCase):
+    def test_band_path_defaults_to_automatic_for_both_engines(self):
+        for engine in ('QE', 'GPAW'):
+            with self.subTest(engine=engine):
+                self.assertIsNone(DFTConfig(Engine=engine).Band_path)
+                self.assertEqual(
+                    DFTConfig(Engine=engine, Band_path='LGL').Band_path,
+                    'LGL',
+                )
+
     def test_qe_band_reference_reads_relax_logs_before_stale_scf(self):
         import os
 

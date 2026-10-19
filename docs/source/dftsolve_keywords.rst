@@ -879,10 +879,15 @@ Electronic Calculations Keywords
 
 .. describe:: Band_path
 
-    :Type: ``str``
-    :Default: ``'LGL'``
+    :Type: ``str`` or ``None``
+    :Default: ``None``
 
     Path of high-symmetry points in the band-structure diagram. Use ``G`` for Gamma.
+    With ``None``, ASE selects a standard path for the cell used in the band
+    calculation. After geometry optimization this is the relaxed cell, whose
+    special points may differ from those printed for the input structure.
+    An explicit string must use points supported by that final cell.
+    This applies to both QE and GPAW.
 
 .. code-block:: python
 

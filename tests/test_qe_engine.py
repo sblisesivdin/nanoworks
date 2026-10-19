@@ -894,6 +894,32 @@ class TestQEEngine(unittest.TestCase):
             settings['special_distances'][-1],
         )
 
+    def test_automatic_band_path_follows_changed_cell(self):
+        atoms = Atoms('Ag', cell=[4.0, 4.0, 6.0, 90, 90, 120], pbc=True)
+        initial = build_band_path(atoms, path=None, npoints=61)
+        self.assertIn('L', initial['labels'])
+
+        atoms.set_cell([4.0, 4.2, 6.0])
+        final = build_band_path(atoms, path=None, npoints=61)
+        expected = atoms.cell.bandpath(npoints=61)
+        self.assertEqual(final['path'], expected.path)
+        self.assertNotIn('L', final['labels'])
+        np.testing.assert_allclose(final['kpoints'], expected.kpts)
+
+    def test_explicit_band_path_reports_unavailable_final_cell_point(self):
+        atoms = Atoms('Ag', cell=[4.0, 4.2, 6.0], pbc=True)
+        with self.assertRaisesRegex(
+            ValueError,
+            r"'LGL'.*'L'.*current cell.*Available points:.*None",
+        ):
+            build_band_path(atoms, path='LGL', npoints=61)
+
+    def test_explicit_hexagonal_band_path_keeps_requested_points(self):
+        atoms = Atoms('Ag', cell=[4.0, 4.0, 6.0, 90, 90, 120], pbc=True)
+        result = build_band_path(atoms, path='LGL', npoints=61)
+        self.assertEqual(result['path'], 'LGL')
+        self.assertEqual(result['labels'], ['L', 'G', 'L'])
+
     def test_band_path_rejects_too_few_points(self):
         atoms = Atoms(
             'Si',

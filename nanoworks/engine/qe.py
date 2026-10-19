@@ -646,10 +646,22 @@ def build_band_path(atoms, path, npoints):
                 "QE band path must not be empty."
             )
 
-    band_path = atoms.cell.bandpath(
-        path=path,
-        npoints=npoints,
-    )
+    try:
+        band_path = atoms.cell.bandpath(
+            path=path,
+            npoints=npoints,
+        )
+    except KeyError as exc:
+        automatic_path = atoms.cell.bandpath(npoints=0)
+        available = ', '.join(sorted(automatic_path.special_points))
+        raise ValueError(
+            f"Requested reciprocal-space path {path!r} contains point "
+            f"{exc.args[0]!r}, which is unavailable for the current cell. "
+            f"Available points: {available}. Geometry optimization can "
+            "change the cell and its special points. Choose a path using "
+            "these points, or use None for an automatic path "
+            f"({automatic_path.path})."
+        ) from exc
 
     distances, special_distances, labels = (
         band_path.get_linear_kpoint_axis()

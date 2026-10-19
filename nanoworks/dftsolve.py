@@ -436,7 +436,7 @@ class DFTConfig:
     
     # Band structure parameters
     Gamma: bool = True
-    Band_path: str = 'LGL'
+    Band_path: Optional[str] = None
     Band_npoints: int = 61
     Band_num_of_bands: Optional[int] = None
     Energy_max: float = 5
