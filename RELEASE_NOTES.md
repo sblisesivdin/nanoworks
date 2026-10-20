@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Fix the missing Phonopy band-path helper import in GPAW phonon calculations.
+
 - Add GaAs and TiC GPAW tutorials with recorded figures, numerical reference files and physical interpretation under Examples.
 
 - Select the default band path from the calculation cell instead of assuming LGL for every lattice; explain unavailable QE path labels using the current cell's points.

@@ -6801,6 +6801,7 @@ def reconstruct_full_tensor(independent, atoms):
 
 def get_band_path(atoms, path_str, npoints, path_frac=None, labels=None):
     from ase.dft.kpoints import bandpath
+    from phonopy.phonon.band_structure import get_band_qpoints_and_path_connections
 
     atoms = convert_atoms_to_ase(atoms)
     if path_str is None:
