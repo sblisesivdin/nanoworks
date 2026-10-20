@@ -2333,6 +2333,7 @@ def render_pw_input(
     vdw_calc='None',
     calculate_stress=False,
     calculate_forces=False,
+    noinv=False,
 ):
     """Render a complete QE pw.x input."""
 
@@ -2570,6 +2571,8 @@ def render_pw_input(
 
     if nosym:
         system['nosym'] = True
+    if noinv:
+        system['noinv'] = True
 
     electrons = build_electrons_settings(
         conv_thr=conv_thr,
@@ -2832,6 +2835,7 @@ def render_nscf_input(
     electrostatic_normal_axis='z',
     dipole_correction=False,
     vdw_calc='None',
+    noinv=False,
 ):
     """Render a complete QE pw.x NSCF input."""
     return render_pw_input(
@@ -2869,6 +2873,7 @@ def render_nscf_input(
         electron_maxstep=electron_maxstep,
         diagonalization=diagonalization,
         nosym=nosym,
+        noinv=noinv,
     )
 
 def render_relax_input(
@@ -8932,6 +8937,7 @@ def run_nscf(
     electrostatic_normal_axis='z',
     dipole_correction=False,
     vdw_calc='None',
+    noinv=False,
 ):
     """Render, execute, and parse one QE pw.x NSCF calculation."""
     input_file = Path(
@@ -9000,6 +9006,7 @@ def run_nscf(
         smearing=occupation_settings['smearing'],
         width_ev=occupation_settings['width_ev'],
         nosym=nosym,
+        noinv=noinv,
         prefix=prefix,
         pseudo_dir=pseudo_dir,
         outdir=state_dir,

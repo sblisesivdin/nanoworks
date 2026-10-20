@@ -1682,6 +1682,10 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 )
 
             execute.assert_not_called()
+            optical_job = next(job for job in plan['jobs'] if job['id'] == 'optical-nscf')
+            optical_input = Path(optical_job['input_file']).read_text(encoding='utf-8')
+            self.assertIn('nosym = .true.', optical_input)
+            self.assertIn('noinv = .true.', optical_input)
             self.assertEqual(
                 plan['schema_version'],
                 1,
@@ -2825,6 +2829,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         self.assertTrue(
             nscf_call['nosym']
         )
+        self.assertTrue(nscf_call['noinv'])
         self.assertEqual(
             nscf_call['nbands'],
             16,

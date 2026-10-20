@@ -6379,6 +6379,7 @@ class dftsolve:
             **self._qe_electrostatic_settings(),
             **self._qe_dispersion_settings(),
             nosym=True,
+            noinv=True,
             parallel_cores=self.parallel_cores,
             executable='pw.x',
             prefix='nanoworks',
@@ -8557,6 +8558,7 @@ def prepare_qe_dry_run(
                 smearing=optical_occupation['smearing'],
                 width_ev=optical_occupation['width_ev'],
                 nosym=True,
+                noinv=True,
             ),
             depends_on=ground_dependency,
         )

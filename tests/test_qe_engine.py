@@ -2233,6 +2233,7 @@ class TestQEEngine(unittest.TestCase):
             'nosym',
             text,
         )
+        self.assertNotIn('noinv', text)
 
     def test_render_nscf_input_can_disable_symmetry(self):
         atoms = bulk(
@@ -2249,12 +2250,14 @@ class TestQEEngine(unittest.TestCase):
             cutoff_ev=400.0,
             kpoint_size=(8, 8, 8),
             nosym=True,
+            noinv=True,
         )
 
         self.assertIn(
             'nosym = .true.',
             text,
         )
+        self.assertIn('noinv = .true.', text)
 
     def test_render_complete_bands_input(self):
         atoms = bulk(
@@ -3791,6 +3794,30 @@ class TestQEEngine(unittest.TestCase):
             result['incomplete_moduli'],
             ('voigt', 'reuss', 'hill'),
         )
+
+    def test_run_nscf_preserves_full_optical_mesh_controls(self):
+        with (
+            tempfile.TemporaryDirectory() as tmpdir,
+            patch('nanoworks.engine.qe.has_qe_state', return_value=True),
+            patch('nanoworks.engine.qe.validate_qe_state_spin_orbit'),
+            patch('nanoworks.engine.qe.run_qe_program') as execute,
+            patch('nanoworks.engine.qe.parse_pw_output', return_value={
+                'qe_version': (7, 4, 1), 'job_done': True,
+            }),
+        ):
+            input_file = Path(tmpdir) / 'optical.in'
+            run_nscf(
+                atoms=bulk('Si', 'diamond', a=5.43),
+                input_file=input_file, output_file=Path(tmpdir) / 'optical.out',
+                state_dir=Path(tmpdir) / 'state', pseudopotentials={'Si': 'Si.upf'},
+                pseudo_dir=Path(tmpdir), cutoff_ev=340,
+                kpoint_size=(4, 4, 4), gamma=True, nosym=True, noinv=True,
+            )
+            text = input_file.read_text(encoding='utf-8')
+            self.assertIn('nosym = .true.', text)
+            self.assertIn('noinv = .true.', text)
+            self.assertIn('4 4 4 0 0 0', text)
+            execute.assert_called_once()
 
     def test_run_nscf_requires_ground_state(self):
         atoms = bulk(
