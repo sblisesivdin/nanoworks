@@ -28,6 +28,20 @@ scans using the existing ``dftconverge`` examples.
 DFT input files describe settings and are passed to ``dftsolve -i``; running
 them with ``python`` does not execute the calculation workflow.
 
+Worked examples with recorded results
+-------------------------------------
+
+These tutorials follow completed example runs through their settings,
+numerical results and physical interpretation. Figures are accompanied by
+downloadable input, final-geometry and DAT reference files. Each page states
+what was checked and which convergence studies remain necessary.
+
+.. toctree::
+   :maxdepth: 1
+
+   examples/gaas-gpaw
+   examples/tic-gpaw
+
 Below is a categorized overview of the available examples.
 
 Cluster Execution
@@ -55,9 +69,11 @@ bookkeeping and the convergence checks needed before scientific use.
 
 * **Bulk GaAs (No CIF):**
   Demonstrates how to construct a bulk Gallium Arsenide (GaAs) structure purely using Atomic Simulation Environment (ASE) built-in methods, without relying on an external .cif file. (Folder: ``Bulk-GaAs-noCIF/``)
+  Follow :doc:`examples/gaas-gpaw` for a recorded geometry, DOS and band run.
 
 * **TiC Elastic and Electronic Properties:**
   Shows how to compute both the elastic constants and the electronic band structure / density of states (DOS) for Titanium Carbide (TiC) in a single automated workflow.(Folder: ``TiC-elastic-electronic/``)
+  Follow :doc:`examples/tic-gpaw` for the tensor, derived moduli and metallic bands.
 
 * **Silicon QE/thermo_pw Elastic Smoke Test:**
   Runs the native QE elastic stage through thermo_pw 2.1.0, producing the
@@ -170,7 +186,7 @@ the status files. GPAW LCAO/LDA examples become PW/PBE workflow variants in QE,
 and QE DOS uses tetrahedron integration; BSE remains GPAW only.
 
 Rechecking failed smoke cases
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Use updated inputs from the current checkout as well as the updated Python
 package. An existing run folder contains copies of the inputs from its original
