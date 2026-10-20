@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Allow standalone QE elasticity without a saved ground state while preserving post-processing state and geometry checks.
+
 - Read matdyn phonon frequencies with or without the QE q-point weight column.
 
 - Fix the missing Phonopy band-path helper import in GPAW phonon calculations.

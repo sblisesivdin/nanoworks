@@ -62,6 +62,49 @@ with patch.object(
 
 
 class TestDFTSolveWorkflow(unittest.TestCase):
+    def _qe_elastic_only_solver(self):
+        solver = object.__new__(DFTSolver)
+        solver.Mode = 'PW'
+        solver.Engine = 'QE'
+        solver.struct = 'silicon'
+        solver.XC_calc = 'PBE'
+        solver.Ground_calc = False
+        solver.Elastic_calc = True
+        solver.Geo_optim = False
+        for flag in ('DOS_calc', 'Band_calc', 'Density_calc', 'Phonon_calc', 'Optical_calc'):
+            setattr(solver, flag, False)
+        solver.engine = SimpleNamespace(
+            validate_qe_xc=Mock(), has_qe_state=Mock(return_value=False),
+            validate_qe_state_spin_orbit=Mock(),
+        )
+        solver._load_existing_final_structure = Mock(return_value=False)
+        return solver
+
+    def test_qe_elastic_only_skips_saved_electronic_state(self):
+        solver = self._qe_elastic_only_solver()
+        solver._groundcalc_qe()
+        solver.engine.has_qe_state.assert_not_called()
+        solver.engine.validate_qe_state_spin_orbit.assert_not_called()
+        solver._load_existing_final_structure.assert_called_once_with()
+
+    def test_qe_elastic_with_postprocessing_still_requires_saved_state(self):
+        for flag in ('DOS_calc', 'Band_calc', 'Density_calc', 'Phonon_calc', 'Optical_calc'):
+            with self.subTest(flag=flag):
+                solver = self._qe_elastic_only_solver()
+                setattr(solver, flag, True)
+                with self.assertRaises(SystemExit):
+                    solver._groundcalc_qe()
+                solver.engine.has_qe_state.assert_called_once()
+
+    def test_qe_elastic_only_preserves_final_geometry_requirement(self):
+        solver = self._qe_elastic_only_solver()
+        solver.Geo_optim = True
+        with self.assertRaises(SystemExit):
+            solver._groundcalc_qe()
+        solver._load_existing_final_structure.return_value = True
+        solver._groundcalc_qe()
+        solver.engine.has_qe_state.assert_not_called()
+
     def test_band_path_defaults_to_automatic_for_both_engines(self):
         for engine in ('QE', 'GPAW'):
             with self.subTest(engine=engine):

@@ -1798,31 +1798,39 @@ class dftsolve:
                 "Passing QE PW ground state calculation..."
             )
 
-            if not self.engine.has_qe_state(
-                state_dir,
-                prefix='nanoworks',
-            ):
-                parprint(
-                    "\033[91mERROR:\033[0m "
-                    + str(state_dir)
-                    + " does not contain a valid QE ground-state result. "
-                    "It is needed by subsequent QE calculations. "
-                    "First complete the ground-state calculation with "
-                    "Ground_calc = True. Exiting."
-                )
-                sys.exit(1)
-
-            try:
-                self.engine.validate_qe_state_spin_orbit(
+            elastic_only = getattr(self, 'Elastic_calc', False) and not any(
+                getattr(self, flag, False)
+                for flag in ('DOS_calc', 'Band_calc', 'Density_calc',
+                             'Phonon_calc', 'Optical_calc')
+            )
+            # thermo_pw creates its own SCFs; other QE stages consume the
+            # saved ground state and still require its spin-mode validation.
+            if not elastic_only:
+                if not self.engine.has_qe_state(
                     state_dir,
-                    expected=getattr(self, 'SOC_calc', False),
                     prefix='nanoworks',
-                )
-            except (FileNotFoundError, ValueError, RuntimeError) as exc:
-                parprint(
-                    f"\033[91mERROR:\033[0m {exc}"
-                )
-                sys.exit(1)
+                ):
+                    parprint(
+                        "\033[91mERROR:\033[0m "
+                        + str(state_dir)
+                        + " does not contain a valid QE ground-state result. "
+                        "It is needed by subsequent QE calculations. "
+                        "First complete the ground-state calculation with "
+                        "Ground_calc = True. Exiting."
+                    )
+                    sys.exit(1)
+
+                try:
+                    self.engine.validate_qe_state_spin_orbit(
+                        state_dir,
+                        expected=getattr(self, 'SOC_calc', False),
+                        prefix='nanoworks',
+                    )
+                except (FileNotFoundError, ValueError, RuntimeError) as exc:
+                    parprint(
+                        f"\033[91mERROR:\033[0m {exc}"
+                    )
+                    sys.exit(1)
 
             final_structure_loaded = (
                 self._load_existing_final_structure()
