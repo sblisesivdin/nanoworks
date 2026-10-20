@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Read matdyn phonon frequencies with or without the QE q-point weight column.
+
 - Fix the missing Phonopy band-path helper import in GPAW phonon calculations.
 
 - Add GaAs and TiC GPAW tutorials with recorded figures, numerical reference files and physical interpretation under Examples.

@@ -8922,6 +8922,43 @@ class TestQEEngine(unittest.TestCase):
             -12.5 * THZ_PER_CM_MINUS_ONE,
         )
 
+    def test_parse_matdyn_frequency_file_qpoint_weights_and_wrapped_modes(self):
+        for weight in ('', ' 0.250000'):
+            with self.subTest(weight=weight), tempfile.TemporaryDirectory() as tmpdir:
+                frequency_file = Path(tmpdir) / 'weighted.freq'
+                frequency_file.write_text(
+                    ' &plot nbnd=9, nks=2 /\n'
+                    f' 0.0 0.0 0.0{weight}\n'
+                    ' -12.5000-11.2500 -0.5 5.0 10.0 15.0\n'
+                    ' 20.0 25.0 30.0\n'
+                    f' 0.0 0.5 0.0{weight}\n'
+                    ' 1.0D+01 20.0 30.0 40.0 50.0 60.0\n'
+                    ' 70.0 80.0 90.0\n',
+                    encoding='utf-8',
+                )
+                result = parse_matdyn_frequency_file(frequency_file)
+                self.assertEqual(result['qpoints'], [(0.0, 0.0, 0.0), (0.0, 0.5, 0.0)])
+                self.assertEqual(result['frequencies_cm1'][0],
+                                 [-12.5, -11.25, -0.5, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0])
+                self.assertEqual(result['frequencies_cm1'][1],
+                                 [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0])
+
+    def test_parse_matdyn_frequency_file_rejects_invalid_records(self):
+        header = ' &plot nbnd=3, nks=1 /\n'
+        for data in (
+            '0 0\n1 2 3\n',
+            '0 0 0 0\n1 2\n',
+            '0 0 0 0\n1 2 3 4\n',
+            '0 0 0 0\n1 2 3\n0 0 0\n',
+            '0 0 0\n1 2 NaN\n',
+            '0 0 0\n1 2 1e999\n',
+        ):
+            with self.subTest(data=data), tempfile.TemporaryDirectory() as tmpdir:
+                frequency_file = Path(tmpdir) / 'bad.freq'
+                frequency_file.write_text(header + data, encoding='utf-8')
+                with self.assertRaises(ValueError):
+                    parse_matdyn_frequency_file(frequency_file)
+
     def test_parse_matdyn_frequency_file_rejects_bad_count(self):
         frequency_text = """
  &plot nbnd=   3, nks=   1 /

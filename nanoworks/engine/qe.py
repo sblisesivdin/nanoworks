@@ -4408,38 +4408,51 @@ def parse_matdyn_frequency_file(frequency_file):
         header_match.end():
     ]
 
-    values = [
-        float(
-            value.replace('D', 'E').replace('d', 'e')
-        )
-        for value in number_pattern.findall(data_text)
-    ]
-
-    values_per_qpoint = 3 + nmodes
-    expected_values = (
-        nqpoints * values_per_qpoint
-    )
-
-    if len(values) != expected_values:
-        raise ValueError(
-            "QE matdyn frequency data count does not match "
-            f"the header: expected {expected_values} values, "
-            f"found {len(values)}."
-        )
+    rows = []
+    for line in data_text.splitlines():
+        if not line.strip():
+            continue
+        # Frequencies use fixed-width fields; negative values can touch.
+        if number_pattern.sub('', line).strip():
+            raise ValueError(
+                "QE matdyn frequency data contains an invalid numeric field."
+            )
+        row = [
+            float(value.replace('D', 'E').replace('d', 'e'))
+            for value in number_pattern.findall(line)
+        ]
+        if not all(math.isfinite(value) for value in row):
+            raise ValueError("QE matdyn frequency data must be finite.")
+        rows.append(row)
 
     qpoints = []
     frequencies_cm1 = []
 
+    row_index = 0
     for index in range(nqpoints):
-        start = index * values_per_qpoint
-        qpoints.append(
-            tuple(values[start:start + 3])
-        )
-        frequencies_cm1.append(
-            values[
-                start + 3:
-                start + values_per_qpoint
-            ]
+        if row_index >= len(rows) or len(rows[row_index]) not in (3, 4):
+            raise ValueError(
+                "QE matdyn frequency data count does not match the header: "
+                f"missing or malformed q-point {index + 1}."
+            )
+        # QE 7.4+ appends a q-point weight. It is not a phonon mode.
+        qpoints.append(tuple(rows[row_index][:3]))
+        row_index += 1
+        modes = []
+        while len(modes) < nmodes and row_index < len(rows):
+            modes.extend(rows[row_index])
+            row_index += 1
+        if len(modes) != nmodes:
+            raise ValueError(
+                "QE matdyn frequency data count does not match the header: "
+                f"q-point {index + 1} requires {nmodes} modes, found {len(modes)}."
+            )
+        frequencies_cm1.append(modes)
+
+    if row_index != len(rows):
+        raise ValueError(
+            "QE matdyn frequency data count does not match the header: "
+            "unexpected trailing records."
         )
 
     frequencies_thz = [
