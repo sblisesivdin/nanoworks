@@ -74,6 +74,7 @@ from nanoworks.engine.qe import (
     resolve_qe_xc_settings,
     validate_qe_xc,
     run_scf,
+    run_thermo_pw_elastic,
     run_nscf,
     run_bands,
     run_bands_postprocess,
@@ -3673,15 +3674,78 @@ class TestQEEngine(unittest.TestCase):
                 None
             )
 
-    def test_thermo_control_selects_advanced_scf_elasticity(self):
+    def test_thermo_control_preserves_ibrav_zero_cartesian_frame(self):
         control = render_thermo_control()
 
         self.assertIn("what='scf_elastic_constants'", control)
-        self.assertIn("elastic_algorithm='advanced'", control)
+        self.assertIn("elastic_algorithm='standard'", control)
+        self.assertIn('continue_zero_ibrav=.true.', control)
+        self.assertNotIn('find_ibrav=.true.', control)
         self.assertIn(
             f"fl_el_cons='{THERMO_PW_ELASTIC_DATA_BASENAME}'",
             control,
         )
+
+    def test_thermo_elastic_workflow_retains_cells_and_slab_axes(self):
+        from ase.io import read
+
+        tensor = np.diag([100., 200., 300., 400., 500., 600.])
+        cells = [(bulk('Si', 'diamond', a=5.43), '3D', 'z')]
+        rotated = bulk('TiC', 'rocksalt', a=4.33)
+        rotated.rotate(27, 'z', rotate_cell=True)
+        cells.append((rotated, '3D', 'z'))
+        for index, axis in enumerate('xyz'):
+            lengths = [3., 4., 5.]
+            lengths[index] = 20.
+            cells.append((Atoms('C', scaled_positions=[[.5, .5, .5]],
+                                cell=lengths, pbc=True), '2D', axis))
+
+        for atoms, dimension, axis in cells:
+            with self.subTest(dimension=dimension, axis=axis), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                work = root / 'elastic'
+                data = work / 'elastic_constants'
+                data.mkdir(parents=True)
+                canonical = data / (THERMO_PW_ELASTIC_DATA_BASENAME + '.g1')
+                canonical.write_text('retained thermo_pw elastic data\n', encoding='utf-8')
+                output = root / 'thermo.out'
+                rows = '\n'.join(
+                    str(i + 1) + ' ' + ' '.join(str(v) for v in row * 10.)
+                    for i, row in enumerate(tensor)
+                )
+                output.write_text(
+                    'Program THERMO_PW v.7.4.1 starts\n'
+                    'Elastic constants C_ij (kbar)\n'
+                    'i j= 1 2 3 4 5 6\n' + rows + '\nJOB DONE.\n',
+                    encoding='utf-8',
+                )
+                initial_cell = atoms.cell.copy()
+                with patch('nanoworks.engine.qe.run_thermo_pw_program') as execute, \
+                        self.assertWarnsRegex(RuntimeWarning, 'complete elastic moduli'):
+                    result = run_thermo_pw_elastic(
+                        atoms=atoms, input_file=work / 'elastic.in', output_file=output,
+                        work_dir=work, state_dir=work / 'state',
+                        pseudopotentials={s: s + '.upf' for s in set(atoms.symbols)},
+                        pseudo_dir=root, cutoff_ev=340., kpoint_size=(2, 2, 2),
+                        elastic_dimensionality=dimension, elastic_normal_axis=axis,
+                    )
+                execute.assert_called_once()
+                self.assertEqual((work / 'thermo_control').read_text(), render_thermo_control())
+                self.assertIn('ibrav = 0', (work / 'elastic.in').read_text())
+                rendered = read(work / 'elastic.in', format='espresso-in')
+                np.testing.assert_allclose(rendered.cell, initial_cell, atol=1.e-9)
+                np.testing.assert_allclose(rendered.positions, atoms.positions, atol=1.e-9)
+                np.testing.assert_array_equal(atoms.cell, initial_cell)
+                np.testing.assert_array_equal(result['result']['elastic_tensor_gpa'], tensor)
+                self.assertEqual(result['elastic_data_files'], (canonical.resolve(),))
+                if dimension == '2D':
+                    indices = {'x': (1, 2, 3), 'y': (0, 2, 4), 'z': (0, 1, 5)}[axis]
+                    expected = tensor[np.ix_(indices, indices)] * 20. * .1
+                    np.testing.assert_allclose(
+                        result['two_dimensional_properties']['stiffness_n_per_m'], expected,
+                    )
+                else:
+                    self.assertIsNone(result['two_dimensional_properties'])
 
     def test_extract_qe_error_message_preserves_raw_diagnostic(self):
         output = """

@@ -2452,6 +2452,7 @@ class dftsolve:
             self.struct + '-ELASTIC-QE-Result-Elastic-AllResults.txt'
         )
         result_lines = [
+            'Tensor axes: input Cartesian coordinates (xx, yy, zz, yz, xz, xy).',
             "Elastic tensor Cij (GPa):",
             np.array2string(
                 tensor,

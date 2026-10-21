@@ -1755,6 +1755,8 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 "what='scf_elastic_constants'",
                 thermo_control.read_text(encoding='utf-8'),
             )
+            self.assertIn("elastic_algorithm='standard'", thermo_control.read_text())
+            self.assertIn('continue_zero_ibrav=.true.', thermo_control.read_text())
 
             plan_file = Path(plan['plan_file'])
             script_file = Path(plan['script_file'])

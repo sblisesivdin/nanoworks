@@ -1006,11 +1006,16 @@ def validate_qe_version(
 
 
 def render_thermo_control():
-    """Render thermo_pw control settings for zero-temperature elasticity."""
+    """Render elasticity settings that retain the input Cartesian frame."""
+    # All generated PW inputs use ibrav=0. Standard strains retain these
+    # cell vectors; find_ibrav/advanced can rotate or replace their basis.
+    # Continuing with ibrav=0 also supports supercells without identifying
+    # them as a different primitive cell before the elastic calculation.
     return (
         "&INPUT_THERMO\n"
         "  what='scf_elastic_constants',\n"
-        "  elastic_algorithm='advanced',\n"
+        "  elastic_algorithm='standard',\n"
+        "  continue_zero_ibrav=.true.,\n"
         f"  fl_el_cons='{THERMO_PW_ELASTIC_DATA_BASENAME}'\n"
         "/\n"
     )

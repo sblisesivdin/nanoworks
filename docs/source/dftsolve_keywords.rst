@@ -113,6 +113,13 @@ or:
     cannot provide every derived Voigt/Reuss/Hill value, the tensor and the
     available properties are retained with a warning.
 
+    Generated QE inputs use ``ibrav=0``. The thermo_pw driver keeps that
+    cell with ``continue_zero_ibrav=.true.`` and uses its ``standard``
+    stress-strain algorithm. The tensor is reported in the input Cartesian
+    axes, with Voigt order ``xx, yy, zz, yz, xz, xy``; no automatic Bravais
+    reorientation is applied. This may require more strain calculations
+    than a symmetry-reduced primitive-cell workflow.
+
 .. code-block:: python
 
     Elastic_calc = True
@@ -147,6 +154,9 @@ or:
     length is written to the result file so the vacuum correction is explicit.
     The raw thermo_pw GPa tensor and 3D Voigt/Reuss/Hill values are retained
     for traceability and labeled as vacuum-dependent supercell quantities.
+    Align the selected normal cell vector with the corresponding Cartesian
+    axis and keep it perpendicular to the slab plane; the 2D reporting
+    selects Cartesian tensor components and does not rotate tilted slabs.
 
 .. code-block:: python
 

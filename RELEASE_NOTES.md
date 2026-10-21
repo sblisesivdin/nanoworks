@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Run thermo_pw elasticity with the supplied ibrav=0 cell and standard strains, preserving the input tensor axes.
+
 - Disable time-reversal k-point reduction in QE optical NSCF inputs, including dry-run decks.
 
 - Allow standalone QE elasticity without a saved ground state while preserving post-processing state and geometry checks.
