@@ -48,7 +48,8 @@ XC_backend = 'pw'       # Backend for hybrid evaluation (plane-wave)
 # Please use proper convergence values and always use HPC for your HSE calculations :)
 
 SCF_accuracy = 'loose'  # Portable choices: loose, normal, tight, very-tight
-Occupation_scheme = 'marzari-vanderbilt'
+# Fermi-Dirac avoids the QE 7.4.1 cold-smearing charge-search failure.
+Occupation_scheme = 'fermi-dirac'
 Smearing_width = 0.2
 
 DOS_npoints = 301        # Number of points

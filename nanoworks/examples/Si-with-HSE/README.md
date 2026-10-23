@@ -23,3 +23,22 @@ Normally, prior to HSE calculations, you can prefer to do PBE calculations with 
 * DOS and band-structure energies are referenced to the converged ground-state Fermi level (no longer hard-coded to 0 eV).
 * The exact-exchange fraction and screening parameter can be tuned with the optional `XC_exx_fraction` and `XC_omega` keywords. Leaving them as `None` keeps the GPAW defaults for each functional (HSE06: 25% exact exchange, omega = 0.11 1/Bohr).
 * As a sanity check, a well-converged HSE06 calculation of silicon should give an indirect band gap of roughly 1.15-1.2 eV; the low convergence settings in this example are only meant to make the run finish quickly and will not reproduce that value.
+
+## QE smoke-test occupation setting
+
+The shared input uses Fermi-Dirac occupations for both engines. With QE 7.4.1,
+Marzari-Vanderbilt cold smearing can accept a Fermi-energy solution whose
+charge error is below 0.01 electrons, while the subsequent SCF charge check
+rejects a relative error above 0.001. In the recorded silicon smoke run,
+the integrated charge reached 8.00953417 instead of 8 electrons and stopped
+with `charge is wrong` before the exact-exchange cycle completed.
+
+Fermi-Dirac uses the monotonic occupation function and the tighter bisection
+charge tolerance in that QE version. Only the occupation scheme was changed;
+the 0.2 eV width, cutoff, k-point mesh and loose SCF profile are retained to
+isolate this correction. The failure mechanism was reproduced from the saved
+band energies and k-point weights; a fresh QE calculation is still required
+to validate the complete SCF, DOS and band workflow.
+
+This ground-state occupation setting is independent of `DOS_integration`.
+The smoke runner can continue to request tetrahedron DOS integration.
