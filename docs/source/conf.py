@@ -4,6 +4,12 @@
 
 # Configuration file for the Sphinx documentation builder.
 
+import sys
+from pathlib import Path
+
+# RTD installs only docs requirements; make the checkout importable from any cwd.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
 from nanoworks import __version__
 
 # -- Project information
