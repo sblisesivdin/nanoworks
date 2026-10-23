@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Add a higher-cutoff QE ZnO reference retry input while preserving the GPAW reference settings.
+
 - Use Fermi-Dirac occupations in the silicon HSE example to avoid the QE 7.4.1 cold-smearing charge-search failure.
 
 - Run thermo_pw elasticity with the supplied ibrav=0 cell and standard strains, preserving the input tensor axes.
