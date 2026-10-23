@@ -784,7 +784,7 @@ def build_qe_exx_additional_kpoints(
     band_path,
     qpoint_grid,
 ):
-    """Build zero-weight band and k+q points for a hybrid SCF run."""
+    """Build the ordered hybrid path; QE generates its k+q helper points."""
     band_kpoints = list(
         band_path.get('kpoints', [])
     )
@@ -837,45 +837,9 @@ def build_qe_exx_additional_kpoints(
             coordinates
         )
 
-    additional_kpoints = list(
-        normalized_band_kpoints
-    )
-    seen = {
-        tuple(round(value, 12) for value in kpoint)
-        for kpoint in normalized_band_kpoints
-    }
-
-    nq1, nq2, nq3 = grid
-
-    for kpoint in normalized_band_kpoints:
-        for iq1 in range(nq1):
-            for iq2 in range(nq2):
-                for iq3 in range(nq3):
-                    if iq1 == iq2 == iq3 == 0:
-                        continue
-
-                    shifted = tuple(
-                        value % 1.0
-                        for value in (
-                            kpoint[0] + iq1 / nq1,
-                            kpoint[1] + iq2 / nq2,
-                            kpoint[2] + iq3 / nq3,
-                        )
-                    )
-                    key = tuple(
-                        round(value, 12)
-                        for value in shifted
-                    )
-
-                    if key in seen:
-                        continue
-
-                    seen.add(
-                        key
-                    )
-                    additional_kpoints.append(
-                        shifted
-                    )
+    # QE 7.4.1 expands every ADDITIONAL_K_POINTS entry over the nqx grid.
+    # Supply only the ordered path; pre-expanding here duplicates that work.
+    additional_kpoints = list(normalized_band_kpoints)
 
     band_point_count = len(
         normalized_band_kpoints
@@ -9482,6 +9446,28 @@ def run_bands_postprocess(
         'result': result,
     }
 
+def _read_qe_additional_band_indices(output_file, expected_npoints):
+    """Read the path's 1-based QE range after the weighted SCF mesh."""
+    text = Path(output_file).read_text(encoding='utf-8', errors='replace')
+    ranges = re.findall(
+        r'first\s*=\s*(\d+)\s*,\s*last\s*=\s*(\d+)',
+        text,
+        flags=re.IGNORECASE,
+    )
+    if not ranges:
+        raise RuntimeError(
+            "QE hybrid SCF output does not report the additional band-point "
+            f"range (first/last). See '{output_file}'."
+        )
+    first, last = map(int, ranges[-1])
+    if first < 1 or last - first + 1 != expected_npoints:
+        raise RuntimeError(
+            "QE hybrid SCF additional band-point range does not match "
+            f"the requested {expected_npoints} points. See '{output_file}'."
+        )
+    return list(range(first - 1, last))
+
+
 def run_hybrid_bands(
     atoms,
     scf_input_file,
@@ -9593,6 +9579,12 @@ def run_hybrid_bands(
         executable=scf_executable,
         prefix=prefix,
         exx_additional_kpoints=additional_kpoints,
+    )
+
+    # bands.x and projwfc.x include the weighted SCF mesh before the path.
+    # QE reports the exact path range before its own shifted helper blocks.
+    additional_kpoints['band_indices'] = _read_qe_additional_band_indices(
+        scf_output_file, len(band_path['kpoints']),
     )
 
     bands_workflow = run_bands_postprocess(

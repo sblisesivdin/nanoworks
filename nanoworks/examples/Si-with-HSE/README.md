@@ -42,3 +42,21 @@ to validate the complete SCF, DOS and band workflow.
 
 This ground-state occupation setting is independent of `DOS_integration`.
 The smoke runner can continue to request tetrahedron DOS integration.
+
+## QE hybrid band k-points
+
+QE 7.4.1 generates the EXX k+q copies of each `ADDITIONAL_K_POINTS` entry
+itself. Nanoworks supplies the ordered band path only, retaining repeated
+path endpoints. Pre-expanding those points in Nanoworks caused a second
+expansion in QE and could exceed the compiled `npk` limit.
+
+The hybrid SCF log reports the path's `first=..., last=...` range after the
+weighted SCF mesh. Nanoworks uses that range for both band energies and
+projected-band data, excluding the SCF mesh and shifted EXX helper blocks.
+The same path-only card is used by dry-run inputs.
+
+For a shorter smoke check, override `Band_npoints=61`. This changes path
+sampling only; the EXX q-point grid and electronic settings are retained.
+If ground-state and DOS stages already completed in the same case directory,
+rerun the band stage with `Ground_calc=False` and `DOS_calc=False`, keeping
+the saved ground state and the original structure/input settings.

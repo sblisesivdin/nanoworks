@@ -2630,12 +2630,9 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 '&BANDS',
                 bands_postprocess,
             )
-            self.assertTrue(
-                jobs['band-hybrid-scf'][
-                    'metadata'
-                ][
-                    'helper_count'
-                ] > 0
+            self.assertEqual(
+                jobs['band-hybrid-scf']['metadata']['helper_count'],
+                0,
             )
             self.assertEqual(
                 jobs['band-postprocess'][

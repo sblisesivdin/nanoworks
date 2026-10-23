@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Let QE expand hybrid band k+q points once and select bands/projections from its reported additional-point range.
+
 - Add a higher-cutoff QE ZnO reference retry input while preserving the GPAW reference settings.
 
 - Use Fermi-Dirac occupations in the silicon HSE example to avoid the QE 7.4.1 cold-smearing charge-search failure.

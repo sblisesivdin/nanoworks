@@ -32,6 +32,7 @@ from nanoworks.engine.qe import (
     build_band_path,
     render_band_kpoints,
     build_qe_exx_additional_kpoints,
+    _read_qe_additional_band_indices,
     render_qe_exx_additional_kpoints,
     build_occupation_settings,
     build_electrons_settings,
@@ -209,17 +210,10 @@ class TestQEEngine(unittest.TestCase):
             settings['band_indices'],
             [0, 1],
         )
+        self.assertEqual(settings['helper_indices'], [])
         self.assertEqual(
-            settings['helper_indices'],
-            [2, 3],
-        )
-        self.assertEqual(
-            settings['kpoints'][2],
-            (0.6, 0.0, 0.0),
-        )
-        self.assertEqual(
-            settings['kpoints'][3],
-            (0.7, 0.0, 0.0),
+            settings['kpoints'],
+            [(0.1, 0.0, 0.0), (0.2, 0.0, 0.0)],
         )
 
         text = render_qe_exx_additional_kpoints(
@@ -233,7 +227,7 @@ class TestQEEngine(unittest.TestCase):
         )
         self.assertEqual(
             lines[1],
-            '4',
+            '2',
         )
         self.assertTrue(
             all(
@@ -241,6 +235,45 @@ class TestQEEngine(unittest.TestCase):
                 for line in lines[2:]
             )
         )
+
+    def test_hybrid_path_is_expanded_only_by_qe(self):
+        path = [(i / 400, 0.0, 0.0) for i in range(401)]
+        settings = build_qe_exx_additional_kpoints(
+            band_path={'kpoints': path, 'npoints': 401},
+            qpoint_grid=(3, 3, 3),
+        )
+        self.assertEqual(settings['kpoints'], path)
+        self.assertEqual(settings['helper_indices'], [])
+        # QE 7.4.1 additional_kpoints.f90 expands the input card by nqtot.
+        self.assertEqual(settings['npoints'] * 27, 10827)
+        repeated = build_qe_exx_additional_kpoints(
+            band_path={'kpoints': [path[0], path[-1], path[0]]},
+            qpoint_grid=(2, 1, 1),
+        )
+        self.assertEqual(repeated['kpoints'], [path[0], path[-1], path[0]])
+
+    def test_hybrid_band_range_excludes_scf_mesh_and_q_helpers(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            log = Path(tmp) / 'scf.out'
+            log.write_text(
+                'A request of 2 k-points with zero weight added to list\n'
+                'Furthermore, 4 k-points where added to perform EXX calculation\n'
+                'first=4,  last=5\n'
+                'JOB DONE.\n'
+            )
+            selected = _read_qe_additional_band_indices(log, 2)
+            self.assertEqual(selected, [3, 4])
+            band = Path(tmp) / 'bands.dat'
+            # Three SCF points, two path points, then two shifted helpers.
+            band.write_text('&plot nbnd=1, nks=7 /\n' + ''.join(
+                f'{i}.0 0.0 0.0\n{10 + i}.0\n' for i in range(7)
+            ))
+            data = parse_bands_x_output(band, kpoint_indices=selected)
+            self.assertEqual(data['eigenvalues_ev'], [[[13.0], [14.0]]])
+            for invalid in ('JOB DONE.\n', 'first=0,last=1\n', 'first=4,last=6\n'):
+                log.write_text(invalid)
+                with self.assertRaises(RuntimeError):
+                    _read_qe_additional_band_indices(log, 2)
 
     def test_resolve_qe_xc_settings_for_pbe(self):
         settings = resolve_qe_xc_settings(
@@ -4079,6 +4112,9 @@ class TestQEEngine(unittest.TestCase):
         }
 
         with patch(
+            'nanoworks.engine.qe._read_qe_additional_band_indices',
+            return_value=[3, 4],
+        ), patch(
             'nanoworks.engine.qe.run_scf',
             return_value=scf_workflow,
         ) as run_scf_mock, patch(
@@ -4109,7 +4145,7 @@ class TestQEEngine(unittest.TestCase):
         run_scf_mock.assert_called_once()
         parse_bands_mock.assert_called_once_with(
             'bands.dat',
-            kpoint_indices=[0, 1],
+            kpoint_indices=[3, 4],
         )
         run_bands_mock.assert_called_once_with(
             input_file='bands.in',
@@ -4186,6 +4222,9 @@ class TestQEEngine(unittest.TestCase):
         }
 
         with patch(
+            'nanoworks.engine.qe._read_qe_additional_band_indices',
+            return_value=[3, 4],
+        ), patch(
             'nanoworks.engine.qe.run_scf',
             return_value=scf_workflow,
         ), patch(
@@ -4246,7 +4285,7 @@ class TestQEEngine(unittest.TestCase):
         )
         parse_projection.assert_called_once_with(
             'projection.projwfc_up',
-            kpoint_indices=[0, 1],
+            kpoint_indices=[3, 4],
         )
         prepare_projection.assert_called_once_with(
             raw_projection,
