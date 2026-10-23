@@ -35,10 +35,11 @@ with `charge is wrong` before the exact-exchange cycle completed.
 
 Fermi-Dirac uses the monotonic occupation function and the tighter bisection
 charge tolerance in that QE version. Only the occupation scheme was changed;
-the 0.2 eV width, cutoff, k-point mesh and loose SCF profile are retained to
-isolate this correction. The failure mechanism was reproduced from the saved
-band energies and k-point weights; a fresh QE calculation is still required
-to validate the complete SCF, DOS and band workflow.
+the 0.2 eV width, cutoff, ground-state k-point mesh and loose SCF profile
+are retained. The separate path-sampling change is described below. The failure mechanism was reproduced from the saved
+band energies and k-point weights. The user subsequently reported successful
+QE execution after this occupation correction and the hybrid band-point fix.
+The band continuation used 61 path points; no converged gap is claimed.
 
 This ground-state occupation setting is independent of `DOS_integration`.
 The smoke runner can continue to request tetrahedron DOS integration.
@@ -55,8 +56,19 @@ weighted SCF mesh. Nanoworks uses that range for both band energies and
 projected-band data, excluding the SCF mesh and shifted EXX helper blocks.
 The same path-only card is used by dry-run inputs.
 
-For a shorter smoke check, override `Band_npoints=61`. This changes path
-sampling only; the EXX q-point grid and electronic settings are retained.
+The input now defaults to `Band_npoints=61`, matching the successful band
+continuation. This replaces the previous 401-point path to keep the hybrid
+smoke example short; the EXX q-point grid and electronic settings are retained.
 If ground-state and DOS stages already completed in the same case directory,
 rerun the band stage with `Ground_calc=False` and `DOS_calc=False`, keeping
 the saved ground state and the original structure/input settings.
+
+Run the QE example with tetrahedron DOS using:
+
+```bash
+dftsolve -E QE -p 8 -i Si-with-HSE.py -g Si_mp-149_primitive.cif \
+  -s DOS_integration=tetrahedron
+```
+
+For a fresh full run, keep `Ground_calc=True` and `DOS_calc=True` as in the
+supplied input. The stage-skipping overrides above apply only to continuation.

@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Keep the successful smoke settings in the examples: 61-point HSE bands and a 1400 eV shared ZnO reference cutoff.
+
 - Let QE expand hybrid band k+q points once and select bands/projections from its reported additional-point range.
 
 - Add a higher-cutoff QE ZnO reference retry input while preserving the GPAW reference settings.

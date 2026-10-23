@@ -33,7 +33,9 @@ Relax_cell = [True, True, True, False, False, False]
 Hydrostatic_pressure=0.0 #GPa
 
 # ELECTRONIC
-Wavefunction_cutoff = 340 	# eV
+# Shared cutoff validated in the QE ZnO reference smoke run.
+# The 20-electron Zn norm-conserving potential needs more than the old 340 eV.
+Wavefunction_cutoff = 1400  # eV; also applies when this shared input uses GPAW
 #Ground_kpts_density = 2.5     # pts per Å^-1  If the user prefers to use this, kpts_x,y,z will not be used automatically.
 Ground_kpts_x = 5 			    # kpoints in x direction
 Ground_kpts_y = 5				# kpoints in y direction

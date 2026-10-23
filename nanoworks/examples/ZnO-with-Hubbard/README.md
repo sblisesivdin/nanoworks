@@ -5,7 +5,7 @@ This example applies on-site Hubbard corrections of 7 eV to O-p states and 10 eV
 The folder contains:
 
 - `ZnO_withHubbard.py`: GPAW calculation with DFT+U.
-- `ZnO_woHubbard.py`: GPAW reference calculation without DFT+U.
+- `ZnO_woHubbard.py`: shared GPAW/QE reference calculation without DFT+U.
 - `ZnO_QE_reference.py`: native QE reference without DFT+U, including cell relaxation.
 - `ZnO_QE_Hubbard.py`: native Quantum ESPRESSO DFT+U calculation with ground-state, DOS, and band workflows.
 
@@ -76,7 +76,10 @@ dftsolve -E QE -p 4 -i ZnO_QE_reference.py
 This input retains the original reference's four-atom structure, PBE functional,
 5x5x5 ground-state mesh, geometry tolerances, symmetry and cell constraints.
 It uses a 1400 eV wavefunction cutoff (about 102.9 Ry) and tetrahedron DOS.
-The successful GPAW reference input is unchanged.
+The shared `ZnO_woHubbard.py` now uses the same 1400 eV cutoff, so the
+existing QE smoke-runner entry no longer needs a cutoff override. This shared
+setting also increases the cutoff and computational cost for GPAW; earlier
+successful GPAW results used 340 eV.
 
 The original 340 eV GPAW setting is only about 25 Ry. Applying it to the managed
 20-electron Zn norm-conserving potential produced an initial pressure of about
@@ -84,8 +87,10 @@ The original 340 eV GPAW setting is only about 25 Ry. Applying it to the managed
 17.67 Angstrom^3 and BFGS stopped without convergence. Increasing the step limit
 or accepting the final coordinates would not establish a valid geometry.
 
-The higher cutoff is a targeted retry of the suspected basis/stress problem,
-not a demonstrated cure or a production convergence threshold. A related
+The 1400 eV reference run completed with 6 SCF cycles and 5 BFGS steps,
+a final volume of 49.25725 Angstrom^3 and a final recalculated pressure of
+about -0.07 kbar. DOS, PDOS and band stages also completed with zero exit
+status. This validates the smoke workflow, not production convergence. A related
 [PseudoDojo Zn-sp reference report](https://github.com/abinit/pseudo_dojo/blob/master/pseudo_dojo/pseudos/ONCVPSP-PBE-PDv0.4/Zn/Zn-sp.djrepo)
 lists 38/42/48 Hartree cutoff hints, substantially above 340 eV; this older
 report is not an exact certification of the installed v0.5 UPF or of ZnO.
@@ -96,3 +101,13 @@ The new smoke run must start from the original structure in the input, using
 an empty result directory. Do not restart from the collapsed failed cell.
 Success requires explicit BFGS convergence and completed DOS/PDOS and band
 stages; a `JOB DONE` marker alone does not establish geometry convergence.
+
+To run the shared reference with QE, including the same tetrahedron DOS used
+in the successful smoke calculation:
+
+```bash
+dftsolve -E QE -p 8 -i ZnO_woHubbard.py -s DOS_integration=tetrahedron
+```
+
+The Hubbard-corrected inputs are separate calculations and keep their existing
+settings. The two reference input names also use different result directories.
