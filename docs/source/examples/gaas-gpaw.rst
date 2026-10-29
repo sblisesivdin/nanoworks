@@ -96,6 +96,96 @@ DOS threshold. This LDA result uses a modest cutoff, one sampling choice and
 no SOC. It is not a converged prediction of an experimental gap, nor does a
 40-point symmetry path establish extrema everywhere in the Brillouin zone.
 
+Check the repeated run and atomic projections
+---------------------------------------------
+
+The same example was completed again on 28 October 2026 in
+``example-runs-Va5NDWGi/GPAW/bulk-gaas``, with Nanoworks 27.2.0rc0,
+ASE 3.29.0, GPAW 26.7.0 and eight processes. Its input is byte-for-byte
+identical to the earlier reference input. The density setting produces a
+Gamma-centred 5 x 5 x 5 electronic grid in the recorded ground-state log.
+The new run reports successful ground, DOS and band stages; its final
+maximum generalized force is again 0.010252 eV/angstrom.
+
+.. list-table:: Agreement with the 19 October reference
+   :header-rows: 1
+   :widths: 55 45
+
+   * - Quantity
+     - 28 October result / maximum difference
+   * - Direct gap at Gamma on the sampled path
+     - 0.4331102951 eV
+   * - Conventional cubic lattice parameter
+     - 5.6343461872 angstrom
+   * - Largest absolute change in exported band energies
+     - 8.2e-13 eV
+   * - Largest absolute change in total-DOS values
+     - 7.1e-12 states/eV
+   * - Largest absolute change in aggregate-PDOS values
+     - 1.5e-11 states/eV
+
+The new final lattice, energies and broadened spectra reproduce the earlier
+example to numerical precision. This is a repeatability check at the same
+settings, not a cutoff or k-point convergence test. Neither run records an
+exact Nanoworks source commit or PAW package release. The new log does retain
+the PAW setup identifiers: ``e1f5b04e536df2d35180d97a9e5d9aca`` for Ga and
+``354e1067b5e66bdeaed68c554076e911`` for As.
+
+.. figure:: ../_static/examples/gaas-gpaw-pdos.png
+   :alt: Total GaAs density of states with separate Ga s, Ga p, As s and As p projections, including a view near the band edges.
+   :width: 100%
+
+   Atomic projections from the 28 October run. The shaded interval marks the
+   eigenvalue gap obtained from the symmetry path, while the vertical dotted
+   line is Ef. Curves retain the original 0.1 eV Gaussian broadening.
+
+The upper valence region has strong p character on both atoms, with a larger
+As p contribution in the plotted -2 to 0 eV window. The conduction region
+contains both Ga and As s/p projections. These curves describe qualitative
+orbital weights; they are not atom-resolved electron populations or evidence
+of a pure atomic orbital at a particular band edge. Gaussian tails also
+extend into the shaded eigenvalue gap.
+
+The atom-resolved export contains 501 rows for Ga and 501 for As. Summing
+the two atoms reproduces every aggregate-PDOS column exactly; p-component
+sums agree to better than 1e-14 states/eV. Atomic projectors do not constitute
+a complete orthonormal basis, so their sum need not reproduce the total DOS;
+see the `GPAW DOS tutorial
+<https://gpaw.readthedocs.io/tutorialsexercises/electronic/dos/dos.html>`_.
+In particular, this calculation treats Ga with three valence electrons and
+28 frozen-core electrons; its valence DOS is not a spectrum of Ga 3d
+semicore states.
+
+The total DOS integrates to 15.8960 states per primitive cell over the
+exported energy window. Eight non-spin-polarized bands have a full spectral
+weight of 16 states, and the exported limits truncate Gaussian tails.
+This unweighted DOS integral is not the number of occupied valence electrons;
+occupation-weighted integration would be required for that comparison.
+
+Download the :download:`28 October input, raw atomic PDOS, band/DOS tables and plotting script
+<../_static/examples/gaas-gpaw-repeat-reference.zip>` for this additional
+check. The earlier reference archive below remains available separately.
+Extract the new archive and install ``numpy>=2`` and ``matplotlib`` in an
+analysis environment, then run:
+
+.. code-block:: console
+
+   $ python plot_gaas.py
+
+This regenerates the atomic-PDOS figure and a matching band/DOS figure, and
+writes the numerical checks to ``checks.json`` without running DFT. If you
+also download the older archive, compare the four paired electronic tables
+and verify the identical input with:
+
+.. code-block:: console
+
+   $ python plot_gaas.py --previous /path/to/gaas-gpaw-reference.zip
+
+The band State JSON and the long/XYYY tables agree exactly in the new run.
+All distributed source files have hashes in ``SHA256SUMS``. The raw atomic
+and aggregate PDOS, band-state record and final CIF are retained with the
+new data, so the extra figure can be reproduced without a GPW file.
+
 Use and retain the outputs
 --------------------------
 
