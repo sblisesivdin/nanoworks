@@ -43,6 +43,7 @@ what was checked and which convergence studies remain necessary.
    examples/tic-gpaw
    examples/silicon-qe-optics
    examples/al-gpaw-phonons
+   examples/cr2o-gpaw-spin
 
 Below is a categorized overview of the available examples.
 

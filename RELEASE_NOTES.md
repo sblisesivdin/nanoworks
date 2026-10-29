@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Add a Cr2O GPAW spin tutorial with band/PDOS figures and explicit DOS and real-space density checks.
+
 - Validate the GaAs GPAW tutorial against a repeated run and add reproducible atomic-PDOS figures.
 
 - Add an Al GPAW phonon tutorial with recorded spectra, harmonic thermal curves and an explicit Gamma-mode artifact analysis.
