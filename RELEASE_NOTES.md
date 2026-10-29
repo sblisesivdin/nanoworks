@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Add a QE silicon optics tutorial with recorded DAT spectra, reproducible figures and numerical consistency checks.
+
 - Make the source checkout importable in Sphinx configuration for Read the Docs builds without installing solver dependencies.
 
 - Keep the successful smoke settings in the examples: 61-point HSE bands and a 1400 eV shared ZnO reference cutoff.
