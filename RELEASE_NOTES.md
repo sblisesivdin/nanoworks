@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Add an Al GPAW phonon tutorial with recorded spectra, harmonic thermal curves and an explicit Gamma-mode artifact analysis.
+
 - Add a QE silicon optics tutorial with recorded DAT spectra, reproducible figures and numerical consistency checks.
 
 - Make the source checkout importable in Sphinx configuration for Read the Docs builds without installing solver dependencies.

@@ -42,6 +42,7 @@ what was checked and which convergence studies remain necessary.
    examples/gaas-gpaw
    examples/tic-gpaw
    examples/silicon-qe-optics
+   examples/al-gpaw-phonons
 
 Below is a categorized overview of the available examples.
 
