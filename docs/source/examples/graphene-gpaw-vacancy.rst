@@ -1,6 +1,13 @@
 Graphene with and without a vacancy: sampling matters
 =====================================================
 
+.. note::
+
+   These settings are chosen to demonstrate the Nanoworks workflow with a
+   short runtime. The numerical results are illustrative; quantitative
+   materials predictions require appropriate convergence tests and validation
+   of the physical model.
+
 This tutorial compares the completed ``GPAW/graphene-pristine`` and
 ``GPAW/graphene-defect`` runs in ``example-runs-Va5NDWGi``. Both use the same
 Nanoworks input with different CIFs: 32 carbon atoms for pristine graphene,

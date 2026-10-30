@@ -1,6 +1,13 @@
 GaAs: geometry, DOS and bands with GPAW
 =======================================
 
+.. note::
+
+   These settings are chosen to demonstrate the Nanoworks workflow with a
+   short runtime. The numerical results are illustrative; quantitative
+   materials predictions require appropriate convergence tests and validation
+   of the physical model.
+
 This exercise constructs a two-atom GaAs cell in the input, relaxes it, and
 calculates DOS and bands with GPAW. It uses the existing
 ``Bulk-GaAs-noCIF/bulk_gaas.py`` example. No CIF is needed to start the run.

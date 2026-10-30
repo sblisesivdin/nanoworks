@@ -1,6 +1,13 @@
 TiC: elasticity and metallic bands with GPAW
 ============================================
 
+.. note::
+
+   These settings are chosen to demonstrate the Nanoworks workflow with a
+   short runtime. The numerical results are illustrative; quantitative
+   materials predictions require appropriate convergence tests and validation
+   of the physical model.
+
 This exercise uses ``TiC-elastic-electronic/TiC.py`` to relax a two-atom TiC
 primitive cell, fit elastic constants from strained calculations, and export
 DOS and bands. It is a substantial example: the recorded elastic stage alone

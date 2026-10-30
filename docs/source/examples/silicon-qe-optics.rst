@@ -1,6 +1,13 @@
 Silicon with QE: optical workflow and result checks
 ===================================================
 
+.. note::
+
+   These settings are chosen to demonstrate the Nanoworks workflow with a
+   short runtime. The numerical results are illustrative; quantitative
+   materials predictions require appropriate convergence tests and validation
+   of the physical model.
+
 This exercise reads a completed ground-state, DOS, band and optical workflow
 for two-atom silicon. It shows how to calculate the dielectric response with
 QE's ``epsilon.x`` and how Nanoworks converts it to refractive index,

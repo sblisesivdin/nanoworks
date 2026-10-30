@@ -1,6 +1,13 @@
 Cr2O: spin bands, tetrahedron DOS and density checks with GPAW
 ==============================================================
 
+.. note::
+
+   These settings are chosen to demonstrate the Nanoworks workflow with a
+   short runtime. The numerical results are illustrative; quantitative
+   materials predictions require appropriate convergence tests and validation
+   of the physical model.
+
 This tutorial follows the completed ``GPAW/cr2o-spin`` case in
 ``example-runs-Va5NDWGi``. It uses the existing ``Cr2O-spin`` example to
 connect spin-resolved bands, atomic orbital projections and real-space spin

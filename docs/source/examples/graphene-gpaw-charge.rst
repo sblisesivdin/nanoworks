@@ -1,6 +1,13 @@
 Graphene vacancy: neutral and charged cells with GPAW
 =====================================================
 
+.. note::
+
+   These settings are chosen to demonstrate the Nanoworks workflow with a
+   short runtime. The numerical results are illustrative; quantitative
+   materials predictions require appropriate convergence tests and validation
+   of the physical model.
+
 This exercise follows the completed ``GPAW/graphene-neutral`` and
 ``GPAW/graphene-charged`` cases in ``example-runs-Va5NDWGi``. It demonstrates
 how to check the sign of an imposed charge, compare electronic spectra with

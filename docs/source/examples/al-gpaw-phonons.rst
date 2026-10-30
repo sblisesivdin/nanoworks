@@ -3,6 +3,13 @@
 Aluminium phonons and vibrational thermodynamics with GPAW
 ==========================================================
 
+.. note::
+
+   These settings are chosen to demonstrate the Nanoworks workflow with a
+   short runtime. The numerical results are illustrative; quantitative
+   materials predictions require appropriate convergence tests and validation
+   of the physical model.
+
 This exercise follows the completed ``GPAW/al-phonon`` case from
 ``example-runs-Va5NDWGi``. It connects a relaxed fcc structure, displaced-cell
 forces, three acoustic phonon branches, a phonon density of states (DOS), and

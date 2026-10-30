@@ -36,6 +36,13 @@ numerical results and physical interpretation. Figures are accompanied by
 downloadable input, final-geometry and DAT reference files. Each page states
 what was checked and which convergence studies remain necessary.
 
+.. note::
+
+   These settings are chosen to demonstrate the Nanoworks workflow with a
+   short runtime. The numerical results are illustrative; quantitative
+   materials predictions require appropriate convergence tests and validation
+   of the physical model.
+
 .. toctree::
    :maxdepth: 1
 
