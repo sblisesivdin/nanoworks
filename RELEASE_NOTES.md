@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Add a checked Si HSE06 ground-state/DOS tutorial and document the legacy GPAW hybrid-band limitation.
+
 - Unify tutorials and examples, combine community guidance, and remove duplicate navigation entries.
 
 - Run tutorials from installed examples and add recorded result figures to the tutorial guide.

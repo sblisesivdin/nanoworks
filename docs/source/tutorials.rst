@@ -72,6 +72,7 @@ recorded calculations. Each page includes figures and downloadable data.
    :maxdepth: 1
 
    examples/gaas-gpaw
+   examples/si-hse-gpaw-dos
    examples/cr2o-gpaw-spin
    examples/graphene-gpaw-vacancy
    examples/graphene-gpaw-charge
