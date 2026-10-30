@@ -3,26 +3,58 @@
 Step-by-step DFT Tutorials
 ==========================
 
-These exercises use existing development examples. They teach the sequence
-``input -> preflight -> calculation -> results``; their small settings are
-not converged research parameters. Complete :doc:`installation` first and
-keep the virtual environment active. The commands below assume the checkout
-is ``~/nanoworks``; adjust that path if you cloned elsewhere.
+Run these tutorials directly from the examples installed in
+``~/.nanoworks/examples``. Keep the virtual environment containing Nanoworks
+and your chosen DFT engine active; see :doc:`installation` for engine setup.
+
+.. _tutorial-examples-setup:
+
+Install the examples once
+-------------------------
+
+If the examples are not installed yet, run:
+
+.. code-block:: console
+
+   $ nanoworks --install-examples
+
+This copies the examples bundled with your installed Nanoworks version into
+``~/.nanoworks/examples``. If that folder already exists, continue with it:
+the command preserves existing inputs and results and does not refresh them.
+If a named example is missing, check the installed Nanoworks version and
+:doc:`examples` before continuing.
+
+Each tutorial starts with ``cd`` into its installed example folder. Results
+are written into the output subdirectories described below.
 
 An input ``.py`` file describes a calculation. Run it with ``dftsolve -i``;
 ``python input.py`` does not run the Nanoworks workflow. A CIF supplies the
 geometry through ``-g``. Some inputs construct the geometry with ASE instead.
 
-Use a separate working folder for each exercise. The ``mkdir`` commands
-below deliberately fail if that folder already exists; choose a new name
-instead of copying over an edited input or earlier results.
+.. note::
+
+   These settings are chosen to demonstrate the Nanoworks workflow with a
+   short runtime. The numerical results are illustrative; quantitative
+   materials predictions require appropriate convergence tests and validation
+   of the physical model.
+
+Start with silicon, follow the Fe exercise if you need spin-resolved QE
+outputs, then use the convergence exercise to study numerical sensitivity.
+The figures below are actual outputs from ``example-runs-Va5NDWGi``; they
+show what to look for, without turning these small runs into converged
+materials benchmarks. More illustrated exercises follow at the end of this
+page.
+
+.. contents:: On this page
+   :local:
+   :depth: 2
 
 .. _tutorial-silicon:
 
 1. Silicon: ground state, DOS and bands with GPAW
 -------------------------------------------------
 
-Prepare the working folder
+Open the installed example
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The existing ``Si-Step1-ground_dos_band.py`` selects PBE, a 340 eV plane-wave
@@ -32,11 +64,7 @@ geometry. Its explicit ``Outdirname = 'Si-results'`` controls the output folder.
 
 .. code-block:: bash
 
-   mkdir -p ~/nanoworks-work
-   mkdir ~/nanoworks-work/si-first-run
-   cd ~/nanoworks-work/si-first-run
-   cp ~/nanoworks/nanoworks/examples/Si-2atoms-optical/Si-Step1-ground_dos_band.py .
-   cp ~/nanoworks/nanoworks/examples/Si-2atoms-optical/Si_mp-149_primitive_Example.cif .
+   cd ~/.nanoworks/examples/Si-2atoms-optical
 
 Open the input in your editor. Read the calculation switches first, then
 ``Wavefunction_cutoff``, k-point settings, ``DOS_integration`` and ``Band_path``.
@@ -80,6 +108,20 @@ the CIF stem ``Si_mp-149_primitive_Example``, not the input filename.
    * - ``-DOS-GPAW-Graph-DOS.png`` and ``-BAND-GPAW-Graph-Band.png``
      - Figures for the completed electronic stages.
 
+.. figure:: _static/examples/tutorial-si-gpaw-band.png
+   :alt: Recorded silicon GPAW bands along G X W K L, with energy relative to Ef.
+   :width: 85%
+
+   Silicon band output from the recorded GPAW exercise. Read the symmetry
+   labels and energy reference together with the matching KPath table.
+
+.. figure:: _static/examples/tutorial-si-gpaw-dos.png
+   :alt: Recorded silicon total DOS from the GPAW exercise.
+   :width: 85%
+
+   Total DOS output from the same run. Compare the energy zero with the band
+   plot; atom-centred contributions are available in the separate PDOS table.
+
 Inspect the ground-state log for SCF convergence. Open the PNGs and compare
 them with the numerical tables; the presence of a PNG alone does not establish
 convergence. In DOS and band outputs, zero energy is the Fermi-level reference.
@@ -103,7 +145,7 @@ See :doc:`result_tables` for the full result format and replotting behavior.
 Repeat a stage, then move on to optics
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To repeat DOS using the saved ground state in this working folder:
+To repeat DOS using the saved ground state in this example folder:
 
 .. code-block:: bash
 
@@ -112,8 +154,8 @@ To repeat DOS using the saved ground state in this working folder:
 
 This retains the original input and writes the DOS-stage outputs again. Reuse
 the same output directory and compatible ground-state settings. For a cutoff,
-geometry, spin or functional comparison, use a new working folder and generate
-a matching ground state. Do not combine outputs from different setups.
+geometry, spin or functional comparison, choose a distinct ``Outdirname``
+and generate a matching ground state. Do not combine outputs from different setups.
 
 The ``Si-2atoms-optical/README.md`` explains the existing combined RPA/BSE
 examples and focused optical reruns. Photon energy in optical tables has a
@@ -130,10 +172,7 @@ Prepare and inspect the input
 
 .. code-block:: bash
 
-   mkdir -p ~/nanoworks-work
-   mkdir ~/nanoworks-work/fe-first-run
-   cd ~/nanoworks-work/fe-first-run
-   cp ~/nanoworks/nanoworks/examples/Fe-QE-spin-smoke/Fe-QE-spin-smoke.py .
+   cd ~/.nanoworks/examples/Fe-QE-spin-smoke
 
 This input constructs a one-atom bcc Fe cell with ASE, so there is no ``-g``
 argument. It sets ``Engine='QE'``, ``Spin_calc=True`` and an initial moment of
@@ -169,6 +208,20 @@ in another ``mpirun``. Outputs are written in ``Fe-QE-spin-smoke-results/``.
 Because the geometry comes from the input, the filename prefix is also
 ``Fe-QE-spin-smoke-results``. Expect Up/Down DOS, PDOS and band DAT tables,
 projected-band figures, and total/Up/Down/spin-density CUBE fields.
+
+.. figure:: _static/examples/tutorial-fe-qe-dos.png
+   :alt: Recorded Fe QE total DOS in the two spin channels.
+   :width: 85%
+
+   Fe spin-resolved DOS from the recorded QE exercise. Down-channel curves
+   are mirrored for display; this does not make the underlying DOS negative.
+
+.. figure:: _static/examples/tutorial-fe-qe-projected-up.png
+   :alt: Recorded Fe QE Up-channel bands with orbital projection markers.
+   :width: 100%
+
+   Up-channel projected bands from the same run. Marker size represents
+   orbital weight, rather than a second energy scale.
 
 Read the ground-state SCF log and final magnetization before interpreting the
 spin channels. The Down DOS curve is drawn below zero for display; the DAT
@@ -209,14 +262,10 @@ calculate DOS or bands. Start with the engine you have installed:
 
 .. code-block:: bash
 
-   mkdir -p ~/nanoworks-work
-   mkdir ~/nanoworks-work/si-convergence-qe
-   cd ~/nanoworks-work/si-convergence-qe
-   cp ~/nanoworks/nanoworks/examples/Convergence/Si.cif .
-   cp ~/nanoworks/nanoworks/examples/Convergence/Si-QE-convergence.py .
+   cd ~/.nanoworks/examples/Convergence
 
-For GPAW, use a separate working folder and copy
-``Si-GPAW-convergence.py`` instead. The remaining command sequence is the
+For GPAW, use ``Si-GPAW-convergence.py`` in the same installed folder.
+The two inputs select different output subdirectories. The remaining command sequence is the
 same with that input filename. QE needs ``pw.x`` and its Si UPF; the QE
 postprocessors used by the Fe tutorial are not needed here.
 
@@ -257,8 +306,8 @@ Check, then run
 ``--check`` validates the input plan without running an engine. Each completed
 calculation reports its total energy and energy per atom. If a cutoff or
 k-point scan finds no qualifying candidate, its dependent stages do not
-start. Inspect the engine logs and extend the appropriate candidate list in
-a new working folder before repeating the exercise.
+start. Inspect the engine logs and extend the appropriate candidate list before repeating the exercise. Keep earlier results in their own
+output subdirectory when changing the input settings.
 
 Read the selected values and output files
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -287,6 +336,20 @@ The DAT table uses ``parameter_type`` to distinguish cutoff energy, k-point
 density or mesh, and lattice scale. Cell volume is populated for lattice
 points; ``nan`` in other rows does not mean that their SCF calculation failed.
 
+.. figure:: _static/examples/tutorial-si-qe-cutoff.png
+   :alt: Recorded silicon QE cutoff scan showing relative energies and the selected cutoff.
+   :width: 85%
+
+   Cutoff scan from the supplied QE convergence example. Read a selected
+   value as a result of this candidate list and tolerance.
+
+.. figure:: _static/examples/tutorial-si-qe-kpoints.png
+   :alt: Recorded silicon QE k-point-density scan with relative energies.
+   :width: 85%
+
+   The k-point scan follows the cutoff scan. Density values control the
+   sampling and are not literal mesh dimensions.
+
 Cutoff and k-point figures show meV/atom relative to the last sampled point.
 That plotting reference differs from the adjacent-energy differences used
 for selection. A flatter curve suggests reduced sensitivity to that numerical
@@ -299,6 +362,13 @@ on both sides. A boundary minimum requires a wider scan. The optimized CIF
 uses the selected calculated point, while a valid quadratic fit provides a
 separate interpolated minimum. This scan does not supply a bulk modulus.
 
+.. figure:: _static/examples/tutorial-si-qe-lattice.png
+   :alt: Recorded silicon QE energy-volume scan and its fitted curve.
+   :width: 85%
+
+   Lattice scan from the same recorded run. Distinguish the calculated
+   points, selected structure and interpolated fit before using a minimum.
+
 Regenerate the figures from the stored sweep records:
 
 .. code-block:: bash
@@ -309,3 +379,46 @@ This command replaces the available convergence PNGs without rerunning DFT.
 It uses the JSON record; ``dftsolve --plot`` is for supported electronic and
 optical tables, not this convergence table. See :doc:`dftconverge` for the
 complete keyword reference.
+
+More tutorials with recorded figures
+------------------------------------
+
+Each of these exercises includes figures in the page, commands using the
+installed example folder, and downloadable reference data.
+
+.. list-table:: Choose the next calculation
+   :header-rows: 1
+   :widths: 38 62
+
+   * - Tutorial
+     - What you will follow
+   * - :doc:`examples/gaas-gpaw`
+     - Relaxation, bands, DOS and atomic orbital projections
+   * - :doc:`examples/tic-gpaw`
+     - Elastic constants and metallic electronic structure
+   * - :doc:`examples/silicon-qe-optics`
+     - Staged and combined optical response with QE
+   * - :doc:`examples/al-gpaw-phonons`
+     - Phonon branches, DOS and harmonic thermal properties
+   * - :doc:`examples/cr2o-gpaw-spin`
+     - Spin-resolved bands, orbital weights and density checks
+   * - :doc:`examples/graphene-gpaw-vacancy`
+     - Pristine/vacancy spectra and k-point sampling
+   * - :doc:`examples/graphene-gpaw-charge`
+     - Neutral/charged cells and electron-count differences
+   * - :doc:`examples/mos2-gpaw-reference`
+     - Bulk cell relaxation and Mo/S orbital character
+
+.. figure:: _static/examples/silicon-qe-optics.png
+   :alt: Recorded silicon QE dielectric, absorption, refractive-index and reflectivity example plots.
+   :width: 100%
+
+   Continue with :doc:`examples/silicon-qe-optics` to follow these recorded
+   optical outputs. Photon energy differs from the electronic E-Ef axis.
+
+.. figure:: _static/examples/al-gpaw-phonons.png
+   :alt: Recorded aluminium GPAW phonon dispersion and phonon DOS.
+   :width: 100%
+
+   Continue with :doc:`examples/al-gpaw-phonons` for the phonon workflow and
+   the checks behind this example figure.

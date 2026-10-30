@@ -14,22 +14,18 @@ QE's ``epsilon.x`` and how Nanoworks converts it to refractive index,
 absorption and reflectivity. The recorded runs completed, but their coarse
 spectra are **teaching data, not converged material reference values**.
 
-Prepare a fresh working directory
----------------------------------
+Open the installed example
+--------------------------
 
 Use a Nanoworks environment with QE 7.4.1, MPI and the managed scalar PBE
-norm-conserving pseudopotentials installed. The commands below assume a source
-checkout at ``~/nanoworks``; adjust that path for your installation. Choose a
-new working-directory name if this one exists.
+norm-conserving pseudopotentials installed.
+Open the installed example folder shown below. If needed, install the
+examples first with ``nanoworks --install-examples``; see
+:ref:`tutorial-examples-setup`.
 
 .. code-block:: bash
 
-   mkdir -p ~/nanoworks-work
-   mkdir ~/nanoworks-work/silicon-qe-optics
-   cd ~/nanoworks-work/silicon-qe-optics
-   cp ~/nanoworks/nanoworks/examples/Si-2atoms-optical/Si-Step1-ground_dos_band.py .
-   cp ~/nanoworks/nanoworks/examples/Si-2atoms-optical/Si-Step2-optical-RPA.py .
-   cp ~/nanoworks/nanoworks/examples/Si-2atoms-optical/Si_mp-149_primitive_Example.cif .
+   cd ~/.nanoworks/examples/Si-2atoms-optical
 
 Run the electronic stages first:
 
@@ -173,12 +169,11 @@ Compare with the one-command workflow
 -------------------------------------
 
 The supplied ``Si-QE-Combined-RPA-smoke.py`` example performs ground, DOS, band,
-density and optical stages in one command. Copy it to the working directory
-and run:
+density and optical stages in one command. It is already in this installed
+example folder; run:
 
 .. code-block:: bash
 
-   cp ~/nanoworks/nanoworks/examples/Si-2atoms-optical/Si-QE-Combined-RPA-smoke.py .
    dftsolve -E QE -p 8 -i Si-QE-Combined-RPA-smoke.py \
      -g Si_mp-149_primitive_Example.cif --check
    dftsolve -E QE -p 8 -i Si-QE-Combined-RPA-smoke.py \

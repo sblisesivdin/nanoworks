@@ -22,13 +22,15 @@ calculation was run for this review.
 Prepare the two structures
 --------------------------
 
-Install Nanoworks, GPAW and its PAW/basis datasets following
-:doc:`../installation`. Copy ``graphene.py``, ``graphene4x4.cif`` and
-``graphene4x4withdefect.cif`` from ``nanoworks/examples/Graphene-LCAO``
-into a fresh working directory. Use the same Python input for each CIF:
+Use Nanoworks with GPAW and its PAW/basis datasets installed;
+see :doc:`../installation`.
+Open the installed example folder shown below. If needed, install the
+examples first with ``nanoworks --install-examples``; see
+:ref:`tutorial-examples-setup`.
 
 .. code-block:: console
 
+   $ cd ~/.nanoworks/examples/Graphene-LCAO
    $ dftsolve -E GPAW -p 8 -i graphene.py -g graphene4x4.cif --check
    $ dftsolve -E GPAW -p 8 -i graphene.py -g graphene4x4.cif
    $ dftsolve -E GPAW -p 8 -i graphene.py -g graphene4x4withdefect.cif --check

@@ -23,21 +23,23 @@ not been established. Treat the numbers below as recorded example results.
 Prepare and run
 ---------------
 
-Use an environment with Nanoworks, GPAW, GPAW PAW datasets and Phonopy installed;
-see :doc:`../installation`. Start with ``nanoworks/examples/Al-phonon`` in your
-current source checkout. Copy ``Al-phonon.py`` and
-``Al_mp-134_primitive.cif`` to a fresh directory, then run:
+Use an environment with Nanoworks, GPAW, its PAW datasets and Phonopy installed;
+see :doc:`../installation`.
+Open the installed example folder shown below. If needed, install the
+examples first with ``nanoworks --install-examples``; see
+:ref:`tutorial-examples-setup`.
 
 .. code-block:: console
 
+   $ cd ~/.nanoworks/examples/Al-phonon
    $ dftsolve -E GPAW -p 8 -i Al-phonon.py -g Al_mp-134_primitive.cif --check
    $ dftsolve -E GPAW -p 8 -i Al-phonon.py -g Al_mp-134_primitive.cif
 
 ``--check`` verifies prerequisites without running DFT. The second command
 relaxes the cell, computes displaced-supercell forces, and exports phonon and
-thermal results. A fresh directory avoids substituting old force caches for
-the calculation you intend to validate. Change the MPI process count to suit
-your machine.
+thermal results. If you change the force-calculation settings, check the
+existing phonon caches before reusing them. Change the MPI process count to
+suit your machine.
 
 The recorded run used Nanoworks 27.2.0rc0, GPAW 26.7.0, ASE 3.29.0 and
 Phonopy 4.8.6 with eight processes. Its exact source commit and PAW dataset

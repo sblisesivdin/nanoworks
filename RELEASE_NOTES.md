@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Run tutorials from installed examples and add recorded result figures to the tutorial guide.
+
 - Add a bulk MoS2 GPAW reference tutorial with band, orbital and cell-relaxation checks.
 
 - Add a pristine/vacancy graphene tutorial explaining k-point sampling and DOS checks.

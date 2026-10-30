@@ -17,12 +17,15 @@ The calculation uses PBE with no dispersion correction and no SOC.
 Prepare and run
 ---------------
 
-Install Nanoworks, GPAW and its PAW datasets following :doc:`../installation`.
-Copy ``MoS2-wo-vdW.py`` and ``Bulk_MoS2.cif`` from
-``nanoworks/examples/Bulk-MoS2-vdW`` into a fresh working directory, then run:
+Use Nanoworks with GPAW and its PAW datasets installed;
+see :doc:`../installation`.
+Open the installed example folder shown below. If needed, install the
+examples first with ``nanoworks --install-examples``; see
+:ref:`tutorial-examples-setup`.
 
 .. code-block:: console
 
+   $ cd ~/.nanoworks/examples/Bulk-MoS2-vdW
    $ dftsolve -E GPAW -p 8 -i MoS2-wo-vdW.py -g Bulk_MoS2.cif --check
    $ dftsolve -E GPAW -p 8 -i MoS2-wo-vdW.py -g Bulk_MoS2.cif
 

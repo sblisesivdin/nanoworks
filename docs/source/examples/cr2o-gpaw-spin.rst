@@ -24,13 +24,14 @@ Prepare and run
 ---------------
 
 Use Nanoworks with GPAW, its PAW datasets and the plotting dependencies;
-see :doc:`../installation`. Copy ``Cr2O.py`` and
-``Cr2O_mp-1206821_primitive.cif`` from
-``nanoworks/examples/Cr2O-spin`` in your current source checkout into a fresh
-working directory. Then run:
+see :doc:`../installation`.
+Open the installed example folder shown below. If needed, install the
+examples first with ``nanoworks --install-examples``; see
+:ref:`tutorial-examples-setup`.
 
 .. code-block:: console
 
+   $ cd ~/.nanoworks/examples/Cr2O-spin
    $ dftsolve -E GPAW -p 8 -i Cr2O.py -g Cr2O_mp-1206821_primitive.cif --check
    $ dftsolve -E GPAW -p 8 -i Cr2O.py -g Cr2O_mp-1206821_primitive.cif
 

@@ -3,22 +3,17 @@
 Examples
 ========
 
-The ``nanoworks`` package provides a comprehensive set of examples demonstrating how to use the framework for various types of materials science calculations. To find these examples, firstly activate your virtual environment:
+Run the examples from ``~/.nanoworks/examples`` with your Nanoworks virtual
+environment active. If they are not installed yet, run:
 
 .. code-block:: console
 
-    $ source ~/.venv_nw/bin/activate
-    
-then install examples with nanoworks command:
+   $ nanoworks --install-examples
 
-.. code-block:: console
-
-    (.venv_nw) $ nanoworks --install-examples
-    
-Now your example folder is located in the ``~/.nanoworks/examples/`` 
-
-Existing example folders are preserved rather than refreshed by this command.
-Use your current source checkout for the development tutorials.
+This installs the examples bundled with your installed Nanoworks version.
+If ``~/.nanoworks/examples`` already exists, the command preserves it and does
+not overwrite or refresh your inputs and results. The tutorials below use
+these installed folders directly; a source checkout is not required.
 
 Start with :doc:`tutorials`: silicon introduces ground-state, DOS and band
 results with GPAW; Fe introduces a native QE spin workflow. Each exercise
@@ -54,6 +49,13 @@ what was checked and which convergence studies remain necessary.
    examples/graphene-gpaw-charge
    examples/graphene-gpaw-vacancy
    examples/mos2-gpaw-reference
+
+.. figure:: _static/examples/graphene-gpaw-vacancy.png
+   :alt: Recorded pristine and vacancy graphene bands and DOS from the illustrated tutorial.
+   :width: 100%
+
+   Example result figures appear within each worked tutorial. Follow
+   :doc:`examples/graphene-gpaw-vacancy` to read this comparison.
 
 Below is a categorized overview of the available examples.
 
@@ -231,9 +233,9 @@ Start with the affected workflows using their individual README commands:
 * ``NiO-QE-Hubbard-phonon/`` checks the corrected input and QE force workflow
   after pseudopotential installation.
 
-Run these in fresh working directories for validation so existing force or
-trajectory caches do not replace the calculations being checked. Keep the
-input settings and MPI process count recorded with the new logs. Use one queue
+Use the installed example folders for these checks. Before changing settings,
+keep earlier outputs and force or trajectory caches separate from the new
+results. Keep the input settings and MPI process count recorded with the logs. Use one queue
 slot when comparing memory behavior, so another calculation does not compete
 for memory. ``tsp -S 1`` controls queued jobs; the ``-p`` option controls MPI
 processes within each calculation.

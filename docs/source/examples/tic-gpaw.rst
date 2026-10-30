@@ -17,16 +17,14 @@ Prepare and run
 ---------------
 
 Activate the Nanoworks environment with GPAW, PAW setups and the Python
-``elastic`` dependency installed. These commands assume a source checkout at
-``~/nanoworks`` and a new working folder:
+``elastic`` dependency installed.
+Open the installed example folder shown below. If needed, install the
+examples first with ``nanoworks --install-examples``; see
+:ref:`tutorial-examples-setup`.
 
 .. code-block:: bash
 
-   mkdir -p ~/nanoworks-work
-   mkdir ~/nanoworks-work/tic-gpaw
-   cd ~/nanoworks-work/tic-gpaw
-   cp ~/nanoworks/nanoworks/examples/TiC-elastic-electronic/TiC.py .
-   cp ~/nanoworks/nanoworks/examples/TiC-elastic-electronic/TiC_primitive_geooptimized.cif .
+   cd ~/.nanoworks/examples/TiC-elastic-electronic
    dftsolve -E GPAW -p 8 -i TiC.py -g TiC_primitive_geooptimized.cif --check
    dftsolve -E GPAW -p 8 -i TiC.py -g TiC_primitive_geooptimized.cif
 

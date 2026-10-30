@@ -16,15 +16,13 @@ Prepare and run
 ---------------
 
 Activate the Nanoworks environment with GPAW and its PAW setups installed.
-The following commands assume a source checkout at ``~/nanoworks``. Choose a
-new working-folder name if ``gaas-gpaw`` already exists.
+Open the installed example folder shown below. If needed, install the
+examples first with ``nanoworks --install-examples``; see
+:ref:`tutorial-examples-setup`.
 
 .. code-block:: bash
 
-   mkdir -p ~/nanoworks-work
-   mkdir ~/nanoworks-work/gaas-gpaw
-   cd ~/nanoworks-work/gaas-gpaw
-   cp ~/nanoworks/nanoworks/examples/Bulk-GaAs-noCIF/bulk_gaas.py .
+   cd ~/.nanoworks/examples/Bulk-GaAs-noCIF
    dftsolve -E GPAW -p 8 -i bulk_gaas.py --check
    dftsolve -E GPAW -p 8 -i bulk_gaas.py
 

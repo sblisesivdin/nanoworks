@@ -24,13 +24,14 @@ Prepare and run
 ---------------
 
 Use an environment with Nanoworks, GPAW and its PAW/basis datasets installed;
-see :doc:`../installation`. Copy ``graphene-neutral.py``,
-``graphene-charged.py`` and ``graphene4x4withdefect.cif`` from
-``nanoworks/examples/Graphene-charged`` in your source checkout into a fresh
-working directory. Run the two cases separately:
+see :doc:`../installation`.
+Open the installed example folder shown below. If needed, install the
+examples first with ``nanoworks --install-examples``; see
+:ref:`tutorial-examples-setup`.
 
 .. code-block:: console
 
+   $ cd ~/.nanoworks/examples/Graphene-charged
    $ dftsolve -E GPAW -p 8 -i graphene-neutral.py -g graphene4x4withdefect.cif --check
    $ dftsolve -E GPAW -p 8 -i graphene-neutral.py -g graphene4x4withdefect.cif
    $ dftsolve -E GPAW -p 8 -i graphene-charged.py -g graphene4x4withdefect.cif --check
