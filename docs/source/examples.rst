@@ -44,6 +44,7 @@ what was checked and which convergence studies remain necessary.
    examples/silicon-qe-optics
    examples/al-gpaw-phonons
    examples/cr2o-gpaw-spin
+   examples/graphene-gpaw-charge
 
 Below is a categorized overview of the available examples.
 
