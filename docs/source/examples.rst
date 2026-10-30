@@ -53,6 +53,7 @@ what was checked and which convergence studies remain necessary.
    examples/cr2o-gpaw-spin
    examples/graphene-gpaw-charge
    examples/graphene-gpaw-vacancy
+   examples/mos2-gpaw-reference
 
 Below is a categorized overview of the available examples.
 
