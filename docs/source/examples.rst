@@ -1,63 +1,11 @@
 .. _examples:
 
-Examples
-========
+Example catalog
+===============
 
-Run the examples from ``~/.nanoworks/examples`` with your Nanoworks virtual
-environment active. If they are not installed yet, run:
-
-.. code-block:: console
-
-   $ nanoworks --install-examples
-
-This installs the examples bundled with your installed Nanoworks version.
-If ``~/.nanoworks/examples`` already exists, the command preserves it and does
-not overwrite or refresh your inputs and results. The tutorials below use
-these installed folders directly; a source checkout is not required.
-
-Start with :doc:`tutorials`: silicon introduces ground-state, DOS and band
-results with GPAW; Fe introduces a native QE spin workflow. Each exercise
-explains preparation, preflight, execution and the meaning of Nanoworks outputs.
-The silicon convergence tutorial then explains cutoff, k-point and lattice
-scans using the existing ``dftconverge`` examples.
-DFT input files describe settings and are passed to ``dftsolve -i``; running
-them with ``python`` does not execute the calculation workflow.
-
-Worked examples with recorded results
--------------------------------------
-
-These tutorials follow completed example runs through their settings,
-numerical results and physical interpretation. Figures are accompanied by
-downloadable input, final-geometry and DAT reference files. Each page states
-what was checked and which convergence studies remain necessary.
-
-.. note::
-
-   These settings are chosen to demonstrate the Nanoworks workflow with a
-   short runtime. The numerical results are illustrative; quantitative
-   materials predictions require appropriate convergence tests and validation
-   of the physical model.
-
-.. toctree::
-   :maxdepth: 1
-
-   examples/gaas-gpaw
-   examples/tic-gpaw
-   examples/silicon-qe-optics
-   examples/al-gpaw-phonons
-   examples/cr2o-gpaw-spin
-   examples/graphene-gpaw-charge
-   examples/graphene-gpaw-vacancy
-   examples/mos2-gpaw-reference
-
-.. figure:: _static/examples/graphene-gpaw-vacancy.png
-   :alt: Recorded pristine and vacancy graphene bands and DOS from the illustrated tutorial.
-   :width: 100%
-
-   Example result figures appear within each worked tutorial. Follow
-   :doc:`examples/graphene-gpaw-vacancy` to read this comparison.
-
-Below is a categorized overview of the available examples.
+This catalog lists the inputs bundled in ``~/.nanoworks/examples`` by topic.
+For the installation command and illustrated calculation walkthroughs, start
+with :doc:`tutorials`.
 
 Cluster Execution
 -----------------

@@ -1,1 +1,4 @@
-../../RELEASE_NOTES.md
+# Release notes
+
+```{include} ../../RELEASE_NOTES.md
+```

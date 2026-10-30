@@ -99,8 +99,8 @@ Capabilities depend on the selected solver and computational backend.
      <span>ML-potential calculations</span>
    </div>
 
-See the :doc:`examples` and :doc:`usage` pages for workflow-specific support
-and ready-to-run calculations.
+See :doc:`tutorials` for illustrated walkthroughs and the bundled example
+catalog, and :doc:`usage` for command-line support.
 
 A Familiar Command-Line Workflow
 --------------------------------
@@ -209,7 +209,6 @@ Documentation
 
    installation
    tutorials
-   examples
    usage
    result_tables
    dftconverge
@@ -229,7 +228,6 @@ Documentation
 
    about
    contributing
-   code_of_conduct
    release_notes
    license
    third_party_notices
