@@ -557,18 +557,11 @@ def prepare_band_calc(
     }
 
     if hybrid:
-        return load_gpaw_calc(
-            filename,
-            hybrid=True,
-            symmetry='off',
-            kpts=kpts,
-            parallel={
-                'band': 1,
-                'kpt': 1,
-            },
-            occupations=occupations,
-            txt=txt,
-            convergence=convergence,
+        raise NotImplementedError(
+            'GPAW hybrid band calculations require a validated evaluation '
+            'of the saved hybrid Hamiltonian along the band path. '
+            'Restarting SCF on the path changes the electronic state. '
+            'Set Band_calc=False to run the supported stages.'
         )
 
     kwargs = {

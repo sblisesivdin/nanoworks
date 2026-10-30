@@ -129,6 +129,18 @@ class TestHybridSettings(unittest.TestCase):
             )
         )
 
+    def test_gpaw_hybrid_bands_are_rejected_for_all_aliases(self):
+        for xc in ('HSE', 'HSE-06', 'HSE03', 'PBE0', 'B3LYP', 'EXX',
+                   {'name': 'HSE06', 'backend': 'pw'}):
+            with self.subTest(xc=xc):
+                with self.assertRaisesRegex(NotImplementedError, 'Band_calc=False'):
+                    validate_hybrid_stage_support(xc, 'GPAW', ('ground', 'band'))
+                self.assertEqual(
+                    get_unsupported_hybrid_stages(
+                        xc, 'GPAW', ('ground', 'dos', 'density')),
+                    (),
+                )
+
     def test_optional_exx_kpoint_density_is_normalized(self):
         self.assertIsNone(validate_exx_kpoint_density(None))
         self.assertEqual(validate_exx_kpoint_density('2.5'), 2.5)

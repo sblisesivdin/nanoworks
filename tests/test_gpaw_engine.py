@@ -1015,50 +1015,19 @@ class TestGPAWEngine(unittest.TestCase):
         )
     
     @patch('nanoworks.engine.gpaw.load_gpaw_calc')
-    def test_hybrid_band_calc_loads_state_directly(
-        self,
-        load_calc,
-    ):
-        prepared_calc = MagicMock()
-        load_calc.return_value = prepared_calc
-
-        occupations = {
-            'name': 'fermi-dirac',
-            'width': 0.05,
-        }
-        convergence = {'bands': 8}
-
-        result = prepare_band_calc(
-            filename='hybrid-GROUND-GPAW-Result-State.gpw',
-            hybrid=True,
-            path='GXW',
-            npoints=61,
-            txt='hybrid-BAND-GPAW-Log-Bands.txt',
-            occupations=occupations,
-            convergence=convergence,
-            nbands=None,
-        )
-
-        self.assertIs(result, prepared_calc)
-
-        load_calc.assert_called_once_with(
-            'hybrid-GROUND-GPAW-Result-State.gpw',
-            hybrid=True,
-            symmetry='off',
-            kpts={
-                'path': 'GXW',
-                'npoints': 61,
-            },
-            parallel={
-                'band': 1,
-                'kpt': 1,
-            },
-            occupations=occupations,
-            txt='hybrid-BAND-GPAW-Log-Bands.txt',
-            convergence=convergence,
-        )
-
-        prepared_calc.fixed_density.assert_not_called()
+    def test_hybrid_band_calc_rejects_path_scf_before_loading(self, load_calc):
+        with self.assertRaisesRegex(NotImplementedError, 'Band_calc=False'):
+            prepare_band_calc(
+                filename='hybrid-GROUND-GPAW-Result-State.gpw',
+                hybrid=True,
+                path='GXW',
+                npoints=61,
+                txt='hybrid-BAND-GPAW-Log-Bands.txt',
+                occupations={'name': 'fermi-dirac', 'width': 0.05},
+                convergence={'bands': 8},
+                nbands=None,
+            )
+        load_calc.assert_not_called()
 
 if __name__ == '__main__':
     unittest.main()

@@ -132,8 +132,8 @@ Why the recorded band stage is excluded
 The recorded legacy band stage replaced the uniform mesh with the 61 points
 on ``GXWKGLUWLK``, gave them equal weights of 1/61, and ran ten new SCF
 iterations. Its Fermi level changed from approximately 5.43236 to 5.28301 eV.
-The inspected ``prepare_band_calc`` branch loads the saved calculator with
-the new k-points and runs it again; it does not preserve the original occupied
+The historical ``prepare_band_calc`` branch loaded the saved calculator with
+the new k-points and ran it again; it did not preserve the original occupied
 subspace as a fixed hybrid Hamiltonian for path evaluation.
 
 This is a different self-consistent calculation on a line-point set, not
@@ -147,7 +147,9 @@ The `GPAW hybrid-band documentation
 <https://gpaw.readthedocs.io/tutorialsexercises/electronic/bandstructures/bandstructures.html#non-self-consistent-and-self-consistent-hse06>`_
 describes a distinct hybrid eigenvalue evaluation based on the ground-state
 calculation. Integrating and validating a suitable supported route in
-Nanoworks remains follow-up work. No replacement band calculation is claimed
+Nanoworks remains follow-up work. GPAW hybrid band requests are now rejected
+before execution with a ``Band_calc=False`` hint, including requests made
+through the engine helper directly. No replacement band calculation is claimed
 here, and the recorded path-SCF band figure is not presented as a material
 result. This methodological caveat is separate from the small example's
 ordinary parameter-convergence limitations.

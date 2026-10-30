@@ -80,6 +80,8 @@ Prefer a proper and controlled setup? Nanoworks is a Python package. You can ins
 After installation, the following commands will be available in your terminal:
 
 ### 1. dftsolve (formerly gpawsolve.py)
+GPAW hybrid band/projected-band requests are rejected before execution: the legacy path-SCF restart changes the electronic state. Use `Band_calc=False` for GPAW hybrid ground-state/DOS work.
+
 The main driver for DFT calculations using GPAW or Quantum ESPRESSO. GPAW runs the complete Python workflow under MPI, while Nanoworks launches the supported QE executables with the number of processes requested by the `-p` argument. Native QE includes ground-state, geometry, electronic, density, DFPT phonon, `epsilon.x` RPA optical, and thermo_pw elastic workflows, including vacuum-corrected 2D elastic reporting in N/m. With `Hubbard_U`, QE phonons automatically use Phonopy finite displacements and `pw.x` forces that retain spin/U settings; matching forces can be resumed, and dry-run/Slurm decks include the Python postprocessor. This Nanoworks version supports QE 7.4.1 and thermo_pw 2.1.0; a different detected QE version produces a warning but does not stop the calculation. QE hybrid `HSE06`, `HSE03`, and `PBE0` workflows use native plane-wave exact exchange for ground-state, DOS/PDOS, band, projected-band, and density calculations; hybrid geometry, elastic, phonon, and optical workflows are not supported yet.
 
 Use `-E QE` or `--engine GPAW` to override the input backend for one run.

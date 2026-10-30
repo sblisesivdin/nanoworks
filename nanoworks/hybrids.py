@@ -55,7 +55,6 @@ HYBRID_STAGE_CAPABILITIES = {
         'geometry',
         'elastic',
         'dos',
-        'band',
         'density',
         'optical',
     }),
@@ -207,9 +206,16 @@ def validate_hybrid_stage_support(xc_calc, engine, stages):
         engine = str(engine).strip().upper()
         name = normalize_hybrid_name(xc_calc)
         stage_names = ', '.join(unsupported)
+        hint = ''
+        if engine == 'GPAW' and 'band' in unsupported:
+            hint = (
+                ' The legacy band-path restart changes the SCF k-point '
+                'sampling instead of evaluating the saved hybrid Hamiltonian.'
+                ' Set Band_calc=False to run the supported stages.'
+            )
         raise NotImplementedError(
             f'{engine} hybrid functional {name} does not support '
-            f'the following calculation stage(s): {stage_names}.'
+            f'the following calculation stage(s): {stage_names}.{hint}'
         )
     return normalize_hybrid_name(xc_calc)
 

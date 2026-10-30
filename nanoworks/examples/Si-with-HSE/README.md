@@ -25,12 +25,14 @@ dftsolve -E GPAW -p 4 -i Si-with-HSE.py -g Si_mp-149_primitive.cif -s Band_calc=
 dftsolve -E GPAW -p 4 -i Si-with-HSE.py -g Si_mp-149_primitive.cif -s Band_calc=False
 ```
 
-The recorded legacy GPAW hybrid band branch restarts SCF on the line-path
-k-points with equal weights. It therefore changes the electronic state rather
+The recorded legacy GPAW hybrid band branch restarted SCF on the line-path
+k-points with equal weights. It therefore changed the electronic state rather
 than evaluating the original uniform-mesh hybrid Hamiltonian along a path.
 Do not combine those bands with the saved ground-state DOS or report them as
 a validated hybrid dispersion. A supported hybrid path-eigenvalue workflow
-still needs implementation and real-engine validation. This finding concerns
+still needs implementation and real-engine validation. GPAW hybrid band
+requests are now rejected before execution; use `Band_calc=False` as above.
+This finding concerns
 the GPAW branch, not the separate native QE hybrid band workflow below.
 
 See the illustrated [HSE06 ground-state/DOS tutorial](https://nanoworks.readthedocs.io/en/latest/examples/si-hse-gpaw-dos.html)

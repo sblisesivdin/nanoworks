@@ -1047,6 +1047,27 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 with self.assertRaisesRegex(NotImplementedError, stage):
                     DFTConfig(**settings)
 
+    def test_gpaw_hybrid_bands_fail_during_configuration(self):
+        for xc in ('HSE-06', 'HSE03', 'PBE0', 'B3LYP', 'EXX',
+                   {'name': 'HSE06', 'backend': 'pw'}):
+            for ground in (False, True):
+                with self.subTest(xc=xc, ground=ground):
+                    with self.assertRaisesRegex(NotImplementedError, 'Band_calc=False'):
+                        DFTConfig(Engine='GPAW', XC_calc=xc,
+                                  Ground_calc=ground, Band_calc=True)
+        config = DFTConfig(Engine='GPAW', XC_calc='HSE06',
+                           DOS_calc=True, Density_calc=True, Band_calc=False)
+        self.assertTrue(config.DOS_calc)
+        self.assertTrue(config.Density_calc)
+        # Also catch requests altered after configuration in --check.
+        config.Band_calc = True
+        with patch('nanoworks.dftsolve.load_engine_module', return_value=Mock()):
+            report = check_dft_configuration(
+                config, 'Si', check_executables=False, check_saved_state=False)
+        self.assertFalse(report['ok'])
+        self.assertTrue(any(item['name'] == 'hybrid-band'
+                            for item in report['checks']))
+
     def test_config_validates_exx_kpoint_density_capability(self):
         config = DFTConfig(
             Engine='QE',

@@ -929,9 +929,10 @@ Electronic Calculations Keywords
 
 .. note::
 
-    For the current GPAW hybrid-functional workflow,
-    ``Band_num_of_bands`` does not alter the directly loaded hybrid
-    ground-state calculation. For a native QE hybrid band workflow, it
+    GPAW hybrid band calculations are currently rejected because the legacy
+    path-SCF restart does not evaluate the saved ground-state Hamiltonian.
+    Use ``Band_calc=False`` for GPAW hybrid ground-state/DOS work.
+    For a native QE hybrid band workflow, ``Band_num_of_bands``
     sets the number of bands in the hybrid SCF calculation before
     ``bands.x`` is run.
 
@@ -1005,13 +1006,15 @@ Electronic Calculations Keywords
     Davidson eigensolver. Cell relaxation with hybrid functionals is not
     supported. Hybrid elastic calculations are retained but should be
     treated with caution because plane-wave hybrid stress is not considered
-    reliable. Hybrid phonon calculations are not supported. For DOS and band
-    structure, the eigenvalues are referenced to the converged ground-state
-    Fermi level.
+    reliable. Hybrid phonon and band/projected-band calculations are not
+    supported. The legacy band-path restart changes the SCF sampling instead
+    of evaluating the saved hybrid Hamiltonian and is now rejected before
+    execution. Set ``Band_calc=False`` for supported ground-state/DOS work.
+    Hybrid DOS eigenvalues use the converged ground-state Fermi level.
 
     The shared hybrid capability matrix treats GPAW ground-state, fixed-cell
-    atomic geometry optimization, elastic, DOS/PDOS, band/projected-band,
-    density, and optical stages as available. GPAW hybrid cell relaxation
+    atomic geometry optimization, elastic, DOS/PDOS, density, and optical
+    stages as available. GPAW hybrid cell relaxation, bands/projected bands,
     and phonons are rejected. For QE hybrids, ground-state, DOS/PDOS,
     band/projected-band, and density stages are available; geometry,
     elastic, phonon, and optical stages are rejected.
