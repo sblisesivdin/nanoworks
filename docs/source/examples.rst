@@ -45,6 +45,7 @@ what was checked and which convergence studies remain necessary.
    examples/al-gpaw-phonons
    examples/cr2o-gpaw-spin
    examples/graphene-gpaw-charge
+   examples/graphene-gpaw-vacancy
 
 Below is a categorized overview of the available examples.
 
