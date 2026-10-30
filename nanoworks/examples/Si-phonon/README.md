@@ -15,6 +15,9 @@ dftsolve -E GPAW -p 4 -i Si-phonon.py -g Si_mp-149_primitive.cif
 The process count can be changed with `-p`. `-E GPAW` explicitly selects the
 backend, overriding `Engine` in the input.
 
+See the [illustrated Si phonon tutorial](https://nanoworks.readthedocs.io/en/latest/examples/si-gpaw-phonons.html)
+for reviewed band/DOS figures, downloadable data and the shifted-mesh warning.
+
 ## Resume forces or repeat analysis
 
 Keep the output directory and repeat the calculation with the same input and

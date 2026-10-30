@@ -86,7 +86,8 @@ Phonon & Thermal Properties
   Demonstrates how to calculate the phonon dispersion and density of states for an FCC metal (Al) using the integrated Phonopy module. (Folder: ``Al-phonon/``)
 
 * **Silicon Phonons:**
-  Similar to the aluminum example, but applied to a semiconductor (Si), showcasing the acoustic and optical phonon branches. (Folder: ``Si-phonon/``)
+  Follow :doc:`examples/si-gpaw-phonons` for recorded acoustic/optical branches,
+  DOS mode counting and the shifted-mesh warning. (Folder: ``Si-phonon/``)
 
 **QE Hubbard-U Phonons (NiO):**
   Collinear AFM NiO using Phonopy finite displacements and QE force SCFs with
