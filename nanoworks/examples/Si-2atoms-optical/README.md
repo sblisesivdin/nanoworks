@@ -8,8 +8,8 @@ in the same input as the ground-state and electronic post-processing stages.
 
 Start with `Si-Step1-ground_dos_band.py` if this is your first Nanoworks run.
 It uses GPAW PBE, a 340 eV cutoff and a 4x4x4 ground mesh, and runs Ground,
-DOS/PDOS, Band and Density without optical calculations. Copy the input and
-`Si_mp-149_primitive_Example.cif` to a fresh working folder, then check and run:
+DOS/PDOS, Band and Density without optical calculations. Run from the installed
+`~/.nanoworks/examples/Si-2atoms-optical` directory, then check and run:
 
 ```bash
 dftsolve -E GPAW -i Si-Step1-ground_dos_band.py -g Si_mp-149_primitive_Example.cif --check
@@ -28,6 +28,9 @@ Follow the [silicon tutorial](https://nanoworks.readthedocs.io/en/latest/tutoria
 for the output-file map, saved-state DOS rerun and result interpretation.
 The optical exercises below are later steps; a completed ground run alone does
 not establish optical convergence or sufficient memory for a larger BSE run.
+
+See the [illustrated GPAW RPA tutorial](https://nanoworks.readthedocs.io/en/latest/examples/silicon-gpaw-rpa.html)
+for recorded staged/combined spectra, local-field comparisons and downloadable data.
 
 ## Combined RPA workflow
 

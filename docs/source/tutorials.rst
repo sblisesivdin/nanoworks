@@ -94,6 +94,7 @@ Continue from the electronic calculation to the selected material response.
    :maxdepth: 1
 
    examples/silicon-qe-optics
+   examples/silicon-gpaw-rpa
    examples/al-gpaw-phonons
    examples/si-gpaw-phonons
    examples/tic-gpaw

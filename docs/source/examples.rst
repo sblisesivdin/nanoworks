@@ -101,7 +101,8 @@ Optical Properties
 * **Silicon Optical Properties (RPA & BSE):**
   Includes single-input GPAW and native QE workflows for ground-state, DOS,
   band, density, and RPA optical calculations, plus separate GPAW RPA and BSE
-  inputs for focused optical reruns. (Folder: ``Si-2atoms-optical/``)
+  inputs for focused optical reruns. See :doc:`examples/silicon-gpaw-rpa`
+  for recorded GPAW spectra and local-field checks. (Folder: ``Si-2atoms-optical/``)
   1. Ground-state generation (Wavefunctions and DOS/Bands)
   2. Random Phase Approximation (RPA) calculations
   3. Bethe-Salpeter Equation (BSE) calculations
