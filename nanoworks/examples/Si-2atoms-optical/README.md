@@ -73,6 +73,9 @@ and conduction bands `4..7`. These small windows and meshes are not converged.
 BSE requires a spin-paired PW ground state. `Opt_shift_en` changes transition
 energies inside BSE; it does not shift the photon-energy grid afterward.
 
+See the [illustrated BSE tutorial](https://nanoworks.readthedocs.io/en/latest/examples/silicon-gpaw-bse.html)
+for recorded spectra, eigenvalues, transition-basis counts and sum-rule limitations.
+
 ## Native Quantum ESPRESSO RPA workflow
 
 `Si-QE-Combined-RPA-smoke.py` runs the corresponding native QE workflow. It

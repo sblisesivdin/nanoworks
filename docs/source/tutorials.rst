@@ -95,6 +95,7 @@ Continue from the electronic calculation to the selected material response.
 
    examples/silicon-qe-optics
    examples/silicon-gpaw-rpa
+   examples/silicon-gpaw-bse
    examples/al-gpaw-phonons
    examples/si-gpaw-phonons
    examples/tic-gpaw

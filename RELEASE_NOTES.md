@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Add a checked Si GPAW BSE tutorial with eigenvalues, spectra and explicit sum-rule diagnostics.
+
 - Add a checked Si GPAW RPA tutorial with staged/combined spectra and local-field comparisons.
 
 - Add a checked Si GPAW phonon tutorial with acoustic/optical branches, DOS mode counting and shifted-mesh guidance.

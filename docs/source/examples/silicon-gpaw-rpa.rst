@@ -18,8 +18,8 @@ optical quantities derived from them.
 
 Both runs completed, but their numerical settings differ. They are two
 workflow demonstrations, not a controlled test of staged versus combined
-execution. This page focuses on RPA; the BSE results in the staged folder
-will be treated separately.
+execution. This page focuses on RPA; see :doc:`silicon-gpaw-bse` for the BSE results
+and their eigenvalue and sum-rule checks.
 
 Run from the installed examples
 -------------------------------
