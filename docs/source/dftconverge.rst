@@ -58,7 +58,7 @@ Nanoworks supports two mutually exclusive k-point modes:
 
 .. code-block:: python
 
-   # Density mode (points per angstrom)
+   # Density mode (points per inverse angstrom)
    Ground_kpts_density = 3.0
 
    # Explicit-mesh mode
@@ -112,7 +112,7 @@ each fixed or swept wavefunction cutoff.
    mixed in one sweep.
 
 ``Ground_kpts_density``
-   Fixed k-point density in points per angstrom. It is used during the cutoff
+   Fixed k-point density in points per inverse angstrom (GPAW/ASE convention). It is used during the cutoff
    sweep and by a lattice sweep that does not include a k-point sweep. It is
    not an additional candidate during ``Convergence_kpoints``.
 

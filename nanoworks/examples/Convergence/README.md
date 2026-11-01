@@ -4,7 +4,9 @@ The GPAW and Quantum ESPRESSO inputs run the same ordered cutoff, k-point,
 and lattice-scale workflow for bulk silicon.
 
 Follow the [convergence tutorial](https://nanoworks.readthedocs.io/en/latest/tutorials.html#tutorial-convergence)
-for an isolated working folder, parameter propagation and output interpretation.
+for the installed example directory, parameter propagation and output interpretation.
+The [recorded GPAW analysis](https://nanoworks.readthedocs.io/en/latest/tutorials/silicon-convergence.html#tutorial-convergence-gpaw)
+includes checked selection windows, actual meshes and energy-volume fit residuals.
 These Python files are inputs to `dftconverge`, not standalone calculation scripts.
 
 Validate either input without starting GPAW or QE:
@@ -22,7 +24,8 @@ The example uses a relaxed 10 meV/atom tolerance to keep the demonstration
 compact. Tighten `Convergence_energy_tolerance` for production work.
 `Convergence_consecutive_points = 2` requires two consecutive energy
 differences within that tolerance. Numeric `Convergence_kpoints` values are
-densities in points per angstrom; tuples specify explicit meshes instead.
+densities in points per inverse angstrom (GPAW/ASE convention); tuples
+specify explicit meshes instead.
 
 The result directory contains JSON and DAT data, the optimized CIF, and PNG
 plots for cutoff, k-point, and energy-volume convergence. The energy-volume

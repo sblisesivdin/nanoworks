@@ -28,7 +28,8 @@ bookkeeping and the convergence checks needed before scientific use.
 * **Silicon Convergence (GPAW and QE):**
   Runs the same ordered cutoff, k-point, and lattice-scale workflow with both
   engines and writes JSON, DAT, and optimized-CIF results. (Folder:
-  ``Convergence/``)
+  ``Convergence/``) See :ref:`tutorial-convergence-gpaw` for checked GPAW
+  selections, actual meshes and the limits of the lattice fit.
 
 * **Bulk GaAs (No CIF):**
   Demonstrates how to construct a bulk Gallium Arsenide (GaAs) structure purely using Atomic Simulation Environment (ASE) built-in methods, without relying on an external .cif file. (Folder: ``Bulk-GaAs-noCIF/``)

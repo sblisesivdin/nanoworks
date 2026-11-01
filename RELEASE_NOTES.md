@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Extend the convergence tutorial with checked GPAW sweeps, actual meshes and lattice-fit limits; clarify density units.
+
 - Add a checked Si GPAW BSE tutorial with eigenvalues, spectra and explicit sum-rule diagnostics.
 
 - Add a checked Si GPAW RPA tutorial with staged/combined spectra and local-field comparisons.
