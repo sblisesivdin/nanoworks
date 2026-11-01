@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Audit TiC GPAW deformation data, expose the cubic fit-frame error and qualify the historical elastic constants; add reproducible diagnostics and electronic repeat checks.
+
 - Extend the convergence tutorial with checked GPAW sweeps, actual meshes and lattice-fit limits; clarify density units.
 
 - Add a checked Si GPAW BSE tutorial with eigenvalues, spectra and explicit sum-rule diagnostics.
