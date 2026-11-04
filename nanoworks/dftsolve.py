@@ -288,6 +288,7 @@ from nanoworks.hybrids import (
     validate_exx_kpoint_density,
 )
 from nanoworks.elasticity import (
+    fit_cartesian_elastic_tensor,
     normalize_elastic_dimensionality,
     normalize_elastic_normal_axis,
     resolve_elastic_dimensionality,
@@ -2658,8 +2659,6 @@ class dftsolve:
         - thickness: Effective thickness for 2D materials (Angstrom).
         """
         
-        from elastic import get_elastic_tensor, get_elementary_deformations
-        
         # -------------------------------------------------------------
         # ELASTIC CALCULATION
         # -------------------------------------------------------------
@@ -2884,16 +2883,9 @@ class dftsolve:
 
         # --- Compute the elastic tensor using the deformed systems ---
         _validate_elastic_strain_coverage(bulk_atoms, systems, strain_matrices, strain_names)
-        Cij, fit_info = get_elastic_tensor(bulk_atoms, systems)
-        _validate_gpaw_elastic_fit(Cij, fit_info)
-        Cij = np.array(Cij)
-        parprint(f"Cij raw shape: {Cij.shape}")
-        if Cij.size < 36:
-            Cij = reconstruct_full_tensor(Cij, bulk_atoms)
-        elif Cij.size == 36:
-            Cij = Cij.reshape((6,6))
-        else:
-            raise ValueError(f"ERROR: Unexpected Cij size: {Cij.size}. Cannot reshape.")
+        Cij, fit_info = fit_cartesian_elastic_tensor(bulk_atoms, systems)
+        parprint('Elastic tensor fitted in input Cartesian axes; Voigt order xx yy zz yz xz xy.')
+        parprint(f"Cartesian stress-strain fit rank: {fit_info['rank']} of 6")
         Cij_GPa = Cij / GPa
 
         # --- 2D vs. 3D handling (unchanged) ---
@@ -2932,7 +2924,15 @@ class dftsolve:
         
         with paropen(self.struct + '-ELASTIC-GPAW-Result-Elastic-AllResults.txt', 'w') as fd:
             print("Elastic tensor Cij (GPa):", file=fd)
-            print(np.array2string(Cij_GPa, precision=2, floatmode='fixed'), file=fd)
+            print(np.array2string(Cij_GPa, precision=2, floatmode='fixed', suppress_small=True), file=fd)
+            print('Tensor axes: input Cartesian; Voigt order xx yy zz yz xz xy.', file=fd)
+            print('Fit: full stress tangent, then major symmetrization; engineering shear strain.', file=fd)
+            print(f"Cartesian strain rank: {fit_info['rank']} of 6", file=fd)
+            print(f"Raw stress-fit RMS residual (GPa): {fit_info['rms_residual'] / GPa:.6g}", file=fd)
+            print(f"Symmetrized stress-fit RMS residual (GPa): {fit_info['symmetric_rms_residual'] / GPa:.6g}", file=fd)
+            print(f"Raw response maximum asymmetry (GPa): {fit_info['maximum_asymmetry'] / GPa:.6g}", file=fd)
+            print(f"Reference stress (GPa): {fit_info['reference_stress'] / GPa}", file=fd)
+            print(f"Hydrostatic pressure correction (GPa): {fit_info['pressure'] / GPa:.6g}; assumes hydrostatic reference.", file=fd)
             if is2D:
                 print(f"Detected 2D material. Effective thickness = {t_eff:.2f} Å.", file=fd)
                 print("In-plane elastic stiffness (N/m):", file=fd)

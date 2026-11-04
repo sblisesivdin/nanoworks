@@ -163,6 +163,48 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         self.assertEqual(fit[1].size, 0)
         _validate_gpaw_elastic_fit(fit[0], fit)
 
+    def test_gpaw_elastic_reuses_stresses_and_writes_cartesian_tensor(self):
+        import io
+        import zipfile
+        import numpy as np
+        from ase.io import read
+
+        archive = Path(__file__).resolve().parents[1] / 'docs/source/_static/examples/tic-gpaw-elastic-audit-reference.zip'
+        with zipfile.ZipFile(archive) as z:
+            name = next(n for n in z.namelist() if n.endswith('deformations.traj'))
+            frames = read(io.BytesIO(z.read(name)), format='traj', index=':')
+        for atoms in frames:
+            atoms.info['nanoworks_elastic_signature'] = 'verified-test-stresses'
+        ref = frames[2]
+        with tempfile.TemporaryDirectory() as tmp:
+            prefix = str(Path(tmp) / 'TiC')
+            Path(prefix + '-GROUND-GPAW-Result-State.gpw').touch()
+            write(prefix + '-ELASTIC-GPAW-Result-Elastic-deformations.traj', frames)
+            config = DFTConfig(Engine='GPAW', Elastic_calc=True, bulk_configuration=ref)
+            solver = object.__new__(DFTSolver)
+            solver.__dict__.update(vars(config))
+            solver.config, solver.struct = config, prefix
+            solver.scf_settings = {}
+            solver.engine = SimpleNamespace(
+                resolve_elastic_settings=Mock(return_value=('PBE', {}, {}, False)),
+                load_gpaw_calc=Mock(return_value=ref.calc),
+                create_elastic_calc=Mock(side_effect=AssertionError('Cached stresses must be reused')),
+            )
+            with patch('nanoworks.dftsolve._gpaw_saved_reference_atoms', return_value=ref), \
+                 patch('nanoworks.dftsolve._elastic_cache_signature', return_value='verified-test-stresses'), \
+                 patch('nanoworks.dftsolve.reconstruct_full_tensor', side_effect=AssertionError('No canonical reconstruction')):
+                solver._elasticcalc_gpaw()
+            solver.engine.create_elastic_calc.assert_not_called()
+            text = Path(prefix + '-ELASTIC-GPAW-Result-Elastic-AllResults.txt').read_text()
+            self.assertIn('input Cartesian; Voigt order xx yy zz yz xz xy', text)
+            self.assertIn('Cartesian strain rank: 6 of 6', text)
+            self.assertIn('Raw response maximum asymmetry (GPa): 0.135749', text)
+            matrix_text = text[text.index('[['):text.index(']]') + 2]
+            values = np.fromstring(matrix_text.replace('[', '').replace(']', ''), sep=' ').reshape(6, 6)
+            self.assertAlmostEqual(values[0, 3], -13.31)
+            self.assertAlmostEqual(values[3, 0], -13.31)
+            self.assertAlmostEqual(values[0, 0], 490.18)
+
     def test_elastic_fit_rejects_nonfinite_coefficients_and_constants(self):
         import numpy as np
 

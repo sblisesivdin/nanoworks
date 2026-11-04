@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Fit GPAW elastic tensors in input Cartesian axes; retain normal/shear couplings and report fit residuals and raw asymmetry.
+
 - Audit TiC GPAW deformation data, expose the cubic fit-frame error and qualify the historical elastic constants; add reproducible diagnostics and electronic repeat checks.
 
 - Extend the convergence tutorial with checked GPAW sweeps, actual meshes and lattice-fit limits; clarify density units.

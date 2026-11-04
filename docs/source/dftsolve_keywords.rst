@@ -98,8 +98,15 @@ or:
     :Type: ``boolean``
     :Default: ``False``
 
-    Whether elastic calculations are performed. GPAW uses the Python
-    ``elastic`` workflow. QE uses thermo_pw 2.1.0 as its primary and only
+    Whether elastic calculations are performed. GPAW fits the full
+    stress-strain response in the reference geometry's Cartesian axes,
+    subtracts the reference stress and major-symmetrizes the fitted matrix.
+    Voigt order is ``xx, yy, zz, yz, xz, xy`` with engineering shear strain.
+    No crystallographic zero entries or automatic axis reorientation are
+    imposed. The summary includes fit residuals and raw response asymmetry;
+    the pressure correction assumes a hydrostatic reference. Strained atomic
+    positions are affinely scaled without internal relaxation.
+    QE uses thermo_pw 2.1.0 as its primary and only
     elastic driver. This Nanoworks version supports QE 7.4.1; a different
     detected QE version produces a warning but does not stop the calculation.
     QE results include the 6x6 tensor in GPa and the available Voigt, Reuss,

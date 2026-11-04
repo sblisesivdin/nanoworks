@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # See LICENSE.md in the project root for license terms.
 
-"""Engine-neutral helpers for elastic-property reporting."""
+"""Engine-neutral stress-strain fitting and elastic-property reporting."""
 
 import math
 
@@ -20,6 +20,67 @@ _IN_PLANE_VOIGT = {
     'y': (0, 2, 4),
     'z': (0, 1, 5),
 }
+
+
+def fit_cartesian_elastic_tensor(reference, systems):
+    """Fit all stress components in the input Cartesian frame, in ASE units.
+
+    Row-vector cells obey A_deformed = A_reference @ (I + epsilon) for
+    the symmetric deformations used by the GPAW workflow. Voigt order is
+    xx, yy, zz, yz, xz, xy, with engineering shear strains. No crystal-axis
+    alignment or space-group-specific zero entries are assumed.
+
+    Fit the full Cauchy-stress tangent first, retaining its asymmetry as a
+    diagnostic, then use its major-symmetric part for elastic properties.
+    Keep the legacy hydrostatic pressure correction C = B + p*D, where D
+    has normal diagonal +1, normal off-diagonal -1 and shear diagonal +1.
+    This correction assumes a hydrostatic reference; it is not a general
+    finite-prestress elasticity treatment.
+    """
+    cell = np.asarray(reference.cell, dtype=float)
+    if (cell.shape != (3, 3) or not np.isfinite(cell).all()
+            or np.linalg.matrix_rank(cell) != 3):
+        raise ValueError('Elastic reference cell must be finite and full rank.')
+    stress0 = np.asarray(reference.get_stress(), dtype=float)
+    if stress0.shape != (6,) or not np.isfinite(stress0).all():
+        raise ValueError('Elastic reference stress must have six finite components.')
+    strains, stresses = [], []
+    for atoms in systems:
+        deformed = np.asarray(atoms.cell, dtype=float)
+        stress = np.asarray(atoms.get_stress(), dtype=float)
+        if (deformed.shape != (3, 3) or not np.isfinite(deformed).all()
+                or stress.shape != (6,) or not np.isfinite(stress).all()):
+            raise ValueError('Elastic samples must have finite cells and six finite stresses.')
+        deformation = np.linalg.solve(cell, deformed) - np.eye(3)
+        strain = (deformation + deformation.T) / 2
+        strains.append([strain[0, 0], strain[1, 1], strain[2, 2],
+                        2 * strain[1, 2], 2 * strain[0, 2], 2 * strain[0, 1]])
+        stresses.append(stress - stress0)
+    if not strains:
+        raise ValueError('Elastic fit requires deformation samples.')
+    x, y = np.asarray(strains), np.asarray(stresses)
+    slopes, _, rank, _ = np.linalg.lstsq(x, y, rcond=None)
+    if rank != 6:
+        raise RuntimeError(
+            f'Elastic Cartesian fit is underdetermined: strain rank {rank} of 6.'
+        )
+    response = slopes.T
+    if not np.isfinite(response).all():
+        raise RuntimeError('Elastic Cartesian fit returned non-finite coefficients.')
+    symmetric = (response + response.T) / 2
+    pressure = -np.mean(stress0[:3])
+    correction = np.eye(6)
+    correction[:3, :3] = 2 * np.eye(3) - np.ones((3, 3))
+    tensor = symmetric + pressure * correction
+    return tensor, {
+        'rank': int(rank),
+        'response': response,
+        'reference_stress': stress0,
+        'pressure': float(pressure),
+        'rms_residual': float(np.sqrt(np.mean((x @ response.T - y)**2))),
+        'symmetric_rms_residual': float(np.sqrt(np.mean((x @ symmetric.T - y)**2))),
+        'maximum_asymmetry': float(np.max(np.abs(response - response.T))),
+    }
 
 
 def normalize_elastic_dimensionality(value):

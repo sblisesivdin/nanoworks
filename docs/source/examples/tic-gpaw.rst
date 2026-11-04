@@ -18,15 +18,15 @@ took about four hours ten minutes on eight MPI processes.
    The deformation audit below exposes a coordinate-frame error in the
    archived cubic elastic fit. Its printed constants and derived moduli are
    retained as historical outputs, not validated material properties.
-   The current GPAW elastic path still needs an orientation-aware fit.
-   Use ``-s Elastic_calc=False`` for the electronic exercise until that
-   backend correction is available.
+   The current GPAW backend fixes this by fitting the full tensor in the
+   input Cartesian axes. It does not rewrite historical results. See
+   :ref:`tutorial-tic-cartesian-fix` for the corrected postprocessing and
+   its remaining convergence limits.
 
 Prepare and run
 ---------------
 
-Activate the Nanoworks environment with GPAW, PAW setups and the Python
-``elastic`` dependency installed.
+Activate the Nanoworks environment with GPAW and PAW setups installed.
 Open the installed example folder shown below. If needed, install the
 examples first with ``nanoworks --install-examples``; see
 :ref:`tutorial-examples-setup`.
@@ -34,8 +34,11 @@ examples first with ``nanoworks --install-examples``; see
 .. code-block:: bash
 
    cd ~/.nanoworks/examples/TiC-elastic-electronic
-   dftsolve -E GPAW -p 8 -i TiC.py -g TiC_primitive_geooptimized.cif -s Elastic_calc=False --check
-   dftsolve -E GPAW -p 8 -i TiC.py -g TiC_primitive_geooptimized.cif -s Elastic_calc=False
+   dftsolve -E GPAW -p 8 -i TiC.py -g TiC_primitive_geooptimized.cif --check
+   dftsolve -E GPAW -p 8 -i TiC.py -g TiC_primitive_geooptimized.cif
+
+For the shorter electronic exercise, append ``-s Elastic_calc=False`` to
+both commands to skip the elastic stage.
 
 The output folder and filename prefix are ``TiC_primitive_geooptimized``.
 ``-p`` controls MPI processes within this calculation. When using the batch
@@ -203,8 +206,9 @@ component, including the six reference frames; its rotated RMS is
 The rotated rows are postprocessing diagnostics, not replacement production
 results. The strain-window comparison does not test cutoff, k sampling,
 SCF stress accuracy, internal relaxation or the choice of stress/strain
-measure at finite deformation. Fixing and validating the orientation-aware
-backend remains necessary before publishing material constants.
+measure at finite deformation. The backend correction described below
+addresses the frame error; those physical validation tasks remain necessary
+before publishing material constants.
 
 Download the :download:`repeat data, deformation trajectory and audit script
 <../_static/examples/tic-gpaw-elastic-audit-reference.zip>`. Extract it and run:
@@ -217,6 +221,67 @@ The script requires NumPy, Matplotlib and ASE, verifies source hashes,
 checks all strain modes and the frame transformation, and regenerates the
 figure, fitted coefficients, rotation and strain/stress tables. The archive
 also contains a separate electronic consistency check script.
+
+.. _tutorial-tic-cartesian-fix:
+
+Use the corrected Cartesian fit
+-------------------------------
+
+The corrected GPAW path fits all six stress components against all six
+engineering strain components in the reference geometry's Cartesian axes.
+It subtracts the full reference stress before the fit and requires strain
+rank six. The raw response is then major-symmetrized for stiffness and
+modulus reporting. The historical hydrostatic pressure correction is
+retained; it assumes hydrostatic reference stress and does not provide a
+general finite-prestress elastic model.
+
+There is no space-group-specific matrix reconstruction or implicit crystal
+reorientation. The summary identifies the axes, Voigt order, reference
+stress, pressure correction, raw response asymmetry and residuals before
+and after symmetrization. Slight violations of exact crystal symmetry may
+remain because this full fit does not impose crystallographic constraints.
+
+Reprocessing the archived trajectory with the production helper gives,
+in GPa and the original Cartesian axes:
+
+.. code-block:: text
+
+   [[490.18 130.41 139.78 -13.31   0.00   0.00]
+    [130.41 490.01 139.79  13.39   0.00   0.00]
+    [139.78 139.79 480.56  -0.04   0.00   0.00]
+    [-13.31 13.39  -0.04 189.18   0.00   0.00]
+    [  0.00  0.00   0.00   0.00 189.16 -13.34]
+    [  0.00  0.00   0.00   0.00 -13.34 179.64]]
+
+The raw maximum asymmetry is 0.135749 GPa; the stress-fit RMS is
+0.0471452 GPa before and 0.0471462 GPa after symmetrization. The diagonal
+entries of this matrix are Cartesian components, not the three conventional
+crystal-axis cubic constants in the diagnostic table above. The diagnostic
+uses a different, cubic-constrained fit after rotating the data.
+
+With an updated Nanoworks installation, run this inside the extracted
+audit archive to inspect the production fit without a GPAW calculation:
+
+.. code-block:: python
+
+   from ase.io import read
+   from ase.units import GPa
+   from nanoworks.elasticity import fit_cartesian_elastic_tensor
+
+   frames = read(
+       'TiC_primitive_geooptimized-ELASTIC-GPAW-Result-Elastic-deformations.traj',
+       index=':',
+   )
+   tensor, diagnostics = fit_cartesian_elastic_tensor(frames[2], frames)
+   print(tensor / GPa)
+
+The audit ZIP preserves the 1 November snapshot, including its then-open
+backend-fix note. Its source trajectory and independent audit remain useful.
+Compatible verified deformation caches can be refitted by the corrected
+workflow; cache signatures and strain-coverage checks still apply.
+The full-fit regression also tests rotated synthetic cubic, hexagonal and
+triclinic tensors and rotation of an entire trajectory. These checks
+validate the fitting convention, not the DFT parameter convergence of TiC.
 
 Read the electronic result
 --------------------------
