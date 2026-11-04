@@ -30,3 +30,13 @@ reported valence and conduction band edges as zero when QE does not print a
 Fermi energy.
 
 Because we use `Outdirname` variable, results are saved in different folders.
+
+The [recorded GPAW tutorial](https://nanoworks.readthedocs.io/en/latest/examples/wse2-gpaw-soc.html)
+compares the same fixed monolayer with SOC off/on. `Band_npoints=100` yields
+100 total path samples. GPAW applies SOC non-self-consistently after the scalar
+calculation; its ordinary SCF log gap is not the exported SOC band gap.
+
+Use a development version containing the full-BZ SOC DOS MPI weight correction.
+The historical SOC DOS archive has unvalidated absolute normalization and must
+not be rescaled into a supposedly corrected spectrum. The tutorial provides
+the original data, reproducible band figures and the separate DOS audit.

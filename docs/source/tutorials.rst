@@ -77,6 +77,7 @@ recorded calculations. Each page includes figures and downloadable data.
    examples/graphene-gpaw-vacancy
    examples/graphene-gpaw-charge
    examples/mos2-gpaw-reference
+   examples/wse2-gpaw-soc
 
 .. figure:: _static/examples/mos2-gpaw-reference.png
    :alt: Recorded bulk MoS2 band structure and DOS from the materials tutorial.

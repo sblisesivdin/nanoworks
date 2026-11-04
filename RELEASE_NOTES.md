@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Add a checked WSe2 GPAW SOC tutorial with K-point splittings, sampled gaps and an explicit historical DOS limitation.
+
 - Match full-BZ GPAW SOC DOS weights to the eigenvalues collected across MPI ranks.
 
 - Fit GPAW elastic tensors in input Cartesian axes; retain normal/shear couplings and report fit residuals and raw asymmetry.

@@ -62,6 +62,8 @@ Advanced DFT Methods & Corrections
   transition metal dichalcogenides (TMDs) like WSe2. Includes GPAW and QE
   inputs using the same ``SOC_calc`` keyword and is built entirely using ASE
   without an external CIF file. (Folder: ``SOC-WSe2-noCIF/``)
+  Follow :doc:`examples/wse2-gpaw-soc` for the recorded GPAW band comparison
+  and the historical SOC DOS normalization limitation.
 
 * **Cr2O Spin-Polarized Calculations:**
   Demonstrates how to configure and run spin-polarized calculations for magnetic systems, extracting local magnetic moments and spin-resolved band structures. (Folder: ``Cr2O-spin/``)
