@@ -257,6 +257,7 @@ from nanoworks.optical import (
     generate_optical_figures,
 )
 from nanoworks.dos import (
+    ensure_gpaw_soc_dos_weights,
     resolve_dos_settings,
     validate_dos_settings,
 )
@@ -3091,6 +3092,8 @@ class dftsolve:
 
         if self.SOC_calc:
             parprint("Calculating Total DOS with Spin-Orbit Coupling...")
+            if ensure_gpaw_soc_dos_weights(rawdos, len(calc.get_bz_k_points())):
+                parprint('Restored full-BZ SOC DOS weights after MPI eigenvalue collection.')
             shifted_energies = np.linspace(self.Energy_min, self.Energy_max, self.DOS_npoints)
             energies = shifted_energies + ef
             dos = np.asarray(rawdos.raw_dos(

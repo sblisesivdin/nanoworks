@@ -6,6 +6,33 @@
 
 import math
 
+import numpy as np
+
+
+def ensure_gpaw_soc_dos_weights(rawdos, nbzkpts):
+    """Match globally collected SOC eigenvalues to full-BZ uniform weights.
+
+    GPAW 26.7 BZWaveFunctions.eigenvalues() collects every BZ point, but
+    weights() uses the number of rank-local wavefunctions. Gaussian DOS
+    then silently truncates its sum through zip(eigenvalues, weights).
+    Repair only that known layout; reject other inconsistent data rather
+    than renormalizing a partial spectrum. SOC spinors count once each.
+    """
+    eigenvalues = np.asarray(rawdos.eig_skn)
+    weights = np.asarray(rawdos.weight_k, dtype=float)
+    if (nbzkpts < 1 or eigenvalues.ndim != 3
+            or eigenvalues.shape[0] != 1 or eigenvalues.shape[1] != nbzkpts
+            or not np.isfinite(eigenvalues).all()):
+        raise ValueError('GPAW SOC DOS requires finite eigenvalues for the full BZ.')
+    if (weights.ndim != 1 or len(weights) > nbzkpts
+            or not np.isfinite(weights).all()
+            or not np.allclose(weights, 1.0 / nbzkpts, rtol=1e-10, atol=1e-14)):
+        raise ValueError('GPAW SOC DOS has unexpected full-BZ k-point weights.')
+    if len(weights) == nbzkpts:
+        return False
+    rawdos.weight_k = np.full(nbzkpts, 1.0 / nbzkpts)
+    return True
+
 
 DOS_INTEGRATION_METHODS = (
     'smearing',

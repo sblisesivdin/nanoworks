@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Match full-BZ GPAW SOC DOS weights to the eigenvalues collected across MPI ranks.
+
 - Fit GPAW elastic tensors in input Cartesian axes; retain normal/shear couplings and report fit residuals and raw asymmetry.
 
 - Audit TiC GPAW deformation data, expose the cubic fit-frame error and qualify the historical elastic constants; add reproducible diagnostics and electronic repeat checks.

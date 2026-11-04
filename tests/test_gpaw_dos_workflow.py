@@ -13,6 +13,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import numpy as np
+from ase import Atoms
 
 
 class TestGPAWDOSWorkflow(unittest.TestCase):
@@ -23,10 +24,13 @@ class TestGPAWDOSWorkflow(unittest.TestCase):
         self.addCleanup(self.directory.cleanup)
         self.calc = Mock()
         self.calc.get_fermi_level.return_value = 2.0
+        self.calc.get_bz_k_points.return_value = np.zeros((3, 3))
         self.engine = Mock()
         self.engine.is_hybrid.return_value = False
         self.engine.prepare_dos_calc.return_value = self.calc
         self.rawdos = Mock()
+        self.rawdos.eig_skn = np.zeros((1, 3, 4))
+        self.rawdos.weight_k = np.full(3, 1 / 3)
         self.rawdos.get_energies.return_value = np.array([3., 4., 5.])
         self.rawdos.raw_pdos.side_effect = lambda energies, **kw: np.full(
             len(energies), .1 if kw['spin'] in (0, None) else .2)
@@ -35,9 +39,10 @@ class TestGPAWDOSWorkflow(unittest.TestCase):
         self.factory = Mock(return_value=self.rawdos)
         self.gpaw_dos = types.ModuleType('gpaw.dos')
         self.gpaw_dos.DOSCalculator = types.SimpleNamespace(from_calculator=self.factory)
-        self.atoms = Mock()
-        self.atoms.get_chemical_symbols.return_value = ['Si', 'Si']
-        self.atoms.get_global_number_of_atoms.return_value = 2
+        self.atoms = Atoms('Si2', positions=[[0, 0, 0], [1, 1, 1]], cell=[4, 4, 4], pbc=True)
+        self.calc.get_atoms.side_effect = self.atoms.copy
+        self.calc.get_number_of_spins.side_effect = lambda: 2 if self.solver.Spin_calc else 1
+        self.calc.get_magnetic_moments.return_value = np.zeros(2)
         self.solver = types.SimpleNamespace(
             engine=self.engine, XC_calc='PBE', Gamma=False, Ground_gamma=None,
             DOS_kpts_density=3., DOS_kpts_x=0, DOS_kpts_y=0, DOS_kpts_z=0,
@@ -48,6 +53,7 @@ class TestGPAWDOSWorkflow(unittest.TestCase):
             scf_settings={'convergence': {}}, bulk_configuration=self.atoms,
             Spin_calc=False, SOC_calc=False, Energy_min=-1., Energy_max=1.,
             hybrid_fermi_level=Mock(return_value=2.), _t=lambda key: key)
+        self.solver.config = types.SimpleNamespace()
 
     def run_dos(self):
         with patch.dict(sys.modules, {'gpaw': types.ModuleType('gpaw'), 'gpaw.dos': self.gpaw_dos}), \
@@ -123,6 +129,28 @@ class TestGPAWDOSWorkflow(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     self.run_dos()
                 self.assertEqual(output.read_bytes(), b'previous spectrum')
+
+    def test_soc_repairs_local_weights_before_evaluating_global_dos(self):
+        self.solver.SOC_calc = True
+        self.rawdos.weight_k = np.array([1 / 3])
+
+        def spectrum(energies, **kwargs):
+            np.testing.assert_allclose(self.rawdos.weight_k, [1 / 3] * 3)
+            return np.ones(len(energies))
+
+        self.rawdos.raw_dos.side_effect = spectrum
+        self.run_dos()
+        np.testing.assert_array_equal(self.table('DOS-SOC')[:, 1], [1., 1., 1.])
+
+    def test_soc_bad_weights_preserve_previous_spectrum(self):
+        self.solver.SOC_calc = True
+        self.rawdos.weight_k = np.array([.5, .5])
+        output = Path(self.solver.struct + '-DOS-GPAW-Result-DOS-SOC.dat')
+        output.write_bytes(b'previous spectrum')
+        with self.assertRaisesRegex(ValueError, 'unexpected full-BZ'):
+            self.run_dos()
+        self.assertEqual(output.read_bytes(), b'previous spectrum')
+        self.rawdos.raw_dos.assert_not_called()
 
     def test_spin_pdos_labels_match_gpaw_channels(self):
         self.solver.Spin_calc = True
