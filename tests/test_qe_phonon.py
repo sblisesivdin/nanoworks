@@ -21,7 +21,7 @@ from nanoworks.phonon_results import qpoint_frequencies
 from nanoworks.qe_phonon import (
     prepare_force_plan, run_force_plan, supercell_kpoints, make_phonon, _save_force, postprocess,
     record_force_result, write_mesh_data, has_verified_force,
-    pw_executable_identity, begin_force_plan,
+    pw_executable_identity, begin_force_plan, split_discontinuous_band_path,
 )
 
 
@@ -41,6 +41,29 @@ class TestQEForceParser(unittest.TestCase):
                 copied = pw_executable_identity()
             self.assertEqual(initial['sha256'], copied['sha256'])
             self.assertNotEqual(initial['sha256'], changed['sha256'])
+
+    def test_disconnected_band_path_segments_avoid_vertical_joins(self):
+        distances = [0, .25, .50, .50, .70, .90, .90, 1.10]
+        segments = split_discontinuous_band_path(distances)
+        self.assertEqual(
+            [(part.start, part.stop) for part in segments],
+            [(0, 3), (3, 6), (6, 8)],
+        )
+        self.assertEqual(
+            [[distances[i] for i in range(part.start, part.stop)]
+             for part in segments],
+            [[0, .25, .50], [.50, .70, .90], [.90, 1.10]],
+        )
+
+    def test_disconnected_band_path_rejects_invalid_distances(self):
+        for values in ([0, .5, .4], [0, float('nan')], [], [[0, .5]]):
+            with self.subTest(values=values):
+                with self.assertRaises(ValueError):
+                    split_discontinuous_band_path(values)
+        self.assertEqual(
+            [(s.start, s.stop) for s in split_discontinuous_band_path([0, .5, 1])],
+            [(0, 3)],
+        )
 
     def test_mesh_report_retains_negative_modes_and_weights(self):
         with tempfile.TemporaryDirectory() as tmpdir:
