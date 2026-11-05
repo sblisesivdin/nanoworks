@@ -2,6 +2,10 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Align QE DOS/PDOS and band energy zeros to the ground SCF, with NSCF fallback.
+
+- Add a verified QE WSe2 SOC tutorial with K splittings and the historical DOS energy-reference audit.
+
 - Verify the recorded QE silicon convergence choices, lattice fit and k-point sampling limits.
 
 - Reject QE relaxed structures when the final recalculated forces exceed the requested tolerance.
