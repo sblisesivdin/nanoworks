@@ -41,7 +41,9 @@ bookkeeping and the convergence checks needed before scientific use.
 
 * **Silicon QE/thermo_pw Elastic Smoke Test:**
   Runs the native QE elastic stage through thermo_pw 2.1.0, producing the
-  6x6 elastic tensor and Voigt, Reuss, and Voigt-Reuss-Hill moduli. The
+  6x6 elastic tensor and Voigt, Reuss, and Voigt-Reuss-Hill moduli. See
+  :doc:`examples/si-qe-elastic-smoke` for an audit of the completed tensor,
+  numerical asymmetry, and the limits of the mechanical-stability check. The
   deliberately small settings validate the workflow rather than provide
   converged scientific results. (Folder: ``Si-QE-elastic/``)
 
