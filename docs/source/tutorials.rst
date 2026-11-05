@@ -103,6 +103,7 @@ Continue from the electronic calculation to the selected material response.
    examples/al-gpaw-phonons
    examples/si-gpaw-phonons
    examples/nio-qe-hubbard-phonons
+   examples/si-qe-elastic-smoke
    examples/tic-gpaw
 
 .. figure:: _static/examples/al-gpaw-phonons.png
