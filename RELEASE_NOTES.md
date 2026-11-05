@@ -2,6 +2,10 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Mark asymmetric elastic tensors as inconclusive for physical stability, while retaining the positive-definite diagnostic.
+
+- Add an audited QE Si/thermo_pw elastic tutorial with the original tensor and moduli.
+
 - Separate disconnected QE phonon-path segments when plotting, avoiding artificial branches.
 
 - Audit the recorded NiO QE+U AFM phonons, DOS mode count and residual-force limits in a tutorial.
