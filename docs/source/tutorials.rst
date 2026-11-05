@@ -102,6 +102,7 @@ Continue from the electronic calculation to the selected material response.
    examples/silicon-gpaw-bse
    examples/al-gpaw-phonons
    examples/si-gpaw-phonons
+   examples/nio-qe-hubbard-phonons
    examples/tic-gpaw
 
 .. figure:: _static/examples/al-gpaw-phonons.png
