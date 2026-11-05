@@ -478,6 +478,22 @@ def _postprocess(plan):
     return {**report, 'frequencies': frequencies, 'dos': dos_data, 'thermal_data': thermal_data}
 
 
+def split_discontinuous_band_path(distances):
+    """Split band curves at repeated abscissae between disconnected segments.
+
+    QE/ASE paths may concatenate unrelated reciprocal-space segments with
+    equal boundary distances. Plotting them as a single line draws spurious
+    vertical branches at the joins, even though frequencies are valid.
+    """
+    values = np.asarray(distances, dtype=float)
+    if (values.ndim != 1 or not len(values)
+            or not np.isfinite(values).all() or np.any(np.diff(values) < 0)):
+        raise ValueError('Phonon band distances must be finite and nondecreasing.')
+    breaks = (np.flatnonzero(np.diff(values) == 0) + 1).tolist()
+    edges = [0, *breaks, len(values)]
+    return [slice(a, b) for a, b in zip(edges, edges[1:])]
+
+
 def _plot(prefix, band_path, frequencies, dos):
     import matplotlib
     matplotlib.use('Agg')
@@ -485,7 +501,12 @@ def _plot(prefix, band_path, frequencies, dos):
     fig, (band_ax, dos_ax) = plt.subplots(1, 2, sharey=True, figsize=(9, 6),
         gridspec_kw={'width_ratios': [3, 1], 'wspace': 0.08})
     try:
-        band_ax.plot(band_path['distances'], frequencies['frequencies_thz'], color='tab:blue', lw=1)
+        distances = np.asarray(band_path['distances'], dtype=float)
+        modes = np.asarray(frequencies['frequencies_thz'], dtype=float)
+        if modes.ndim != 2 or modes.shape[0] != len(distances):
+            raise ValueError('QE phonon band plot requires one mode row per distance.')
+        for segment in split_discontinuous_band_path(distances):
+            band_ax.plot(distances[segment], modes[segment], color='tab:blue', lw=1)
         band_ax.axhline(0, color='black', lw=0.8)
         band_ax.set_xticks(band_path['special_distances'])
         band_ax.set_xticklabels([r'$\Gamma$' if x == 'G' else x for x in band_path['labels']])
