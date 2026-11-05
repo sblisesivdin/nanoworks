@@ -1,0 +1,224 @@
+WSe2 with QE: check SOC bands and spectral energy references
+=============================================================
+
+.. note::
+
+   These are short example calculations, not converged material predictions.
+   The archived data are from 28 October 2026 (Nanoworks 27.2.0rc0,
+   Quantum ESPRESSO 7.4.1, eight MPI processes). The exact development
+   source commit and independent UPF file hashes were not recorded.
+
+This tutorial audits a scalar-relativistic and a fully relativistic WSe2
+monolayer calculation. Both recorded workflows finished successfully, but
+their band and DOS exports used different energy zeros. Current Nanoworks
+prefers the ground-state reference for both QE DOS and bands; the historical
+exports remain unchanged.
+
+Prepare the two inputs
+----------------------
+
+Activate the Nanoworks environment with QE 7.4.1 and the managed PBE
+PseudoDojo pseudopotentials installed. See :ref:`tutorial-examples-setup`
+to install the examples into ``~/.nanoworks/examples``.
+
+.. code-block:: bash
+
+   cd ~/.nanoworks/examples/SOC-WSe2-noCIF
+   dftsolve -E QE -p 8 -i WSe2-wo-SOC.py \
+       -s DOS_integration=tetrahedron --check
+   dftsolve -E QE -p 8 -i WSe2-wo-SOC.py \
+       -s DOS_integration=tetrahedron
+   dftsolve -E QE -p 8 -i WSe2-QE-with-SOC.py --check
+   dftsolve -E QE -p 8 -i WSe2-QE-with-SOC.py
+
+These commands reproduce the archived input choices; adjust the MPI count
+for the machine. The original non-SOC Python input defaults to GPAW and
+smearing DOS, so its ``-E QE`` and tetrahedron override are essential.
+The SOC input is QE-native. Their separate output directories are
+``WSe2-wo-SOC`` and ``WSe2-QE-with-SOC``. Do not reuse one mode's
+ground-state folder for the other.
+
+The common geometry is a fixed three-atom 2H-WSe2 monolayer constructed
+with ASE ``mx2('WSe2', kind='2H', a=3.28, thickness=3.14,
+size=(1, 1, 1), vacuum=15)``. The calculations use PBE, a
+400 eV wavefunction cutoff (29.39946 Ry), a Gamma-centered 9 x 9 x 1
+ground mesh, Fermi-Dirac width 0.05 eV and a
+Gamma-M-K-Gamma path with 100 total samples. The recorded DOS requests
+tetrahedron integration. No geometry optimization was performed.
+
+SOC is not merely a plotting switch
+-----------------------------------
+
+The scalar run uses PseudoDojo ``pbe/scalar/standard``. The SOC run
+uses ``pbe/full/standard``, with QE ``noncolin=.true.`` and
+``lspinorb=.true.``. These pseudopotential data are distinct even
+though the cutoff, structure and XC functional are the same.
+
+Both SCF logs report W with 14 and each Se with 16 valence electrons:
+**46 electrons per primitive cell**. The scalar calculation exports
+28 bands with 23 occupied scalar orbitals; the SOC calculation exports
+56 spinor eigenvalues with 46 occupied spinors. Doubling the columns
+does not double the electron count. The SOC result is a native
+noncollinear, spin-orbit QE calculation, unlike the post-SCF SOC
+diagonalization used in the separate GPAW tutorial
+:doc:`wse2-gpaw-soc`.
+
+Read the sampled bands
+----------------------
+
+.. figure:: ../_static/examples/wse2-qe-band-edge-comparison.svg
+   :alt: Side-by-side scalar and spin-orbit WSe2 valence and conduction branches along Gamma-M-K-Gamma, with separate ground-SCF Fermi zeros.
+   :width: 100%
+
+   Selected branches closest to the occupied/unoccupied boundary, drawn
+   from the archived band tables. Blue lines are valence branches and
+   orange lines are conduction branches. Each panel has its own SCF
+   energy reference; the two energy zeros must not be compared as an
+   absolute band offset. Other deep-lying and high-energy branches are
+   intentionally omitted from this diagnostic figure.
+
+The k-path files agree byte for byte. Their special-point indices are
+Gamma=0, M=36, K=56 and Gamma=99. Counting occupied states from the
+actual 46-electron record gives:
+
+.. list-table:: Checked eigenvalues and path gaps
+   :header-rows: 1
+   :widths: 46 27 27
+
+   * - Quantity
+     - SOC off
+     - SOC on
+   * - Sampled VBM (Gamma)
+     - -0.6075 eV
+     - -0.5818 eV
+   * - Sampled CBM (K)
+     - +0.6401 eV
+     - +0.6093 eV
+   * - Sampled indirect gap (Gamma to K)
+     - 1.2476 eV
+     - 1.1911 eV
+   * - Minimum direct path gap (K)
+     - 1.5916 eV
+     - 1.3107 eV
+   * - Top two occupied spinor levels at K
+     - Not separately resolved
+     - -1.2048, -0.7014 eV
+   * - Lowest two unoccupied spinor levels at K
+     - Not separately resolved
+     - +0.6093, +0.6163 eV
+
+The SOC valence splitting at the sampled K point is **0.5034 eV**.
+The first two conduction spinors differ by **0.0070 eV** (7.0 meV).
+These are within-run differences, independent of the selected energy zero
+to the printed precision. The path-gap values are not globally minimized
+over the complete two-dimensional Brillouin zone, and must not be labelled
+optical or quasiparticle gaps.
+
+This is a comparison of two recorded *calculation protocols*, not a
+strict numerical isolation of spin-orbit coupling: the scalar and
+fully relativistic pseudopotentials are different. Neither the
+400 eV cutoff nor the 9 x 9 x 1 integration mesh has been demonstrated
+converged for these splittings, gap edges or DOS.
+
+Understand the historical DOS/Band mismatch
+-------------------------------------------
+
+The recorded band stage used the ground SCF energy reference, while the
+DOS/PDOS stage used the DOS NSCF reference:
+
+.. list-table:: Reported Fermi energies (absolute QE eV)
+   :header-rows: 1
+   :widths: 40 30 30
+
+   * - Calculation stage
+     - SOC off
+     - SOC on
+   * - Ground SCF
+     - -2.1451
+     - -2.1107
+   * - DOS NSCF
+     - -1.6395
+     - -2.6577
+   * - NSCF minus ground
+     - +0.5056
+     - -0.5470
+
+To compare *archived* DOS and band energy axes, the archived DOS
+energies must be shifted by the last row's signed difference:
+``E_DOS_ground = E_DOS_archived + E_F(NSCF) - E_F(ground)``.
+This translates the old scalar DOS axis by +0.5056 eV and the old
+SOC DOS axis by -0.5470 eV. The printed four-decimal Fermi energies
+limit the precision of this archival correction. Do not reinterpret
+these reference shifts as physical band shifts, and do not splice the
+original plots together without the correction.
+
+The Nanoworks fix now selects a valid ground-SCF reference for ordinary
+QE DOS/PDOS, matching QE bands. Standalone DOS processing can still
+fall back to the NSCF reference when a ground reference is unavailable.
+This change does not repair historical files in place. Regenerating DOS
+with the updated code also centers the requested absolute sampling window
+on the common ground reference; its rows need not exactly match the
+old window.
+
+The archived total DOS contains 501 energy rows per run; the assembled
+PDOS tables contain 502 because of their extra final grid point.
+The first 501 energy coordinates match between DOS and PDOS within
+each run. In the SOC PDOS table, the summed ``s_j0.5``, ``p_j0.5``,
+``p_j1.5``, ``d_j1.5`` and ``d_j2.5`` channels reproduce the
+exported projected ``TOTAL`` column to numerical precision.
+
+The projected ``TOTAL`` is not the global DOS: incomplete
+atomic-projector weight means that their magnitudes need not agree.
+The SOC ``l_j`` channels are total-angular-momentum projections,
+not the non-SOC Cartesian ``px/py/pz`` or ``dxy`` channels,
+and cannot be compared as identical orbital decompositions.
+
+Download and verify the recorded band tables
+--------------------------------------------
+
+:download:`Scalar QE band table <../_static/examples/wse2-qe-bands-scalar.dat>` |
+:download:`SOC QE band table <../_static/examples/wse2-qe-bands-soc.dat>` |
+:download:`Common k-path <../_static/examples/wse2-qe-kpath.dat>`.
+
+The files are unmodified exports, including their original ordering.
+Their SHA-256 values are:
+
+.. code-block:: text
+
+   scalar: ec1bb048b3b92dafca3582d4b87f719dcd54154bd3e1c676fa7fac0d31db2343
+   SOC:    665fccab207e5c4d0f6860e4b6194dedbee9f12d0ebec4e79fb416c41958b3ec
+   k-path: 122242ba20d076a076fbac2bfff8cc97cab15822783efdcb096e55faabdc7937
+
+To repeat the path-gap checks without running QE, place the two band
+tables in the same folder and run the following in a Python environment
+with NumPy:
+
+.. code-block:: python
+
+   import numpy as np
+
+   def read_bands(filename, nbands):
+       rows = np.loadtxt(filename, skiprows=1)
+       result = np.stack([
+           np.sort(rows[rows[:, 0] == i, 1]) for i in range(100)
+       ])
+       assert result.shape == (100, nbands)
+       return result
+
+   scalar = read_bands("wse2-qe-bands-scalar.dat", 28)
+   soc = read_bands("wse2-qe-bands-soc.dat", 56)
+
+   for name, bands, filled in (("scalar", scalar, 23), ("SOC", soc, 46)):
+       valence = bands[:, filled - 1]
+       conduction = bands[:, filled]
+       print(name, "sampled gap:", conduction.min() - valence.max())
+       print(name, "K direct gap:", conduction[56] - valence[56])
+
+   print("SOC K valence splitting:", soc[56, 45] - soc[56, 44])
+   print("SOC K conduction splitting:", soc[56, 47] - soc[56, 46])
+
+For quantitative materials results, independently converge the
+pseudopotentials, plane-wave cutoff, in-plane mesh, empty bands and
+vacuum. Check Brillouin-zone extrema beyond this path and make sure
+DOS and bands share a documented reference before interpreting spectral
+features.
