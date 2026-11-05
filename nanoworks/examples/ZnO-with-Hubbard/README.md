@@ -28,17 +28,30 @@ U O-2p 7
 U Zn-3d 10
 ```
 
-Run the GPAW example with:
+The [recorded GPAW tutorial](https://nanoworks.readthedocs.io/en/latest/examples/zno-gpaw-hubbard.html)
+audits the 28 October runs. The reference used 1400 eV and the Hubbard run
+340 eV; both relaxed their cells. The Hubbard cell contracted by about 41.9%
+while its free energy rose. Its printed 4.269 eV path gap is an audit result,
+not a validated U-corrected ZnO prediction.
+
+For a controlled fixed-geometry exercise, use the common initial structure,
+the same cutoff and new output directories:
 
 ```bash
-dftsolve -p 4 -i ZnO_withHubbard.py
+dftsolve -E GPAW -p 4 -i ZnO_withHubbard.py -s Geo_optim=False -s Wavefunction_cutoff=1400 -s Outdirname=ZnO_PBE_U_fixed
 ```
 
-Run the GPAW reference calculation without DFT+U with:
+Run the matching GPAW reference without DFT+U with:
 
 ```bash
-dftsolve -p 4 -i ZnO_woHubbard.py
+dftsolve -E GPAW -p 4 -i ZnO_woHubbard.py -s Geo_optim=False -s Wavefunction_cutoff=1400 -s Outdirname=ZnO_PBE_fixed
 ```
+
+Append `--check` first to validate prerequisites. The tutorial contains
+reproducible figures and original data, including the problematic relaxation.
+These fixed-cell commands differ from the archived runs; the 1400 eV example
+setting still needs convergence tests for the chosen GPAW model. The source
+inputs retain their original relaxation flags and cutoffs.
 
 Run the QE example with:
 
