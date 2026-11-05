@@ -315,6 +315,13 @@ def analyze_elastic_stability(
     minimum_eigenvalue = float(np.min(eigenvalues))
     mechanically_stable = minimum_eigenvalue > eigenvalue_tolerance
     condition_number = float(np.linalg.cond(symmetric_matrix))
+    # Positive definiteness of the symmetrized fit is a mathematical test.
+    # Major tensor asymmetry prevents a reliable physical interpretation.
+    interpretation_status = (
+        'inconclusive'
+        if not tensor_symmetric
+        else ('stable' if mechanically_stable else 'unstable')
+    )
 
     return {
         'dimensionality': dimensionality,
@@ -328,4 +335,5 @@ def analyze_elastic_stability(
         'minimum_eigenvalue': minimum_eigenvalue,
         'condition_number': condition_number,
         'mechanically_stable': mechanically_stable,
+        'interpretation_status': interpretation_status,
     }
