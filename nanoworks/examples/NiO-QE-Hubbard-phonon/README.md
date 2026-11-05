@@ -1,5 +1,10 @@
 # NiO: QE Hubbard-U phonons
 
+A [checked tutorial](https://nanoworks.readthedocs.io/en/latest/examples/nio-qe-hubbard-phonons.html)
+audits the recorded NiO run, including opposite converged Ni moments,
+12 phonon branches, mode-normalized DOS and the non-equilibrium residual
+forces. A completed workflow does not establish convergence or lattice stability.
+
 This example uses a collinear AFM rocksalt magnetic cell. `Phonon_calc=True`
 and nonempty `Hubbard_U` select Phonopy finite displacements automatically.
 Every force calculation retains PBE, ortho-atomic Ni-3d U, and the replicated
