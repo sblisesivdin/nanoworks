@@ -25,6 +25,7 @@ with patch.object(
         DFTConfig,
         _spacegroup_label,
         _load_qe_ground_reference,
+        _resolve_qe_spectral_reference,
         reconstruct_full_tensor,
         _validate_gpaw_elastic_fit,
         _wrap_gpaw_dispersion,
@@ -146,6 +147,49 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             engine = SimpleNamespace(parse_pw_output=Mock())
             self.assertIsNone(_load_qe_ground_reference(str(Path(tmp) / 'AgF2'), engine))
             engine.parse_pw_output.assert_not_called()
+
+    def test_qe_spectral_reference_prefers_ground_scf_over_nscf_fermi(self):
+        # Archived WSe2 QE SOC values: band uses SCF and DOS used NSCF.
+        ground = {'fermi_energy_ev': -2.1107}
+        nscf = {'fermi_energy_ev': -2.6577}
+        engine = SimpleNamespace(
+            resolve_qe_band_reference=Mock(
+                side_effect=lambda result: {
+                    'energy_ev': result['fermi_energy_ev'],
+                    'source': 'fermi',
+                }
+            )
+        )
+        reference = _resolve_qe_spectral_reference(engine, ground, nscf)
+        self.assertEqual(reference['energy_ev'], -2.1107)
+        engine.resolve_qe_band_reference.assert_called_once_with(ground)
+
+    def test_qe_spectral_reference_uses_nscf_when_ground_missing(self):
+        nscf = {'fermi_energy_ev': -2.6577}
+        engine = SimpleNamespace(
+            resolve_qe_band_reference=Mock(
+                return_value={'energy_ev': -2.6577, 'source': 'fermi'}
+            )
+        )
+        reference = _resolve_qe_spectral_reference(engine, None, nscf)
+        self.assertEqual(reference['energy_ev'], -2.6577)
+        engine.resolve_qe_band_reference.assert_called_once_with(nscf)
+
+    def test_qe_spectral_reference_skips_unusable_ground_result(self):
+        ground = {'fermi_energy_ev': None}
+        nscf = {'fermi_energy_ev': -1.6395}
+
+        def resolve(result):
+            if result['fermi_energy_ev'] is None:
+                raise ValueError('No energy reference')
+            return {'energy_ev': result['fermi_energy_ev'], 'source': 'fermi'}
+
+        engine = SimpleNamespace(resolve_qe_band_reference=Mock(side_effect=resolve))
+        reference = _resolve_qe_spectral_reference(engine, ground, nscf)
+        self.assertEqual(reference['energy_ev'], -1.6395)
+        self.assertEqual(engine.resolve_qe_band_reference.call_count, 2)
+        with self.assertRaisesRegex(ValueError, 'No usable QE spectral'):
+            _resolve_qe_spectral_reference(engine, None, None)
 
     def test_elastic_fit_rejects_finite_but_underdetermined_solution(self):
         import numpy as np
