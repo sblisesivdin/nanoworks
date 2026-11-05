@@ -103,6 +103,9 @@ Phonon & Thermal Properties
   spin/U settings. Includes dry-run preparation and resumable force results.
   Parameters are starting values requiring convergence and magnetic-state
   validation. (Folder: ``NiO-QE-Hubbard-phonon/``)
+  Follow :doc:`examples/nio-qe-hubbard-phonons` for verified AFM moment,
+  phonon mode-count and thermal-data checks, plus the limitations of this
+  finite-displacement example.
 
 Optical Properties
 ------------------
