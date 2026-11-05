@@ -1,5 +1,11 @@
 # Native QE/thermo_pw elastic smoke test
 
+The [recorded Si elasticity tutorial](https://nanoworks.readthedocs.io/en/latest/examples/si-qe-elastic-smoke.html)
+checks the archived numerical output. The coarse-mesh tensor violates
+major symmetry (maximum 1.462 GPa mismatch) even though its symmetrized
+stiffness is positive definite. A completed thermo_pw run is not a
+converged mechanical-stability result.
+
 This example runs the Nanoworks QE elastic stage through thermo_pw. Nanoworks
 supports Quantum ESPRESSO 7.4.1 with thermo_pw 2.1.0. A different detected
 QE version produces a warning but does not stop the calculation.
