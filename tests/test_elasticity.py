@@ -126,6 +126,7 @@ class TestElasticity(unittest.TestCase):
 
         self.assertTrue(result['tensor_symmetric'])
         self.assertTrue(result['mechanically_stable'])
+        self.assertEqual(result['interpretation_status'], 'stable')
         self.assertAlmostEqual(result['minimum_eigenvalue'], 80.0)
         self.assertEqual(result['units'], 'GPa')
 
@@ -136,6 +137,7 @@ class TestElasticity(unittest.TestCase):
         result = analyze_elastic_stability(tensor)
 
         self.assertFalse(result['mechanically_stable'])
+        self.assertEqual(result['interpretation_status'], 'unstable')
         self.assertAlmostEqual(result['minimum_eigenvalue'], -1.0)
 
     def test_tensor_asymmetry_is_reported_separately(self):
@@ -151,6 +153,9 @@ class TestElasticity(unittest.TestCase):
             2.0,
         )
         self.assertTrue(result['mechanically_stable'])
+        # Only the symmetric part passed the Born-positive test.
+        # The physical interpretation is not justified until Cij = Cji.
+        self.assertEqual(result['interpretation_status'], 'inconclusive')
 
     def test_2d_stability_uses_in_plane_stiffness(self):
         tensor = np.eye(6)
