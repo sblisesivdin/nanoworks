@@ -5134,6 +5134,35 @@ def read_pw_force_result(output_file, natoms):
     return parse_pw_forces(text, natoms)
 
 
+def validate_relaxed_final_forces(text, natoms, max_force):
+    """Check the last force evaluation, including the post-vc-relax SCF.
+
+    QE's forc_conv_thr applies to each Cartesian force component. A BFGS
+    convergence marker can precede a final SCF with a regenerated PW basis;
+    its recalculated forces must still meet the requested threshold.
+    """
+    convergence = list(re.finditer(
+        r'convergence\s+(has\s+been\s+achieved|NOT\s+achieved)',
+        text, flags=re.IGNORECASE,
+    ))
+    if not convergence or convergence[-1].group(1).upper().startswith('NOT'):
+        raise RuntimeError('QE final geometry SCF did not report convergence.')
+    try:
+        forces = parse_pw_forces(text[convergence[-1].end():], natoms)
+    except ValueError as exc:
+        raise RuntimeError(f'Cannot verify QE final geometry forces: {exc}') from exc
+    maximum = float(np.max(np.abs(forces)))
+    # Allow rounding of QE's printed Ry/Bohr force components.
+    if maximum > max_force + 1e-6:
+        raise RuntimeError(
+            f'QE final geometry force component {maximum:.6g} eV/Angstrom '
+            f'exceeds the requested {max_force:.6g} eV/Angstrom, despite '
+            'the earlier BFGS convergence message. Inspect the final SCF, '
+            'stress and plane-wave cutoff before using the structure.'
+        )
+    return maximum
+
+
 def run_pw_forces(input_file, output_file, input_text, natoms, parallel_cores=1):
     """Execute a rendered force SCF in an isolated supercell state directory."""
     input_file, output_file = Path(input_file), Path(output_file)
@@ -8851,6 +8880,10 @@ def run_relax(
             f"See '{output_file}'."
         )
 
+    final_max_force = validate_relaxed_final_forces(
+        output_text, len(atoms), max_force,
+    )
+
     relaxed_atoms = parse_pw_relaxed_structure(
         output_file,
         atoms,
@@ -8866,6 +8899,7 @@ def run_relax(
         'execution': execution,
         'result': result,
         'geometry_converged': geometry_converged,
+        'final_max_force_component_ev_angstrom': final_max_force,
         'atoms': relaxed_atoms,
     }
 

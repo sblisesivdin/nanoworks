@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Reject QE relaxed structures when the final recalculated forces exceed the requested tolerance.
+
 - Add a ZnO GPAW tutorial auditing the contracted Hubbard cell, unmatched cutoffs and reproducible band/orbital results.
 
 - Add a checked WSe2 GPAW SOC tutorial with K-point splittings, sampled gaps and an explicit historical DOS limitation.

@@ -1,0 +1,53 @@
+# Recorded QE ZnO hubbard excerpt; numerical rows preserved.
+# Original SHA256 8a1316ffdce6cdb2f752d21ba56d1f4aa61eb719e5f5c7ba0689d82656ca795f
+Program PWSCF v.7.4.1
+bfgs converged in  12 scf cycles and  11 bfgs steps
+Begin final coordinates
+     new unit-cell volume =    119.12705 a.u.^3 (    17.65281 Ang^3 )
+     density =     15.31009 g/cm^3
+
+CELL_PARAMETERS (angstrom)
+   2.341524787   0.000000000  -0.000000000
+  -1.170762394   2.027819921  -0.000000000
+  -0.000000000  -0.000000000   3.717796588
+
+ATOMIC_POSITIONS (angstrom)
+Zn               0.0000000000        0.0000000000        0.0088291119
+O                0.0000000000        1.3518799476        0.4365319377
+Zn               0.0000000000        1.3518799476        1.8677274059
+O               -0.0000000000       -0.0000000000        2.2954302317
+End final coordinates
+!    total energy              =    -852.16652309 Ry
+     estimated scf accuracy    <          1.9E-09 Ry
+     smearing contrib. (-TS)   =      -0.00013594 Ry
+     internal energy E=F+TS    =    -852.16638715 Ry
+
+     The total energy is F=E-TS. E is the sum of the following terms:
+     one-electron contribution =    -190.20678274 Ry
+     hartree contribution      =     145.58714936 Ry
+     xc contribution           =    -101.78905984 Ry
+     ewald contribution        =    -706.23626220 Ry
+     Hubbard energy            =       0.47856826 Ry
+
+     convergence has been achieved in   8 iterations
+
+     Forces acting on atoms (cartesian axes, Ry/au):
+
+     atom    1 type  1   force =     0.00000000    0.00000000    0.02381845
+     atom    2 type  2   force =    -0.00000000    0.00000000   -0.02381845
+     atom    3 type  1   force =     0.00000000   -0.00000000    0.02381845
+     atom    4 type  2   force =    -0.00000000   -0.00000000   -0.02381845
+
+     Total force =     0.047637     Total SCF correction =     0.000017
+
+
+     Computing stress (Cartesian axis) and pressure
+
+          total   stress  (Ry/bohr**3)                   (kbar)     P=   -87474.77
+  -0.59056718   0.00000000  -0.00000000       -86875.43        0.00       -0.00
+   0.00000000  -0.59056720  -0.00000000            0.00   -86875.43       -0.00
+  -0.00000000  -0.00000000  -0.60278983           -0.00       -0.00   -88673.45
+
+
+
+JOB DONE.

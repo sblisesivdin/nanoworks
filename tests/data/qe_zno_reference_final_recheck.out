@@ -1,0 +1,52 @@
+# Recorded QE ZnO reference excerpt; numerical rows preserved.
+# Original SHA256 fd91ecabcf2816fee1b6b3da74c3d5cbd3d20c16555ba00b162639e4d02bb386
+Program PWSCF v.7.4.1
+bfgs converged in   6 scf cycles and   5 bfgs steps
+Begin final coordinates
+     new unit-cell volume =    332.40440 a.u.^3 (    49.25725 Ang^3 )
+     density =      5.48683 g/cm^3
+
+CELL_PARAMETERS (angstrom)
+   3.284158974   0.000000000  -0.000000000
+  -1.642079487   2.844165101  -0.000000000
+  -0.000000000  -0.000000000   5.273405761
+
+ATOMIC_POSITIONS (angstrom)
+Zn              -0.0000000000        0.0000000000        0.0011308080
+O               -0.0000000000        1.8961100675        0.6305792570
+Zn              -0.0000000000        1.8961100675        2.6378336883
+O                0.0000000000        0.0000000000        3.2672821373
+End final coordinates
+!    total energy              =    -902.41921427 Ry
+     estimated scf accuracy    <          7.8E-10 Ry
+     smearing contrib. (-TS)   =      -0.00000061 Ry
+     internal energy E=F+TS    =    -902.41921366 Ry
+
+     The total energy is F=E-TS. E is the sum of the following terms:
+     one-electron contribution =    -624.25214370 Ry
+     hartree contribution      =     330.25666759 Ry
+     xc contribution           =    -106.74790175 Ry
+     ewald contribution        =    -501.67583580 Ry
+
+     convergence has been achieved in   9 iterations
+
+     Forces acting on atoms (cartesian axes, Ry/au):
+
+     atom    1 type  1   force =     0.00000000    0.00000000   -0.00021092
+     atom    2 type  2   force =     0.00000000   -0.00000000    0.00021092
+     atom    3 type  1   force =     0.00000000    0.00000000   -0.00021092
+     atom    4 type  2   force =     0.00000000    0.00000000    0.00021092
+
+     Total force =     0.000422     Total SCF correction =     0.000008
+
+
+     Computing stress (Cartesian axis) and pressure
+
+          total   stress  (Ry/bohr**3)                   (kbar)     P=       -0.07
+  -0.00000187   0.00000000   0.00000000           -0.27        0.00        0.00
+   0.00000000  -0.00000187  -0.00000000            0.00       -0.27       -0.00
+   0.00000000  -0.00000000   0.00000234            0.00       -0.00        0.34
+
+
+
+JOB DONE.

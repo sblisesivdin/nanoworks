@@ -5738,6 +5738,11 @@ class TestQEEngine(unittest.TestCase):
 
         bfgs converged in 5 scf cycles and 4 bfgs steps
 
+        convergence has been achieved in 8 iterations
+        Forces acting on atoms (cartesian axes, Ry/au):
+        atom 1 type 1 force = 0.00000000 0.00000000 0.00010000
+        atom 2 type 1 force = 0.00000000 0.00000000 -0.00010000
+
         Begin final coordinates
         ATOMIC_POSITIONS (angstrom)
         Si 0.100000 0.200000 0.300000
