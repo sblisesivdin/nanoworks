@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="615" viewBox="0 0 1040 615">
+<rect width="1040" height="615" fill="white"/>
+<style>text{font-family:DejaVu Sans,Arial,sans-serif;fill:#223044}.title{font-size:22px;font-weight:700}.subtitle{font-size:12px;fill:#5b697c}.axis{font-size:16px;font-weight:600}.num{font-size:12px;font-weight:500}.small{font-size:13px}.important{font-size:17px;font-weight:700}</style>
+<text x="520" y="35" class="title" text-anchor="middle">Bulk silicon: archived QE / thermo_pw elastic tensor</text>
+<text x="520" y="57" class="subtitle" text-anchor="middle">PBE · fixed a = 5.43 Å · cutoff 340 eV · 2 × 2 × 2 elastic mesh · input Cartesian frame</text>
+<text x="300" y="97" class="important" text-anchor="middle">Cij (GPa)</text>
+<text x="766" y="97" class="important" text-anchor="middle">Tensor asymmetry checks</text>
+<text class="axis" x="83" y="163.5" text-anchor="end">xx</text>
+<text class="axis" x="139" y="116" text-anchor="middle">xx</text>
+<text class="axis" x="83" y="224.5" text-anchor="end">yy</text>
+<text class="axis" x="213" y="116" text-anchor="middle">yy</text>
+<text class="axis" x="83" y="285.5" text-anchor="end">zz</text>
+<text class="axis" x="287" y="116" text-anchor="middle">zz</text>
+<text class="axis" x="83" y="346.5" text-anchor="end">yz</text>
+<text class="axis" x="361" y="116" text-anchor="middle">yz</text>
+<text class="axis" x="83" y="407.5" text-anchor="end">xz</text>
+<text class="axis" x="435" y="116" text-anchor="middle">xz</text>
+<text class="axis" x="83" y="468.5" text-anchor="end">xy</text>
+<text class="axis" x="509" y="116" text-anchor="middle">xy</text>
+<rect x="102" y="128" width="71" height="58" rx="4" fill="rgb(53,91,182)"/>
+<text class="num" x="137.5" y="162.5" text-anchor="middle" fill="#ffffff" style="fill:#ffffff">199.77</text>
+<rect x="176" y="128" width="71" height="58" rx="4" fill="rgb(168,186,226)"/>
+<text class="num" x="211.5" y="162.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">78.15</text>
+<rect x="250" y="128" width="71" height="58" rx="4" fill="rgb(166,185,225)"/>
+<text class="num" x="285.5" y="162.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">79.62</text>
+<rect x="324" y="128" width="71" height="58" rx="4" fill="rgb(242,247,254)"/>
+<text class="num" x="359.5" y="162.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">-0.001</text>
+<rect x="398" y="128" width="71" height="58" rx="4" fill="rgb(242,247,254)"/>
+<text class="num" x="433.5" y="162.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">-0.000</text>
+<rect x="472" y="128" width="71" height="58" rx="4" fill="rgb(242,247,254)"/>
+<text class="num" x="507.5" y="162.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">0.002</text>
+<rect x="102" y="189" width="71" height="58" rx="4" fill="rgb(167,185,226)"/>
+<text class="num" x="137.5" y="223.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">79.09</text>
+<rect x="176" y="189" width="71" height="58" rx="4" fill="rgb(53,92,182)"/>
+<text class="num" x="211.5" y="223.5" text-anchor="middle" fill="#ffffff" style="fill:#ffffff">199.00</text>
+<rect x="250" y="189" width="71" height="58" rx="4" fill="rgb(166,185,225)"/>
+<text class="num" x="285.5" y="223.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">79.62</text>
+<rect x="324" y="189" width="71" height="58" rx="4" fill="rgb(242,247,254)"/>
+<text class="num" x="359.5" y="223.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">0.001</text>
+<rect x="398" y="189" width="71" height="58" rx="4" fill="rgb(242,247,254)"/>
+<text class="num" x="433.5" y="223.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">-0.000</text>
+<rect x="472" y="189" width="71" height="58" rx="4" fill="rgb(242,247,254)"/>
+<text class="num" x="507.5" y="223.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">0.002</text>
+<rect x="102" y="250" width="71" height="58" rx="4" fill="rgb(167,185,226)"/>
+<text class="num" x="137.5" y="284.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">79.09</text>
+<rect x="176" y="250" width="71" height="58" rx="4" fill="rgb(168,186,226)"/>
+<text class="num" x="211.5" y="284.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">78.15</text>
+<rect x="250" y="250" width="71" height="58" rx="4" fill="rgb(52,91,182)"/>
+<text class="num" x="285.5" y="284.5" text-anchor="middle" fill="#ffffff" style="fill:#ffffff">200.34</text>
+<rect x="324" y="250" width="71" height="58" rx="4" fill="rgb(242,247,254)"/>
+<text class="num" x="359.5" y="284.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">0.001</text>
+<rect x="398" y="250" width="71" height="58" rx="4" fill="rgb(242,247,254)"/>
+<text class="num" x="433.5" y="284.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">-0.000</text>
+<rect x="472" y="250" width="71" height="58" rx="4" fill="rgb(242,247,254)"/>
+<text class="num" x="507.5" y="284.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">0.007</text>
+<rect x="102" y="311" width="71" height="58" rx="4" fill="rgb(242,247,254)"/>
+<text class="num" x="137.5" y="345.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">0.000</text>
+<rect x="176" y="311" width="71" height="58" rx="4" fill="rgb(242,247,254)"/>
+<text class="num" x="211.5" y="345.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">0.000</text>
+<rect x="250" y="311" width="71" height="58" rx="4" fill="rgb(242,247,254)"/>
+<text class="num" x="285.5" y="345.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">0.000</text>
+<rect x="324" y="311" width="71" height="58" rx="4" fill="rgb(147,169,218)"/>
+<text class="num" x="359.5" y="345.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">100.14</text>
+<rect x="398" y="311" width="71" height="58" rx="4" fill="rgb(242,247,254)"/>
+<text class="num" x="433.5" y="345.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">0.000</text>
+<rect x="472" y="311" width="71" height="58" rx="4" fill="rgb(242,247,254)"/>
+<text class="num" x="507.5" y="345.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">0.000</text>
+<rect x="102" y="372" width="71" height="58" rx="4" fill="rgb(242,247,254)"/>
+<text class="num" x="137.5" y="406.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">0.000</text>
+<rect x="176" y="372" width="71" height="58" rx="4" fill="rgb(242,247,254)"/>
+<text class="num" x="211.5" y="406.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">0.000</text>
+<rect x="250" y="372" width="71" height="58" rx="4" fill="rgb(242,247,254)"/>
+<text class="num" x="285.5" y="406.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">0.000</text>
+<rect x="324" y="372" width="71" height="58" rx="4" fill="rgb(242,247,254)"/>
+<text class="num" x="359.5" y="406.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">0.000</text>
+<rect x="398" y="372" width="71" height="58" rx="4" fill="rgb(147,169,218)"/>
+<text class="num" x="433.5" y="406.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">100.14</text>
+<rect x="472" y="372" width="71" height="58" rx="4" fill="rgb(242,247,254)"/>
+<text class="num" x="507.5" y="406.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">0.000</text>
+<rect x="102" y="433" width="71" height="58" rx="4" fill="rgb(242,247,254)"/>
+<text class="num" x="137.5" y="467.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">0.000</text>
+<rect x="176" y="433" width="71" height="58" rx="4" fill="rgb(242,247,254)"/>
+<text class="num" x="211.5" y="467.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">0.000</text>
+<rect x="250" y="433" width="71" height="58" rx="4" fill="rgb(242,247,254)"/>
+<text class="num" x="285.5" y="467.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">0.000</text>
+<rect x="324" y="433" width="71" height="58" rx="4" fill="rgb(242,247,254)"/>
+<text class="num" x="359.5" y="467.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">0.000</text>
+<rect x="398" y="433" width="71" height="58" rx="4" fill="rgb(242,247,254)"/>
+<text class="num" x="433.5" y="467.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">0.000</text>
+<rect x="472" y="433" width="71" height="58" rx="4" fill="rgb(147,169,218)"/>
+<text class="num" x="507.5" y="467.5" text-anchor="middle" fill="#1e3a57" style="fill:#1e3a57">100.25</text>
+<rect x="598" y="128" width="420" height="366" rx="12" fill="#f8fafc" stroke="#e2e8f0"/>
+<text x="622" y="158" class="small">|C12 − C21| = 0.933 GPa</text>
+<rect x="622" y="170" width="235" height="18" rx="5" fill="#e5e7eb"/>
+<rect x="622" y="170" width="131.1" height="18" rx="5" fill="#e09b55"/>
+<text x="622" y="248" class="small">|C13 − C31| = 0.529 GPa</text>
+<rect x="622" y="260" width="235" height="18" rx="5" fill="#e5e7eb"/>
+<rect x="622" y="260" width="74.4" height="18" rx="5" fill="#e09b55"/>
+<text x="622" y="338" class="small">|C23 − C32| = 1.462 GPa</text>
+<rect x="622" y="350" width="235" height="18" rx="5" fill="#e5e7eb"/>
+<rect x="622" y="350" width="205.6" height="18" rx="5" fill="#b64d3e"/>
+<text x="622" y="448" class="important" style="fill:#a23e35">Maximum mismatch: 1.462 GPa</text>
+<text x="622" y="474" class="small">Reporting tolerance: 0.002 GPa</text>
+<text x="520" y="537" text-anchor="middle" class="small">The symmetrized stiffness has positive eigenvalues, but the raw tensor fails Cij = Cji.</text>
+<text x="520" y="558" text-anchor="middle" class="small">This smoke test is not a convergence or physical-stability certificate.</text>
+<text x="520" y="584" text-anchor="middle" class="subtitle">Source: completed thermo_pw 2.1.0 / QE 7.4.1 smoke run · 28 Oct 2026 · 6×6 raw Cij</text>
+</svg>
