@@ -905,6 +905,23 @@ def _load_qe_ground_reference(struct, engine):
     return engine.parse_pw_output(latest)
 
 
+def _resolve_qe_spectral_reference(engine, primary_result, fallback_result=None):
+    """Choose one energy zero for QE spectral stages, preferring ground SCF.
+
+    The DOS NSCF may report a different Fermi level after a changed mesh or
+    occupation method. Use the same ground reference as the band export when
+    available, falling back to the stage result for standalone workflows.
+    """
+    for result in (primary_result, fallback_result):
+        if result is None:
+            continue
+        try:
+            return engine.resolve_qe_band_reference(result)
+        except (KeyError, TypeError, ValueError):
+            continue
+    raise ValueError('No usable QE spectral energy reference was found.')
+
+
 def ase_scalar_pressure_from_gpa(pressure_gpa):
     """Convert the portable GPa pressure to ASE's eV/Angstrom^3 unit."""
     pressure_gpa = float(pressure_gpa)
@@ -3596,23 +3613,26 @@ class dftsolve:
         dos_emax_absolute = None
 
         if not hybrid:
-            try:
-                energy_reference = (
-                    self.engine.resolve_qe_band_reference(
-                        result
-                    )
+            ground_result = getattr(self, '_qe_ground_result', None)
+            if ground_result is None:
+                ground_result = _load_qe_ground_reference(
+                    self.struct, self.engine
                 )
-            except (KeyError, TypeError, ValueError) as exc:
+            try:
+                energy_reference = _resolve_qe_spectral_reference(
+                    self.engine, ground_result, result
+                )
+            except ValueError as exc:
                 raise RuntimeError(
                     'QE DOS requires a Fermi or band-edge energy '
-                    'reference from the NSCF calculation.'
+                    'reference from the ground state or NSCF calculation.'
                 ) from exc
 
             energy_reference_ev = energy_reference['energy_ev']
             energy_reference_source = energy_reference['source']
 
             parprint(
-                'NSCF DOS energy reference: '
+                'QE DOS energy reference: '
                 f'{energy_reference_ev:.8f} eV '
                 f'({energy_reference_source})'
             )
@@ -4558,24 +4578,17 @@ class dftsolve:
                 workflow['result']
             )
 
-        reference = None
-
-        for candidate in reference_candidates:
-            try:
-                reference = (
-                    self.engine.resolve_qe_band_reference(
-                        candidate
-                    )
-                )
-                break
-            except ValueError:
-                continue
-
-        if reference is None:
+        try:
+            reference = _resolve_qe_spectral_reference(
+                self.engine,
+                reference_candidates[0] if reference_candidates else None,
+                reference_candidates[1] if len(reference_candidates) > 1 else None,
+            )
+        except ValueError as exc:
             raise RuntimeError(
                 "QE band reference energy could not be resolved "
                 "from either the ground-state or band calculation."
-            )
+            ) from exc
 
         bands = workflow[
             'bands'
