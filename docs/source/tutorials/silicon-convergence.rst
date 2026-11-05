@@ -133,6 +133,99 @@ It uses the JSON record; ``dftsolve --plot`` is for supported electronic and
 optical tables, not this convergence table. See :doc:`../dftconverge` for the
 complete keyword reference.
 
+.. _tutorial-convergence-qe:
+
+Recorded QE run: selections and sampling limits
+-----------------------------------------------
+
+The recorded QE data are in ``QE/silicon-convergence`` in
+``example-runs-Va5NDWGi``. The stored Python input defines the same
+candidate lists as above. Its result directory contains 4 cutoff, 4
+k-point-density and 5 lattice-scale records. All 13 entries are present in
+``convergence-results.json`` and agree with the numerical values in
+``convergence-results.dat``; these two summaries are not independent
+SCF calculations.
+
+The selected values are **400 eV**, **density 4.0** and **scale 1.00**.
+The following differences are calculated from the archived per-atom
+energies, not estimated from the PNG curves:
+
+.. list-table:: Adjacent QE energy changes
+   :header-rows: 1
+   :widths: 65 35
+
+   * - Sweep / transition
+     - Absolute difference (meV/atom)
+   * - Cutoff: 300 to 400 eV
+     - 4.853151
+   * - Cutoff: 400 to 500 eV
+     - 1.606492
+   * - Cutoff: 500 to 600 eV
+     - 0.186466
+   * - Density: 2.0 to 3.0
+     - 80.793191
+   * - Density: 3.0 to 4.0
+     - 9.920183
+   * - Density: 4.0 to 5.0
+     - 1.569213
+
+The criterion uses two consecutive adjacent differences below
+10 meV/atom. For the cutoff sweep, 300 to 400 and 400 to 500 both qualify,
+giving the first eligible selected value of 400 eV. For the density sweep,
+2.0 to 3.0 fails, while 3.0 to 4.0 and 4.0 to 5.0 qualify; density 4.0
+is selected. Both examples sit within the limited candidate range and
+do not establish joint convergence of every observable.
+
+These are **reciprocal-space density parameters**, not mesh dimensions.
+Nanoworks converts them to explicit ``K_POINTS automatic`` grids. The
+archived QE inputs confirm density 2.0 uses
+``4 4 4 0 0 0`` and density 4.0 uses ``8 8 8 0 0 0``.
+The corresponding QE SCF logs report 13 and 65 irreducible k points,
+respectively, and eight electrons for the two-atom Si cell.
+The density-4.0 log converges in four SCF iterations and reports
+``-16.92471084 Ry`` or ``-230.27242188445 eV`` total energy,
+matching the stored k-point record at the printed precision.
+These observations verify two mesh cases directly; they do not imply
+that the irreducible k-point counts equal those in GPAW.
+
+The QE run uses PBE, Fermi-Dirac occupations and a scalar-relativistic
+norm-conserving Si pseudopotential with four valence electrons per atom.
+The inspected density-4.0 log reports UPF MD5
+``02fab3f35e82123ef5bf1cb05d5b1a5e``. This identifier is read
+from the log rather than an independent hash of the UPF bytes. Different
+pseudopotential/PAW models and Brillouin-zone symmetry reductions mean the
+QE and GPAW absolute total energies are not directly comparable.
+
+Why the lattice fit is not the selected geometry
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The lowest calculated lattice energy occurs at scale **1.00** and volume
+**40.888292745 cubic angstrom** per two-atom primitive cell. It is an
+interior point with neighbours on both sides, so the stored optimized CIF
+uses that calculated geometry.
+
+The separate quadratic fit to all five E(V) points yields volume
+**41.321510129 cubic angstrom**, corresponding to a conventional cubic
+lattice parameter of about **5.487974 angstrom**. The selected calculated
+point corresponds to **5.468728 angstrom**. The fit has an RMS energy
+residual of approximately **3.819 meV/atom** over the five samples.
+The fitted minimum was not an additional SCF calculation and is not
+a converged bulk modulus or equation of state.
+
+A further numerical caution is visible in the archived QE input files:
+at lattice scale 0.96 the generated mesh is 9 x 9 x 9, but at
+scale 1.00 it is 8 x 8 x 8. Fixed *density* does not imply a fixed
+integration *mesh* throughout a lattice sweep. An E(V) fit intended
+for quantitative work needs a sufficiently converged and controlled
+k-mesh over the full volume interval, along with cutoff and
+pseudopotential checks.
+
+The original QE figures above are the appropriate plots for this record.
+Do not compare its absolute energies or fitted volumes directly to the
+GPAW run as a controlled engine benchmark. The documented values were
+recomputed from the archived JSON/DAT and cross-checked against selected
+QE input/SCF logs, without rerunning QE.
+
 .. _tutorial-convergence-gpaw:
 
 Recorded GPAW run: selections and fit
