@@ -78,6 +78,7 @@ recorded calculations. Each page includes figures and downloadable data.
    examples/graphene-gpaw-charge
    examples/mos2-gpaw-reference
    examples/wse2-gpaw-soc
+   examples/wse2-qe-soc
    examples/zno-gpaw-hubbard
    examples/zno-qe-hubbard
 
