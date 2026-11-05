@@ -1,0 +1,46 @@
+Tensor axes: input Cartesian coordinates (xx, yy, zz, yz, xz, xy).
+Elastic tensor Cij (GPa):
+[[ 1.997705e+02  7.815366e+01  7.961562e+01 -6.350000e-04 -3.540000e-04
+   2.197000e-03]
+ [ 7.908621e+01  1.989970e+02  7.961562e+01  5.980000e-04 -1.290000e-04
+   2.197000e-03]
+ [ 7.908621e+01  7.815366e+01  2.003388e+02  5.980000e-04 -3.540000e-04
+   7.050000e-03]
+ [ 0.000000e+00 -0.000000e+00 -0.000000e+00  1.001433e+02 -0.000000e+00
+  -0.000000e+00]
+ [-0.000000e+00  0.000000e+00 -0.000000e+00 -0.000000e+00  1.001403e+02
+  -0.000000e+00]
+ [ 0.000000e+00  0.000000e+00 -0.000000e+00  0.000000e+00 -0.000000e+00
+   1.002523e+02]]
+
+Canonical thermo_pw elastic data file(s):
+/home/lrg/.nanoworks/examples/example-runs-Va5NDWGi/QE/si-elastic/Si-QE-elastic-smoke-results/Si-QE-elastic-smoke-results-ELASTIC-QE-Result-thermo_pw/elastic_constants/nanoworks_elastic_constants.dat.g1
+
+Elastic tensor consistency and mechanical stability:
+Tensor symmetric within tolerance: no
+Maximum |Cij-Cji|: 1.461961 GPa
+Symmetry tolerance: 0.0020033884 GPa
+Stability criterion: positive-definite 6x6 stiffness at zero external stress
+Stiffness eigenvalues (GPa): 100.14032 100.14335 100.25233 120.70214 120.79535 357.60884
+Minimum stiffness eigenvalue: 100.14032 GPa
+Positive-eigenvalue tolerance: 2.0033884e-06 GPa
+Stiffness condition number: 3.5710773
+Mechanically stable: yes
+
+Voigt approximation:
+Bulk modulus: 119.319571 GPa
+Young modulus: 204.540725 GPa
+Shear modulus: 84.221962 GPa
+Poisson ratio: 0.214300
+
+Reuss approximation:
+Bulk modulus: 119.551566 GPa
+Young modulus: 194.729278 GPa
+Shear modulus: 79.253076 GPa
+Poisson ratio: 0.228530
+
+Hill approximation:
+Bulk modulus: 119.435569 GPa
+Young modulus: 199.635001 GPa
+Shear modulus: 81.737519 GPa
+Poisson ratio: 0.221200
