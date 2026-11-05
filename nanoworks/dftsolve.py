@@ -2590,8 +2590,17 @@ class dftsolve:
                 f"{stability['condition_number']:.8g}"
             ),
             (
-                'Mechanically stable: '
+                'Mechanically stable (symmetrized stiffness only): '
                 + ('yes' if stability['mechanically_stable'] else 'no')
+            ),
+            (
+                'Physical stability assessment: '
+                + stability['interpretation_status']
+            ),
+            (
+                'Stability eigenvalues use the symmetric part '
+                '(Cij + Cji)/2; raw tensor asymmetry beyond tolerance '
+                'makes the physical assessment inconclusive.'
             ),
         ])
 
@@ -2626,15 +2635,17 @@ class dftsolve:
         if not stability['tensor_symmetric']:
             parprint(
                 'WARNING: The thermo_pw elastic tensor is not symmetric '
-                'within the reporting tolerance.'
+                'within the reporting tolerance. Positive stiffness '
+                'eigenvalues are only diagnostic; physical mechanical '
+                'stability is inconclusive until the tensor is converged.'
             )
 
         parprint(
             'Mechanical stability ('
             + stability['dimensionality']
             + '): '
-            + ('stable' if stability['mechanically_stable'] else 'unstable')
-            + f"; minimum eigenvalue = {stability['minimum_eigenvalue']:.6f} "
+            + stability['interpretation_status']
+            + f"; symmetrized minimum eigenvalue = {stability['minimum_eigenvalue']:.6f} "
             + stability['units']
         )
 
