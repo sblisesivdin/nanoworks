@@ -12,7 +12,7 @@ SCF_accuracy = 'normal'
 
 Convergence_tasks = ['cutoff', 'kpoints', 'lattice']
 Convergence_cutoffs = [300, 400, 500, 600]
-# Numeric values are GPAW-style densities in points per angstrom. Nanoworks
+# Numeric values are reciprocal-space densities in points per inverse angstrom. Nanoworks
 # converts each density to an explicit QE mesh for the current structure.
 # Use tuples such as [(2, 2, 2), (4, 4, 4), (6, 6, 6)] for meshes.
 Convergence_kpoints = [2.0, 3.0, 4.0, 5.0]
