@@ -235,5 +235,5 @@ Before relaxing a corrected model, establish an identical fixed-geometry
 comparison, validate the electronic model and energy/stress derivatives,
 then converge the separate relaxed structures. Start from the original
 geometry rather than treating the contracted archived cell as a validated
-restart. The bundled QE inputs and recorded QE results need a separate
-audit because their projector and pseudopotential models differ.
+restart. See :doc:`zno-qe-hubbard` for the separate QE audit, including an invalid
+final basis recheck and the different projector/pseudopotential model.

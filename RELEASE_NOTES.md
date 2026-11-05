@@ -4,6 +4,8 @@
 
 - Reject QE relaxed structures when the final recalculated forces exceed the requested tolerance.
 
+- Audit three QE ZnO records, reject the invalid archived geometry and document band/DOS reference alignment.
+
 - Add a ZnO GPAW tutorial auditing the contracted Hubbard cell, unmatched cutoffs and reproducible band/orbital results.
 
 - Add a checked WSe2 GPAW SOC tutorial with K-point splittings, sampled gaps and an explicit historical DOS limitation.

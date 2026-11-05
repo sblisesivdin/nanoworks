@@ -58,6 +58,8 @@ Advanced DFT Methods & Corrections
   Calculates the electronic properties of Wurtzite ZnO with on-site corrections on O-*p* and Zn-*d* states. The folder contains GPAW calculations with and without Hubbard U and a native QE DFT+U example covering ground-state, DOS, and band calculations. (Folder: ``ZnO-with-Hubbard/``)
   Follow :doc:`examples/zno-gpaw-hubbard` to audit the recorded GPAW
   relaxations and avoid interpreting unmatched cutoffs/cells as a U-only comparison.
+  See :doc:`examples/zno-qe-hubbard` for QE final-SCF force checks and
+  correct band/DOS energy-reference alignment.
 
 * **WSe2 with Spin-Orbit Coupling (SOC):**
   Highlights the splitting of bands due to Spin-Orbit Coupling (SOC) in heavy

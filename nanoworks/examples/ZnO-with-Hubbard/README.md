@@ -112,8 +112,9 @@ against the actual installed potentials and k-point mesh.
 
 The new smoke run must start from the original structure in the input, using
 an empty result directory. Do not restart from the collapsed failed cell.
-Success requires explicit BFGS convergence and completed DOS/PDOS and band
-stages; a `JOB DONE` marker alone does not establish geometry convergence.
+Success requires explicit BFGS convergence, a converged final SCF with final
+force components within tolerance, and completed DOS/PDOS and band stages;
+a `JOB DONE` marker alone does not establish geometry convergence.
 
 To run the shared reference with QE, including the same tetrahedron DOS used
 in the successful smoke calculation:
@@ -124,3 +125,18 @@ dftsolve -E QE -p 8 -i ZnO_woHubbard.py -s DOS_integration=tetrahedron
 
 The Hubbard-corrected inputs are separate calculations and keep their existing
 settings. The two reference input names also use different result directories.
+
+## Audit the recorded QE calculations
+
+See the [QE ZnO tutorial](https://nanoworks.readthedocs.io/en/latest/examples/zno-qe-hubbard.html)
+for the three recorded protocols and reproducible data. The historical shared
+340 eV Hubbard run fails the final SCF force tolerance after BFGS convergence;
+its contracted cell and spectra are unsuitable for materials predictions.
+The 1400 eV shared PBE and 800 eV native Hubbard spectra also differ in cell
+and DOS mesh, so they do not isolate U. Band and DOS exports use different
+stage energy references; the tutorial shows their correct alignment.
+
+For a new fixed-cell comparison, use `ZnO_QE_Hubbard.py` twice with
+`-s Wavefunction_cutoff=1400`, separate new output directories, and
+`-s Hubbard_U='{}'` on the reference member. Validate both with `--check`
+first, then establish numerical convergence. Start from the original cell.

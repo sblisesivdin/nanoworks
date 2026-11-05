@@ -79,6 +79,7 @@ recorded calculations. Each page includes figures and downloadable data.
    examples/mos2-gpaw-reference
    examples/wse2-gpaw-soc
    examples/zno-gpaw-hubbard
+   examples/zno-qe-hubbard
 
 .. figure:: _static/examples/mos2-gpaw-reference.png
    :alt: Recorded bulk MoS2 band structure and DOS from the materials tutorial.

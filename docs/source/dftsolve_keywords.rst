@@ -586,6 +586,9 @@ Geometric Optimization Keywords
 
     Maximum force tolerance for geometry optimization. Nanoworks passes the
     value to ASE/GPAW as ``fmax`` and converts it to QE ``forc_conv_thr``.
+    QE applies this threshold to Cartesian force components. After BFGS
+    convergence, Nanoworks also checks the final recalculated SCF forces
+    against this tolerance before accepting the relaxed structure.
 
 .. code-block:: python
 
