@@ -23,6 +23,12 @@ spinors:
 
     dftsolve -p 4 -i WSe2-QE-with-SOC.py
 
+The [recorded QE SOC tutorial](https://nanoworks.readthedocs.io/en/latest/examples/wse2-qe-soc.html)
+audits both QE runs, verifies K-point spinor splittings and documents the
+historical NSCF/ground-SCF energy-reference mismatch. Updated Nanoworks
+aligns ordinary QE DOS/PDOS and bands to the ground-state reference when
+available. Archived output files are unchanged.
+
 QE SOC and non-SOC calculations must use separate output directories. A saved
 ground state created with one mode is rejected if reused with the other mode.
 For semiconductors such as WSe2, QE DOS and band energies use the middle of the
