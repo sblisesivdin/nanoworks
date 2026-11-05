@@ -2,6 +2,10 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Separate disconnected QE phonon-path segments when plotting, avoiding artificial branches.
+
+- Audit the recorded NiO QE+U AFM phonons, DOS mode count and residual-force limits in a tutorial.
+
 - Align QE DOS/PDOS and band energy zeros to the ground SCF, with NSCF fallback.
 
 - Add a verified QE WSe2 SOC tutorial with K splittings and the historical DOS energy-reference audit.
