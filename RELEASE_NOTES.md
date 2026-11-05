@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Verify the recorded QE silicon convergence choices, lattice fit and k-point sampling limits.
+
 - Reject QE relaxed structures when the final recalculated forces exceed the requested tolerance.
 
 - Audit three QE ZnO records, reject the invalid archived geometry and document band/DOS reference alignment.
