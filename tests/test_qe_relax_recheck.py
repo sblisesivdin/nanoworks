@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import numpy as np
 import pytest
+from ase import Atoms
 from ase.build import bulk
 
 from nanoworks.engine.qe import (
@@ -125,3 +126,34 @@ def test_qe_vc_relax_stress_recheck_supports_hydrostatic_target():
     assert validate_relaxed_final_stress(text, target_pressure_kbar=10) == 0.0
     with pytest.raises(RuntimeError, match='exceeds'):
         validate_relaxed_final_stress(text, target_pressure_kbar=0)
+
+
+def test_run_relax_uses_final_stress_guard_after_force_pass(tmp_path):
+    recorded = (DATA / 'qe_mos2_d3_final_recheck.out').read_text()
+
+    def fake_program(**kwargs):
+        Path(kwargs['output_file']).write_text(recorded, encoding='utf-8')
+        return {'returncode': 0}
+
+    # The 0.08 eV/Ang tolerance permits this *particular* force block;
+    # invalid post-BFGS pressure must still reject the geometry.
+    with (
+        patch('nanoworks.engine.qe.run_qe_program', side_effect=fake_program),
+        patch('nanoworks.engine.qe.parse_pw_output', return_value={
+            'job_done': True, 'qe_version': (7, 4, 1),
+        }),
+    ):
+        with pytest.raises(RuntimeError, match='final variable-cell stress deviation'):
+            run_relax(
+                atoms=Atoms('Mo2S4', cell=[3.16, 3.16, 12.29], pbc=True),
+                input_file=tmp_path/'mos2.in',
+                output_file=tmp_path/'mos2.out',
+                state_dir=tmp_path/'state',
+                pseudopotentials={'Mo': 'Mo.upf', 'S': 'S.upf'},
+                pseudo_dir=tmp_path,
+                cutoff_ev=400,
+                optimizer='LBFGS',
+                max_force=.08,
+                max_step=.2,
+                relax_cell=[True] * 6,
+            )
