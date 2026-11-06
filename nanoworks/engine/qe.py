@@ -5163,6 +5163,48 @@ def validate_relaxed_final_forces(text, natoms, max_force):
     return maximum
 
 
+def validate_relaxed_final_stress(text, target_pressure_kbar=0.0, tolerance_kbar=0.5):
+    """Recheck the post-BFGS stress for fully variable QE cells.
+
+    The QE 7.4.x default press_conv_thr is 0.5 kbar. A final SCF may
+    recalculate plane waves and produce a drastically different stress
+    even after the earlier BFGS convergence marker. Check every Cartesian
+    component, relative to the requested hydrostatic target pressure.
+    Other constrained cell_dofree modes are deliberately excluded by the
+    caller because their fixed stress components need not vanish.
+    """
+    target = float(target_pressure_kbar)
+    tolerance = float(tolerance_kbar)
+    if not np.isfinite(target) or not np.isfinite(tolerance) or tolerance <= 0:
+        raise ValueError('QE final stress target and tolerance must be finite.')
+
+    convergence = list(re.finditer(
+        r'convergence\\s+(has\\s+been\\s+achieved|NOT\\s+achieved)',
+        text, flags=re.IGNORECASE,
+    ))
+    if not convergence or convergence[-1].group(1).upper().startswith('NOT'):
+        raise RuntimeError('QE final geometry SCF did not report convergence.')
+    stress = parse_pw_stress(text[convergence[-1].end():])
+    if stress is None:
+        raise RuntimeError(
+            'Cannot verify QE final variable-cell stress after the last SCF.'
+        )
+    tensor = np.asarray(stress['stress_tensor_kbar'], dtype=float)
+    if tensor.shape != (3, 3) or not np.isfinite(tensor).all():
+        raise RuntimeError('QE final stress tensor must be finite and 3x3.')
+    deviation = float(np.max(np.abs(tensor + target * np.eye(3))))
+    # QE prints the kbar stress to two decimal places.
+    if deviation > tolerance + 0.01:
+        raise RuntimeError(
+            f'QE final variable-cell stress deviation {deviation:.6g} kbar '
+            f'exceeds {tolerance:.6g} kbar, despite the earlier BFGS '
+            'convergence message. Recheck the plane-wave and density '
+            'cutoffs, k-points, and the post-relaxation SCF before using '
+            'the relaxed structure.'
+        )
+    return deviation
+
+
 def run_pw_forces(input_file, output_file, input_text, natoms, parallel_cores=1):
     """Execute a rendered force SCF in an isolated supercell state directory."""
     input_file, output_file = Path(input_file), Path(output_file)
@@ -8884,6 +8926,14 @@ def run_relax(
         output_text, len(atoms), max_force,
     )
 
+    final_max_stress_deviation = None
+    if (relaxation_settings['calculation'] == 'vc-relax'
+            and relaxation_settings['cell']['cell_dofree'] == 'all'):
+        final_max_stress_deviation = validate_relaxed_final_stress(
+            output_text,
+            target_pressure_kbar=relaxation_settings['cell']['press'],
+        )
+
     relaxed_atoms = parse_pw_relaxed_structure(
         output_file,
         atoms,
@@ -8900,6 +8950,7 @@ def run_relax(
         'result': result,
         'geometry_converged': geometry_converged,
         'final_max_force_component_ev_angstrom': final_max_force,
+        'final_max_stress_deviation_kbar': final_max_stress_deviation,
         'atoms': relaxed_atoms,
     }
 
