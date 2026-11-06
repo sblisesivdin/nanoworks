@@ -28,7 +28,7 @@ def test_six_si_branches_and_gamma_acoustic_sum_rule():
     assert b.shape == (61, 10)
     assert np.isfinite(b).all()
     np.testing.assert_allclose(b[[0, 60], 4:7], 0, atol=1e-9)
-    np.testing.assert_allclose(b[[0, 60], 7:], [15.08844049, 15.08844049, 15.0884464859], atol=1e-8)
+    np.testing.assert_allclose(b[[0, 60], 7:], np.tile([15.08844049, 15.08844049, 15.0884464859], (2, 1)), atol=1e-8)
     assert b[:, 4:].min() >= -1e-9
     assert b[:, 4:].max() == pytest.approx(15.0884464859, abs=1e-8)
 
