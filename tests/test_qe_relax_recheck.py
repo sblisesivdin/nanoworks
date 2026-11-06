@@ -11,6 +11,7 @@ from ase.build import bulk
 
 from nanoworks.engine.qe import (
     EV_PER_RYDBERG, Bohr, run_relax, validate_relaxed_final_forces,
+    validate_relaxed_final_stress,
 )
 
 DATA = Path(__file__).parent / 'data'
@@ -73,3 +74,54 @@ bfgs converged in 5 scf cycles and 4 bfgs steps
 ''' + ending
     with pytest.raises(RuntimeError):
         validate_relaxed_final_forces(text, 1, .05)
+
+
+def test_qe_vc_relax_stress_recheck_accepts_recorded_valid_zno():
+    reference = (DATA / 'qe_zno_reference_final_recheck.out').read_text()
+    # Only the final SCF stress is accepted, not an earlier BFGS tensor.
+    assert validate_relaxed_final_stress(reference) == pytest.approx(.34)
+
+
+def test_qe_mos2_d3_final_stress_and_forces_reject_earlier_bfgs_convergence():
+    text = (DATA / 'qe_mos2_d3_final_recheck.out').read_text()
+    assert 'bfgs converged' in text and 'JOB DONE.' in text
+    with pytest.raises(RuntimeError, match='despite the earlier BFGS'):
+        validate_relaxed_final_forces(text, 6, .05)
+    with pytest.raises(RuntimeError, match='283.1 kbar'):
+        validate_relaxed_final_stress(text)
+
+
+def test_qe_vc_relax_stress_recheck_detects_false_positive_force_convergence():
+    # A 0.08 eV/Ang force target would accept the archived MoS2 forces,
+    # but the huge final cell stress must still reject the relaxed cell.
+    text = (DATA / 'qe_mos2_d3_final_recheck.out').read_text()
+    assert validate_relaxed_final_forces(text, 6, .08) < .08
+    with pytest.raises(RuntimeError, match='exceeds 0.5 kbar'):
+        validate_relaxed_final_stress(text)
+
+
+@pytest.mark.parametrize('ending', [
+    'convergence NOT achieved',
+    'convergence has been achieved',
+    'convergence has been achieved\\n'
+    'total stress (Ry/bohr**3) (kbar) P=nan',
+])
+def test_qe_vc_relax_stress_recheck_requires_completed_last_block(ending):
+    text = ('convergence has been achieved\\n'
+            'total stress (Ry/bohr**3) (kbar) P=0.01\\n'
+            '0 0 0  0 0 0\\n'
+            '0 0 0  0 0 0\\n'
+            '0 0 0  0 0 0\\n' + ending)
+    with pytest.raises(RuntimeError):
+        validate_relaxed_final_stress(text)
+
+
+def test_qe_vc_relax_stress_recheck_supports_hydrostatic_target():
+    text = ('convergence has been achieved\\n'
+            'total stress (Ry/bohr**3) (kbar) P=10\\n'
+            '0 0 0  -10 0 0\\n'
+            '0 0 0  0 -10 0\\n'
+            '0 0 0  0 0 -10\\n')
+    assert validate_relaxed_final_stress(text, target_pressure_kbar=10) == 0.0
+    with pytest.raises(RuntimeError, match='exceeds'):
+        validate_relaxed_final_stress(text, target_pressure_kbar=0)
