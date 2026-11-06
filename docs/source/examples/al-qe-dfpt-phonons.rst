@@ -128,6 +128,17 @@ Nanoworks reports positive thermal-integration mode
 weight **2.99900620** and tiny excluded non-positive
 weight **0.00000007**.
 
+.. important::
+
+   The raw ``ph.x`` Gamma dynamical matrix gave three acoustic
+   frequencies of **-0.148327, -0.145642 and -0.145642 THz**.
+   The saved ``matdyn.x`` band frequencies are zero because
+   ``asr='crystal'`` imposes translational invariance.
+   This corrects the displayed acoustic sum rule but does not
+   independently demonstrate converged input force constants.
+   The separate :doc:`si-qe-dfpt-phonons` tutorial shows the
+   analogous effect for diamond Si.
+
 Vibrational thermodynamics
 --------------------------
 
