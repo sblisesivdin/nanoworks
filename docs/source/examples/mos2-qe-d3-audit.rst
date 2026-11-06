@@ -23,7 +23,7 @@ already installed, inspect both examples:
 
 .. code-block:: console
 
-   $ cd ``/.nanoworks/examples/Bulk-MoS2-vdW
+   $ cd ~/.nanoworks/examples/Bulk-MoS2-vdW
    $ dftsolve -E QE -p 4 -i MoS2-wo-vdW.py -g Bulk_MoS2.cif --check
    $ dftsolve -E QE -p 4 -i MoS2-with-vdW.py -g Bulk_MoS2.cif --check
 
