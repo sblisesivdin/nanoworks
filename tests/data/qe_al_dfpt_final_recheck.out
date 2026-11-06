@@ -1,0 +1,19 @@
+# Archived 28 Oct 2026 QE 7.4.1 aluminium final vc-relax SCF
+bfgs converged in 4 scf cycles and 3 bfgs steps
+convergence has been achieved in   5 iterations
+
+     Forces acting on atoms (cartesian axes, Ry/au):
+
+     atom    1 type  1   force =     0.00000000    0.00000000    0.00000000
+
+     Total force =     0.000000     Total SCF correction =     0.000000
+
+
+     Computing stress (Cartesian axis) and pressure
+
+          total   stress  (Ry/bohr**3)                   (kbar)     P=        0.04
+   0.00000031   0.00000000   0.00000000            0.05        0.00        0.00
+   0.00000000   0.00000031  -0.00000000            0.00        0.05       -0.00
+  -0.00000000  -0.00000000   0.00000030           -0.00       -0.00        0.04
+
+JOB DONE.
