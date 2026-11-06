@@ -103,25 +103,25 @@ def test_qe_vc_relax_stress_recheck_detects_false_positive_force_convergence():
 @pytest.mark.parametrize('ending', [
     'convergence NOT achieved',
     'convergence has been achieved',
-    'convergence has been achieved\\n'
+    'convergence has been achieved\n'
     'total stress (Ry/bohr**3) (kbar) P=nan',
 ])
 def test_qe_vc_relax_stress_recheck_requires_completed_last_block(ending):
-    text = ('convergence has been achieved\\n'
-            'total stress (Ry/bohr**3) (kbar) P=0.01\\n'
-            '0 0 0  0 0 0\\n'
-            '0 0 0  0 0 0\\n'
-            '0 0 0  0 0 0\\n' + ending)
+    text = ('convergence has been achieved\n'
+            'total stress (Ry/bohr**3) (kbar) P=0.01\n'
+            '0 0 0  0 0 0\n'
+            '0 0 0  0 0 0\n'
+            '0 0 0  0 0 0\n' + ending)
     with pytest.raises(RuntimeError):
         validate_relaxed_final_stress(text)
 
 
 def test_qe_vc_relax_stress_recheck_supports_hydrostatic_target():
-    text = ('convergence has been achieved\\n'
-            'total stress (Ry/bohr**3) (kbar) P=10\\n'
-            '0 0 0  -10 0 0\\n'
-            '0 0 0  0 -10 0\\n'
-            '0 0 0  0 0 -10\\n')
+    text = ('convergence has been achieved\n'
+            'total stress (Ry/bohr**3) (kbar) P=10\n'
+            '0 0 0  -10 0 0\n'
+            '0 0 0  0 -10 0\n'
+            '0 0 0  0 0 -10\n')
     assert validate_relaxed_final_stress(text, target_pressure_kbar=10) == 0.0
     with pytest.raises(RuntimeError, match='exceeds'):
         validate_relaxed_final_stress(text, target_pressure_kbar=0)
