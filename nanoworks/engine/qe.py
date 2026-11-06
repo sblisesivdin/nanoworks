@@ -5179,7 +5179,7 @@ def validate_relaxed_final_stress(text, target_pressure_kbar=0.0, tolerance_kbar
         raise ValueError('QE final stress target and tolerance must be finite.')
 
     convergence = list(re.finditer(
-        r'convergence\\s+(has\\s+been\\s+achieved|NOT\\s+achieved)',
+        r'convergence\s+(has\s+been\s+achieved|NOT\s+achieved)',
         text, flags=re.IGNORECASE,
     ))
     if not convergence or convergence[-1].group(1).upper().startswith('NOT'):
