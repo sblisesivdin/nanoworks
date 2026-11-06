@@ -197,8 +197,10 @@ Start with the affected workflows using their individual README commands:
 
 * ``Al-phonon/`` and ``Si-phonon/`` check the updated GPAW parameter handling
   during displaced-supercell force calculations.
-* ``Bulk-MoS2-vdW/MoS2-with-vdW.py`` checks the D3 dependency and corrected
-  dispersion workflow after ``dftd3`` is available.
+* ``Bulk-MoS2-vdW/MoS2-with-vdW.py`` uses **QE's native** D3 correction
+  without a standalone ``dftd3`` executable; GPAW requires that separate
+  dependency. The recorded QE run failed the post-BFGS stress/force checks,
+  so new results must be converged before a dispersion comparison.
 * ``TiC-elastic-electronic/`` checks that deformation calculations finish,
   release full calculators between samples and produce a complete elastic fit.
 * ``NiO-QE-Hubbard-phonon/`` checks the corrected input and QE force workflow
