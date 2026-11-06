@@ -77,6 +77,13 @@ bfgs converged in 5 scf cycles and 4 bfgs steps
         validate_relaxed_final_forces(text, 1, .05)
 
 
+def test_qe_al_dfpt_final_forces_and_stress_pass_recorded_checks():
+    text = (DATA / 'qe_al_dfpt_final_recheck.out').read_text()
+    assert 'bfgs converged' in text and 'JOB DONE.' in text
+    assert validate_relaxed_final_forces(text, 1, .05) == pytest.approx(0.0)
+    assert validate_relaxed_final_stress(text) == pytest.approx(.05)
+
+
 def test_qe_vc_relax_stress_recheck_accepts_recorded_valid_zno():
     reference = (DATA / 'qe_zno_reference_final_recheck.out').read_text()
     # Only the final SCF stress is accepted, not an earlier BFGS tensor.
