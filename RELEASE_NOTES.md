@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Add verified QE silicon DFPT phonon/DOS tutorial; distinguish raw acoustic residuals from ASR-corrected output.
+
 - Add an archived QE Al DFPT phonon tutorial with recorded dispersions, DOS, harmonic thermal data and numerical checks.
 
 - Reject unrestricted QE variable-cell relaxations when the final SCF stress violates the target pressure tolerance.
