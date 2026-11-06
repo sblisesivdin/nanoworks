@@ -47,9 +47,9 @@ def test_al_qe_dfpt_dos_normalization_and_one_atom_projection():
     assert data.shape == (389, 3)
     assert np.isfinite(data).all()
     assert np.min(data[:, 1:]) >= 0
-    assert np.trapezoid(data[:, 1], data[:, 0]) == pytest.approx(
-        2.99900626, abs=1e-7
-    )
+    # NumPy 1.x/2.x compatibility: explicit trapezoidal integral.
+    integrated = np.sum(np.diff(data[:, 0]) * (data[1:, 1] + data[:-1, 1]) / 2)
+    assert integrated == pytest.approx(2.99900626, abs=1e-7)
     np.testing.assert_allclose(data[:, 1], data[:, 2], atol=2.2e-5)
 
 
