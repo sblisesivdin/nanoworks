@@ -127,7 +127,9 @@ for engine in GPAW QE; do
         queue_dft GPAW SOC-WSe2-noCIF wse2-soc WSe2-with-SOC.py ""
     fi
     queue_dft "$engine" Bulk-MoS2-vdW mos2-reference MoS2-wo-vdW.py Bulk_MoS2.cif "${dos[@]}"
-    queue_dft "$engine" Bulk-MoS2-vdW mos2-d3 MoS2-with-vdW.py Bulk_MoS2.cif "${dos[@]}"
+    # Paused: archived QE D3 result fails the final force/stress recheck.
+    # Reinstate only after validated QE/GPAW settings and a clean comparison.
+    # queue_dft "$engine" Bulk-MoS2-vdW mos2-d3 MoS2-with-vdW.py Bulk_MoS2.cif "${dos[@]}"
     queue_dft "$engine" Si-with-HSE si-hse Si-with-HSE.py Si_mp-149_primitive.cif "${dos[@]}"
 
     prepare_case "$engine" Convergence silicon-convergence
