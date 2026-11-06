@@ -588,7 +588,11 @@ Geometric Optimization Keywords
     value to ASE/GPAW as ``fmax`` and converts it to QE ``forc_conv_thr``.
     QE applies this threshold to Cartesian force components. After BFGS
     convergence, Nanoworks also checks the final recalculated SCF forces
-    against this tolerance before accepting the relaxed structure.
+    against this tolerance before accepting the relaxed structure. For
+    unrestricted QE variable-cell relaxation (``cell_dofree='all'``), it
+    additionally rechecks the last SCF stress against the specified target
+    pressure and QE's default 0.5 kbar pressure tolerance. Partially
+    constrained cell modes are excluded from this full-tensor stress check.
 
 .. code-block:: python
 
