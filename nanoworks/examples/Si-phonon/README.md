@@ -1,4 +1,27 @@
-# Example: GPAW phonons of bulk silicon
+# Example: silicon phonons with GPAW or native QE DFPT
+
+The input defaults to GPAW, but `-E QE` selects the native QE DFPT
+workflow (`ph.x`, `q2r.x`, `matdyn.x`). Its verified recorded
+results, acoustic-sum-rule caveats, and DOS are explained in the
+[QE silicon phonon tutorial](https://nanoworks.readthedocs.io/en/latest/examples/si-qe-dfpt-phonons.html).
+
+## QE quickstart
+
+Configure the QE executables and pseudopotentials separately.
+
+```bash
+dftsolve -E QE -p 4 -i Si-phonon.py -g Si_mp-149_primitive.cif --check
+dftsolve -E QE -p 4 -i Si-phonon.py -g Si_mp-149_primitive.cif
+```
+
+Native QE uses the ground-state electronic cutoff and k-point grid;
+`Phonon_supercell` sets its DFPT q-grid, while displacement settings
+and the separate GPAW phonon cutoff / electronic grid are ignored.
+The archived 3x3x3 QE q-grid is not a quantitative convergence benchmark.
+The original `ph.x` Gamma acoustic residuals are about -0.25 THz
+before the `matdyn.x` crystal acoustic sum rule enforces zero.
+
+## GPAW finite-displacement workflow
 
 Run these commands from this example directory with GPAW, ASE and Phonopy
 installed. The input relaxes the geometry before finite-displacement phonons.
