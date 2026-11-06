@@ -2,6 +2,10 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Reject unrestricted QE variable-cell relaxations when the final SCF stress violates the target pressure tolerance.
+
+- Audit the invalid QE MoS2 D3 relaxation and recorded spectra; fix its bundled instructions and pause its batch smoke run.
+
 - Mark asymmetric elastic tensors as inconclusive for physical stability, while retaining the positive-definite diagnostic.
 
 - Add an audited QE Si/thermo_pw elastic tutorial with the original tensor and moduli.
