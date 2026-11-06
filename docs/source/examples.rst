@@ -54,7 +54,12 @@ Advanced DFT Methods & Corrections
 ----------------------------------
 
 * **MoS2 with van der Waals (vdW) Corrections:**
-  Demonstrates the importance of dispersion corrections in layered materials. The example includes scripts to calculate bulk MoS2 properties with and without vdW corrections for direct comparison. (Folder: ``Bulk-MoS2-vdW/``)
+  Provides matched QE input templates for bulk MoS2 with and without native D3.
+  The archived QE+D3 result **failed final SCF force/stress verification**;
+  the matching no-D3 QE result was not recorded. Do not claim a quantified
+  dispersion effect from this archive. See :doc:`examples/mos2-qe-d3-audit`
+  for diagnostics and :doc:`examples/mos2-gpaw-reference` for a separate
+  GPAW/PBE no-D3 reference. (Folder: ``Bulk-MoS2-vdW/``)
 
 * **ZnO with Hubbard U (DFT+U):**
   Calculates the electronic properties of Wurtzite ZnO with on-site corrections on O-*p* and Zn-*d* states. The folder contains GPAW calculations with and without Hubbard U and a native QE DFT+U example covering ground-state, DOS, and band calculations. (Folder: ``ZnO-with-Hubbard/``)
