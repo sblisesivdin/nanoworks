@@ -99,7 +99,11 @@ Phonon & Thermal Properties
 ---------------------------
 
 * **Aluminum Phonons:**
-  Demonstrates how to calculate the phonon dispersion and density of states for an FCC metal (Al) using the integrated Phonopy module. (Folder: ``Al-phonon/``)
+  The same bundled input supports GPAW/Phonopy finite-displacement force constants
+  and native QE DFPT (``ph.x`` / ``q2r.x`` / ``matdyn.x``). See
+  :doc:`examples/al-gpaw-phonons` and :doc:`examples/al-qe-dfpt-phonons`
+  for the separately audited results. The different recorded frequencies
+  are not a controlled cross-engine benchmark. (Folder: ``Al-phonon/``)
 
 * **Silicon Phonons:**
   Follow :doc:`examples/si-gpaw-phonons` for recorded acoustic/optical branches,
