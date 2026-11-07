@@ -111,9 +111,9 @@ own grid, not a fitted peak or a transition energy.
 
    Archived x-direction epsilon2 values plotted at their original photon
    energies. The left panel uses the staged settings; the right uses
-   combined smoke settings. There is no spectral shift, interpolation,
-   amplitude renormalization or line smoothing. Connecting the discrete
-   samples with lines is only a visual aid.
+   combined smoke settings. There is no spectral shift, remapping to a
+   shared energy grid, amplitude renormalization or extra smoothing.
+   Straight lines between original samples are only a visual aid.
 
 The near-zero values and peak positions have some similarities, but the
 recorded peak *heights* differ substantially between QE and GPAW NLFC.
