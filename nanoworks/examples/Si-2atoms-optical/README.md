@@ -105,6 +105,47 @@ Do not rescale stored spectra to make their maxima match. See the
 [QE versus GPAW RPA audit](https://nanoworks.readthedocs.io/en/latest/examples/silicon-rpa-cross-engine-audit.html)
 for source-level details and recorded finite-window integrations.
 
+## Matched-linewidth comparison (optional; not a converged benchmark)
+
+Two separate inputs provide a more controlled **diagnostic** of the QE and
+GPAW RPA optical peak-height difference:
+
+- `Si-QE-RPA-matched-width.py`: QE `epsilon.x`,
+  `Opt_eta=0.10` eV, 1001 photon-energy samples over 0--10 eV.
+- `Si-GPAW-RPA-matched-width.py`: GPAW RPA with `Opt_eta=0.05` eV,
+  `Opt_domega0=0.01` eV and `Opt_omega2=20` eV. Compare the
+  exported **NLFC** (no-local-field) spectrum to QE; LFC is a different
+  response approximation.
+
+Both use the same fixed Si CIF, PBE, 340 eV electronic plane-wave cutoff,
+2x2x2 k-point grid, eight optical bands, and 0.05 eV optical occupation
+width. They target a common **nominal isolated-transition FWHM of about
+0.10 eV**, not identical response implementations or converged spectra.
+QE and GPAW still use different pseudopotential/PAW treatments and
+different frequency grids; GPAW retains its own 30 eV response cutoff.
+
+These are fresh **ground + optical** runs. They use distinct result
+directories, leaving the archived smoke and staged calculations alone.
+From this installed example directory:
+
+```bash
+dftsolve -E QE -i Si-QE-RPA-matched-width.py -g Si_mp-149_primitive_Example.cif --check
+dftsolve -E GPAW -i Si-GPAW-RPA-matched-width.py -g Si_mp-149_primitive_Example.cif --check
+
+# Only when ready to calculate (no computations are run by --check):
+dftsolve -E QE -i Si-QE-RPA-matched-width.py -g Si_mp-149_primitive_Example.cif
+dftsolve -E GPAW -i Si-GPAW-RPA-matched-width.py -g Si_mp-149_primitive_Example.cif
+```
+
+After both calculations, download
+[`compare_silicon_rpa_runs.py`](https://nanoworks.readthedocs.io/en/latest/_downloads/)
+from the [cross-engine RPA comparison tutorial](https://nanoworks.readthedocs.io/en/latest/examples/silicon-rpa-cross-engine-audit.html)
+and use the actual `AllData_xdirection.dat` paths. This dependency-free
+script prints unscaled peaks, finite-window integrals and local
+frequency-resolution diagnostics. Its results **cannot** establish optical
+convergence or a normalization error. The finer GPAW response grid is
+more expensive than the original smoke settings; monitor memory use.
+
 ## Focused optical reruns
 
 The older inputs remain available when only an optical calculation should be
