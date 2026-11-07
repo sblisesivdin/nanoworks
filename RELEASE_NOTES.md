@@ -2,7 +2,7 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
-- Audit QE/GPAW Si RPA spectra, document different `Opt_eta` linewidth conventions and verify finite-window optical integrals; preserve existing runtime behavior.
+- Audit QE/GPAW Si RPA spectra, linewidth conventions and peak sampling; verify spectra from the published reference ZIPs without changing runtime behavior.
 
 - Add verified QE silicon DFPT phonon/DOS tutorial; distinguish raw acoustic residuals from ASR-corrected output.
 
