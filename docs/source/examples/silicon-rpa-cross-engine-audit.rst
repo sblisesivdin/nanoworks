@@ -59,24 +59,24 @@ Why equal Opt_eta values do not imply equal linewidths
 -------------------------------------------------------
 
 The source-level distinction matters even before comparing PAW setups and
-pseudopotentials. For QE 7.4.1, the `eps_calc` routine receives
+pseudopotentials. For QE 7.4.1, the ``eps_calc`` routine receives
 ``intersmear`` but **does not receive** ``smeartype``. The latter is
-used by the separate `jdos_calc` routine. Therefore, writing
+used by the separate ``jdos_calc`` routine. Therefore, writing
 ``smeartype='gauss'`` in an ``epsilon.x`` input does **not** make its
 dielectric-function calculation Gaussian. See the
 `QE 7.4.1 epsilon.f90 source
 <https://github.com/QEF/q-e/blob/qe-7.4.1/PP/src/epsilon.f90>`_.
 
-For an isolated interband transition with energy \\(\\Delta\\),
+For an isolated interband transition with energy :math:`\Delta`,
 the frequency-dependent part of the QE imaginary response contains
 
 .. math::
 
-   \\epsilon_2^{\\mathrm{QE}}(\\omega) \\propto
-   \\frac{\\Gamma\\omega}
-   {(\\Delta^2-\\omega^2)^2+\\Gamma^2\\omega^2},
+   \epsilon_2^{\mathrm{QE}}(\omega) \propto
+   \frac{\Gamma\omega}
+   {(\Delta^2-\omega^2)^2+\Gamma^2\omega^2},
 
-where \\(\\Gamma\\) is the ``intersmear`` value. Near a positive
+where :math:`\Gamma` is the ``intersmear`` value. Near a positive
 resonance, its approximate full width at half maximum is
 ``FWHM = Gamma``. Additional transition-energy factors in the
 complete QE expression do not change this leading linewidth estimate.
@@ -86,7 +86,7 @@ contains denominators of the form
 
 .. math::
 
-   (\\omega-\\Delta+i\\eta)^{-1},
+   (\omega-\Delta+i\eta)^{-1},
 
 giving an isolated Lorentzian resonance with approximate
 ``FWHM = 2 * eta``. See the
@@ -107,7 +107,7 @@ sampling also matter.
 
 Do not rescale ``epsilon_2`` by two or alter historical results.
 For a *new*, controlled no-local-field comparison with a target
-isolated-line FWHM \\(W\\), candidate settings would be
+isolated-line FWHM :math:`W`, candidate settings would be
 ``Opt_eta=W`` for QE and ``Opt_eta=W/2`` for GPAW, with the
 full line shape and actual computed width independently checked.
 There is no automatic cross-engine conversion in the current wrapper.
