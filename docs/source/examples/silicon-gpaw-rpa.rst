@@ -109,7 +109,10 @@ package release were not recorded. Both Si PBE setup identifiers are
 The response cutoff controls the dielectric-matrix basis; it is distinct
 from the 340 eV electronic plane-wave cutoff. The optical occupation width
 and response broadening are also different controls, even where their
-numerical values happen to coincide.
+numerical values happen to coincide. The direct-frequency GPAW RPA
+parameter ``eta`` corresponds to approximately twice that value in an
+isolated peak's FWHM. QE's ``intersmear`` has a different linewidth
+convention; see :doc:`silicon-rpa-cross-engine-audit`. 
 
 GPAW RPA uses a nonlinear photon-energy grid. ``Opt_omega2=5`` marks where
 its spacing doubles relative to the initial spacing; it does not set a
