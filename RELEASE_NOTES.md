@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Add optional matched-linewidth Si QE/GPAW RPA example inputs and an offline spectral comparison helper.
+
 - Audit QE/GPAW Si RPA spectra, linewidth conventions and peak sampling; verify spectra from the published reference ZIPs without changing runtime behavior.
 
 - Add verified QE silicon DFPT phonon/DOS tutorial; distinguish raw acoustic residuals from ASR-corrected output.
