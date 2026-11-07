@@ -291,6 +291,126 @@ and sample different response shapes. Neither comparison isolates the
 effect of k-point density, and the QE-versus-GPAW difference does not
 isolate the local-field correction.
 
+A controlled, matched-linewidth rerun (inputs only)
+------------------------------------------------
+
+The two original archives are teaching outputs; their optical peaks cannot
+be corrected after the fact by multiplying or smoothing a saved spectrum.
+For a useful next diagnostic, Nanoworks now supplies **two additional
+optical inputs** in the *existing* installed
+``~/.nanoworks/examples/Si-2atoms-optical`` directory:
+
+* `Si-QE-RPA-matched-width.py
+  <https://github.com/sblisesivdin/nanoworks/blob/main/nanoworks/examples/Si-2atoms-optical/Si-QE-RPA-matched-width.py>`_
+* `Si-GPAW-RPA-matched-width.py
+  <https://github.com/sblisesivdin/nanoworks/blob/main/nanoworks/examples/Si-2atoms-optical/Si-GPAW-RPA-matched-width.py>`_
+
+The following settings isolate two important **numerical** differences
+while deliberately leaving the ground-state and response convergence
+study for later:
+
+.. list-table:: Proposed first diagnostic pair (not yet calculated)
+   :header-rows: 1
+   :widths: 40 30 30
+
+   * - Parameter
+     - QE
+     - GPAW
+   * - Geometry, XC, spin
+     - Fixed two-atom Si, PBE, nonmagnetic
+     - Same
+   * - Ground/optical k-point mesh
+     - 2 x 2 x 2
+     - 2 x 2 x 2
+   * - Optical bands, PW cutoff
+     - 8; 340 eV
+     - 8; 340 eV
+   * - Optical ``Opt_eta``
+     - 0.10 eV
+     - 0.05 eV
+   * - Estimated isolated-transition FWHM
+     - 0.10 eV
+     - 0.10 eV
+   * - Frequency grid
+     - ``Opt_num_of_data=1001``, 0--10 eV
+     - ``Opt_domega0=0.01``, ``Opt_omega2=20`` eV
+   * - Local-field comparison
+     - ``epsilon.x`` no local fields
+     - Only ``NLFC``; retain ``LFC`` separately
+   * - Response cutoff
+     - Not exposed by ``epsilon.x``
+     - 30 eV
+
+On the QE side the frequency step is approximately 0.010 eV. GPAW's
+`documented nonlinear-frequency formula
+<https://gpaw.readthedocs.io/tutorialsexercises/opticalresponse/dielectric_response/dielectric_response.html#frequency-grid>`_
+predicts an adjacent step near 8 eV of about 0.014 eV for these
+parameters, or more than seven intervals per *nominal* 0.10 eV
+isolated-line width. The actual GPAW grid extends according to the
+available electronic transitions; it is **not identical to the QE
+frequency grid**. Verify the *exported* energy columns before drawing
+conclusions.
+
+These two inputs use ``Ground_calc=True`` and distinct output
+directories. They recompute their own ground states rather than copying
+saved ones or overwriting the archived smoke and staged results.
+They run only ground-state and RPA optical stages; DOS, band, density,
+phonons and elastic stages are disabled. First install the ordinary
+examples if needed, then use the usual preflight and manual execution:
+
+.. code-block:: console
+
+   $ nanoworks --install-examples
+   $ cd ~/.nanoworks/examples/Si-2atoms-optical
+   $ dftsolve -E QE -i Si-QE-RPA-matched-width.py -g Si_mp-149_primitive_Example.cif --check
+   $ dftsolve -E GPAW -i Si-GPAW-RPA-matched-width.py -g Si_mp-149_primitive_Example.cif --check
+
+.. code-block:: console
+
+   $ dftsolve -E QE -i Si-QE-RPA-matched-width.py -g Si_mp-149_primitive_Example.cif
+   $ dftsolve -E GPAW -i Si-GPAW-RPA-matched-width.py -g Si_mp-149_primitive_Example.cif
+
+Run the two full calculations **only when resources are available**;
+they have *not* been executed as part of this tutorial change.
+Refining GPAW's response-frequency sampling can substantially increase
+resource use relative to the earlier smoke run. The preflight checks
+settings and local executables but **does not prove sufficient RAM**.
+The optical results are still not converged because the electronic
+2 x 2 x 2 mesh, eight-band window, ground cutoff, and response cutoff
+are intentionally small.
+
+After both runs, download the independent
+:download:`matched-run comparison script
+<../_static/examples/compare_silicon_rpa_runs.py>`
+and place it in the example directory. Compare the unmodified
+x-direction ``QE`` and ``GPAW NLFC`` data:
+
+.. code-block:: console
+
+   $ python compare_silicon_rpa_runs.py \\
+       Si-QE-RPA-matched-width-results/Si_mp-149_primitive_Example-OPTICAL-QE-Result-Calculation-RPA-AllData_xdirection.dat \\
+       Si-GPAW-RPA-matched-width-results/Si_mp-149_primitive_Example-OPTICAL-GPAW-Result-Calculation-RPA-NLFC-AllData_xdirection.dat \\
+       > si-rpa-matched-width-comparison.csv
+
+The script requires only standard Python. It emits unit-labelled CSV
+headers, both sampled peaks, independent native-grid trapezoidal
+integrals of ``epsilon2`` and ``E*epsilon2`` over the common
+0.001--8 eV window, local frequency steps, and source SHA-256
+identifiers. It does **not** generate missing spectra, fit an
+unresolved linewidth, shift the energy scale, silently scale the
+dielectric function, or claim an f-sum-rule result. Monitor the
+sampling diagnostic and compare full curves as well as integrals.
+
+If the matched-width comparison is still inconsistent, the next
+independent knobs are k-point meshes (e.g. 4 x 4 x 4 and finer),
+empty-band counts, PAW/pseudopotential details, the electronic
+plane-wave cutoff, and GPAW's dielectric-matrix cutoff. A numerical
+mismatch under the **2 x 2 x 2** diagnostic is not evidence of a
+program error. The repository's
+`tracking issue #5
+<https://github.com/sblisesivdin/nanoworks/issues/5>`_
+records the remaining physical-validation work.
+
 How to interpret and reproduce
 ------------------------------
 
