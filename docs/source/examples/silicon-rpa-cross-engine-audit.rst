@@ -105,6 +105,16 @@ own grid, not a fitted peak or a transition energy.
      - 2.690322
      - 276.260615
 
+.. figure:: ../_static/examples/silicon-rpa-cross-engine.svg
+   :alt: Two panels of the recorded silicon RPA imaginary dielectric response from QE epsilon.x, GPAW NLFC and GPAW LFC, with original scales.
+   :width: 100%
+
+   Archived x-direction epsilon2 values plotted at their original photon
+   energies. The left panel uses the staged settings; the right uses
+   combined smoke settings. There is no spectral shift, interpolation,
+   amplitude renormalization or line smoothing. Connecting the discrete
+   samples with lines is only a visual aid.
+
 The near-zero values and peak positions have some similarities, but the
 recorded peak *heights* differ substantially between QE and GPAW NLFC.
 For example, the staged sampled maxima are approximately 451 and 195.
