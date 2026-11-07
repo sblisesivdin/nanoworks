@@ -246,7 +246,7 @@ convention, **not** a measured width of the overlapping Si spectrum.
      - Local energy step (eV)
      - Nominal isolated FWHM (eV)
      - FWHM / step
-     - Peak samples
+     - Total grid points
    * - QE staged
      - 0.02000
      - 0.050
@@ -268,8 +268,8 @@ convention, **not** a measured width of the overlapping Si spectrum.
      - 1.32
      - 79
 
-The last column is the total number of frequency samples in the corresponding
-archived response table, **not** the number of points across the peak.
+The last column counts all grid points in the corresponding response table,
+**not** the number of points across the peak.
 The dimensionless ``FWHM / step`` ratio approximates how many grid intervals
 span *one isolated-line width*. A value close to one means that even a
 single resonance is barely sampled; the real Si spectra include overlapping
