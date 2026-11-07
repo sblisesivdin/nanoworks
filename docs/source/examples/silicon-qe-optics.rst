@@ -227,3 +227,6 @@ identifies the included files. No private state directories are distributed.
 
 The method and native output conventions are documented in the
 `QE 7.4.1 epsilon.x manual <https://github.com/QEF/q-e/blob/qe-7.4.1/PP/Doc/eps_man.tex>`_.
+For a side-by-side interpretation of the **unconverged** QE and GPAW RPA
+outputs, including the distinction between GPAW NLFC and LFC, see
+:doc:`silicon-rpa-cross-engine-audit`.
