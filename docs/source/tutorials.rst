@@ -100,6 +100,7 @@ Continue from the electronic calculation to the selected material response.
 
    examples/silicon-qe-optics
    examples/silicon-gpaw-rpa
+   examples/silicon-rpa-cross-engine-audit
    examples/silicon-gpaw-bse
    examples/al-gpaw-phonons
    examples/al-qe-dfpt-phonons
