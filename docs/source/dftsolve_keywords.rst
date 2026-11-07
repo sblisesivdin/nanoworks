@@ -2049,8 +2049,16 @@ Optical Calculations Keywords
     :Type: ``float``
     :Default: ``0.05``
 
-    Broadening parameter ``eta`` used in dielectric function calculations
-    (eV). Native QE maps it to ``epsilon.x`` ``intersmear``.
+    Response broadening parameter (eV). Nanoworks passes it directly to
+    GPAW's ``eta`` and to QE ``epsilon.x`` ``intersmear``. These are *not*
+    identical linewidth conventions: near an isolated interband resonance,
+    QE has approximately FWHM = ``intersmear``, whereas GPAW's direct
+    frequency response has approximately FWHM = ``2 * eta``. QE's
+    ``smeartype='gauss'`` input does not select Gaussian broadening for
+    ``calculation='eps'``; that switch is used by ``jdos``. The wrapper
+    does not rescale the parameter. See
+    :doc:`examples/silicon-rpa-cross-engine-audit` for source references,
+    recorded spectra and comparison limitations.
 
 .. code-block:: python
 
