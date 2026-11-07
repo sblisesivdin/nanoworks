@@ -179,6 +179,55 @@ This discrepancy is **an item for controlled investigation**, not evidence
 by itself of a normalization bug, a superior engine, or a physical Si
 dielectric constant.
 
+Compare peaks with finite-window spectral area
+-----------------------------------------------
+
+A peak height alone is an especially poor amplitude-normalization test for
+very narrow, differently sampled transitions. Direct trapezoidal integration
+of the original x-direction data over the **common 0.001--8.0 eV**
+interval gives:
+
+.. list-table:: Finite-window spectral diagnostics (not f-sum rules)
+   :header-rows: 1
+   :widths: 38 22 22 18
+
+   * - Measurement
+     - QE ``epsilon.x``
+     - GPAW ``NLFC``
+     - QE/GPAW
+   * - Staged max epsilon2 (dimensionless)
+     - 451.0891
+     - 194.8882
+     - 2.3146
+   * - Staged integral epsilon2 dE (eV)
+     - 136.6502
+     - 115.7123
+     - 1.1809
+   * - Combined max epsilon2 (dimensionless)
+     - 581.9935
+     - 256.2685
+     - 2.2710
+   * - Combined integral epsilon2 dE (eV)
+     - 314.4812
+     - 262.5430
+     - 1.1978
+
+For each original energy grid, only the two interval endpoints are
+linearly interpolated when necessary; interior samples remain unchanged.
+QE starts at 0.001 eV, while GPAW starts at 0 eV. The integrals have
+units of eV because dielectric epsilon2 is dimensionless. The common
+window stops at 8 eV to cover both archived energy ranges and emphasize
+the main resonances.
+
+The **approximately 2.3-fold peak ratios** contrast with
+**only 18--20% larger QE finite-window areas**. This is consistent with
+linewidth and sampling contributing strongly to the height mismatch.
+It is not a unique explanation, a converged oscillator-strength
+comparison, or an evaluation of the f-sum rule. Those require common
+line widths, independently converged settings, and suitably sampled
+full frequency ranges. The current integrals must not be multiplied
+by a guessed normalization factor.
+
 In particular, the GPAW local-field correction decreases the staged
 sampled peak yet increases the combined sampled peak. That observation is
 not contradictory: the two coarse grids have different numerical settings
