@@ -127,6 +127,8 @@ Optical Properties
   inputs for focused optical reruns. See :doc:`examples/silicon-gpaw-rpa`
   for recorded GPAW spectra and local-field checks, and
   :doc:`examples/silicon-gpaw-bse` for BSE poles and sum-rule diagnostics.
+  See :doc:`examples/silicon-rpa-cross-engine-audit` for the archived
+  QE-versus-GPAW comparison without equating local-field treatments.
   (Folder: ``Si-2atoms-optical/``)
   1. Ground-state generation (Wavefunctions and DOS/Bands)
   2. Random Phase Approximation (RPA) calculations
