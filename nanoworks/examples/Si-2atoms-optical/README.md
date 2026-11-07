@@ -97,6 +97,14 @@ y, and z directions, and dielectric, refractive-index, absorption, and
 reflectivity figures for each direction. Native QE optics currently supports
 `Opt_calc_type = 'RPA'`; BSE remains a GPAW-only option.
 
+The two engines' `Opt_eta` inputs are **not** equivalent linewidths:
+near an isolated peak, QE has FWHM approximately `intersmear` and
+GPAW has FWHM approximately `2 * eta`. QE's `smeartype='gauss'`
+option does not select Gaussian broadening for `calculation='eps'`.
+Do not rescale stored spectra to make their maxima match. See the
+[QE versus GPAW RPA audit](https://nanoworks.readthedocs.io/en/latest/examples/silicon-rpa-cross-engine-audit.html)
+for source-level details and recorded finite-window integrations.
+
 ## Focused optical reruns
 
 The older inputs remain available when only an optical calculation should be
