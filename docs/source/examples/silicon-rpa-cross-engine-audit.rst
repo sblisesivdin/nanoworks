@@ -55,6 +55,63 @@ In GPAW's convention ``NLFC`` uses the head of the dielectric matrix,
 while ``LFC`` uses the inverse dielectric matrix to obtain the
 macroscopic response.
 
+Why equal Opt_eta values do not imply equal linewidths
+-------------------------------------------------------
+
+The source-level distinction matters even before comparing PAW setups and
+pseudopotentials. For QE 7.4.1, the `eps_calc` routine receives
+``intersmear`` but **does not receive** ``smeartype``. The latter is
+used by the separate `jdos_calc` routine. Therefore, writing
+``smeartype='gauss'`` in an ``epsilon.x`` input does **not** make its
+dielectric-function calculation Gaussian. See the
+`QE 7.4.1 epsilon.f90 source
+<https://github.com/QEF/q-e/blob/qe-7.4.1/PP/src/epsilon.f90>`_.
+
+For an isolated interband transition with energy \\(\\Delta\\),
+the frequency-dependent part of the QE imaginary response contains
+
+.. math::
+
+   \\epsilon_2^{\\mathrm{QE}}(\\omega) \\propto
+   \\frac{\\Gamma\\omega}
+   {(\\Delta^2-\\omega^2)^2+\\Gamma^2\\omega^2},
+
+where \\(\\Gamma\\) is the ``intersmear`` value. Near a positive
+resonance, its approximate full width at half maximum is
+``FWHM = Gamma``. Additional transition-energy factors in the
+complete QE expression do not change this leading linewidth estimate.
+
+GPAW's direct frequency-domain independent-particle susceptibility instead
+contains denominators of the form
+
+.. math::
+
+   (\\omega-\\Delta+i\\eta)^{-1},
+
+giving an isolated Lorentzian resonance with approximate
+``FWHM = 2 * eta``. See the
+`GPAW response-function description
+<https://gpaw.readthedocs.io/documentation/tddft/dielectric_response.html>`_.
+These are **isolated-line estimates**, not width measurements from the
+overlapping archived Si peaks.
+
+Currently Nanoworks passes ``Opt_eta`` unchanged to GPAW ``eta``
+and to QE ``intersmear`` for backward compatibility. Thus the staged
+inputs use nominal FWHM values of about **0.10 eV in GPAW versus 0.05 eV
+in QE**; the combined inputs use about **0.20 eV versus 0.10 eV**.
+This factor-of-two difference in the *meaning of the parameter* can
+substantially influence peak heights. It does **not** prove that it
+explains all differences in spectra, because transition strengths,
+electronic states, response algorithms, local fields, and frequency
+sampling also matter.
+
+Do not rescale ``epsilon_2`` by two or alter historical results.
+For a *new*, controlled no-local-field comparison with a target
+isolated-line FWHM \\(W\\), candidate settings would be
+``Opt_eta=W`` for QE and ``Opt_eta=W/2`` for GPAW, with the
+full line shape and actual computed width independently checked.
+There is no automatic cross-engine conversion in the current wrapper.
+
 Read the recorded numbers
 -------------------------
 
