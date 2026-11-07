@@ -112,6 +112,22 @@ def spectral_area(rows, lower: float = 0.001, upper: float = 8.0) -> float:
     )
 
 
+def peak_spacing(rows, peak_index: int) -> float:
+    """Largest immediate energy gap adjacent to the sampled peak."""
+    if not 0 < peak_index < len(rows) - 1:
+        raise ValueError("Peak at the boundary: sampling cannot be assessed")
+    return max(
+        rows[peak_index][0] - rows[peak_index - 1][0],
+        rows[peak_index + 1][0] - rows[peak_index][0],
+    )
+
+
+def nominal_fwhm(case: str, engine: str) -> float:
+    """Isolated-transition *estimate*, not fitted width of the Si spectrum."""
+    input_eta = 0.05 if case == "staged" else 0.10
+    return input_eta * (2.0 if engine == "GPAW" else 1.0)
+
+
 def check_close(actual: float, expected: float, label: str) -> None:
     if not math.isclose(actual, expected, rel_tol=0.0, abs_tol=0.001):
         raise ValueError(f"{label}: {actual:.9f} != archived {expected:.9f}")
@@ -125,13 +141,17 @@ def main() -> None:
     results = {}
     with ZipFile(args.qe_zip) as qe, ZipFile(args.gpaw_zip) as gpaw:
         print("# Original x-direction RPA data; integration range 0.001--8.0 eV")
-        print("# case,engine,treatment,points,peak_energy_eV,peak_epsilon2_1,integral_epsilon2_dE_eV,source_sha256")
+        print("# Nominal isolated-line FWHM is only a sampling diagnostic.")
+        print("# case,engine,treatment,points,peak_energy_eV,peak_epsilon2_1,integral_epsilon2_dE_eV,adjacent_step_eV,nominal_FWHM_eV,samples_per_nominal_FWHM,source_sha256")
         for case, engine, kind, count, ex, ey, ea in CASES:
             filename, source, rows = read_case(
                 qe if engine == "QE" else gpaw, case, engine, kind, count
             )
-            peak = max(rows, key=lambda r: r[2])
+            peak_index = max(range(len(rows)), key=lambda i: rows[i][2])
+            peak = rows[peak_index]
             area = spectral_area(rows)
+            step = peak_spacing(rows, peak_index)
+            width = nominal_fwhm(case, engine)
             check_close(peak[0], ex, f"{case} {engine} peak energy")
             check_close(peak[2], ey, f"{case} {engine} peak epsilon2")
             check_close(area, ea, f"{case} {engine} area")
@@ -139,6 +159,7 @@ def main() -> None:
             print(
                 f"{case},{engine},{kind or 'epsilon.x'},{count},"
                 f"{peak[0]:.6f},{peak[2]:.6f},{area:.6f},"
+                f"{step:.6f},{width:.6f},{width / step:.3f},"
                 f"{hashlib.sha256(source).hexdigest()}"
             )
     print("# peak_ratio_QE_to_GPAW_NLFC,area_ratio_QE_to_GPAW_NLFC")
