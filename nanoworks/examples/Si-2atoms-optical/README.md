@@ -138,7 +138,7 @@ dftsolve -E GPAW -i Si-GPAW-RPA-matched-width.py -g Si_mp-149_primitive_Example.
 ```
 
 After both calculations, download
-[`compare_silicon_rpa_runs.py`](https://nanoworks.readthedocs.io/en/latest/_downloads/)
+[`compare_silicon_rpa_runs.py`](https://github.com/sblisesivdin/nanoworks/blob/main/docs/source/_static/examples/compare_silicon_rpa_runs.py)
 from the [cross-engine RPA comparison tutorial](https://nanoworks.readthedocs.io/en/latest/examples/silicon-rpa-cross-engine-audit.html)
 and use the actual `AllData_xdirection.dat` paths. This dependency-free
 script prints unscaled peaks, finite-window integrals and local
