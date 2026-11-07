@@ -255,4 +255,6 @@ unoccupied bands, response cutoff, occupation width, response broadening
 and photon-energy sampling independently. A controlled staged/combined
 comparison must use matching numerical settings. The separate
 :doc:`silicon-qe-optics` tutorial covers QE's optical workflow; these two
-GPAW cases do not establish agreement between engines.
+GPAW cases do not establish agreement between engines. The archived
+values are compared with explicit NLFC/LFC caveats in
+:doc:`silicon-rpa-cross-engine-audit`.
