@@ -17,12 +17,14 @@ import argparse
 import hashlib
 import io
 import math
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from zipfile import ZipFile
 
 
-# expected_points distinguish staged and combined runs without assuming
-# their parent directory names inside the reference archives.
+# These records refer to the actual staged/ and combined/ reference ZIP
+# layouts. QE tables are named optical-x.dat in its archive; GPAW tables
+# retain the full structure-prefixed AllData_xdirection.dat names.
+# The row counts and numerical checks validate each independently.
 CASES = (
     ("staged", "QE", "", 1001, 3.700815, 451.089106, 136.650181),
     ("staged", "GPAW", "NLFC", 157, 3.730863, 194.888208, 115.712327),
@@ -57,25 +59,36 @@ def parse_table(data: bytes) -> list[tuple[float, ...]]:
     return rows
 
 
-def read_case(z: ZipFile, engine: str, kind: str, points: int):
-    suffix = f"-OPTICAL-{engine}-Result-Calculation-RPA-"
-    if kind:
-        suffix += kind + "-"
-    suffix += "AllData_xdirection.dat"
+def read_case(z: ZipFile, case: str, engine: str, kind: str, points: int):
+    """Match the *published* ZIP structure, then independently check row count."""
+    if engine == "QE":
+        basename = "optical-x.dat"
+    else:
+        basename = (
+            f"Si_mp-149_primitive_Example-OPTICAL-GPAW-"
+            f"Result-Calculation-RPA-{kind}-AllData_xdirection.dat"
+        )
     matches = []
     for item in z.infolist():
-        if item.is_dir() or not item.filename.endswith(suffix):
+        if item.is_dir():
+            continue
+        parts = PurePosixPath(item.filename).parts
+        if case not in parts or parts[-1] != basename:
             continue
         data = z.read(item)
         table = parse_table(data)
-        if len(table) == points:
-            matches.append((item.filename, data, table))
+        matches.append((item.filename, data, table))
     if len(matches) != 1:
         raise ValueError(
-            f"Expected exactly one {engine} {kind or 'RPA'} table with "
-            f"{points} rows; found {len(matches)} (suffix {suffix})"
+            f"Expected exactly one {case} {engine} {kind or 'epsilon.x'} "
+            f"table ({basename}); found {len(matches)}"
         )
-    return matches[0]
+    filename, data, table = matches[0]
+    if len(table) != points:
+        raise ValueError(
+            f"{filename}: expected {points} rows, got {len(table)}"
+        )
+    return filename, data, table
 
 
 def eps2_at(rows, energy: float) -> float:
@@ -115,7 +128,7 @@ def main() -> None:
         print("# case,engine,treatment,points,peak_energy_eV,peak_epsilon2_1,integral_epsilon2_dE_eV,source_sha256")
         for case, engine, kind, count, ex, ey, ea in CASES:
             filename, source, rows = read_case(
-                qe if engine == "QE" else gpaw, engine, kind, count
+                qe if engine == "QE" else gpaw, case, engine, kind, count
             )
             peak = max(rows, key=lambda r: r[2])
             area = spectral_area(rows)
