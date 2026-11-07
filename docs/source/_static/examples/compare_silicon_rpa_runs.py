@@ -127,7 +127,7 @@ def main() -> None:
     print(f"# QE/GPAW_NLFC peak ratio: {qe['peak_epsilon2'] / gpaw['peak_epsilon2']:.6f}"
           if gpaw["peak_epsilon2"] else "# QE/GPAW_NLFC peak ratio: undefined")
     print(
-        f"# QE/GPAW_NLFC 0.001--8 eV area ratio: "
+        f"# QE/GPAW_NLFC [{args.emin:.6f}, {args.emax:.6f}] eV area ratio: "
         f"{qe['integral_epsilon2_eV'] / gpaw['integral_epsilon2_eV']:.6f}"
         if gpaw["integral_epsilon2_eV"] else
         "# QE/GPAW_NLFC area ratio: undefined"
