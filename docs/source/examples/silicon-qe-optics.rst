@@ -91,9 +91,15 @@ output, rather than assuming that an automatic mesh remained unreduced.
 These non-spin-polarized QE weights sum to two; they must not be replaced by
 a second manual normalization of the exported spectrum.
 
-For QE, ``Opt_eta`` maps to ``epsilon.x``'s ``intersmear``. The occupation width
-and optical linewidth are different quantities; tetrahedron DOS is another
-separate setting. The input's GPAW response-basis settings, such as
+For QE, ``Opt_eta`` maps directly to ``epsilon.x``'s ``intersmear``.
+For an isolated interband resonance, its approximate full width at half
+maximum equals ``intersmear``. In QE 7.4.1, ``smeartype='gauss'`` is
+used by the separate JDOS calculation; it does not select a Gaussian
+line shape for the ``eps`` dielectric calculation. GPAW instead uses a
+different ``eta`` linewidth convention; see
+:doc:`silicon-rpa-cross-engine-audit`. The occupation width and optical
+linewidth are different quantities; tetrahedron DOS is another separate
+setting. The input's GPAW response-basis settings, such as
 ``Opt_cut_of_energy``, do not define a QE response cutoff.
 
 The requested minimum energy is zero. This run uses smeared occupations, so
