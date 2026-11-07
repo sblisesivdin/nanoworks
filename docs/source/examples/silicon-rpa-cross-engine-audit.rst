@@ -387,9 +387,9 @@ x-direction ``QE`` and ``GPAW NLFC`` data:
 
 .. code-block:: console
 
-   $ python compare_silicon_rpa_runs.py \\
-       Si-QE-RPA-matched-width-results/Si_mp-149_primitive_Example-OPTICAL-QE-Result-Calculation-RPA-AllData_xdirection.dat \\
-       Si-GPAW-RPA-matched-width-results/Si_mp-149_primitive_Example-OPTICAL-GPAW-Result-Calculation-RPA-NLFC-AllData_xdirection.dat \\
+   $ python compare_silicon_rpa_runs.py \
+       Si-QE-RPA-matched-width-results/Si_mp-149_primitive_Example-OPTICAL-QE-Result-Calculation-RPA-AllData_xdirection.dat \
+       Si-GPAW-RPA-matched-width-results/Si_mp-149_primitive_Example-OPTICAL-GPAW-Result-Calculation-RPA-NLFC-AllData_xdirection.dat \
        > si-rpa-matched-width-comparison.csv
 
 The script requires only standard Python. It emits unit-labelled CSV
