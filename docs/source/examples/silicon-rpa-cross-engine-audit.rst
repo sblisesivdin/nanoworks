@@ -244,6 +244,25 @@ original QE x/y/z ``AllData`` tables, GPAW NLFC/LFC tables, inputs and
 plotting scripts. No archived spectrum was scaled or edited for this
 cross-engine summary.
 
+Download the
+:download:`stdlib-only numerical audit script
+<../_static/examples/check_silicon_rpa.py>`,
+plus ``silicon-qe-optics-reference.zip`` and
+``silicon-gpaw-rpa-reference.zip`` from the two linked tutorial pages.
+Put all three in one directory and run:
+
+.. code-block:: console
+
+   $ python check_silicon_rpa.py silicon-qe-optics-reference.zip silicon-gpaw-rpa-reference.zip
+
+The checker reads only the original direction-*x* ``AllData`` tables
+inside the ZIPs; no QE, GPAW, NumPy or Matplotlib is needed. It validates
+the expected point counts, peak energies, peak heights and finite-window
+trapezoidal integrals, then prints CSV-format rows with units in the
+header and SHA-256 identifiers for the exact table bytes used. It detects
+duplicate or missing case matches instead of choosing one arbitrarily.
+The source tutorial archives and the original spectra remain unchanged.
+
 For a controlled study, first converge the electronic cutoff, k mesh,
 unoccupied band count, response cutoff where applicable, line broadening
 and frequency grid **within each engine**. Keep the structure fixed and
