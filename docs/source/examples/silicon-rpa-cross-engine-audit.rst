@@ -228,6 +228,62 @@ line widths, independently converged settings, and suitably sampled
 full frequency ranges. The current integrals must not be multiplied
 by a guessed normalization factor.
 
+Frequency resolution at the sampled peaks
+-----------------------------------------
+
+The archived frequency grids do not resolve all narrow optical features
+densely. The following diagnostic is computed **without fitting a line
+shape**. The adjacent step is the *larger* of the two neighboring photon
+energy intervals at the maximum tabulated epsilon2. The nominal FWHM is
+the *isolated-transition estimate* from the respective input ``Opt_eta``
+convention, **not** a measured width of the overlapping Si spectrum.
+
+.. list-table:: Peak sampling resolution in the archived x-direction tables
+   :header-rows: 1
+   :widths: 26 20 20 20 14
+
+   * - Run
+     - Local energy step (eV)
+     - Nominal isolated FWHM (eV)
+     - FWHM / step
+     - Peak samples
+   * - QE staged
+     - 0.02000
+     - 0.050
+     - 2.50
+     - 1001
+   * - GPAW NLFC staged
+     - 0.08615
+     - 0.100
+     - 1.16
+     - 157
+   * - QE combined
+     - 0.09999
+     - 0.100
+     - 1.00
+     - 101
+   * - GPAW NLFC combined
+     - 0.15107
+     - 0.200
+     - 1.32
+     - 79
+
+The last column is the total number of frequency samples in the corresponding
+archived response table, **not** the number of points across the peak.
+The dimensionless ``FWHM / step`` ratio approximates how many grid intervals
+span *one isolated-line width*. A value close to one means that even a
+single resonance is barely sampled; the real Si spectra include overlapping
+transitions. GPAW LFC uses the same energy grids and local steps as its
+corresponding NLFC runs.
+
+Accordingly, the archived **peak heights are sensitive to the location of
+frequency samples**, and even trapezoidal finite-window areas may have
+sampling errors when sharp features fall between points. The 18--20% area
+discrepancy reported above should not be treated as a precisely determined
+oscillator-strength difference. A controlled comparison needs a much finer
+common frequency sampling *relative to the chosen physical linewidth*,
+besides the usual electronic and response convergence checks.
+
 In particular, the GPAW local-field correction decreases the staged
 sampled peak yet increases the combined sampled peak. That observation is
 not contradictory: the two coarse grids have different numerical settings
@@ -258,10 +314,13 @@ Put all three in one directory and run:
 The checker reads only the original direction-*x* ``AllData`` tables
 inside the ZIPs; no QE, GPAW, NumPy or Matplotlib is needed. It validates
 the expected point counts, peak energies, peak heights and finite-window
-trapezoidal integrals, then prints CSV-format rows with units in the
-header and SHA-256 identifiers for the exact table bytes used. It detects
-duplicate or missing case matches instead of choosing one arbitrarily.
-The source tutorial archives and the original spectra remain unchanged.
+trapezoidal integrals, then prints CSV-format rows containing neighboring
+frequency steps, nominal isolated-line FWHM diagnostics, unit-labelled
+quantities and SHA-256 identifiers for the exact table bytes used. It recognizes the actual ZIP layouts: QE's ``staged/optical-x.dat``
+and ``combined/optical-x.dat``, versus GPAW's longer
+``AllData_xdirection.dat`` basenames. It detects duplicate or missing
+case matches rather than choosing one arbitrarily. The source tutorial
+archives and original spectra remain unchanged.
 
 For a controlled study, first converge the electronic cutoff, k mesh,
 unoccupied band count, response cutoff where applicable, line broadening
