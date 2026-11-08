@@ -103,6 +103,21 @@ class SiliconRPAAuditTests(unittest.TestCase):
                 b"Energy(eV) Eps_img(1)\n0.0 1.0\n"
             )
 
+    def test_first_moment_and_global_grid_step_are_not_peak_only(self):
+        rows = _audit.parse_table(_dat(
+            ((0.0, 0.0), (1.0, 1.0), (2.0, 2.0))
+        ))
+        area, first = _audit.spectral_moments(rows, 0.0, 2.0)
+        self.assertAlmostEqual(area, 2.0)
+        self.assertAlmostEqual(first, 8.0 / 3.0)
+        self.assertAlmostEqual(_audit.spectral_area(rows, 0.0, 2.0), 2.0)
+        self.assertAlmostEqual(_audit.window_max_step(rows, 0.0, 2.0), 1.0)
+        # Invalid windows must not be silently extrapolated.
+        with self.assertRaisesRegex(ValueError, "interval"):
+            _audit.spectral_moments(rows, 1.0, 1.0)
+        with self.assertRaisesRegex(ValueError, "outside"):
+            _audit.window_max_step(rows, 0.0, 3.0)
+
     def test_analytic_trapezoid_and_sampling_diagnostic(self):
         rows = _audit.parse_table(_dat())
         self.assertAlmostEqual(_audit.spectral_area(rows), 7.999)
