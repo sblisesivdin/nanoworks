@@ -2,10 +2,14 @@
 # SPDX-License-Identifier: MIT
 """Offline tests for the downloadable silicon cross-engine optics audit."""
 
+import contextlib
+import csv
 import importlib.util
 import io
 from pathlib import Path
+import sys
 import unittest
+from unittest.mock import patch
 from zipfile import ZipFile
 
 
@@ -43,6 +47,32 @@ def _zip(entries):
 
 
 class SiliconRPAAuditTests(unittest.TestCase):
+    def test_published_reference_archives_are_audited_end_to_end(self):
+        """Verify the exact ZIP files shipped with the documentation."""
+        reference = Path(__file__).resolve().parents[1] / "docs/source/_static/examples"
+        qe = reference / "silicon-qe-optics-reference.zip"
+        gpaw = reference / "silicon-gpaw-rpa-reference.zip"
+        self.assertTrue(qe.is_file(), str(qe))
+        self.assertTrue(gpaw.is_file(), str(gpaw))
+        output, diagnostics = io.StringIO(), io.StringIO()
+        with (
+            patch.object(sys, "argv", ["check_silicon_rpa.py", str(qe), str(gpaw)]),
+            contextlib.redirect_stdout(output),
+            contextlib.redirect_stderr(diagnostics),
+        ):
+            _audit.main()
+        table = list(csv.DictReader(io.StringIO(output.getvalue())))
+        self.assertEqual(len(table), 6)
+        self.assertTrue(output.getvalue().startswith("case,engine,treatment,points,"))
+        self.assertNotIn("#", output.getvalue())
+        self.assertEqual({row["case"] for row in table}, {"staged", "combined"})
+        for row in table:
+            self.assertEqual(len(row["source_sha256"]), 64)
+            self.assertGreater(float(row["integral_epsilon2_dE_eV"]), 0.0)
+            self.assertGreater(float(row["integral_E_epsilon2_dE_eV2"]), 0.0)
+        self.assertIn("first_moment=", diagnostics.getvalue())
+        self.assertIn("staged: peak=", diagnostics.getvalue())
+
     def test_original_qe_zip_names_are_selected_by_case(self):
         with _zip([
             ("staged/optical-x.dat", _dat()),
