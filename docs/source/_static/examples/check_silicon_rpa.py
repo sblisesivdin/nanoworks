@@ -7,7 +7,8 @@ Usage:
     python check_silicon_rpa.py silicon-qe-optics-reference.zip silicon-gpaw-rpa-reference.zip
 
 Uses only original seven-column AllData tables inside the existing tutorial ZIPs.
-Does not alter or normalize input spectra. All values are finite-window checks,
+Does not alter or normalize input spectra. CSV rows are written to stdout;
+notes, ratios, and warnings to stderr. All values are finite-window checks,
 not sum rules, converged material predictions, or automated linewidth fits.
 """
 
@@ -18,6 +19,7 @@ import hashlib
 import io
 import math
 from pathlib import Path, PurePosixPath
+import sys
 from zipfile import ZipFile
 
 
@@ -164,9 +166,9 @@ def main() -> None:
     args = parser.parse_args()
     results = {}
     with ZipFile(args.qe_zip) as qe, ZipFile(args.gpaw_zip) as gpaw:
-        print("# Original x-direction RPA data; integration range 0.001--8.0 eV")
-        print("# Nominal isolated-line FWHM is only a sampling diagnostic.")
-        print("# case,engine,treatment,points,peak_energy_eV,peak_epsilon2_1,integral_epsilon2_dE_eV,integral_E_epsilon2_dE_eV2,adjacent_step_eV,max_window_step_eV,nominal_FWHM_eV,min_FWHM_over_window_step,source_sha256")
+        print("Original x-direction RPA data; integration range 0.001--8.0 eV.", file=sys.stderr)
+        print("Nominal isolated-line FWHM is only a sampling diagnostic.", file=sys.stderr)
+        print("case,engine,treatment,points,peak_energy_eV,peak_epsilon2_1,integral_epsilon2_dE_eV,integral_E_epsilon2_dE_eV2,adjacent_step_eV,max_window_step_eV,nominal_FWHM_eV,min_FWHM_over_window_step,source_sha256")
         for case, engine, kind, count, ex, ey, ea, em, es in CASES:
             filename, source, rows = read_case(
                 qe if engine == "QE" else gpaw, case, engine, kind, count
@@ -190,12 +192,16 @@ def main() -> None:
                 f"{width:.6f},{width / max_step:.3f},"
                 f"{hashlib.sha256(source).hexdigest()}"
             )
-    print("# peak_ratio_QE_to_GPAW_NLFC,area_ratio_QE_to_GPAW_NLFC")
+    print("QE/GPAW_NLFC peak and finite-window area ratios:", file=sys.stderr)
     for case in ("staged", "combined"):
         qe_peak, qe_area, qe_moment = results[(case, "QE", "")]
         gp_peak, gp_area, gp_moment = results[(case, "GPAW", "NLFC")]
-        print(f"# {case}: {qe_peak / gp_peak:.6f}, {qe_area / gp_area:.6f}, "
-              f"first_moment_ratio={qe_moment / gp_moment:.6f}")
+        print(
+            f"{case}: peak={qe_peak / gp_peak:.6f}, "
+            f"area={qe_area / gp_area:.6f}, "
+            f"first_moment={qe_moment / gp_moment:.6f}",
+            file=sys.stderr,
+        )
 
 
 if __name__ == "__main__":
