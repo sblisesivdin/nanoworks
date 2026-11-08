@@ -112,7 +112,31 @@ class MatchedWidthComparatorTests(unittest.TestCase):
         self.assertEqual(stats["points"], 4)
         self.assertEqual(stats["peak_eV"], 1.0)
         self.assertAlmostEqual(stats["nominal_FWHM_to_step"], 0.1)
+        self.assertAlmostEqual(stats["max_step_in_window_eV"], 1.0)
+        self.assertAlmostEqual(stats["min_nominal_FWHM_to_step"], 0.1)
         self.assertEqual(len(stats["sha256"]), 64)
+
+    def test_first_moment_uses_exact_piecewise_linear_integral(self):
+        self.dat.write_text(
+            _dat((0, 1, 2), (0, 1, 2)), encoding="utf-8"
+        )
+        rows = _comp.read_table(self.dat)
+        area, first_moment = _comp.moments(rows, 0.0, 2.0)
+        self.assertAlmostEqual(area, 2.0)
+        self.assertAlmostEqual(first_moment, 8.0 / 3.0)
+        # Plain trapezoids of E*epsilon2 would incorrectly give 3.0.
+        self.assertNotAlmostEqual(first_moment, 3.0)
+
+    def test_window_max_step_uses_all_intervals_not_only_peak(self):
+        self.dat.write_text(
+            _dat((0, 0.2, 0.7, 2.0), (0, 2, 3, 0)),
+            encoding="utf-8",
+        )
+        rows = _comp.read_table(self.dat)
+        self.assertAlmostEqual(_comp.window_max_step(rows, 0.1, 1.4), 0.7)
+        stats = _comp.inspect(self.dat, 0.1, 1.4, 0.1)
+        self.assertAlmostEqual(stats["max_step_in_window_eV"], 0.7)
+        self.assertAlmostEqual(stats["min_nominal_FWHM_to_step"], 1/7)
 
     def test_invalid_tables_and_uncovered_window_fail(self):
         with self.assertRaisesRegex(ValueError, "exceeds a data grid"):
@@ -141,6 +165,9 @@ class MatchedWidthComparatorTests(unittest.TestCase):
         self.assertIn("QE,4,1.000000,2.000000,3.500000,5.250000", output)
         self.assertIn("GPAW_NLFC,4,1.000000,2.000000", output)
         self.assertIn("[0.500000, 2.500000] eV area ratio: 1.000000", output)
+        self.assertIn("max_window_step_eV,min_FWHM_over_window_step", output)
+        self.assertIn("YES,", output)
+        self.assertIn("WARNING: GPAW_NLFC is below 5", output)
 
 
 if __name__ == "__main__":
