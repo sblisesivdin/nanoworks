@@ -2,7 +2,7 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
-- Add optional matched-linewidth Si QE/GPAW examples; improve offline spectral moments and frequency-resolution checks.
+- Add Si QE/GPAW matched-linewidth examples, reproducible optical diagnostics and clean CSV exports.
 
 - Audit QE/GPAW Si RPA spectra, linewidth conventions and peak sampling; verify spectra from the published reference ZIPs without changing runtime behavior.
 
