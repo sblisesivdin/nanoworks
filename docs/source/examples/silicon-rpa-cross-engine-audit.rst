@@ -458,8 +458,11 @@ the minimum nominal FWHM-to-step ratio drops below five; that threshold
 is only a *sampling heuristic*, not a physical convergence criterion.
 The default interval is 0.001--8 eV, and the optional
 ``--min-grid-ratio`` changes the warning threshold.
-CSV-format values include explicit units and SHA-256 identifiers for
-the exact input files. No output spectrum is shifted, smoothed or
+Standard CSV output contains one unit-labelled header, one row per engine
+and SHA-256 identifiers for the exact input files. The separate
+human-readable notes, QE/GPAW ratios and sampling warnings are written
+to **stderr**, so redirecting stdout to a ``.csv`` file produces
+a directly readable table. No output spectrum is shifted, smoothed or
 renormalized, and no f-sum-rule agreement is asserted. Inspect the
 entire curves as well as these summaries.
 
@@ -493,7 +496,7 @@ Put all three in one directory and run:
 
    $ python check_silicon_rpa.py silicon-qe-optics-reference.zip silicon-gpaw-rpa-reference.zip
 
-The checker reads only the original direction-*x* ``AllData`` tables
+The checker reads only the original direction-*x* optical tables
 inside the ZIPs; no QE, GPAW, NumPy or Matplotlib is needed. It validates
 the expected point counts, peak energies, peak heights and finite-window
 trapezoidal integrals, then prints CSV-format rows containing neighboring
@@ -502,8 +505,11 @@ whole-window steps, nominal isolated-line FWHM diagnostics, unit-labelled
 quantities and SHA-256 identifiers for the exact table bytes used. It recognizes the actual ZIP layouts: QE's ``staged/optical-x.dat``
 and ``combined/optical-x.dat``, versus GPAW's longer
 ``AllData_xdirection.dat`` basenames. It detects duplicate or missing
-case matches rather than choosing one arbitrarily. The source tutorial
-archives and original spectra remain unchanged.
+case matches rather than choosing one arbitrarily. Its **stdout is plain
+CSV** (a single header and six data rows), suitable for redirecting
+to a ``.csv`` file; audit notes and QE/GPAW ratios go to **stderr**
+so they cannot corrupt the saved CSV. The source tutorial archives
+and original spectra remain unchanged.
 
 For a controlled study, first converge the electronic cutoff, k mesh,
 unoccupied band count, response cutoff where applicable, line broadening
