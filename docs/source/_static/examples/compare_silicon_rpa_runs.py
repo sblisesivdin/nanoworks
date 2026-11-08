@@ -8,7 +8,8 @@ Example:
 
 Supply the actual structure-prefixed filenames in your results directories.
 The defaults integrate the common 0.001--8 eV range and use the input
-pair's nominal 0.10 eV isolated-line FWHM. No DFT library is required.
+pair's nominal 0.10 eV isolated-line FWHM. CSV rows go to stdout;
+notes, ratios, and warnings go to stderr. No DFT library is required.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ import argparse
 import hashlib
 import math
 from pathlib import Path
+import sys
 
 
 def read_table(path: Path) -> list[tuple[float, float]]:
@@ -141,10 +143,10 @@ def main() -> None:
         "QE": inspect(args.qe_dat, args.emin, args.emax, args.fwhm),
         "GPAW_NLFC": inspect(args.gpaw_nlfc_dat, args.emin, args.emax, args.fwhm),
     }
-    print("# Observed peaks and native-grid trapezoid integrals; no amplitude scaling")
-    print("# Nominal FWHM is an isolated-line *estimate*, not a fitted width")
-    print("# E*epsilon2 moments integrate the piecewise-linear dielectric curve exactly")
-    print("# Grid sufficiency is a heuristic warning, not a convergence test")
+    print("Observed peaks and native-grid integrals; no amplitude scaling.", file=sys.stderr)
+    print("Nominal FWHM is an isolated-line estimate, not a fitted width.", file=sys.stderr)
+    print("E*epsilon2 integrates the piecewise-linear response exactly.", file=sys.stderr)
+    print("Grid warnings are heuristics, not convergence tests.", file=sys.stderr)
     print("engine,points,peak_energy_eV,peak_epsilon2_1,integral_epsilon2_dE_eV,"
           "integral_E_epsilon2_dE_eV2,local_step_eV,nominal_FWHM_over_step,"
           "max_window_step_eV,min_FWHM_over_window_step,resolution_warning,source_sha256")
@@ -162,16 +164,21 @@ def main() -> None:
         if sparse:
             print(
                 f"# WARNING: {engine} is below {args.min_grid_ratio:g} "
-                "nominal-FWHM intervals per largest step in the window."
+                "nominal-FWHM intervals per largest step in the window.",
+                file=sys.stderr,
             )
     qe, gpaw = stats["QE"], stats["GPAW_NLFC"]
-    print(f"# QE/GPAW_NLFC peak ratio: {qe['peak_epsilon2'] / gpaw['peak_epsilon2']:.6f}"
-          if gpaw["peak_epsilon2"] else "# QE/GPAW_NLFC peak ratio: undefined")
     print(
-        f"# QE/GPAW_NLFC [{args.emin:.6f}, {args.emax:.6f}] eV area ratio: "
-        f"{qe['integral_epsilon2_eV'] / gpaw['integral_epsilon2_eV']:.6f}"
-        if gpaw["integral_epsilon2_eV"] else
-        "# QE/GPAW_NLFC area ratio: undefined"
+        f"QE/GPAW_NLFC peak ratio: "
+        + (f"{qe['peak_epsilon2'] / gpaw['peak_epsilon2']:.6f}"
+           if gpaw["peak_epsilon2"] else "undefined"),
+        file=sys.stderr,
+    )
+    print(
+        f"QE/GPAW_NLFC [{args.emin:.6f}, {args.emax:.6f}] eV area ratio: "
+        + (f"{qe['integral_epsilon2_eV'] / gpaw['integral_epsilon2_eV']:.6f}"
+           if gpaw["integral_epsilon2_eV"] else "undefined"),
+        file=sys.stderr,
     )
 
 
