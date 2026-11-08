@@ -392,14 +392,28 @@ x-direction ``QE`` and ``GPAW NLFC`` data:
        Si-GPAW-RPA-matched-width-results/Si_mp-149_primitive_Example-OPTICAL-GPAW-Result-Calculation-RPA-NLFC-AllData_xdirection.dat \
        > si-rpa-matched-width-comparison.csv
 
-The script requires only standard Python. It emits unit-labelled CSV
-headers, both sampled peaks, independent native-grid trapezoidal
-integrals of ``epsilon2`` and ``E*epsilon2`` over the common
-0.001--8 eV window, local frequency steps, and source SHA-256
-identifiers. It does **not** generate missing spectra, fit an
-unresolved linewidth, shift the energy scale, silently scale the
-dielectric function, or claim an f-sum-rule result. Monitor the
-sampling diagnostic and compare full curves as well as integrals.
+The script requires only standard Python. It reports the sampled
+maxima and evaluates the *finite-window* zeroth moment
+:math:`\int\epsilon_2(E)\,dE` by trapezoidal integration on
+the original energy samples. For the first moment
+:math:`\int E\epsilon_2(E)\,dE`, it integrates the same
+piecewise-linearly interpolated response **analytically within each
+interval**, avoiding the additional error of directly applying
+trapezoids to :math:`E\epsilon_2(E)`. Neither rule reconstructs
+unresolved peaks between samples, and these finite-window moments
+are not a converged f-sum rule.
+
+The output also records the photon-energy step adjacent to the
+sampled maximum **and the largest step anywhere in the selected
+integration window**. A ``resolution_warning=YES`` means
+the minimum nominal FWHM-to-step ratio drops below five; that threshold
+is only a *sampling heuristic*, not a physical convergence criterion.
+The default interval is 0.001--8 eV, and the optional
+``--min-grid-ratio`` changes the warning threshold.
+CSV-format values include explicit units and SHA-256 identifiers for
+the exact input files. No output spectrum is shifted, smoothed or
+renormalized, and no f-sum-rule agreement is asserted. Inspect the
+entire curves as well as these summaries.
 
 If the matched-width comparison is still inconsistent, the next
 independent knobs are k-point meshes (e.g. 4 x 4 x 4 and finer),
