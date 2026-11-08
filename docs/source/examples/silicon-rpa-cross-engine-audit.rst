@@ -270,6 +270,54 @@ convention, **not** a measured width of the overlapping Si spectrum.
 
 The last column counts all grid points in the corresponding response table,
 **not** the number of points across the peak.
+
+A complementary check uses the **entire common 0.001--8.0 eV window**
+rather than only the local step at the sampled maximum. The first moment
+is evaluated by integrating the piecewise-linear imaginary dielectric
+response exactly on each native-grid interval, without resampling the
+spectrum to a new grid.
+
+.. list-table:: Finite-window first moment and largest native-grid step
+   :header-rows: 1
+   :widths: 29 26 22 23
+
+   * - Archived spectrum (x direction)
+     - Integral E epsilon2 dE (eV^2)
+     - Maximum step (eV)
+     - Nominal FWHM / maximum step
+   * - QE staged
+     - 475.153835
+     - 0.019999
+     - 2.50
+   * - GPAW NLFC staged
+     - 398.876659
+     - 0.136864
+     - 0.73
+   * - GPAW LFC staged
+     - 376.085037
+     - 0.136864
+     - 0.73
+   * - QE combined
+     - 979.918073
+     - 0.099990
+     - 1.00
+   * - GPAW NLFC combined
+     - 818.145815
+     - 0.271871
+     - 0.74
+   * - GPAW LFC combined
+     - 814.208467
+     - 0.271871
+     - 0.74
+
+The sampled QE/GPAW NLFC first-moment ratios are about **1.19**
+for both staged and combined runs. These finite-window values are
+*diagnostic quantities*, not f-sum-rule evaluations; incomplete
+high-energy spectral weight and coarse sampling make a sum-rule
+interpretation inappropriate. The maximum-step diagnostic also
+shows that the archived GPAW grids include intervals wider than
+their estimated isolated-line FWHM. The new matched-linewidth
+inputs below aim to improve that numerical limitation.
 The dimensionless ``FWHM / step`` ratio approximates how many grid intervals
 span *one isolated-line width*. A value close to one means that even a
 single resonance is barely sampled; the real Si spectra include overlapping
@@ -449,7 +497,8 @@ The checker reads only the original direction-*x* ``AllData`` tables
 inside the ZIPs; no QE, GPAW, NumPy or Matplotlib is needed. It validates
 the expected point counts, peak energies, peak heights and finite-window
 trapezoidal integrals, then prints CSV-format rows containing neighboring
-frequency steps, nominal isolated-line FWHM diagnostics, unit-labelled
+frequency steps at the peaks, first finite-window moments, largest
+whole-window steps, nominal isolated-line FWHM diagnostics, unit-labelled
 quantities and SHA-256 identifiers for the exact table bytes used. It recognizes the actual ZIP layouts: QE's ``staged/optical-x.dat``
 and ``combined/optical-x.dat``, versus GPAW's longer
 ``AllData_xdirection.dat`` basenames. It detects duplicate or missing
