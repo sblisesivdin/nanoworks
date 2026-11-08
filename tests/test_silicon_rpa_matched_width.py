@@ -4,6 +4,7 @@
 
 import ast
 import contextlib
+import csv
 import importlib.util
 import io
 import math
@@ -154,20 +155,31 @@ class MatchedWidthComparatorTests(unittest.TestCase):
 
     def test_manual_csv_output_and_user_chosen_window(self):
         capture = io.StringIO()
+        diagnostics = io.StringIO()
         argv = [
             "compare_silicon_rpa_runs.py", str(self.dat), str(self.dat),
             "--emin=0.5", "--emax=2.5", "--fwhm=0.10",
         ]
-        with patch.object(sys, "argv", argv), contextlib.redirect_stdout(capture):
+        with (
+            patch.object(sys, "argv", argv),
+            contextlib.redirect_stdout(capture),
+            contextlib.redirect_stderr(diagnostics),
+        ):
             _comp.main()
         output = capture.getvalue()
-        self.assertIn("engine,points,peak_energy_eV", output)
-        self.assertIn("QE,4,1.000000,2.000000,3.500000,5.250000", output)
-        self.assertIn("GPAW_NLFC,4,1.000000,2.000000", output)
-        self.assertIn("[0.500000, 2.500000] eV area ratio: 1.000000", output)
-        self.assertIn("max_window_step_eV,min_FWHM_over_window_step", output)
-        self.assertIn("YES,", output)
-        self.assertIn("WARNING: GPAW_NLFC is below 5", output)
+        rows = list(csv.DictReader(io.StringIO(output)))
+        self.assertEqual(len(rows), 2)
+        self.assertEqual([row["engine"] for row in rows], ["QE", "GPAW_NLFC"])
+        self.assertAlmostEqual(float(rows[0]["integral_epsilon2_dE_eV"]), 3.5)
+        self.assertAlmostEqual(float(rows[0]["integral_E_epsilon2_dE_eV2"]), 5.25)
+        self.assertEqual(rows[1]["resolution_warning"], "YES")
+        self.assertEqual(len(rows[0]["source_sha256"]), 64)
+        self.assertNotIn("#", output)
+        self.assertIn(
+            "[0.500000, 2.500000] eV area ratio: 1.000000",
+            diagnostics.getvalue(),
+        )
+        self.assertIn("WARNING: GPAW_NLFC is below 5", diagnostics.getvalue())
 
 
 if __name__ == "__main__":
