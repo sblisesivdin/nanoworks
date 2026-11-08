@@ -2,7 +2,7 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
-- Add optional matched-linewidth Si QE/GPAW RPA example inputs and an offline spectral comparison helper.
+- Add optional matched-linewidth Si QE/GPAW examples; improve offline spectral moments and frequency-resolution checks.
 
 - Audit QE/GPAW Si RPA spectra, linewidth conventions and peak sampling; verify spectra from the published reference ZIPs without changing runtime behavior.
 
