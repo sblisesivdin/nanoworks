@@ -340,7 +340,7 @@ effect of k-point density, and the QE-versus-GPAW difference does not
 isolate the local-field correction.
 
 A controlled, matched-linewidth rerun (inputs only)
-------------------------------------------------
+---------------------------------------------------
 
 The two original archives are teaching outputs; their optical peaks cannot
 be corrected after the fact by multiplying or smoothing a saved spectrum.
