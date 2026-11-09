@@ -3,12 +3,10 @@ Silicon elasticity with QE and thermo_pw: a convergence-quality audit
 
 .. note::
 
-   This is a **smoke test**, not a converged estimate of the elastic
-   constants of silicon. It documents the completed
-   ``example-runs-Va5NDWGi/QE/si-elastic`` archive from
-   28 October 2026. The original thermo_pw record is intentionally
-   kept unchanged, including its numerical asymmetry and historical
-   mechanical-stability wording.
+   This troubleshooting example explains how to validate elastic tensors
+   generated with QE and thermo_pw. The small numerical settings are
+   not converged elastic constants; symmetry, numerical stability
+   and postprocessing require independent checks.
 
 The purpose is to learn how Nanoworks calls ``thermo_pw.x``, how to
 read a full elastic tensor, and why a successful run and positive
