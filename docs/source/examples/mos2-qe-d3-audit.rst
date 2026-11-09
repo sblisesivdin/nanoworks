@@ -44,7 +44,7 @@ bands. These settings were smoke-test inputs, not converged
 research parameters.
 
 The central failure: final SCF after BFGS
-----------------------------------------
+-----------------------------------------
 
 QE printed ``bfgs converged`` after six BFGS steps. At the next
 stage it recalculated the G-vectors and performed a fresh
