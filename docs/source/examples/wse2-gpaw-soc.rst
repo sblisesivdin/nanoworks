@@ -70,13 +70,11 @@ Consequently, the SOC run's ordinary SCF and band-stage logs still print
 scalar-relativistic gaps. Read the exported SOC eigenvalues to obtain
 the SOC band edges.
 
-The recorded runs started on 28 October 2026 and identify Nanoworks
-27.2.0rc0, GPAW 26.7.0, ASE 3.29.0 and eight MPI processes.
-Both scalar SCFs converged in 17 steps; the fixed-density band calculations
-converged in one step. The ground mesh has 81 full-BZ and 12 irreducible
-points. The setups report W with 14 and Se with 6 valence electrons:
-26 electrons per primitive cell. The source commit and PAW package version
-were not recorded.
+In the reference example, the scalar SCFs converged in 17 steps and
+the fixed-density band calculations in one step. The ground mesh contains
+81 full-BZ and 12 irreducible k points. The PAW datasets use 14 valence
+electrons for W and 6 for Se, giving 26 electrons per primitive cell.
+Record the PAW dataset versions when repeating a calculation.
 
 Read the band comparison
 ------------------------
