@@ -32,10 +32,9 @@ without editing the original input. This caveat concerns the inspected GPAW
 hybrid path and does not establish a failure of the separate QE hybrid path.
 Outputs use ``Si_mp-149_primitive/`` and the same filename prefix.
 
-The recorded input and starting CIF match the inspected repository files
-byte for byte. The run used Nanoworks 27.2.0rc0, GPAW 26.7.0, ASE 3.29.0 and
-eight processes on 28 October 2026. Its exact run source commit was not
-recorded. No new DFT calculation was performed for this review.
+Record the GPAW and PAW dataset versions when repeating the example.
+Hybrid calculations are especially sensitive to the chosen electronic
+representation and convergence thresholds.
 
 Read the settings
 -----------------
