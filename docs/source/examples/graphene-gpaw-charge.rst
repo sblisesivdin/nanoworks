@@ -8,11 +8,10 @@ Graphene vacancy: neutral and charged cells with GPAW
    materials predictions require appropriate convergence tests and validation
    of the physical model.
 
-This exercise follows the completed ``GPAW/graphene-neutral`` and
-``GPAW/graphene-charged`` cases in ``example-runs-Va5NDWGi``. It demonstrates
-how to check the sign of an imposed charge, compare electronic spectra with
-separate Fermi references, and verify the electron-count difference directly
-from density exports.
+This tutorial demonstrates how to compare neutral and charged supercells.
+A graphene vacancy illustrates the sign of imposed charge, the need for
+consistent electronic energy references and checks on the total electron
+count from density exports.
 
 Both calculations completed. They use a **31-carbon vacancy structure**, made
 by removing one atom from a 32-atom 4 x 4 graphene supercell. The neutral case
