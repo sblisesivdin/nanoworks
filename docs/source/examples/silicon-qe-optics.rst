@@ -8,11 +8,10 @@ Silicon with QE: optical workflow and result checks
    materials predictions require appropriate convergence tests and validation
    of the physical model.
 
-This exercise reads a completed ground-state, DOS, band and optical workflow
-for two-atom silicon. It shows how to calculate the dielectric response with
-QE's ``epsilon.x`` and how Nanoworks converts it to refractive index,
-absorption and reflectivity. The recorded runs completed, but their coarse
-spectra are **teaching data, not converged material reference values**.
+This tutorial explains how to calculate the independent-particle dielectric
+response with QE's ``epsilon.x`` and how Nanoworks derives refractive index,
+absorption and reflectivity. Silicon is the worked example; the small k-point
+meshes and band counts are for learning rather than converged predictions.
 
 Open the installed example
 --------------------------
