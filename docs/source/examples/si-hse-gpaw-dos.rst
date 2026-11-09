@@ -8,11 +8,11 @@ Silicon with HSE06: ground-state DOS and a hybrid-band caveat
    materials predictions require appropriate convergence tests and validation
    of the physical model.
 
-This tutorial uses the ground-state and DOS records from ``GPAW/si-hse`` in
-``example-runs-Va5NDWGi``. It shows how a hybrid DOS uses the saved ground-state
-eigenvalues and how to distinguish occupation smearing from DOS broadening.
-The legacy band-path stage in this recorded run has a separate methodological
-problem, described below, and is deliberately excluded from the commands.
+This tutorial explains a hybrid-functional ground-state calculation and
+density of states using silicon. It shows how to reuse saved electronic
+eigenvalues and distinguish occupation smearing from DOS broadening.
+Hybrid-functional band paths need additional methodological care, so this
+exercise focuses on ground state and DOS.
 
 Run the ground-state and DOS stages
 -----------------------------------
