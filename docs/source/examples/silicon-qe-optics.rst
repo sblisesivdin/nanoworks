@@ -216,13 +216,10 @@ indirect absorption. A broadened low-energy tail is not a measured band gap.
 Reference data and provenance
 -----------------------------
 
-The inspected runs are ``QE/silicon-optical-stages`` and
-``QE/silicon-combined-rpa`` from ``example-runs-Va5NDWGi``, completed on
-28 October 2026 with Nanoworks 27.2.0rc0, ASE 3.29.0 and eight MPI processes.
-SCF, optical NSCF and ``epsilon.x`` logs contain ``JOB DONE``; every wrapper
-stage has exit code zero. The exact source commit and pseudopotential package
-version were not recorded in the run, so this is a recorded teaching example,
-not a fully pinned benchmark.
+The reference electronic and optical stages completed successfully.
+Successful termination is necessary, but a physical optical spectrum also
+requires sufficient k-point sampling, unoccupied bands and resolution.
+For reproducibility, retain the input, pseudopotentials and engine version.
 
 :download:`Download the inputs, six optical DAT tables, raw staged dielectric files, checks and plotting script <../_static/examples/silicon-qe-optics-reference.zip>`.
 After extracting the archive, run ``python plot_optics.py`` with NumPy and
