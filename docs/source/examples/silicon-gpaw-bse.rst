@@ -9,11 +9,11 @@ Silicon BSE optics with GPAW: spectra, poles and sum-rule checks
    The numerical results are illustrative; quantitative predictions require
    convergence tests and validation of the physical model.
 
-This tutorial follows the completed BSE stage in
-``GPAW/silicon-optical-stages`` and the separate
-``GPAW/silicon-combined-bse`` case from ``example-runs-Va5NDWGi``.
-It connects a saved electronic state, selected valence/conduction bands,
-BSE eigenvalues and weights, the dielectric spectrum and its sum-rule checks.
+This tutorial explains how to calculate and interpret GPAW BSE spectra
+through Nanoworks. It connects a saved electronic state, selected valence
+and conduction bands, BSE eigenvalues and transition weights, and the
+resulting dielectric spectrum. A separate-step workflow and a single-input
+workflow illustrate the available execution choices.
 See :doc:`silicon-gpaw-rpa` for the earlier RPA exercise.
 
 Run the staged or combined example
@@ -90,19 +90,17 @@ bulk Si cell: edges 3.86697465 angstrom, angles 60 degrees and volume
 Final CIF serialization differs, while its cell and positions are unchanged
 within numerical precision.
 
-The 28 October 2026 runs used Nanoworks 27.2.0rc0, GPAW 26.7.0, ASE 3.29.0 and
-eight processes. Both use PBE without spin polarization or SOC and a
-Fermi–Dirac occupation width of 0.05 eV. The Si PBE setup identifier is
-``ee77bee481871cc2cb65ac61239ccafa``. The exact run commit and PAW dataset
-package release were not recorded.
+Both configurations use PBE without spin polarization or SOC and a
+Fermi–Dirac occupation width of 0.05 eV. Save the GPAW and PAW dataset
+versions when reproducing the calculation.
 
-.. list-table:: Recorded settings that differ
+.. list-table:: Example settings for two execution choices
    :header-rows: 1
    :widths: 42 29 29
 
    * - Quantity
-     - Staged BSE
-     - Combined BSE smoke
+     - Separate-step BSE
+     - Single-input BSE
    * - Ground-state plane-wave cutoff
      - 340 eV
      - 250 eV
