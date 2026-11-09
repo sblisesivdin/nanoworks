@@ -10,17 +10,17 @@ WSe2: compare bands with and without SOC in GPAW
 
 This exercise uses the two existing ``SOC-WSe2-noCIF`` GPAW inputs to
 compare a fixed WSe2 monolayer with and without spin-orbit coupling (SOC).
-The recorded bands support a useful comparison. The historical SOC DOS
-has a normalization limitation diagnosed below and should not be used for
-quantitative spectral-weight comparisons.
+The reference band plots illustrate SOC splitting. A separate DOS
+normalization limitation is explained below; always check the weight
+convention before comparing integrated spectral densities.
 
 Prepare and run
 ---------------
 
 Activate the Nanoworks environment with GPAW and PAW setups installed.
 Install the examples with ``nanoworks --install-examples`` if needed;
-see :ref:`tutorial-examples-setup`. Use an updated development version
-containing the full-BZ SOC DOS weight correction described below.
+see :ref:`tutorial-examples-setup`. Use a Nanoworks version that
+includes the SOC DOS weight correction described below.
 
 .. code-block:: bash
 
