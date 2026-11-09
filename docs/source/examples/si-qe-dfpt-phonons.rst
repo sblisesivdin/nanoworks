@@ -3,10 +3,9 @@ Silicon phonons with native Quantum ESPRESSO DFPT
 
 .. note::
 
-   Audited run: 28 October 2026, Nanoworks 27.2.0rc0 and
-   QE 7.4.1, archive ``example-runs-Va5NDWGi/QE/si-phonon``.
-   This completed smoke test is not a fully converged
-   materials benchmark.
+   This example explains the QE density-functional perturbation
+   theory (DFPT) phonon workflow. The small numerical settings are
+   intended for learning, not as converged material predictions.
 
 This tutorial complements :doc:`si-gpaw-phonons`, which
 uses GPAW finite-displacement forces and Phonopy. The same
