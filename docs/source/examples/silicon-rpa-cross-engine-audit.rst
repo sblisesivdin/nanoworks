@@ -1,7 +1,7 @@
 .. _silicon-rpa-cross-engine-audit:
 
-Silicon RPA optics: interpreting the QE and GPAW archives
-=========================================================
+Comparing QE and GPAW RPA optical spectra
+=========================================
 
 .. note::
 
@@ -9,12 +9,12 @@ Silicon RPA optics: interpreting the QE and GPAW archives
    cross-engine benchmark or an accuracy ranking. No new DFT calculation
    or empirical correction is introduced here.
 
-The two-atom silicon example has RPA optical outputs from both QE 7.4.1
-(``epsilon.x``) and GPAW 26.7.0. The archived 28 October 2026 runs are
-described independently in :doc:`silicon-qe-optics` and
-:doc:`silicon-gpaw-rpa`. This page compares recorded *x*-direction values
-without conflating different response definitions or silently renormalizing
-a spectrum. The underlying inputs, tables, figures, and reproduction scripts
+This reference explains how to compare independent-particle RPA
+optical spectra from QE (``epsilon.x``) and GPAW without confusing
+response conventions, local-field treatments and numerical broadening.
+Silicon is the worked example, with the underlying methods introduced in
+:doc:`silicon-qe-optics` and :doc:`silicon-gpaw-rpa`. The comparison
+keeps the original *x*-direction values without renormalization. The underlying inputs, tables, figures, and reproduction scripts
 are available in the reference downloads on those two pages.
 
 What can be compared?
