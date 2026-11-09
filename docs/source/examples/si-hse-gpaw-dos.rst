@@ -67,7 +67,7 @@ The loose profile and occupied-band target do not establish convergence of
 all empty-state eigenvalues. The initial and final CIFs describe the same geometry within numerical
 precision (their text formatting differs), consistent with
 ``Geo_optim=False``. The Si PBE PAW setup has four valence and ten core
-electrons, . A PBE-labelled
+electrons. A PBE-labelled
 PAW dataset does not by itself mean the requested hybrid XC was replaced:
 the saved calculator parameters explicitly identify HSE06.
 
