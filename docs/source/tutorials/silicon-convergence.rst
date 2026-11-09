@@ -244,7 +244,7 @@ rounding precision. The backend uses GPAW's potential-energy result;
 the separately printed finite-smearing free energy is a different quantity.
 
 The GPAW example uses nonmagnetic PBE, Fermi–Dirac occupations with a
-0.05 eV width and `SCF_accuracy='normal'`. Its silicon PAW model has
+0.05 eV width and ``SCF_accuracy='normal'``. Its silicon PAW model has
 four valence electrons per atom. The primitive two-atom cell has edges
 3.86697465 angstrom and angles of 60 degrees. Record the PAW dataset
 version with any research calculation.
