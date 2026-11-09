@@ -158,7 +158,7 @@ Running the Examples
 --------------------
 
 Begin with one tutorial and its required engine. The batch script below
-queues 43 DFT cases with GPAW and QE, including heavy hybrid, optical,
+queues multiple DFT calculations with GPAW and QE, including heavy hybrid, optical,
 elastic and phonon cases; it is not a minimal installation check. MD and ML
 examples are run separately using their README commands:
 
@@ -169,7 +169,7 @@ examples are run separately using their README commands:
     (.venv_nw) $ bash do_all_examples.sh
     (.venv_nw) $ tsp
 
-Use the script from the current checkout if the installed examples are older.
+Use the example script that matches the installed Nanoworks version.
 Every invocation creates a fresh ``example-runs-XXXXXXXX/`` folder beside the
 script. Engine and case folders keep inputs, outputs, commands, logs and exit
 codes separate. Dependent optical stages run in order within one case; a failed
@@ -177,54 +177,38 @@ stage stops that case. The example-directory README explains QE overrides and
 the status files. GPAW LCAO/LDA examples become PW/PBE workflow variants in QE,
 and QE DOS uses tetrahedron integration; BSE remains GPAW only.
 
-Rechecking failed smoke cases
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Checking and repeating calculations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Use updated inputs from the current checkout as well as the updated Python
-package. An existing run folder contains copies of the inputs from its original
-submission; upgrading the package does not update those copies. In particular,
-use the corrected ``NiO-QE-phonon.py`` rather than the old copied input.
+Start with an example's ``--check`` command. This checks supported
+prerequisites and input preparation without performing the DFT
+calculation. It does not establish numerical convergence or available RAM.
 
-Before repeating QE cases, install the managed scalar and fully relativistic
-PBE pseudopotentials in the environment used to launch Nanoworks:
+For Quantum ESPRESSO, ensure the required QE executables and
+pseudopotentials are installed. You can install supported managed
+pseudopotentials with:
 
-.. code-block:: bash
+.. code-block:: console
 
-    (.venv_nw) $ nanoworks --install-qe-pseudos
+   $ nanoworks --install-qe-pseudos
 
-QE executables must also be available to that environment. QE elasticity needs
-``thermo_pw.x`` in addition to Quantum ESPRESSO; installing the pseudopotentials
-does not install either engine. GPAW ``vdW_calc = 'D3'`` needs the external
-``dftd3`` executable in ``PATH``. Run each example's ``--check`` command before
-its calculation; a successful preflight confirms the checked prerequisites,
-but does not prove SCF convergence or sufficient memory.
+Some calculations need additional software: QE elasticity uses
+``thermo_pw.x``, and GPAW D3 requires the ``dftd3`` executable.
+The individual tutorial or example README identifies the needed engine
+and any additional tools.
 
-Start with the affected workflows using their individual README commands:
+For a fresh calculation, use a new output directory rather than mixing
+results with older jobs. Keep the input, starting structure, software
+versions, MPI process count, logs and final data tables together. If
+a run fails, inspect its final SCF convergence, forces, stresses and
+exit status before using any plotted results. Exit code 137 or
+``SIGKILL`` alone does not prove that memory exhaustion caused
+the failure; check the system or scheduler logs.
 
-* ``Al-phonon/`` and ``Si-phonon/`` check the updated GPAW parameter handling
-  during displaced-supercell force calculations.
-* ``Bulk-MoS2-vdW/MoS2-with-vdW.py`` uses **QE's native** D3 correction
-  without a standalone ``dftd3`` executable; GPAW requires that separate
-  dependency. The recorded QE run failed the post-BFGS stress/force checks,
-  so new results must be converged before a dispersion comparison.
-* ``TiC-elastic-electronic/`` checks that deformation calculations finish,
-  release full calculators between samples and produce a complete elastic fit.
-* ``NiO-QE-Hubbard-phonon/`` checks the corrected input and QE force workflow
-  after pseudopotential installation.
-
-Use the installed example folders for these checks. Before changing settings,
-keep earlier outputs and force or trajectory caches separate from the new
-results. Keep the input settings and MPI process count recorded with the logs. Use one queue
-slot when comparing memory behavior, so another calculation does not compete
-for memory. ``tsp -S 1`` controls queued jobs; the ``-p`` option controls MPI
-processes within each calculation.
-
-A process killed with ``SIGKILL`` or exit code 137 does not by itself identify
-an out-of-memory failure. If TiC is killed again, retain the calculation log
-and check system or scheduler records for the termination reason. A complete
-validation run should retain the per-stage exit codes, final result tables and
-``tsp`` output. Long hybrid examples can be repeated separately after the
-failed workflows have been checked.
+Batch execution is optional. It can run many expensive examples, so
+start with one individual workflow and use the README commands.
+On resource-limited computers, serialize heavy jobs instead of
+running multiple unrelated MPI calculations simultaneously.
 
 Alternatively, you can navigate into any specific folder and read the README.md file. Readme files includes all commands necessary for the calculations. For example:
 
