@@ -3,11 +3,10 @@ NiO: audit magnetic QE+U finite-displacement phonons
 
 .. note::
 
-   This tutorial documents an **existing**, completed NiO calculation from
-   ``example-runs-Va5NDWGi/QE/nio-hubbard-phonon``, recorded on
-   28 October 2026 using QE 7.4.1, Phonopy 4.8.6 and Nanoworks
-   27.2.0rc0. It is a workflow demonstration, **not** an experimentally
-   validated NiO dispersion or a proof of lattice stability.
+   This reference example explains how to check an antiferromagnetic
+   QE+U finite-displacement phonon workflow. The numerical settings
+   illustrate the method; they do not establish experimental phonon
+   agreement or lattice stability.
 
 The example tests a significant workflow combination: an antiferromagnetic
 (AFM) rocksalt magnetic cell, explicit QE spin species, Hubbard-U projectors,
