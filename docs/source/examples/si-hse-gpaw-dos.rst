@@ -62,22 +62,20 @@ Read the settings
    * - Other stages
      - No relaxation, spin polarization, SOC, density export or optics
 
-The saved GPW confirms SCF convergence; the ground log reports 12 iterations.
-The loose profile and occupied-band target do not establish convergence of
-all empty-state eigenvalues. The initial and final CIFs describe the same geometry within numerical
-precision (their text formatting differs), consistent with
-``Geo_optim=False``. The Si PBE PAW setup has four valence and ten core
-electrons. A PBE-labelled
-PAW dataset does not by itself mean the requested hybrid XC was replaced:
-the saved calculator parameters explicitly identify HSE06.
+The saved ground-state result completed the SCF cycle, but a loose profile
+and occupied-band convergence target do not establish accurate empty-state
+eigenvalues. Geometry is fixed (``Geo_optim=False``); the input and final
+structures therefore agree within numerical precision. The Si PAW setup has
+four valence and ten core electrons. A ``PBE``-labelled PAW dataset does
+not imply that the HSE06 functional was replaced: inspect the calculator
+parameters to verify the actual XC choice.
 
 Verify the DOS from the saved eigenvalues
 -----------------------------------------
 
 For hybrids, this Nanoworks DOS path reads the saved ground-state eigenvalues;
-it does not run a new fixed-density DOS mesh. The recorded log states this
-explicitly. Changing a DOS mesh setting alone therefore does not demonstrate
-denser hybrid sampling: the ground-state calculation must supply the desired
+it does not run a new fixed-density DOS mesh. Changing a DOS mesh setting alone therefore does not demonstrate denser
+hybrid sampling: the ground-state calculation must supply the desired
 sampling and enough appropriately converged empty bands.
 
 .. figure:: ../_static/examples/si-hse-gpaw-dos.png
@@ -125,33 +123,30 @@ sum agrees with the combined PDOS, and the p/d/total component identities
 hold within numerical precision. All exported DOS and projection values
 are finite and nonnegative.
 
-Why the recorded band stage is excluded
----------------------------------------
+Why hybrid band paths need a separate method
+--------------------------------------------
 
-The recorded legacy band stage replaced the uniform mesh with the 61 points
-on ``GXWKGLUWLK``, gave them equal weights of 1/61, and ran ten new SCF
-iterations. Its Fermi level changed from approximately 5.43236 to 5.28301 eV.
-The historical ``prepare_band_calc`` branch loaded the saved calculator with
-the new k-points and ran it again; it did not preserve the original occupied
-subspace as a fixed hybrid Hamiltonian for path evaluation.
+A standard ground-state k-point mesh and a band path serve different purposes.
+For a hybrid functional, substituting a line of special k-points into a
+converged ground-state calculator and then running a new SCF is **not**
+equivalent to evaluating the bands of the original electronic state.
 
-This is a different self-consistent calculation on a line-point set, not
-the band dispersion of the original uniform-mesh ground state. Consequently
-its 1.552600 eV path separation must not be combined with the ground-state
-DOS as a consistent HSE06 band/DOS result. Tightening SCF tolerances alone
-does not repair that change of sampling and electronic state. Referencing
-its eigenvalues to the old ground-state Ef does not align the two potentials.
+For example, a legacy GPAW path calculation using the ``GXWKGLUWLK``
+path assigned equal weights to its 61 points and performed additional
+self-consistent iterations. Its electronic potential and Fermi energy
+therefore differed from those of the uniform-mesh ground state. Referencing
+these path eigenvalues to the previous Fermi level would not correct the
+underlying change in electronic state.
 
+A valid hybrid band workflow should retain the converged reference state
+and use a supported hybrid eigenvalue evaluation along the chosen path.
 The `GPAW hybrid-band documentation
 <https://gpaw.readthedocs.io/tutorialsexercises/electronic/bandstructures/bandstructures.html#non-self-consistent-and-self-consistent-hse06>`_
-describes a distinct hybrid eigenvalue evaluation based on the ground-state
-calculation. Integrating and validating a suitable supported route in
-Nanoworks remains follow-up work. GPAW hybrid band requests are now rejected
-before execution with a ``Band_calc=False`` hint, including requests made
-through the engine helper directly. No replacement band calculation is claimed
-here, and the recorded path-SCF band figure is not presented as a material
-result. This methodological caveat is separate from the small example's
-ordinary parameter-convergence limitations.
+discusses suitable approaches. Nanoworks currently rejects unsupported
+GPAW hybrid band-stage requests with a ``Band_calc=False`` hint.
+The command above therefore disables the band stage explicitly and
+teaches only the ground-state and DOS workflow. Do not substitute a
+self-consistent path run for a converged HSE band structure.
 
 Reference data
 --------------
