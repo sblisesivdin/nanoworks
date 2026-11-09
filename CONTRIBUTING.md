@@ -17,6 +17,37 @@ not validate GPAW/QE calculations, MPI behavior or numerical accuracy. Before
 a release candidate, validate representative calculations on a machine with
 the required engines and data, including serial and MPI runs.
 
+Writing Tutorials and Examples
+------------------------------
+
+Tutorials teach **general workflows**, even when a particular material is used
+for illustration. Organize the explanation around the scientific purpose,
+required software and inputs, execution, interpretation of results, and
+convergence or validation checks. A newcomer should understand how to adapt
+the example to a different material.
+
+- Use installed examples and real commands. Explain why the settings matter;
+  distinguish demonstration values from converged scientific predictions.
+- Describe results in transferable terms: how to inspect eigenvalues, weights,
+  forces, stresses, convergence and exported tables. Show numerical values
+  only when they help interpret a figure or check a calculation.
+- Avoid development diary language such as "current case", "our run",
+  "setup identifiers", temporary archive paths, dates of internal test runs,
+  individual machine environments and opaque hash strings in tutorials.
+  Filenames used in runnable commands are an exception.
+- Keep required scientific caveats. If data are invalid or not converged,
+  say so explicitly; removing a warning is not a stylistic simplification.
+- Put detailed provenance, failed-run analysis, raw checksums and regression
+  artifacts in downloadable reference data or a clearly identified validation
+  study rather than the instructional narrative.
+- Prefer stable headings, readable commands and units in result tables.
+  Do not silently change the underlying input or reported numbers while
+  editing text.
+
+The tutorial pages are separate from the numerical-validation and
+troubleshooting references. Keep that distinction when adding or updating
+pages; do not add a new documentation build workflow to enforce these rules.
+
 Being Respectful
 ----------------
 Please show empathy and kindness towards other people, software, and communities working diligently to develop other tools.
@@ -72,8 +103,8 @@ redistributions. Do not insert comments into formats that prohibit them,
 such as JSON; these files remain covered by the root license unless otherwise
 specified. External dependencies and engines are covered by their own licenses.
 
-Run `python scripts/check_license_headers.py` before submitting new source
-files. CI runs the same check without installing or running DFT engines.
+Run `python scripts/check_license_headers.py` locally before submitting
+new source files. This check does not install or execute DFT engines.
 
 New Release
 -----------
