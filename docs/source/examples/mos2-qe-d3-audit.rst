@@ -3,14 +3,13 @@ MoS2 with QE-D3: a rejected relaxation and spectral audit
 
 .. warning::
 
-   The 28 October 2026 QE 7.4.1 calculation completed but the recorded
-   structure **failed post-BFGS forces and stress checks**. This is a
-   reproducible *troubleshooting case*, not a physically validated MoS2
-   lattice or a quantitative comparison between PBE and PBE-D3.
+   This reference illustrates an important validation failure: a QE
+   structural optimization can finish while its **final forces and
+   stresses remain unacceptable**. Do not use the example's relaxed
+   lattice to quantify PBE versus PBE-D3 without a valid matched pair.
 
-This page follows the completed file archive in
-``example-runs-Va5NDWGi/QE/mos2-d3``. It contains a QE+D3 run,
-but **no matching QE calculation without D3**. A completed GPAW/PBE
+The reference dataset includes a QE+D3 calculation, but **not** a
+matched QE calculation without D3. A completed GPAW/PBE
 reference exists separately, although comparing those two different
 engines and pseudopotentials would not isolate the D3 contribution.
 
