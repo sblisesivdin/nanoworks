@@ -10,16 +10,14 @@ Silicon RPA optics with GPAW: staged and combined workflows
    materials predictions require convergence tests and validation of the
    physical model.
 
-This tutorial uses the completed ``GPAW/silicon-optical-stages`` and
-``GPAW/silicon-combined-rpa`` cases from ``example-runs-Va5NDWGi``. It shows
-how to run optics from a saved ground state or from one combined input,
-read dielectric spectra with and without local-field effects, and check the
-optical quantities derived from them.
+This tutorial shows how to calculate RPA optical properties either from a
+saved ground state or within a single combined Nanoworks input. Silicon
+provides a compact example for reading dielectric spectra with and without
+local-field corrections and checking derived optical quantities.
 
-Both runs completed, but their numerical settings differ. They are two
-workflow demonstrations, not a controlled test of staged versus combined
-execution. This page focuses on RPA; see :doc:`silicon-gpaw-bse` for the BSE results
-and their eigenvalue and sum-rule checks.
+The two example configurations deliberately use different numerical
+settings. Do not attribute differences between their figures to the
+execution mode alone. See :doc:`silicon-gpaw-bse` for BSE excitation spectra.
 
 Run from the installed examples
 -------------------------------
@@ -58,29 +56,25 @@ releases the preceding process's memory but does not establish a particular
 peak-memory requirement for larger calculations. Change ``-p`` to suit your
 machine.
 
-Recorded model and sampling
----------------------------
+Understand the model and frequency sampling
+-------------------------------------------
 
-The three active Python inputs and both starting CIF copies match the bundled
-examples byte for byte. Both calculations use the same fixed two-atom bulk
-Si geometry: primitive edges 3.86697465 angstrom, angles 60 degrees and
+The example inputs use the same fixed two-atom bulk Si geometry: primitive edges 3.86697465 angstrom, angles 60 degrees and
 volume 40.888292745 cubic angstrom per cell. Geometry optimization is off;
 the final CIFs preserve that structure despite serialization differences.
 
-Both runs used non-spin-polarized PBE, a 340 eV plane-wave ground-state cutoff,
-Fermi–Dirac occupations of width 0.05 eV, and eight optical bands. The logs
-record GPAW 26.7.0 and ASE 3.29.0; the wrapper records Nanoworks 27.2.0rc0 and
-eight processes on 28 October 2026. The exact source commit and PAW dataset
-package release were not recorded. Both Si PBE setup identifiers are
-``ee77bee481871cc2cb65ac61239ccafa``.
+Both configurations use non-spin-polarized PBE, a 340 eV electronic
+plane-wave cutoff, Fermi–Dirac occupations with a 0.05 eV width and
+eight optical bands. For reproducible calculations, retain the GPAW
+version and the PAW dataset package version with the input.
 
-.. list-table:: Settings that differ between the recorded runs
+.. list-table:: Settings of the two example configurations
    :header-rows: 1
    :widths: 42 29 29
 
    * - Quantity
-     - Staged RPA
-     - Combined smoke RPA
+     - Separate-step RPA
+     - Single-input RPA
    * - Ground and optical k-point mesh
      - Gamma-centred 4 x 4 x 4
      - Gamma-centred 2 x 2 x 2
@@ -171,8 +165,8 @@ See the `GPAW dielectric-response introduction
 
 The large, sharp peaks and strongly differing zero-energy values are recorded
 outputs of coarse example settings, not converged Si material constants.
-Within each case, the LFC/NLFC comparison isolates the field treatment.
-Between cases, the k mesh, response cutoff, broadening and frequency sampling
+For either configuration, comparing LFC and NLFC shows the effect of
+including local fields. Between configurations, the k mesh, response cutoff, broadening and frequency sampling
 change together, so neither a k-point convergence trend nor an execution-mode
 effect can be extracted from this pair.
 
@@ -224,8 +218,7 @@ Epsilon1 can be negative without implying negative absorption.
 
 Within each recorded case, all x/y/z processed tables are identical. This is
 consistent with the cubic structure; it does not establish k-point or band
-convergence. The combined run's completion summary also reproduces the SHA256
-hashes of its six optical tables.
+convergence. The optical result summaries can be used to verify the exported files.
 
 .. important::
 
