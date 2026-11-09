@@ -222,12 +222,12 @@ convergence. The optical result summaries can be used to verify the exported fil
 
 .. important::
 
-   The staged folder was subsequently used for BSE. Its shared
-   ``OPTICAL-GPAW-Result-Summary.json`` therefore describes BSE, and the
-   shared optical state/log files can belong to the later stage. The RPA
-   checks here use the method-specific RPA log, raw RPA CSVs and RPA DATs,
-   together with the zero RPA exit code. Do not use the latest shared
-   summary as RPA provenance.
+   When multiple optical methods reuse one output directory, the latest
+   summary or shared state files may describe the **last** calculation
+   rather than an earlier RPA stage. Identify the result from its
+   method-specific filenames and logs. Save separate output directories
+   if independent provenance is important. A successful exit status
+   alone does not establish physical convergence.
 
 Download and redraw
 -------------------
