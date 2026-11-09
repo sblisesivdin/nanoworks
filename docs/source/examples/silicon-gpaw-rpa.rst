@@ -1,7 +1,7 @@
 .. _silicon-gpaw-rpa:
 
-Silicon RPA optics with GPAW: staged and combined workflows
-===========================================================
+Silicon RPA optics with GPAW: separate-step and single-input workflows
+======================================================================
 
 .. note::
 
@@ -50,8 +50,7 @@ For a combined run from the same installed directory:
 
 This input writes into ``Si-combined-RPA-smoke-results`` and runs ground,
 DOS/PDOS, band, density and RPA optics. Nanoworks finishes the electronic
-process before launching optics in a fresh process. The recorded wrapper log
-confirms that sequence. A single input is sufficient; the process separation
+process before launching optics in a fresh process. The separate optical process reduces the memory held by the electronic calculation. A single input is sufficient; the process separation
 releases the preceding process's memory but does not establish a particular
 peak-memory requirement for larger calculations. Change ``-p`` to suit your
 machine.
@@ -139,36 +138,36 @@ See the `GPAW dielectric-response introduction
    no smoothing, energy shift or amplitude rescaling was applied. The two
    rows use different settings and separate vertical scales.
 
-.. list-table:: Selected x-direction values in the recorded spectra
+.. list-table:: Example x-direction dielectric values
    :header-rows: 1
 
-   * - Case / treatment
+   * - Configuration / treatment
      - epsilon1 at 0 eV
      - Energy of largest epsilon2 sample (eV)
      - Largest epsilon2 sample
-   * - Staged / NLFC
+   * - Separate-step / NLFC
      - 24.068132
      - 3.730863
      - 194.888208
-   * - Staged / LFC
+   * - Separate-step / LFC
      - 21.866059
      - 3.730863
      - 146.409241
-   * - Combined / NLFC
+   * - Single-input / NLFC
      - 59.194140
      - 2.690322
      - 256.268452
-   * - Combined / LFC
+   * - Single-input / LFC
      - 57.823064
      - 2.690322
      - 276.260615
 
-The large, sharp peaks and strongly differing zero-energy values are recorded
-outputs of coarse example settings, not converged Si material constants.
-For either configuration, comparing LFC and NLFC shows the effect of
-including local fields. Between configurations, the k mesh, response cutoff, broadening and frequency sampling
-change together, so neither a k-point convergence trend nor an execution-mode
-effect can be extracted from this pair.
+The large, sharp peaks and strongly differing zero-energy values reflect
+coarse numerical settings; they are not converged Si material constants.
+For either configuration, comparing LFC and NLFC illustrates the local-field
+treatment. Between configurations, the k mesh, response cutoff, broadening
+and frequency sampling all change. To compare execution modes or study
+convergence, hold the other numerical settings fixed.
 
 At zero photon energy the table gives the broadened electronic response of
 this model. It is not a separately converged static dielectric constant
@@ -216,9 +215,9 @@ residuals; absorption and reflectivity agree within output rounding.
 Epsilon2, n, kappa and alpha are nonnegative and R lies in [0,1].
 Epsilon1 can be negative without implying negative absorption.
 
-Within each recorded case, all x/y/z processed tables are identical. This is
-consistent with the cubic structure; it does not establish k-point or band
-convergence. The optical result summaries can be used to verify the exported files.
+For this cubic example, the x/y/z processed tables agree. Directional
+agreement is a useful consistency check but does not establish k-point
+or band convergence. The optical result summaries can be used to verify the exported files.
 
 .. important::
 
