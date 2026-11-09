@@ -82,10 +82,8 @@ linearity or strain-window convergence.
 Read the elastic result
 -----------------------
 
-The recorded run started on 19 October 2026 and used Nanoworks 27.2.0rc0,
-ASE 3.29.0, GPAW 26.7.0 and eight MPI processes. The logs identify ``Ti.PBE``
-and ``C.PBE`` setups with 12 and 4 valence electrons. A source commit and PAW
-data package version were not recorded. The final primitive edge is
+The example uses ``Ti.PBE`` and ``C.PBE`` PAW datasets with 12 and
+4 valence electrons. Record the PAW dataset versions for reproducibility. The final primitive edge is
 3.06541585 angstrom with 60-degree angles, corresponding to a conventional
 cubic lattice parameter of **4.33515 angstrom**. Ti and C occupy fractional
 coordinates (0, 0, 0) and (1/2, 1/2, 1/2).
@@ -131,9 +129,8 @@ prediction for TiC.
 Audit the deformation trajectory
 --------------------------------
 
-The repeat started on 28 October 2026 with the same input bytes. Its printed
-elastic summary is byte-identical to the earlier one, but this repeat also
-provides the full 30-frame deformation trajectory. Six Cartesian strain
+The reference data contain a complete 30-frame deformation trajectory.
+The elastic summary was reproduced under unchanged input settings. Six Cartesian strain
 modes each contain five amplitudes: -1%, -0.5%, 0, +0.5%, +1%. For shear,
 these are tensor off-diagonal components; engineering shear is twice that
 value. Fractional atomic positions are unchanged throughout the trajectory:
