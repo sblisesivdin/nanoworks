@@ -219,6 +219,7 @@ Documentation
    :hidden:
 
    input_file_keywords
+   reference_cases
    citing
 
 .. toctree::
