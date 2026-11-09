@@ -189,10 +189,8 @@ that the irreducible k-point counts equal those in GPAW.
 
 The QE run uses PBE, Fermi-Dirac occupations and a scalar-relativistic
 norm-conserving Si pseudopotential with four valence electrons per atom.
-The inspected density-4.0 log reports UPF MD5
-``02fab3f35e82123ef5bf1cb05d5b1a5e``. This identifier is read
-from the log rather than an independent hash of the UPF bytes. Different
-pseudopotential/PAW models and Brillouin-zone symmetry reductions mean the
+Record the exact QE pseudopotential file when repeating this calculation.
+Different pseudopotential and PAW models and symmetry reductions mean
 QE and GPAW absolute total energies are not directly comparable.
 
 Why the lattice fit is not the selected geometry
@@ -245,13 +243,11 @@ agree with the stored DAT/JSON energies within ``5.1e-7`` eV, the SCF log's
 rounding precision. The backend uses GPAW's potential-energy result;
 the separately printed finite-smearing free energy is a different quantity.
 
-This run used PBE, spin polarization off, Fermi–Dirac width 0.05 eV and
-``SCF_accuracy='normal'``. Its logs identify GPAW 26.7.0, ASE 3.29.0 and eight
-processes on 28 October 2026. The Si PBE setup id is
-``ee77bee481871cc2cb65ac61239ccafa`` (four valence electrons per atom).
-The exact Nanoworks source commit and PAW dataset package release were not
-recorded. The sample has two atoms, primitive edges 3.86697465 angstrom,
-60-degree angles and volume 40.888292745 cubic angstrom per cell.
+The GPAW example uses nonmagnetic PBE, Fermi–Dirac occupations with a
+0.05 eV width and `SCF_accuracy='normal'`. Its silicon PAW model has
+four valence electrons per atom. The primitive two-atom cell has edges
+3.86697465 angstrom and angles of 60 degrees. Record the PAW dataset
+version with any research calculation.
 
 Why 400 eV and density 4.0 were selected
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
