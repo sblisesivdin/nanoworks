@@ -8,16 +8,14 @@ Graphene with and without a vacancy: sampling matters
    materials predictions require appropriate convergence tests and validation
    of the physical model.
 
-This tutorial compares the completed ``GPAW/graphene-pristine`` and
-``GPAW/graphene-defect`` runs in ``example-runs-Va5NDWGi``. Both use the same
-Nanoworks input with different CIFs: 32 carbon atoms for pristine graphene,
-31 for a neutral vacancy in the same 4 x 4 cell. It demonstrates how to read
+This tutorial compares pristine graphene with a vacancy using the same
+Nanoworks input and two CIF structures: 32 carbon atoms for pristine
+graphene and 31 for a neutral vacancy in a 4 x 4 supercell. It demonstrates how to read
 folded supercell bands, compare DOS per atom, and distinguish a coarse-grid
 gap report from a band path that actually samples K.
 
-These are teaching calculations. They do not establish a converged graphene
-gap, isolated-vacancy ground state or defect formation energy. No new DFT
-calculation was run for this review.
+These small example calculations do not establish a converged graphene
+gap, isolated-vacancy ground state or defect formation energy.
 
 Prepare the two structures
 --------------------------
