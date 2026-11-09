@@ -8,10 +8,8 @@ Cr2O: spin bands, tetrahedron DOS and density checks with GPAW
    materials predictions require appropriate convergence tests and validation
    of the physical model.
 
-This tutorial follows the completed ``GPAW/cr2o-spin`` case in
-``example-runs-Va5NDWGi``. It uses the existing ``Cr2O-spin`` example to
-connect spin-resolved bands, atomic orbital projections and real-space spin
-densities. It also illustrates two interpretation traps: a gap along a
+This tutorial uses the bundled ``Cr2O-spin`` example to explain
+spin-resolved bands, orbital projections and real-space spin densities. It also illustrates two interpretation traps: a gap along a
 symmetry path need not be a gap over the Brillouin zone, and a pseudo-density
 polarization ratio need not be a physically bounded local polarization.
 
