@@ -38,10 +38,8 @@ Adapt the process count to your computer. The structures produce separate
 ``graphene4x4/`` and ``graphene4x4withdefect/`` output directories and
 corresponding filename prefixes.
 
-Both recorded inputs and starting CIFs match the inspected repository files
-byte for byte. The runs used Nanoworks 27.2.0rc0, GPAW 26.7.0 and ASE 3.29.0
-on 28 October 2026, with eight processes. The exact calculation source commit
-and dataset package release were not recorded.
+For a controlled defect comparison, keep both starting structures and
+record the software versions, PAW setups and numerical parameters.
 
 Read the shared settings
 ------------------------
