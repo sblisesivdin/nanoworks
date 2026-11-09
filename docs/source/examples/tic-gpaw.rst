@@ -47,7 +47,7 @@ example queue, ``tsp -S 1`` separately limits concurrent jobs to one.
 Follow the input through the stages
 -----------------------------------
 
-.. list-table:: Settings used in the recorded run
+.. list-table:: Example input settings
    :header-rows: 1
    :widths: 45 55
 
