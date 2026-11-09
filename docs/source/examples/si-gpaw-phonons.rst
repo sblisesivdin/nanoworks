@@ -9,10 +9,9 @@ Silicon phonons: acoustic and optical branches with GPAW
    are illustrative; quantitative materials predictions require convergence
    tests and validation of the physical model.
 
-This tutorial follows the completed ``GPAW/si-phonon`` calculation from
-``example-runs-Va5NDWGi``. Starting from relaxed diamond silicon, it connects
-finite-displacement forces to six phonon branches and a phonon density of
-states (DOS). It complements :doc:`al-gpaw-phonons`: a two-atom primitive cell
+Starting from diamond silicon, this tutorial explains how
+finite-displacement forces produce six phonon branches and a phonon
+density of states (DOS). It complements :doc:`al-gpaw-phonons`: a two-atom primitive cell
 has six branches, with three acoustic translations at Gamma and three
 finite-frequency optical modes.
 
