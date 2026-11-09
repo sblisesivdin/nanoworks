@@ -33,7 +33,7 @@ MPI launcher. The output folder is ``bulk-gaas-results/`` beside the input.
 Read the input before running
 -----------------------------
 
-.. list-table:: Settings used in the recorded run
+.. list-table:: Example input settings
    :header-rows: 1
    :widths: 45 55
 
@@ -66,11 +66,10 @@ explicitly chooses a broadened DOS rather than the default tetrahedron method.
 Inspect the geometry and electronic results
 -------------------------------------------
 
-The reference calculation was completed on 19 October 2026 with Nanoworks
-27.2.0rc0, ASE 3.29.0, GPAW 26.7.0 and eight MPI processes. The log records
-``Ga.LDA`` and ``As.LDA`` PAW setups with 3 and 5 valence electrons respectively.
-The run did not record a source commit or PAW data package version, so these
-values describe this run rather than an exact cross-version benchmark.
+For GaAs, inspect the valence configurations before interpreting electronic
+bands. The example uses ``Ga.LDA`` and ``As.LDA`` PAW datasets with
+3 and 5 valence electrons, respectively. In a research calculation, record
+the versions of the PAW datasets alongside the input and numerical settings.
 
 The geometry optimizer reached a final maximum generalized force of
 0.010252 eV/angstrom, below the requested threshold. The exported primitive
@@ -101,40 +100,14 @@ DOS threshold. This LDA result uses a modest cutoff, one sampling choice and
 no SOC. It is not a converged prediction of an experimental gap, nor does a
 40-point symmetry path establish extrema everywhere in the Brillouin zone.
 
-Check the repeated run and atomic projections
----------------------------------------------
+Inspect orbital projections and verify repeatability
+----------------------------------------------------
 
-The same example was completed again on 28 October 2026 in
-``example-runs-Va5NDWGi/GPAW/bulk-gaas``, with Nanoworks 27.2.0rc0,
-ASE 3.29.0, GPAW 26.7.0 and eight processes. Its input is byte-for-byte
-identical to the earlier reference input. The density setting produces a
-Gamma-centred 5 x 5 x 5 electronic grid in the recorded ground-state log.
-The new run reports successful ground, DOS and band stages; its final
-maximum generalized force is again 0.010252 eV/angstrom.
-
-.. list-table:: Agreement with the 19 October reference
-   :header-rows: 1
-   :widths: 55 45
-
-   * - Quantity
-     - 28 October result / maximum difference
-   * - Direct gap at Gamma on the sampled path
-     - 0.4331102951 eV
-   * - Conventional cubic lattice parameter
-     - 5.6343461872 angstrom
-   * - Largest absolute change in exported band energies
-     - 8.2e-13 eV
-   * - Largest absolute change in total-DOS values
-     - 7.1e-12 states/eV
-   * - Largest absolute change in aggregate-PDOS values
-     - 1.5e-11 states/eV
-
-The new final lattice, energies and broadened spectra reproduce the earlier
-example to numerical precision. This is a repeatability check at the same
-settings, not a cutoff or k-point convergence test. Neither run records an
-exact Nanoworks source commit or PAW package release. The new log does retain
-the PAW setup identifiers: ``e1f5b04e536df2d35180d97a9e5d9aca`` for Ga and
-``354e1067b5e66bdeaed68c554076e911`` for As.
+A second calculation with identical input settings reproduced the
+lattice parameter, band energies and DOS within numerical precision.
+This is a useful **repeatability check**, but it is not a cutoff or
+k-point convergence study. For your own material, compare two runs at
+fixed inputs before interpreting differences caused by changed settings.
 
 .. figure:: ../_static/examples/gaas-gpaw-pdos.png
    :alt: Total GaAs density of states with separate Ga s, Ga p, As s and As p projections, including a view near the band edges.
