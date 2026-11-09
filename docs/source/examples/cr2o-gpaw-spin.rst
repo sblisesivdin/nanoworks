@@ -37,10 +37,8 @@ The first command checks prerequisites; the second runs ground, DOS, band,
 projected-band and density stages. Adapt the process count to your machine.
 The output directory is ``Cr2O_mp-1206821_primitive/``.
 
-The source run was performed on 28 October 2026 with Nanoworks 27.2.0rc0,
-GPAW 26.7.0, ASE 3.29.0 and eight processes. Its input and starting CIF match
-the repository files checked when preparing this tutorial. The run did not
-record its exact source commit or PAW package release.
+For magnetic materials, retain the starting structure, magnetic moments,
+spin treatment and PAW dataset versions when reproducing calculations.
 
 .. list-table:: Recorded settings
    :header-rows: 1
