@@ -3,16 +3,14 @@ WSe2 with QE: check SOC bands and spectral energy references
 
 .. note::
 
-   These are short example calculations, not converged material predictions.
-   The archived data are from 28 October 2026 (Nanoworks 27.2.0rc0,
-   Quantum ESPRESSO 7.4.1, eight MPI processes). The exact development
-   source commit and independent UPF file hashes were not recorded.
+   These examples illustrate spin-orbit coupling and energy-reference
+   alignment; quantitative predictions require convergence checks and
+   compatible scalar/fully-relativistic pseudopotentials.
 
-This tutorial audits a scalar-relativistic and a fully relativistic WSe2
-monolayer calculation. Both recorded workflows finished successfully, but
-their band and DOS exports used different energy zeros. Current Nanoworks
-prefers the ground-state reference for both QE DOS and bands; the historical
-exports remain unchanged.
+This tutorial compares scalar-relativistic and fully relativistic WSe2
+monolayer calculations. It explains how to compare SOC bands when DOS
+and band exports use different energy zeros and why a common reference
+must be established before interpreting energy differences.
 
 Prepare the two inputs
 ----------------------
