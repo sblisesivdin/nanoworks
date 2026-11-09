@@ -10,15 +10,14 @@ Aluminium phonons and vibrational thermodynamics with GPAW
    materials predictions require appropriate convergence tests and validation
    of the physical model.
 
-This exercise follows the completed ``GPAW/al-phonon`` case from
-``example-runs-Va5NDWGi``. It connects a relaxed fcc structure, displaced-cell
-forces, three acoustic phonon branches, a phonon density of states (DOS), and
-harmonic thermal properties. It also shows why a tiny negative frequency at
+This example shows how to obtain phonon dispersions, a phonon density of
+states (DOS) and harmonic thermal properties from finite-displacement forces.
+Face-centred cubic aluminium illustrates the three acoustic branches. It also shows why a tiny negative frequency at
 Gamma and a thermal-property warning need different interpretations.
 
-The calculation completed successfully. Its data are suitable for learning the
-workflow, but supercell, electronic sampling and displacement convergence have
-not been established. Treat the numbers below as recorded example results.
+Use the plotted values to practise interpreting phonon outputs. Before
+reporting material properties, check supercell size, electronic sampling
+and displacement convergence.
 
 Prepare and run
 ---------------
