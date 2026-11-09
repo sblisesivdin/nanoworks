@@ -1,10 +1,12 @@
 .. _tutorials:
 
-Tutorials and examples
-======================
+Tutorials
+=========
 
-Start with a short calculation, inspect the recorded figures, then follow a
-materials workflow. All tutorials use the examples installed in
+Learn a reusable calculation workflow: prepare an input, verify the setup,
+run a calculation, inspect its output and assess numerical reliability.
+The named materials provide concrete examples; the steps and checks apply
+to other systems as well. All tutorials use the examples installed in
 ``~/.nanoworks/examples``. Keep your Nanoworks virtual environment active;
 see :doc:`installation` for engine installation.
 
@@ -65,8 +67,9 @@ Fe. Follow the convergence exercise before choosing research parameters.
 Electronic structure and defects
 --------------------------------
 
-Follow geometry optimization, orbital character, spin or charge through
-recorded calculations. Each page includes figures and downloadable data.
+Learn geometry optimization, orbital character, spin and charge with
+material examples. Figures and optional reference data show how to read
+the outputs; they are not convergence benchmarks.
 
 .. toctree::
    :maxdepth: 1
@@ -77,11 +80,8 @@ recorded calculations. Each page includes figures and downloadable data.
    examples/graphene-gpaw-vacancy
    examples/graphene-gpaw-charge
    examples/mos2-gpaw-reference
-   examples/mos2-qe-d3-audit
    examples/wse2-gpaw-soc
    examples/wse2-qe-soc
-   examples/zno-gpaw-hubbard
-   examples/zno-qe-hubbard
 
 .. figure:: _static/examples/mos2-gpaw-reference.png
    :alt: Recorded bulk MoS2 band structure and DOS from the materials tutorial.
@@ -100,15 +100,11 @@ Continue from the electronic calculation to the selected material response.
 
    examples/silicon-qe-optics
    examples/silicon-gpaw-rpa
-   examples/silicon-rpa-cross-engine-audit
    examples/silicon-gpaw-bse
    examples/al-gpaw-phonons
    examples/al-qe-dfpt-phonons
    examples/si-gpaw-phonons
    examples/si-qe-dfpt-phonons
-   examples/nio-qe-hubbard-phonons
-   examples/si-qe-elastic-smoke
-   examples/tic-gpaw
 
 .. figure:: _static/examples/al-gpaw-phonons.png
    :alt: Recorded aluminium phonon dispersion and phonon DOS.
@@ -116,6 +112,26 @@ Continue from the electronic calculation to the selected material response.
 
    :doc:`examples/al-gpaw-phonons` explains the acoustic modes, phonon DOS
    and harmonic thermal outputs behind this example.
+
+Reference checks and troubleshooting
+------------------------------------
+
+The following pages analyze recorded results, numerical limitations or
+failure modes. They are **reference studies**, rather than instructions
+to reproduce a particular historical run. Use the transferable checks
+when evaluating your own calculations; archived logs, figures and data
+support the examples.
+
+.. toctree::
+   :maxdepth: 1
+
+   examples/mos2-qe-d3-audit
+   examples/zno-gpaw-hubbard
+   examples/zno-qe-hubbard
+   examples/silicon-rpa-cross-engine-audit
+   examples/nio-qe-hubbard-phonons
+   examples/si-qe-elastic-smoke
+   examples/tic-gpaw
 
 All bundled inputs
 ------------------
