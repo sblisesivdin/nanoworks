@@ -135,12 +135,11 @@ complete keyword reference.
 
 .. _tutorial-convergence-qe:
 
-Recorded QE run: selections and sampling limits
------------------------------------------------
+QE convergence: selections and sampling limits
+-------------------------------------------
 
-The recorded QE data are in ``QE/silicon-convergence`` in
-``example-runs-Va5NDWGi``. The stored Python input defines the same
-candidate lists as above. Its result directory contains 4 cutoff, 4
+The QE example uses the cutoff, k-point and lattice-scale candidate
+lists described above. Its result directory contains 4 cutoff, 4
 k-point-density and 5 lattice-scale records. All 13 entries are present in
 ``convergence-results.json`` and agree with the numerical values in
 ``convergence-results.dat``; these two summaries are not independent
@@ -228,12 +227,11 @@ QE input/SCF logs, without rerunning QE.
 
 .. _tutorial-convergence-gpaw:
 
-Recorded GPAW run: selections and fit
+GPAW convergence: selections and fit
 -------------------------------------
 
-The following results come from ``GPAW/silicon-convergence`` in
-``example-runs-Va5NDWGi``. The active ``Si-GPAW-convergence.py`` and starting
-``Si.cif`` match the bundled example byte for byte. From the installed
+The GPAW example uses the bundled ``Si-GPAW-convergence.py`` input and
+``Si.cif`` structure. From the installed
 ``Convergence`` directory, the GPAW commands are:
 
 .. code-block:: console
