@@ -90,12 +90,11 @@ corrections. The numerical results here refer only to GPAW.
 Inspect the recorded relaxations first
 --------------------------------------
 
-The runs started on 28 October 2026 with Nanoworks 27.2.0rc0, GPAW 26.7.0,
-ASE 3.29.0 and eight MPI processes. Both active input files match the
-bundled versions byte for byte. Apart from ``Outdirname``, their input
-assignments differ in ``Hubbard_U`` and ``Wavefunction_cutoff``.
-The exact source commit and PAW package version were not recorded; the
-Zn and O setup identifiers agree between the two logs.
+The bundled PBE and PBE+U inputs differ in their output directories,
+``Hubbard_U`` values and electronic plane-wave cutoffs. For a
+controlled comparison, use the **same** cell, cutoff, k mesh and
+valence datasets; change only the Hubbard correction. Save the
+PAW dataset versions with any published calculation.
 
 Shared settings include PBE, a Gamma-centered 5 x 5 x 5 mesh, normal SCF
 accuracy, Fermi-Dirac width 0.05 eV, nonmagnetic neutral cells,
