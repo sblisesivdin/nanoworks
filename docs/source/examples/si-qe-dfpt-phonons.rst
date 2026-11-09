@@ -10,8 +10,8 @@ Silicon phonons with native Quantum ESPRESSO DFPT
 This tutorial complements :doc:`si-gpaw-phonons`, which
 uses GPAW finite-displacement forces and Phonopy. The same
 bundled input also supports native QE DFPT, which uses
-``ph.x``, ``q2r.x`` and ``matdyn.x``. The two archived
-workflows do not constitute a controlled cross-engine comparison.
+``ph.x``, ``q2r.x`` and ``matdyn.x``. The two methods do not constitute a controlled cross-engine comparison
+unless their input models and convergence settings are matched.
 
 Prepare the example
 -------------------
