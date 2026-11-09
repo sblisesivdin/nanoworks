@@ -3,9 +3,9 @@ Aluminium phonons with native Quantum ESPRESSO DFPT
 
 .. note::
 
-   This tutorial audits the completed 28 October 2026 QE 7.4.1 run
-   in ``example-runs-Va5NDWGi/QE/al-phonon``. It is a workflow
-   example, not a fully converged materials reference.
+   This example explains the Quantum ESPRESSO DFPT phonon workflow.
+   Its illustrative numerical settings require convergence checks
+   before quantitative materials predictions.
 
 This example uses the native Quantum ESPRESSO DFPT sequence
 ``ph.x``, ``q2r.x`` and ``matdyn.x``. The same bundled input
