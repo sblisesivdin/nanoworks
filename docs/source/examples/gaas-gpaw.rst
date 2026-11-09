@@ -100,22 +100,21 @@ DOS threshold. This LDA result uses a modest cutoff, one sampling choice and
 no SOC. It is not a converged prediction of an experimental gap, nor does a
 40-point symmetry path establish extrema everywhere in the Brillouin zone.
 
-Inspect orbital projections and verify repeatability
-----------------------------------------------------
+Interpret orbital projections
+-----------------------------
 
-A second calculation with identical input settings reproduced the
-lattice parameter, band energies and DOS within numerical precision.
-This is a useful **repeatability check**, but it is not a cutoff or
-k-point convergence study. For your own material, compare two runs at
-fixed inputs before interpreting differences caused by changed settings.
+Projected DOS helps identify the orbital contributions near the band
+edges. Compare the projected curves with total DOS on the **same energy
+reference**, keeping in mind that atom-centred projectors are not
+a complete partition of the electronic states.
 
 .. figure:: ../_static/examples/gaas-gpaw-pdos.png
    :alt: Total GaAs density of states with separate Ga s, Ga p, As s and As p projections, including a view near the band edges.
    :width: 100%
 
-   Atomic projections from the 28 October run. The shaded interval marks the
-   eigenvalue gap obtained from the symmetry path, while the vertical dotted
-   line is Ef. Curves retain the original 0.1 eV Gaussian broadening.
+   Example atomic projections. The shaded interval marks the band-path
+   eigenvalue gap and the dotted line is the Fermi energy. Curves retain
+   the input's 0.1 eV Gaussian broadening.
 
 The upper valence region has strong p character on both atoms, with a larger
 As p contribution in the plotted -2 to 0 eV window. The conduction region
@@ -140,32 +139,8 @@ weight of 16 states, and the exported limits truncate Gaussian tails.
 This unweighted DOS integral is not the number of occupied valence electrons;
 occupation-weighted integration would be required for that comparison.
 
-Download the :download:`28 October input, raw atomic PDOS, band/DOS tables and plotting script
-<../_static/examples/gaas-gpaw-repeat-reference.zip>` for this additional
-check. The earlier reference archive below remains available separately.
-Extract the new archive and install ``numpy>=2`` and ``matplotlib`` in an
-analysis environment, then run:
-
-.. code-block:: console
-
-   $ python plot_gaas.py
-
-This regenerates the atomic-PDOS figure and a matching band/DOS figure, and
-writes the numerical checks to ``checks.json`` without running DFT. If you
-also download the older archive, compare the four paired electronic tables
-and verify the identical input with:
-
-.. code-block:: console
-
-   $ python plot_gaas.py --previous /path/to/gaas-gpaw-reference.zip
-
-The band State JSON and the long/XYYY tables agree exactly in the new run.
-All distributed source files have hashes in ``SHA256SUMS``. The raw atomic
-and aggregate PDOS, band-state record and final CIF are retained with the
-new data, so the extra figure can be reproduced without a GPW file.
-
-Use and retain the outputs
---------------------------
+Use, verify and retain the outputs
+----------------------------------
 
 Filenames below have the prefix ``bulk-gaas-results`` inside the output folder:
 
@@ -176,12 +151,20 @@ Filenames below have the prefix ``bulk-gaas-results`` inside the output folder:
 * ``-BAND-GPAW-Result-Band-XYYY.dat`` has one column per band;
   ``-Result-KPath.dat`` supplies its matching distances and special labels.
 
-Download the :download:`reference input, final CIF and DAT tables
-<../_static/examples/gaas-gpaw-reference.zip>` used for this page. The archive
-also includes a provenance record and file hashes. Its input matches the
-repository example at the time this tutorial was prepared. The long and XYYY
-band exports agree, and the DOS/PDOS tables passed finite-value and orbital-sum
-checks. These checks establish export consistency, not parameter convergence.
+Download the :download:`ground-state and electronic reference data
+<../_static/examples/gaas-gpaw-reference.zip>` or the
+:download:`extended orbital-projection tables and plotting example
+<../_static/examples/gaas-gpaw-repeat-reference.zip>`.
+The packages contain inputs, final structures, exported tables and file
+checksums. With NumPy and Matplotlib installed, ``python plot_gaas.py``
+recreates the plots from the extended package without rerunning GPAW.
+The script also supports ``--previous /path/to/gaas-gpaw-reference.zip``
+to examine repeatability at fixed inputs.
+
+Repeated calculations with unchanged settings should reproduce compatible
+geometries and spectra. This verifies **repeatability**, not cutoff, k-point
+or structural convergence. Validate each independently before using
+the derived band gaps as material predictions.
 
 The saved ``-GROUND-GPAW-Result-State.gpw`` is required to rerun electronic
 stages with ``Ground_calc=False``. Retain it until those calculations are
