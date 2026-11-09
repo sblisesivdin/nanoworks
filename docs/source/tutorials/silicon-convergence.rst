@@ -136,7 +136,7 @@ complete keyword reference.
 .. _tutorial-convergence-qe:
 
 QE convergence: selections and sampling limits
--------------------------------------------
+----------------------------------------------
 
 The QE example uses the cutoff, k-point and lattice-scale candidate
 lists described above. Its result directory contains 4 cutoff, 4
