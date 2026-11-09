@@ -8,9 +8,8 @@ Bulk MoS2: a PBE reference without dispersion correction
    materials predictions require appropriate convergence tests and validation
    of the physical model.
 
-This exercise follows the completed ``GPAW/mos2-reference`` run in
-``example-runs-Va5NDWGi``. It demonstrates cell relaxation, electronic bands
-and atom-resolved orbital projections for a six-atom bulk MoS2 cell. This is
+This example demonstrates cell relaxation, electronic bands and atom-resolved
+orbital projections for a six-atom bulk MoS2 cell. This is
 a three-dimensional layered crystal, not an isolated monolayer with vacuum.
 The calculation uses PBE with no dispersion correction and no SOC.
 
@@ -31,16 +30,13 @@ examples first with ``nanoworks --install-examples``; see
 
 Adapt the process count to your machine. ``Outdirname='MoS2-wo-vdW'`` selects
 the output directory; the starting CIF supplies the ``Bulk_MoS2`` prefix.
-The saved input and starting CIF match the inspected repository files byte
-for byte. The recorded run used Nanoworks 27.2.0rc0, GPAW 26.7.0, ASE 3.29.0
-and eight processes on 28 October 2026. Its exact source commit and PAW
-dataset package release were not recorded. No new DFT calculation was run
-for this tutorial.
+When adapting the workflow to another material, save the starting geometry,
+input settings and PAW dataset versions with the results.
 
 Read the input and relaxed structure
 ------------------------------------
 
-.. list-table:: Recorded settings and outputs
+.. list-table:: Example settings and outputs
    :header-rows: 1
    :widths: 42 58
 
@@ -156,9 +152,8 @@ range. The projections are qualitative weights and do not completely
 partition total DOS or define unique atomic charges. The Mo setup includes
 14 valence electrons per atom, including semicore states; the S setup has
 6. Thus the six-atom cell has 52 valence electrons, not the count obtained
-by treating Mo as a six-valence-electron setup. Recorded setup identifiers are
-``296a29d4664fe6c6f68623909fe0870f`` (Mo) and
-``ca434db9faa07220b7a1d8cb6886b7a9`` (S).
+by treating Mo as a six-valence-electron setup. Record the PAW dataset
+versions when reproducing this calculation.
 
 The original atom-resolved PDOS has six groups of 501 rows. Their sum
 reproduces the combined table exactly at stored precision; p, d and total
