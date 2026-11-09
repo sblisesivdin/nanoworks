@@ -16,15 +16,15 @@ resulting dielectric spectrum. A separate-step workflow and a single-input
 workflow illustrate the available execution choices.
 See :doc:`silicon-gpaw-rpa` for the earlier RPA exercise.
 
-Run the staged or combined example
-----------------------------------
+Run BSE from a saved state or in one command
+---------------------------------------------
 
 Activate an environment with Nanoworks, GPAW and its PAW datasets; see
 :doc:`../installation`. Use the installed example directory. If needed,
 run ``nanoworks --install-examples`` as described in
 :ref:`tutorial-examples-setup`.
 
-For the staged calculation:
+For separate ground-state and BSE steps:
 
 .. code-block:: console
 
@@ -47,8 +47,9 @@ Alternatively, from the same directory:
    $ dftsolve -E GPAW -p 8 -i Si-Combined-BSE-smoke.py -g Si_mp-149_primitive_Example.cif
 
 The combined input runs ground state and BSE into ``Si-BSE-smoke-results``.
-The recorded wrapper shows an electronic process followed by a fresh optical
-process. It does not request DOS, band or density exports. Adjust ``-p`` to
+Nanoworks runs the electronic calculation before starting the optical
+calculation in a separate process. This input does not request DOS,
+band or density exports. Adjust ``-p`` to
 your machine; no memory benchmark for larger BSE matrices is implied here.
 
 Understand the selected BSE basis
@@ -80,12 +81,10 @@ For the method and the distinction between screening and transition bands,
 see the `GPAW BSE silicon tutorial
 <https://gpaw.readthedocs.io/tutorialsexercises/opticalresponse/bse_tutorial/bse_tutorial.html#absorption-spectrum-of-bulk-silicon>`_.
 
-Recorded settings
------------------
+Understand the numerical settings
+---------------------------------
 
-The three active Python inputs and both starting CIF copies match the
-bundled examples byte for byte. Both runs retain the same fixed two-atom
-bulk Si cell: edges 3.86697465 angstrom, angles 60 degrees and volume
+Both example workflows use the same fixed two-atom bulk Si cell: edges 3.86697465 angstrom, angles 60 degrees and volume
 40.888292745 cubic angstrom per primitive cell. Geometry optimization is off.
 Final CIF serialization differs, while its cell and positions are unchanged
 within numerical precision.
@@ -126,9 +125,9 @@ from ``Opt_min_en`` to ``Opt_max_en`` with ``Opt_num_of_data`` points.
 ``Opt_shift_en`` changes transition energies in the Hamiltonian; it does not
 translate the exported photon-energy axis after the calculation.
 
-Several parameters change together between these two cases. Their spectral
-differences cannot isolate the effect of a single convergence parameter or
-of staged versus combined execution.
+Several numerical parameters change between these configurations. To test
+whether separate-step and single-input execution agree, rerun both
+with **identical** meshes, cutoffs, broadening and transition windows.
 
 Inspect the dielectric spectra
 ------------------------------
@@ -141,12 +140,12 @@ Inspect the dielectric spectra
    No smoothing, energy shift or amplitude normalization was applied.
    Each row uses its own vertical scale and different numerical settings.
 
-.. list-table:: Recorded excitation and spectral quantities
+.. list-table:: Example BSE excitation and spectral quantities
    :header-rows: 1
 
    * - Quantity
-     - Staged
-     - Combined smoke
+     - Separate-step example
+     - Single-input example
    * - Lowest BSE eigenvalue (eV)
      - 2.351740
      - 1.816322
@@ -166,7 +165,7 @@ spectrum are different quantities. For example, the combined table's
 1.8163 eV. A plotted peak position therefore depends on both broadening and
 frequency sampling.
 
-The archived finite-broadening spectra also have nonzero epsilon2 at zero
+The example's finite-broadening spectra also have nonzero epsilon2 at zero
 energy. These values must not be interpreted as a measured dc response or
 as evidence that Si is metallic. The exported absorption coefficient is
 zero at that point because its conversion contains an explicit photon-energy
@@ -177,7 +176,7 @@ Read the eigenvalue and weight file
 -----------------------------------
 
 ``BSE_eig.dat`` has a comment header, then columns for the eigenpair index,
-energy in eV and the archived GPAW spectral weight. The numerical weights
+energy in eV and the GPAW transition weight. The numerical weights
 are retained in their original convention; they are not probabilities.
 All saved energies are positive, all weights are finite and nonnegative,
 and the indices run consecutively from zero. The energy ranges are
@@ -185,7 +184,7 @@ and the indices run consecutively from zero. The energy ranges are
 The latter includes eigenvalues above its 10 eV plotted frequency limit.
 
 .. figure:: ../_static/examples/silicon-gpaw-bse-poles.png
-   :alt: Archived BSE eigenvalue positions with relative spectral weights for staged and combined silicon examples; the first pole is marked in each panel.
+   :alt: BSE eigenvalues and relative spectral weights for two illustrative silicon settings; the first pole is marked in each panel.
    :width: 100%
 
    Weights divided by the largest weight in each case, solely for display.
@@ -211,14 +210,15 @@ establish x/y/z agreement for BSE.
 Keep the sum-rule diagnostics
 -----------------------------
 
-Both BSE logs contain a completed diagonalization and an f-sum check:
+A BSE log may report diagonalization and a spectral f-sum check.
+The two example calculations give:
 
-.. list-table:: Archived electron-equivalent sum-rule diagnostics
+.. list-table:: BSE electron-equivalent sum-rule diagnostics
    :header-rows: 1
 
    * - Quantity
-     - Staged
-     - Combined smoke
+     - Separate-step example
+     - Single-input example
    * - Valence-electron target
      - 8
      - 8
@@ -242,7 +242,7 @@ units the diagnostic is
        \int_0^{\omega_{\max}} \omega\,\epsilon_2(\omega)\,d\omega.
 
 Here the script converts the volume to bohr cubed and photon energy to
-Hartree before comparing to the log. It integrates only the archived
+Hartree before comparing to the log. It integrates only the available
 frequency window. The logged weight sums are preserved as separate
 diagnostics; they are not obtained by simply adding the raw third column
 of ``BSE_eig.dat`` without its normalization convention.
@@ -276,9 +276,9 @@ counts, optical conversions and the logged frequency integrals. It writes
 calculations. Original input/CIF/DAT/CSV and method-specific BSE-log bytes
 are preserved; large GPW files and machine-specific logs are omitted.
 
-The staged folder's shared optical summary now refers to this BSE step,
-while its earlier RPA files remain method-specific. Keep the method-labelled
-spectra together; do not infer an earlier RPA configuration from the latest
-shared summary. Converge the electronic cutoff, k grid, screening bands,
+If multiple optical stages share a results directory, a common summary
+file may represent the most recently executed method. Retain the
+method-specific BSE/RPA logs and spectra, or use separate output
+directories for independent calculations. Converge the electronic cutoff, k grid, screening bands,
 response cutoff, transition windows, broadening and frequency grid before
 using BSE excitation energies quantitatively.
