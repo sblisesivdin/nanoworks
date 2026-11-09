@@ -113,25 +113,13 @@ Continue from the electronic calculation to the selected material response.
    :doc:`examples/al-gpaw-phonons` explains the acoustic modes, phonon DOS
    and harmonic thermal outputs behind this example.
 
-Reference checks and troubleshooting
-------------------------------------
+Numerical validation and troubleshooting
+----------------------------------------
 
-The following pages analyze recorded results, numerical limitations or
-failure modes. They are **reference studies**, rather than instructions
-to reproduce a particular historical run. Use the transferable checks
-when evaluating your own calculations; archived logs, figures and data
-support the examples.
-
-.. toctree::
-   :maxdepth: 1
-
-   examples/mos2-qe-d3-audit
-   examples/zno-gpaw-hubbard
-   examples/zno-qe-hubbard
-   examples/silicon-rpa-cross-engine-audit
-   examples/nio-qe-hubbard-phonons
-   examples/si-qe-elastic-smoke
-   examples/tic-gpaw
+For more detailed examples of convergence problems, inconsistent
+electronic-structure references, and unreliable elastic or phonon results,
+see the separate :doc:`reference_cases` section. These analyses complement
+the tutorials but are not prerequisites for learning a workflow.
 
 All bundled inputs
 ------------------
