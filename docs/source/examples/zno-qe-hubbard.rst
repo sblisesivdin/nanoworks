@@ -65,10 +65,8 @@ it is not a run of ``ZnO_QE_reference.py``.
 All three are nonmagnetic, neutral PBE calculations with norm-conserving
 PseudoDojo potentials. The logs report Zn valence 20 and O valence 6:
 52 electrons and 26 occupied scalar bands in the four-atom cell.
-The reported UPF MD5 identifiers agree across records:
-``9b7be680307954c2706c150df658ede8`` for Zn and
-``3e3f909f7470e8921608ab6b1f57bbae`` for O. These are log-reported
-identifiers; the archive does not independently verify the UPF bytes.
+A controlled PBE-versus-PBE+U comparison must use the same
+pseudopotential files. Record their versions or checksums with the inputs.
 
 Both corrected records contain the following card in the ground-state,
 NSCF and path-band input decks:
