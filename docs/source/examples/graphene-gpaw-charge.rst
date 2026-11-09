@@ -41,10 +41,8 @@ Both use the filename prefix ``graphene4x4withdefect`` within their respective
 directories. Keep the results separate when copying or plotting tables.
 Adapt the MPI process count to your machine.
 
-The two recorded runs were performed on 28 October 2026 with Nanoworks
-27.2.0rc0, GPAW 26.7.0, ASE 3.29.0 and eight processes. Their active inputs
-and starting CIF match the repository files inspected for this tutorial.
-An exact run source commit and PAW/basis package release were not recorded.
+For a controlled charge-state comparison, save both inputs and structures
+and keep the sampling, cell size and electronic representation consistent.
 
 Read the two inputs together
 ----------------------------
