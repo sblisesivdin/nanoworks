@@ -40,10 +40,8 @@ thermal results. If you change the force-calculation settings, check the
 existing phonon caches before reusing them. Change the MPI process count to
 suit your machine.
 
-The recorded run used Nanoworks 27.2.0rc0, GPAW 26.7.0, ASE 3.29.0 and
-Phonopy 4.8.6 with eight processes. Its exact source commit and PAW dataset
-release were not recorded, so the package version alone does not identify a
-fully pinned computational environment.
+Save the GPAW, Phonopy and PAW dataset versions with the calculation, especially
+if reusing force caches or comparing independent runs.
 
 .. list-table:: Settings in the recorded input and force log
    :header-rows: 1
