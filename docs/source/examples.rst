@@ -3,9 +3,9 @@
 Example catalog
 ===============
 
-This catalog lists the inputs bundled in ``~/.nanoworks/examples`` by topic.
-For the installation command and illustrated calculation walkthroughs, start
-with :doc:`tutorials`.
+This catalog lists the example inputs bundled in ``~/.nanoworks/examples``
+by topic. Start with :doc:`tutorials` for guided calculations and
+:doc:`reference_cases` for numerical validation and troubleshooting.
 
 Cluster Execution
 -----------------
@@ -33,7 +33,7 @@ bookkeeping and the convergence checks needed before scientific use.
 
 * **Bulk GaAs (No CIF):**
   Demonstrates how to construct a bulk Gallium Arsenide (GaAs) structure purely using Atomic Simulation Environment (ASE) built-in methods, without relying on an external .cif file. (Folder: ``Bulk-GaAs-noCIF/``)
-  Follow :doc:`examples/gaas-gpaw` for a recorded geometry, DOS and band run.
+  Follow :doc:`examples/gaas-gpaw` for geometry, DOS and band calculations.
 
 * **TiC Elastic and Electronic Properties:**
   Shows how to compute both the elastic constants and the electronic band structure / density of states (DOS) for Titanium Carbide (TiC) in a single automated workflow.(Folder: ``TiC-elastic-electronic/``)
@@ -41,11 +41,9 @@ bookkeeping and the convergence checks needed before scientific use.
 
 * **Silicon QE/thermo_pw Elastic Smoke Test:**
   Runs the native QE elastic stage through thermo_pw 2.1.0, producing the
-  6x6 elastic tensor and Voigt, Reuss, and Voigt-Reuss-Hill moduli. See
-  :doc:`examples/si-qe-elastic-smoke` for an audit of the completed tensor,
-  numerical asymmetry, and the limits of the mechanical-stability check. The
-  deliberately small settings validate the workflow rather than provide
-  converged scientific results. (Folder: ``Si-QE-elastic/``)
+  6x6 elastic tensor and Voigt, Reuss, and Voigt-Reuss-Hill moduli. See :doc:`examples/si-qe-elastic-smoke` for tensor validation, symmetry
+  checks and mechanical-stability limitations. The small numerical settings
+  illustrate a workflow rather than converged elastic constants. (Folder: ``Si-QE-elastic/``)
 
 * **Graphene LCAO:**
   Demonstrates how to use the fast LCAO (Linear Combination of Atomic Orbitals) mode in GPAW through the Nanoworks interface to calculate the properties of pristine and defective graphene. (Folder: ``Graphene-LCAO/``)
@@ -55,16 +53,15 @@ Advanced DFT Methods & Corrections
 
 * **MoS2 with van der Waals (vdW) Corrections:**
   Provides matched QE input templates for bulk MoS2 with and without native D3.
-  The archived QE+D3 result **failed final SCF force/stress verification**;
-  the matching no-D3 QE result was not recorded. Do not claim a quantified
-  dispersion effect from this archive. See :doc:`examples/mos2-qe-d3-audit`
-  for diagnostics and :doc:`examples/mos2-gpaw-reference` for a separate
-  GPAW/PBE no-D3 reference. (Folder: ``Bulk-MoS2-vdW/``)
+  A controlled dispersion comparison requires both relaxations to pass final
+  force and stress checks. See :doc:`examples/mos2-qe-d3-audit` for an
+  example of failure diagnosis and :doc:`examples/mos2-gpaw-reference`
+  for the electronic-structure workflow without D3. (Folder: ``Bulk-MoS2-vdW/``)
 
 * **ZnO with Hubbard U (DFT+U):**
   Calculates the electronic properties of Wurtzite ZnO with on-site corrections on O-*p* and Zn-*d* states. The folder contains GPAW calculations with and without Hubbard U and a native QE DFT+U example covering ground-state, DOS, and band calculations. (Folder: ``ZnO-with-Hubbard/``)
-  Follow :doc:`examples/zno-gpaw-hubbard` to audit the recorded GPAW
-  relaxations and avoid interpreting unmatched cutoffs/cells as a U-only comparison.
+  See :doc:`examples/zno-gpaw-hubbard` for why a DFT+U comparison needs
+  matched geometries, cutoffs and sampling.
   See :doc:`examples/zno-qe-hubbard` for QE final-SCF force checks and
   correct band/DOS energy-reference alignment.
 
@@ -73,10 +70,9 @@ Advanced DFT Methods & Corrections
   transition metal dichalcogenides (TMDs) like WSe2. Includes GPAW and QE
   inputs using the same ``SOC_calc`` keyword and is built entirely using ASE
   without an external CIF file. (Folder: ``SOC-WSe2-noCIF/``)
-  Follow :doc:`examples/wse2-gpaw-soc` for the recorded GPAW band comparison
-  and the historical SOC DOS normalization limitation.
-  See :doc:`examples/wse2-qe-soc` for the native QE spinor bands,
-  K-point splittings and historical DOS/Band energy-reference mismatch.
+  See :doc:`examples/wse2-gpaw-soc` for GPAW band splittings and DOS weight
+  conventions, and :doc:`examples/wse2-qe-soc` for QE spinor bands and
+  electronic energy-reference alignment.
 
 * **Cr2O Spin-Polarized Calculations:**
   Demonstrates how to configure and run spin-polarized calculations for magnetic systems, extracting local magnetic moments and spin-resolved band structures. (Folder: ``Cr2O-spin/``)
@@ -102,12 +98,12 @@ Phonon & Thermal Properties
   The same bundled input supports GPAW/Phonopy finite-displacement force constants
   and native QE DFPT (``ph.x`` / ``q2r.x`` / ``matdyn.x``). See
   :doc:`examples/al-gpaw-phonons` and :doc:`examples/al-qe-dfpt-phonons`
-  for the separately audited results. The different recorded frequencies
-  are not a controlled cross-engine benchmark. (Folder: ``Al-phonon/``)
+  for the two phonon methods. A quantitative comparison requires
+  equivalent physical models and converged numerical settings. (Folder: ``Al-phonon/``)
 
 * **Silicon Phonons:**
-  Follow :doc:`examples/si-gpaw-phonons` for recorded acoustic/optical branches,
-  DOS mode counting and the shifted-mesh warning. (Folder: ``Si-phonon/``)
+  Follow :doc:`examples/si-gpaw-phonons` for acoustic and optical branches,
+  DOS mode counting and shifted-mesh considerations. (Folder: ``Si-phonon/``)
 
 **QE Hubbard-U Phonons (NiO):**
   Collinear AFM NiO using Phonopy finite displacements and QE force SCFs with
@@ -124,15 +120,12 @@ Optical Properties
 * **Silicon Optical Properties (RPA & BSE):**
   Includes single-input GPAW and native QE workflows for ground-state, DOS,
   band, density, and RPA optical calculations, plus separate GPAW RPA and BSE
-  inputs for focused optical reruns. See :doc:`examples/silicon-gpaw-rpa`
-  for recorded GPAW spectra and local-field checks, and
-  :doc:`examples/silicon-gpaw-bse` for BSE poles and sum-rule diagnostics.
-  See :doc:`examples/silicon-rpa-cross-engine-audit` for the archived
-  QE-versus-GPAW comparison without equating local-field treatments.
+  inputs for focused optical reruns. See :doc:`examples/silicon-gpaw-rpa` for RPA and local-field corrections,
+  and :doc:`examples/silicon-gpaw-bse` for BSE excitation spectra.
+  For cross-engine comparison and linewidth conventions, consult
+  :doc:`examples/silicon-rpa-cross-engine-audit`.
   (Folder: ``Si-2atoms-optical/``)
-  1. Ground-state generation (Wavefunctions and DOS/Bands)
-  2. Random Phase Approximation (RPA) calculations
-  3. Bethe-Salpeter Equation (BSE) calculations
+  The examples cover ground-state preparation, RPA spectra and BSE response.
 
 Machine Learning & Molecular Dynamics
 -------------------------------------
