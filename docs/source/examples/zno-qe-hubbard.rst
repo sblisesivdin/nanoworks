@@ -57,10 +57,9 @@ Converge energies, forces, stress, meshes and band counts before research use.
 Inspect the actual model and settings
 -------------------------------------
 
-The three records started on 28 October 2026 using Nanoworks 27.2.0rc0,
-QE 7.4.1 and eight MPI processes. Their active Python inputs match the bundled
-inputs byte for byte. The shared PBE record uses ``ZnO_woHubbard.py``;
-it is not a run of ``ZnO_QE_reference.py``.
+The example contrasts three protocols with different cutoffs and geometry
+choices. The first uses ``ZnO_woHubbard.py``; it is not a calculation
+made with ``ZnO_QE_reference.py``.
 
 All three are nonmagnetic, neutral PBE calculations with norm-conserving
 PseudoDojo potentials. The logs report Zn valence 20 and O valence 6:
