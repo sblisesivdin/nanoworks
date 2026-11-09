@@ -168,15 +168,21 @@ energy-sampling effects are unresolved. Interpolation at Ef gives zero in
 this table, consistent with a gap, but numerical DOS amplitudes and precise
 onsets require convergence checks.
 
-Where the D3 comparison stands
-------------------------------
+How to compare dispersion corrections
+-------------------------------------
 
-The separate ``GPAW/mos2-d3`` case failed during ``--check`` with exit code 1.
-Its original log reports an Open MPI ORTE daemon / MPI_Init failure and a
-segmentation fault, before the DFT calculation starts. This evidence does
-not identify a D3-library failure or show that the physical D3 model fails.
-There is no completed D3 result in this pair of GPAW runs. Consequently this
-tutorial makes no numerical claim about a D3-induced lattice or gap change.
+For bulk layered materials, compare PBE and PBE+D3 **with the same**
+geometry protocol, pseudopotentials, electronic cutoff and k-point
+sampling. Run both optimizations to the specified force and stress
+tolerances, then check the **final SCF** independently. Compare
+interlayer distances, total energies and electronic properties only
+after both configurations satisfy these checks.
+
+The presence of a D3 correction in an input is not, by itself,
+evidence that a calculation completed. Failed MPI initialization
+or an incomplete relaxation cannot establish a physical dispersion
+effect. See :doc:`mos2-qe-d3-audit` for a worked example of
+diagnosing an unvalidated relaxation.
 
 Reference data
 --------------
