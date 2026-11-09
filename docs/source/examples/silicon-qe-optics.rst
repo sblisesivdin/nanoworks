@@ -45,7 +45,7 @@ Then reuse their state for the optical calculation:
      -g Si_mp-149_primitive_Example.cif
 
 The explicit ``-E QE`` is important: the shared optical-only input otherwise
-selects GPAW. Eight processes match the recorded run; adapt the number to your
+selects GPAW. Eight processes are shown as an example; adapt the number to your
 machine. Do not wrap these commands in another MPI launcher. ``--check``
 checks prerequisites without running DFT.
 
