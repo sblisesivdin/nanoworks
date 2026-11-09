@@ -35,12 +35,8 @@ outputs. Adjust the MPI process count to your machine. When changing force
 settings or geometry, check cache compatibility before reusing results;
 see the installed example README for the resume procedure.
 
-The recorded input and starting CIF match the bundled example byte for byte.
-The run completed on 28 October 2026 with Nanoworks 27.2.0rc0, GPAW 26.7.0,
-ASE 3.29.0 and Phonopy 4.8.6, using eight processes. Its exact Nanoworks source
-commit and PAW dataset package release were not recorded. The Si PBE setup
-identifier in the log is ``ee77bee481871cc2cb65ac61239ccafa`` (four valence and
-ten frozen-core electrons per atom).
+The silicon example uses a PAW dataset with four valence electrons per
+atom. Record the GPAW, PAW and Phonopy versions with any reproducible run.
 
 .. list-table:: Recorded settings
    :header-rows: 1
