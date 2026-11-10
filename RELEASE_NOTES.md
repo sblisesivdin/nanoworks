@@ -2,7 +2,7 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
-- Separate reusable tutorials from numerical-validation references and simplify run-specific documentation.
+- Separate reusable tutorials from numerical-validation references; improve phonon, SOC, spin and charged-defect guidance.
 
 - Add Si QE/GPAW matched-linewidth examples, reproducible optical diagnostics and clean CSV exports.
 
