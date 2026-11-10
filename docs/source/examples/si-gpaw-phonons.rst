@@ -1,7 +1,7 @@
 .. _si-gpaw-phonons:
 
 Silicon phonons: acoustic and optical branches with GPAW
-=========================================================
+========================================================
 
 .. note::
 
