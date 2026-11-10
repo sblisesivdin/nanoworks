@@ -38,7 +38,7 @@ see the installed example README for the resume procedure.
 The silicon example uses a PAW dataset with four valence electrons per
 atom. Record the GPAW, PAW and Phonopy versions with any reproducible run.
 
-.. list-table:: Recorded settings
+.. list-table:: Example calculation settings
    :header-rows: 1
    :widths: 40 60
 
@@ -64,7 +64,7 @@ atom. Record the GPAW, PAW and Phonopy versions with any reproducible run.
    * - Phonon DOS mesh
      - 20 x 20 x 20, shifted; 4000 representatives, weight sum 8000
    * - Thermal analysis
-     - Disabled in this recorded input; no thermal-property tables
+     - Disabled in this example; no thermal-property tables
 
 Electronic k-point grids determine the DFT forces. The phonon q-point mesh
 samples the resulting dynamical matrices for DOS integration. Increasing the
@@ -77,7 +77,7 @@ Check the relaxed structure and forces
 The final primitive cell has two Si atoms, equal edges of 3.871641717
 angstrom and angles of 60 degrees. Its conventional cubic lattice parameter
 is 5.475328224 angstrom and its volume is 41.036516207 cubic angstrom per
-primitive cell. These are recorded PBE results, not an experimental comparison.
+primitive cell. These are illustrative PBE values, not an experimental comparison.
 The final stress components print as zero at six decimal places in
 eV/angstrom cubed; this does not establish an exactly stress-free state.
 
@@ -95,8 +95,8 @@ agrees with the forces embedded in the YAML to better than ``6e-17``
 eV/angstrom. The net-force components are below ``3e-17`` eV/angstrom.
 
 The compact force-constant array has shape ``(2, 54, 3, 3)`` in
-eV/angstrom squared. Its SHA256 matches the archived result summary and its
-values agree with the YAML within ``5e-16`` eV/angstrom squared. Summing over
+eV/angstrom squared. The compact array and saved YAML agree within ``5e-16``
+eV/angstrom squared. Summing over
 the supercell atom index leaves a maximum component of ``7.2e-15``
 eV/angstrom squared after symmetrization and the acoustic sum rule. These
 are consistency checks; the enforced sum rule does not independently prove
@@ -106,7 +106,7 @@ Read the six branches and DOS
 -----------------------------
 
 .. figure:: ../_static/examples/si-gpaw-phonons.png
-   :alt: Six silicon phonon branches along Gamma X U L Gamma and the archived phonon density of states, whose integral is approximately six modes per two-atom primitive cell.
+   :alt: Six silicon phonon branches along Gamma X U L Gamma and a phonon density of states integrating to approximately six modes per two-atom primitive cell.
    :width: 100%
 
    Redrawn from the saved band YAML and DOS DAT without smoothing or
@@ -151,7 +151,7 @@ Understand the shifted mesh warning
 
 .. important::
 
-   The archived 20 x 20 x 20 DOS mesh does not contain Gamma, even though
+   The example's shifted 20 x 20 x 20 DOS mesh does not contain Gamma, even though
    Gamma is explicitly present in the band path and evaluated separately.
    Its smallest frequency, 0.362277 THz at reduced q = (0.025, 0.025, 0.025),
    must not be interpreted as an acoustic gap.
@@ -174,6 +174,28 @@ reduced q coordinates refer to that reciprocal basis. For details, see the
 `Phonopy mesh settings <https://phonopy.github.io/phonopy/setting-tags.html#mesh-mp-or-mesh-numbers>`_
 and `force-constant formulation <https://phonopy.github.io/phonopy/formulation.html#second-order-force-constants>`_.
 
+Converge the force constants and phonon spectrum
+------------------------------------------------
+
+Treat the **electronic k-point grid**, **displacement supercell**, and
+**phonon interpolation mesh** as separate numerical parameters. First
+converge the primitive-cell geometry, ground-state cutoff, occupations
+and k-point mesh. For finite displacements, vary supercell size and
+displacement amplitude while monitoring the forces, acoustic frequencies
+and optical branches. A denser phonon DOS mesh alone cannot correct
+inaccurate supercell force constants.
+
+Check translational invariance and compare acoustic frequencies at Gamma
+before and after applying the acoustic sum rule. Tiny numerical residuals
+and sustained imaginary branches away from Gamma have different physical
+meanings. When a shifted mesh excludes Gamma, do not interpret its lowest
+sampled frequency as an acoustic gap.
+
+A DOS integral close to 3N checks mode counting; it does not validate
+dynamical stability or frequency convergence. Confirm that the
+resulting branches are stable against the numerical choices before
+comparing to experimental spectra.
+
 Download and redraw
 -------------------
 
@@ -190,8 +212,6 @@ It does not import GPAW or run DFT. Original calculation inputs and numerical
 files are preserved byte for byte; large electronic state files and
 machine-specific postprocessing plans are not needed for the plot.
 
-For quantitative work, vary the cutoff, electronic grids and smearing,
-displacement size and supercell, then converge the phonon DOS mesh separately.
-Thermal analysis was disabled in this run, so this tutorial does not report
-heat capacities or vibrational free energies. See :doc:`al-gpaw-phonons` for a
-recorded thermal-analysis example.
+Thermal analysis is disabled in the Si input. To study heat capacity or
+vibrational free energies, follow :doc:`al-gpaw-phonons` and verify the
+additional harmonic approximations and temperature grid.
