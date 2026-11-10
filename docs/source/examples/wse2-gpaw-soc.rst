@@ -137,63 +137,46 @@ band alignment.
 Check DOS resolution and spectral weights
 -----------------------------------------
 
+Comparing two DOS spectra requires more than using the same number of
+energy samples. Inspect the actual energy range, sampling interval,
+broadening and k-point weights. The scalar and SOC example tables
+have different energy intervals even though each contains 501 rows.
+
+The scalar table spans -74.33815 to 10.64777 eV in approximately
+0.170 eV steps; the SOC table spans -5 to 5 eV in 0.020 eV steps.
+Both request Gaussian broadening of 0.1 eV. The first grid is too
+sparse for a reliable comparison of all narrow peak amplitudes.
+The projected DOS also represents atom/orbital weights, not an
+exact decomposition of the total DOS.
+
 .. figure:: ../_static/examples/wse2-gpaw-soc-dos-audit.png
-   :alt: Original scalar and SOC DOS tables on separate axes, explicitly marking the historical SOC normalization as unvalidated.
+   :alt: Scalar and SOC WSe2 DOS samples with unequal frequency resolution; original SOC amplitudes are unvalidated.
    :width: 100%
 
-   Original stored amplitudes on separate axes. The historical SOC curve
-   is shown to document the audit finding, not as a quantitative SOC DOS.
+   The original stored curves are shown on separate axes without
+   renormalization. These are examples for checking sampling and
+   spectral weights, not converged predictions.
 
-The scalar table samples 501 energies from -74.33815 to 10.64777 eV,
-with a step of about 0.170 eV. The SOC table samples 501 energies from
--5 to 5 eV, with a step of 0.020 eV. Equal sample counts therefore do not
-mean equal energy resolution. Both requested a 0.1 eV Gaussian width;
-the scalar table is too coarse for reliable peak-height or spectral-integral
-work without further sampling checks. The orbital and atom sums of its
-PDOS tables agree to within 4e-15 states/eV/cell, but projected DOS is
-not an exact total-DOS decomposition.
+A numerical problem in an older GPAW SOC DOS postprocessing path
+could pair full-BZ eigenvalues with rank-local k-point weights.
+This made absolute SOC DOS amplitudes unreliable for some MPI
+layouts. Current Nanoworks checks the corresponding weight
+layout before exporting SOC DOS. The original illustrative table
+has deliberately not been altered.
 
-The full-Brillouin-zone eigenvalues and their integration weights must
-have identical k-point coverage. A prior GPAW 26.7 workflow exposed
-why this check matters:
-``BZWaveFunctions.eigenvalues()`` gathers all full-BZ SOC eigenvalues,
-whereas ``weights()`` builds a list with the number of rank-local
-wavefunctions. The Gaussian DOS implementation pairs eigenvalues and
-weights with ``zip``, which truncates the sum when that list is shorter.
-The current Nanoworks workflow checks this layout against the full-BZ
-point count and restores one uniform weight per collected point before
-evaluating SOC DOS. Unexpected layouts raise an error before the previous
-table is overwritten. This correction does not add another spin factor.
-See the `GPAW DOS source
-<https://gpaw.readthedocs.io/_modules/gpaw/dos.html>`_ and
-`SOC source <https://gpaw.readthedocs.io/_modules/gpaw/spinorbit.html>`_.
+The source-level investigation, synthetic reproduction and limits
+of the historical data are documented separately in
+:doc:`wse2-gpaw-dos-validation`. When comparing calculated
+spectra, check that the eigenvalues and weights cover the same
+k-point set; do not attempt to repair missing contributions with
+a global amplitude scale factor.
 
-An isolated reproduction using the original GPAW 26.7 ``DOSCalculator``
-and synthetic eigenvalues verifies the failure: nine full-BZ points with
-two spinors each integrate to 2 states/cell, but a two-element local weight
-list yields only 4/9. Restoring the full list recovers 2. This is a
-postprocessing check, not a new WSe2 calculation.
-
-The stored SOC DOS has an integral of 2.78785 over its limited [-5, 5] eV
-window. A limited-window integral alone cannot prove a normalization
-failure, but the source-level MPI defect prevents trusting its absolute
-amplitudes. The reference data therefore retain the affected spectrum without
-rescaling it or claiming a newly calculated WSe2 DOS. Re-evaluate DOS from a compatible GPW with the
-corrected workflow before making quantitative SOC/non-SOC DOS comparisons;
-an overall scale factor cannot recover omitted k-point contributions.
-Nanoworks does not export GPAW SOC PDOS in this workflow.
-
-Before interpreting SOC splittings quantitatively, check the in-plane
-k-point mesh and path, cutoff or basis representation, vacuum separation,
-SCF convergence and the spin-orbit treatment. Match the scalar and SOC
-calculation protocols as closely as the method allows, and compare
-splittings *within the same run* rather than absolute Fermi zeros.
-
-To compare DOS amplitudes, independently converge the energy grid and
-broadening, and verify that each k-point has an appropriate integration
-weight. A sampled DOS integral can be misleading when a narrow peak
-falls between sparse energy points. Keep the raw data and method-specific
-settings whenever inspecting unexpected peak-height differences.
+Before interpreting SOC splittings quantitatively, converge the
+in-plane k-point mesh, vacuum, electronic cutoff or basis and SOC
+treatment. Compare band splittings **within each calculation at
+the same k point**, rather than between arbitrary Fermi zeros.
+For DOS amplitudes, independently test the energy sampling and
+broadening as well as the electronic k grid.
 
 Reproduce the figures and check convergence
 -------------------------------------------
