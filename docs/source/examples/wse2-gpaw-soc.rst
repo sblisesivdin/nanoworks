@@ -100,7 +100,7 @@ are 0.65036292 and 0.66890700 eV, giving **18.54408 meV** splitting.
 These are differences within one calculation and do not depend on the
 choice of energy zero.
 
-.. list-table:: Edges on the recorded 100-point path
+.. list-table:: Band-edge examples from a 100-point symmetry path
    :header-rows: 1
    :widths: 45 27 28
 
@@ -134,7 +134,7 @@ run's scalar-state Fermi level. Do not subtract the approximately -1.906 eV
 printed Fermi level again. This overlay is not an absolute vacuum-level
 band alignment.
 
-Audit the DOS before comparing amplitudes
+Check DOS resolution and spectral weights
 -----------------------------------------
 
 .. figure:: ../_static/examples/wse2-gpaw-soc-dos-audit.png
@@ -153,7 +153,9 @@ work without further sampling checks. The orbital and atom sums of its
 PDOS tables agree to within 4e-15 states/eV/cell, but projected DOS is
 not an exact total-DOS decomposition.
 
-The GPAW 26.7 source reveals an additional MPI issue:
+The full-Brillouin-zone eigenvalues and their integration weights must
+have identical k-point coverage. A prior GPAW 26.7 workflow exposed
+why this check matters:
 ``BZWaveFunctions.eigenvalues()`` gathers all full-BZ SOC eigenvalues,
 whereas ``weights()`` builds a list with the number of rank-local
 wavefunctions. The Gaussian DOS implementation pairs eigenvalues and
@@ -175,15 +177,26 @@ postprocessing check, not a new WSe2 calculation.
 The stored SOC DOS has an integral of 2.78785 over its limited [-5, 5] eV
 window. A limited-window integral alone cannot prove a normalization
 failure, but the source-level MPI defect prevents trusting its absolute
-amplitudes. The exact original code revision was not recorded. The archive
-therefore retains the original spectrum without rescaling it or claiming
-a corrected WSe2 DOS. Re-evaluate DOS from a compatible GPW with the
+amplitudes. The reference data therefore retain the affected spectrum without
+rescaling it or claiming a newly calculated WSe2 DOS. Re-evaluate DOS from a compatible GPW with the
 corrected workflow before making quantitative SOC/non-SOC DOS comparisons;
 an overall scale factor cannot recover omitted k-point contributions.
 Nanoworks does not export GPAW SOC PDOS in this workflow.
 
-Archive and repeat
-------------------
+Before interpreting SOC splittings quantitatively, check the in-plane
+k-point mesh and path, cutoff or basis representation, vacuum separation,
+SCF convergence and the spin-orbit treatment. Match the scalar and SOC
+calculation protocols as closely as the method allows, and compare
+splittings *within the same run* rather than absolute Fermi zeros.
+
+To compare DOS amplitudes, independently converge the energy grid and
+broadening, and verify that each k-point has an appropriate integration
+weight. A sampled DOS integral can be misleading when a narrow peak
+falls between sparse energy points. Keep the raw data and method-specific
+settings whenever inspecting unexpected peak-height differences.
+
+Reproduce the figures and check convergence
+------------------------------------------
 
 Download the :download:`original inputs, final CIFs, band/DOS tables and
 replotting script <../_static/examples/wse2-gpaw-soc-reference.zip>`.
@@ -199,12 +212,6 @@ splittings, sampled gaps and scalar PDOS sums. It recreates both figures
 and ``checks.dat``. Logs and the large GPWs are not included; provenance
 and inspected-log hashes are provided.
 
-Recorded scalar stage times were 17.50 s for ground state, 6.66 s for DOS
-and 43.10 s for bands. The SOC record lists 15.79 s for ground and
-39.87 s for bands but omits a DOS duration; its timing file cannot be used
-to reconstruct a complete workflow duration. These are machine-dependent
-stage timings.
-
 Keep GPWs for DFT postprocessing. DAT replotting remains available after
 they are removed, for example:
 
@@ -212,6 +219,7 @@ they are removed, for example:
 
    dftsolve --plot WSe2-with-SOC/WSe2-with-SOC-BAND-GPAW-Result-Band-XYYY.dat
 
-The bundled QE SOC input uses a fully relativistic pseudopotential workflow
-with different implementation details. Its recorded results need a separate
-audit; the numerical values on this page refer only to the two GPAW runs.
+The QE SOC workflow uses fully relativistic pseudopotentials and a
+noncollinear calculation, unlike GPAW's illustrated post-SCF treatment.
+See :doc:`wse2-qe-soc` to understand its band-energy references and
+requirements for comparing the two methods.
