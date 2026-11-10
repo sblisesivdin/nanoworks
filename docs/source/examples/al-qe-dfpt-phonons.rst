@@ -29,7 +29,7 @@ required QE pseudopotentials. See :ref:`tutorial-examples-setup`.
 
 The ``-E QE`` override is needed because the example input
 sets ``Engine='GPAW'``. Change the process count as appropriate.
-The actual archived run used eight MPI processes.
+The process count is machine-dependent and does not change the meaning of the phonon q-grid.
 
 Read the native QE settings
 ---------------------------
@@ -45,7 +45,7 @@ BFGS relaxation and then DFPT phonons.
    :widths: 30 35 35
 
    * - Program
-     - Recorded setting
+     - Example setting
      - Role
    * - ``pw.x``
      - ``vc-relax`` with full cell freedom
@@ -74,9 +74,9 @@ DOS/interpolation mesh. The GPAW-only
 settings are ignored by QE DFPT, which reuses
 the ground-state electronic cutoff and k-point mesh.
 
-The archived ``q2r.x`` log confirms eight q-grid points and a
-successful Fourier transform. The crystal acoustic sum rule
-is enforced in ``matdyn.x``. Its warning that Born effective
+Check the ``q2r.x`` output for successful Fourier transformation of all
+q-grid dynamical matrices. The ``matdyn.x`` stage applies the crystal
+acoustic sum rule when generating the interpolated dispersion. Its warning that Born effective
 charges were not found (and TO-LO splitting was absent)
 does not indicate failed metallic-Al DFPT.
 
@@ -97,12 +97,12 @@ Thus the stored geometry passes the new final-SCF
 force and unrestricted-cell stress sanity checks.
 This is not a substitute for cutoff and k-grid convergence.
 
-Read the recorded spectrum
---------------------------
+Interpret the phonon dispersion and DOS
+---------------------------------------
 
 .. figure:: ../_static/examples/al-qe-dfpt-phonons.svg
    :width: 100%
-   :alt: Recorded QE DFPT aluminium three-branch phonon band structure and normalized density of states.
+   :alt: Aluminium QE DFPT three-branch phonon dispersion and normalized vibrational density of states.
 
    Drawn from the original 61-point band and 389-point DOS
    tables. No smoothing or numerical re-interpolation was applied.
@@ -173,14 +173,29 @@ These are fixed-volume harmonic contributions;
 they exclude electronic excitations, thermal expansion
 and anharmonicity and must not be equated to measured Cp.
 
-The archived GPAW example yields different numbers
-because it uses finite-displacement force constants,
-different sampling and a different engine/PAW model.
-Do not interpret the numerical difference as an
-isolated solver error or a validated comparative result.
+The corresponding GPAW finite-displacement example uses a different
+force-constant method, sampling and PAW representation. Numerical differences
+between the two examples cannot be attributed to one engine without a
+matched and converged comparison.
 
-Download and check the original results
----------------------------------------
+Before using DFPT results in a materials study
+----------------------------------------------
+
+A valid phonon workflow requires separate checks of the electronic
+ground state and the lattice response. Begin by converging the equilibrium
+cell, residual forces and stresses, electronic cutoff, occupations and
+k-point sampling. Then vary the **DFPT q-point grid** and the
+interpolation/DOS grid independently. In a metal, electronic smearing
+can noticeably affect phonon frequencies and must also be tested.
+
+At Gamma, compare the raw dynamical-matrix acoustic frequencies with
+the sum-rule-corrected values. An acoustic sum rule enforces translation
+invariance; it must not conceal large residual forces or incorrect
+force constants. Finally, use the mode count (three modes per atom) as
+a DOS normalization check, not as evidence of full frequency convergence.
+
+Reproduce the reference plots and numerical checks
+--------------------------------------------------
 
 :download:`QE Al band table <../_static/examples/al-qe-dfpt-band-thz.dat>` |
 :download:`QE Al DOS <../_static/examples/al-qe-dfpt-dos-thz.dat>` |
@@ -205,10 +220,5 @@ Download and check the original results
    print("Phonon modes per primitive cell:", integral)
    print("300 K Cv (J/mol K):", thermal[30, 4])
 
-The file checksums are pinned in the
-``tests/test_qe_al_dfpt_archived.py`` regression tests.
-No new QE computation is needed to audit the tables.
-
-Before physical use, converge the equilibrium cell,
-residual stress, electronic cutoffs and smearing,
-DFPT q-point grid and dense DOS grid independently.
+The reference tables can be inspected without running QE.
+The downloadable files preserve the numerical inputs for these checks.
