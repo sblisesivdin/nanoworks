@@ -1,5 +1,5 @@
 WSe2 with QE: check SOC bands and spectral energy references
-=============================================================
+============================================================
 
 .. note::
 
@@ -193,7 +193,7 @@ so a reported path gap is not automatically the fundamental gap.
 Check DOS and band energy references before overlaying results.
 
 Reproduce the band checks from reference data
-----------------------------------------
+---------------------------------------------
 
 :download:`Scalar QE band table <../_static/examples/wse2-qe-bands-scalar.dat>` |
 :download:`SOC QE band table <../_static/examples/wse2-qe-bands-soc.dat>` |
