@@ -13,10 +13,10 @@ spin-resolved bands, orbital projections and real-space spin densities. It also 
 symmetry path need not be a gap over the Brillouin zone, and a pseudo-density
 polarization ratio need not be a physically bounded local polarization.
 
-The recorded calculation completed successfully. Its electronic exports are
-internally consistent, but its settings have not been converged. The fixed
-geometry and one initial magnetic configuration do not establish the stable
-structure or lowest-energy magnetic order of Cr2O.
+The example demonstrates a converged self-consistent spin solution, but
+its numerical parameters have not been systematically converged.
+A single magnetic initialization does not identify the lowest-energy
+magnetic order or the equilibrium crystal structure.
 
 Prepare and run
 ---------------
@@ -40,7 +40,7 @@ The output directory is ``Cr2O_mp-1206821_primitive/``.
 For magnetic materials, retain the starting structure, magnetic moments,
 spin treatment and PAW dataset versions when reproducing calculations.
 
-.. list-table:: Recorded settings
+.. list-table:: Example magnetic-calculation settings
    :header-rows: 1
    :widths: 43 57
 
@@ -149,9 +149,8 @@ decomposition of the total DOS or a direct measurement of charge transfer.
 For each spin, the raw table contains 301 samples on each of three atoms.
 Summing those atoms reproduces the aggregate PDOS, including the p and d
 component sums, to numerical precision. The input's existing projected-band
-plots use the same selections (Cr d/s and O p/s). This tutorial redraws
-the exported PDOS because it retains the numerical weights needed to reproduce
-the figure; the original projected-band PNGs remain in the source run.
+plots use the same selections (Cr d/s and O p/s). Numerical PDOS tables retain the weights needed to redraw each orbital
+contribution and check the sum over atoms.
 
 Check the real-space density independently
 ------------------------------------------
@@ -172,7 +171,7 @@ The ``Zeta`` field is dimensionless:
    \zeta(\mathbf{r}) = \frac{n_\uparrow(\mathbf{r})-n_\downarrow(\mathbf{r})}
                              {n_\uparrow(\mathbf{r})+n_\downarrow(\mathbf{r})}.
 
-.. list-table:: Checks performed on the archived CUBEs
+.. list-table:: Example real-space density consistency checks
    :header-rows: 1
 
    * - Quantity
@@ -213,6 +212,29 @@ and `charge analysis and density units
 <https://gpaw.readthedocs.io/tutorialsexercises/wavefunctions/charge/charge.html>`_.
 Use the reconstructed density for quantitative real-space interpretation and
 check its grid convergence before reporting local values.
+
+Assess magnetic order and density reliability
+---------------------------------------------
+
+Start magnetic studies from more than one plausible spin configuration.
+Keep the geometry, functional, Hubbard parameters (if used), k-point grid,
+cutoff, occupations and SCF tolerances **consistent** when comparing
+converged total energies. Ferromagnetic and antiferromagnetic arrangements
+may require different supercells, in which case compare energies per
+equivalent chemical formula unit and account for the changed cell size.
+Repeat geometry optimization for physically relevant magnetic candidates.
+
+For spin-resolved bands, inspect the full-zone electronic states before
+claiming a half-metal or insulating spin channel; a sampled high-symmetry
+path can miss other states at the Fermi energy. A total magnetic moment
+does not uniquely determine atom-resolved magnetic moments.
+
+For real-space density, check the integration units and full-cell
+electron count, then inspect individual voxels for unphysical negative
+densities. Ratios such as ``Zeta`` are meaningful as local spin
+polarization only where the underlying spin densities are nonnegative
+and sufficiently resolved. Passing an integrated electron-count check
+does not certify every sampled point.
 
 Download and reproduce the checks
 ---------------------------------
