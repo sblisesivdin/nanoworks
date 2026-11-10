@@ -15,9 +15,8 @@ count from density exports.
 
 Both calculations completed. They use a **31-carbon vacancy structure**, made
 by removing one atom from a 32-atom 4 x 4 graphene supercell. The neutral case
-is therefore a neutral vacancy reference. The recorded settings illustrate
-the workflow; they are not converged predictions of vacancy magnetism,
-charge-transition levels or experimental doping effects.
+is therefore a neutral vacancy reference. These settings illustrate the workflow; they are not converged predictions
+of vacancy magnetism, charge-transition levels or gate doping.
 
 Prepare and run
 ---------------
@@ -44,14 +43,14 @@ Adapt the MPI process count to your machine.
 For a controlled charge-state comparison, save both inputs and structures
 and keep the sampling, cell size and electronic representation consistent.
 
-Read the two inputs together
-----------------------------
+Compare the neutral and charged inputs
+--------------------------------------
 
 The only literal setting differences are ``Outdirname`` and ``Total_charge``:
 the latter is 0.0 for neutral and +1.0 for charged. The remaining settings
 are shared.
 
-.. list-table:: Recorded settings
+.. list-table:: Shared example settings
    :header-rows: 1
    :widths: 43 57
 
@@ -205,8 +204,8 @@ by this audit. The pseudo densities are nonnegative in these exports.
 No values were clipped, so the displayed profile and quoted electron counts
 retain the original data.
 
-Treat the DOS as an unconverged table
--------------------------------------
+Check the DOS before comparing spectral weights
+-----------------------------------------------
 
 The DOS energy spacing is approximately 0.069 eV. Integrating the full
 exported tables gives 226.94 states for neutral and 275.46 for charged.
@@ -228,6 +227,31 @@ The long, XYYY and State band records agree exactly in each case, the KPath
 metadata match, and all electronic tables are finite and nonnegative in their
 DOS/projection columns. Those export checks and the electron-count difference
 pass; they do not remove the physical limitations above.
+
+Design a controlled charge-state comparison
+-------------------------------------------
+
+Use the same supercell, potential and basis representation, k-point grid,
+vacuum and numerical tolerances for each charge state. Positive
+``Total_charge`` means **electron removal**; confirm the sign by
+integrating the exported density rather than relying only on a label.
+Check whether the total electron count refers to valence or
+all-electron density.
+
+There are two different scientific questions: at **fixed atomic
+positions**, the density difference isolates the electronic response
+to changing charge (within the chosen periodic model). With each
+charge state independently relaxed, the difference also includes ionic
+relaxation. Never interpret the latter as a pure added-electron or
+hole wavefunction.
+
+Charged slab and defect calculations need electrostatic-size and
+vacuum checks and a defined treatment of the neutralizing background.
+Raw total-energy differences do not determine charge-transition levels
+or ionization energies without reference alignment, reservoir terms
+and appropriate finite-size corrections. Test magnetic configurations
+and lower-symmetry reconstructions separately when they may change
+the relaxed state.
 
 Download and redraw
 -------------------
