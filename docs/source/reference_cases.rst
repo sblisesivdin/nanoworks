@@ -29,6 +29,14 @@ Optical-response validation
 
    examples/silicon-rpa-cross-engine-audit
 
+Spin-orbit and electronic density validation
+--------------------------------------------
+
+.. toctree::
+   :maxdepth: 1
+
+   examples/wse2-gpaw-dos-validation
+
 Phonons and elastic properties
 ------------------------------
 
