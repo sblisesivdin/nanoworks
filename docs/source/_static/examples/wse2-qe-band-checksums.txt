@@ -1,0 +1,7 @@
+# SHA-256 of downloadable WSe2 QE reference files
+# The listed names are relative to the documentation examples downloads.
+# Checksums describe the preserved sample data, not a universally reproducible
+# result under different software versions, pseudopotentials or settings.
+ec1bb048b3b92dafca3582d4b87f719dcd54154bd3e1c676fa7fac0d31db2343  wse2-qe-bands-scalar.dat
+665fccab207e5c4d0f6860e4b6194dedbee9f12d0ebec4e79fb416c41958b3ec  wse2-qe-bands-soc.dat
+122242ba20d076a076fbac2bfff8cc97cab15822783efdcb096e55faabdc7937  wse2-qe-kpath.dat
