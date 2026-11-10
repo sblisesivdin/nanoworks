@@ -196,7 +196,7 @@ falls between sparse energy points. Keep the raw data and method-specific
 settings whenever inspecting unexpected peak-height differences.
 
 Reproduce the figures and check convergence
-------------------------------------------
+-------------------------------------------
 
 Download the :download:`original inputs, final CIFs, band/DOS tables and
 replotting script <../_static/examples/wse2-gpaw-soc-reference.zip>`.
