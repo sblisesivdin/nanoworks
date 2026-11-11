@@ -1,7 +1,7 @@
 .. _tutorial-adapt-material:
 
 Apply a Nanoworks example to another material
-==============================================
+=============================================
 
 A tutorial introduces a calculation method, not a fixed set of material
 parameters. The same Nanoworks input structure can be adapted to a
