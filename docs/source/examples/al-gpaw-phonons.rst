@@ -12,8 +12,9 @@ Aluminium phonons and vibrational thermodynamics with GPAW
 
 This example shows how to obtain phonon dispersions, a phonon density of
 states (DOS) and harmonic thermal properties from finite-displacement forces.
-Face-centred cubic aluminium illustrates the three acoustic branches. It also shows why a tiny negative frequency at
-Gamma and a thermal-property warning need different interpretations.
+Face-centred cubic aluminium illustrates three acoustic branches and
+shows why near-zero numerical frequencies must be checked carefully
+before interpreting vibrational thermodynamics.
 
 Use the plotted values to practise interpreting phonon outputs. Before
 reporting material properties, check supercell size, electronic sampling
@@ -43,7 +44,7 @@ suit your machine.
 Save the GPAW, Phonopy and PAW dataset versions with the calculation, especially
 if reusing force caches or comparing independent runs.
 
-.. list-table:: Settings in the recorded input and force log
+.. list-table:: Example input and phonon settings
    :header-rows: 1
    :widths: 42 58
 
@@ -93,9 +94,9 @@ does not demonstrate a symmetry-breaking relaxation.
 Both the final ground-state and displaced-cell electronic calculations report
 SCF convergence. Symmetry reduces this example to one displaced supercell.
 The saved force-constant array has compact shape ``(1, 8, 3, 3)`` in
-eV/angstrom squared. Its SHA256 agrees with the result summary, and summing
-over the supercell index leaves a maximum component of approximately
-``2.8e-16`` eV/angstrom squared after the acoustic sum rule. This checks
+eV/angstrom squared. Summing over the supercell index leaves a maximum force-constant
+component of approximately ``2.8e-16`` eV/angstrom squared after the
+acoustic sum rule. This checks
 translational consistency, not force convergence.
 
 Read the phonon spectrum
@@ -135,14 +136,14 @@ Interpret the thermal properties
 --------------------------------
 
 .. figure:: ../_static/examples/al-gpaw-thermal.png
-   :alt: Archived Al harmonic vibrational free energy, entropy and constant-volume heat capacity from zero to one thousand kelvin.
+   :alt: Aluminium harmonic vibrational free energy, entropy and constant-volume heat capacity as functions of temperature.
    :width: 100%
 
    Original thermal DAT values. The dashed line is the three-mode classical
    limit, 3R, approximately 24.9434 J/(mol K). The near-zero Gamma-mode
    contribution discussed below is retained in these curves.
 
-.. list-table:: Recorded harmonic vibrational values, per mole of one-atom primitive cells
+.. list-table:: Example harmonic quantities, per mole of one-atom primitive cells
    :header-rows: 1
 
    * - Temperature (K)
@@ -171,7 +172,7 @@ Cp or of solid Al remaining stable across the entire plotted range.
 
 .. important::
 
-   The archived YAML has ``exclude_gamma_acoustic: false`` and integrates
+   The example's thermal YAML has ``exclude_gamma_acoustic: false`` and integrates
    27781 of 27783 weighted modes. Two tiny negative Gamma frequencies are
    omitted by the zero-frequency cutoff, while the tiny positive one enters
    the thermal sum. Phonopy explicitly warns about this numerical artifact.
@@ -181,13 +182,13 @@ Cp or of solid Al remaining stable across the entire plotted range.
    +0.000898 J/(mol K) to Cv. Thus a negligible Gamma frequency can still
    affect thermodynamics through the logarithm of its frequency.
 
-The download includes an independent weighted harmonic reconstruction using
-the constants of Phonopy 4.8.6. It reproduces the archived F, S and Cv within
+The reference package includes an independent harmonic reconstruction
+using Phonopy 4.8.6 conventions. It reproduces the example F, S and Cv within
 ``1.3e-6`` in their respective displayed units, allowing for table rounding.
 It also writes a **separately named** table with all three Gamma translations
-excluded. This is a postprocessing comparison on the same finite mesh;
-it is not a new DFT calculation or a mesh-converged correction. The plotted
-and quoted reference values above remain the original output.
+excluded. This is a postprocessing check on the same finite mesh, not a new DFT
+calculation or evidence of a converged thermal model. The plots retain
+the unmodified numerical output.
 
 For a dedicated Phonopy thermal analysis, its documented
 ``EXCLUDE_GAMMA_ACOUSTIC`` setting removes these translations without changing
@@ -197,6 +198,27 @@ free-energy differences. See the `Phonopy thermal settings
 <https://phonopy.github.io/phonopy/setting-tags.html#exclude-gamma-acoustic>`_
 and `harmonic thermodynamic formulas
 <https://phonopy.github.io/phonopy/formulation.html#thermodynamic-properties>`_.
+
+Assess thermal-model convergence
+--------------------------------
+
+A harmonic free energy or heat capacity is defined by the **frequencies
+and their Brillouin-zone weights**, not simply the shape of a plot.
+For a primitive cell with one atom, the DOS should integrate to
+approximately three modes; the classical high-temperature limit of
+the fixed-volume vibrational heat capacity is :math:`3R`.
+
+Check tiny acoustic frequencies near Gamma before computing thermal
+properties. A slightly positive numerical residual may contribute to
+an entropy or free-energy logarithm, even if it is negligible on a
+phonon-dispersion plot. Excluding translational Gamma modes can be
+appropriate, but it is not a replacement for converged force constants.
+
+Independently refine the electronic cutoff and k points, relaxed-cell
+forces and stresses, displacement size and supercell, and thermal
+integration mesh. Check the range over which harmonic and
+fixed-volume approximations are appropriate before comparing with
+measured thermodynamic properties.
 
 Download and redraw
 -------------------
@@ -211,12 +233,8 @@ analysis environment, then run:
 
 This produces both tutorial figures, ``checks.json`` and the separate
 ``thermal-without-gamma.dat`` comparison. It does not run GPAW or alter the
-archived data. ``SHA256SUMS`` records the distributed source files.
+reference results. ``SHA256SUMS`` records the distributed source files.
 The band, DOS, mesh, thermal YAML/DAT and compact force constants are preserved;
 large electronic state files are not required for these plots.
 
-Before using the result quantitatively, vary the force cutoff, electronic
-grid and smearing, displacement size and supercell independently; tighten the
-relaxed-cell criterion and converge the thermal q-point mesh. A smooth curve,
-an enforced acoustic sum rule and successful exit codes are useful checks,
-but none establishes numerical convergence by itself.
+
