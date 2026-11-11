@@ -160,7 +160,7 @@ inaccurate dynamical matrices.
 Inspect raw acoustic frequencies at Gamma before applying the
 acoustic sum rule. A corrected zero is a useful consistency
 requirement but not evidence of force-constant convergence.
-Check the total DOS integral against `3N` modes per primitive
+Check the total DOS integral against :math:`3N` modes per primitive
 cell, then examine branch convergence along the same reciprocal
 path and confirm the absence of spurious imaginary frequencies.
 
