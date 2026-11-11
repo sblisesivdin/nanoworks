@@ -10,9 +10,9 @@ Graphene with and without a vacancy: sampling matters
 
 This tutorial compares pristine graphene with a vacancy using the same
 Nanoworks input and two CIF structures: 32 carbon atoms for pristine
-graphene and 31 for a neutral vacancy in a 4 x 4 supercell. It demonstrates how to read
-folded supercell bands, compare DOS per atom, and distinguish a coarse-grid
-gap report from a band path that actually samples K.
+graphene and 31 for a neutral vacancy in a 4 x 4 supercell. It demonstrates
+how to interpret folded supercell bands, compare DOS per atom,
+and distinguish a coarse-grid gap from a path that samples K.
 
 These small example calculations do not establish a converged graphene
 gap, isolated-vacancy ground state or defect formation energy.
@@ -44,7 +44,7 @@ record the software versions, PAW setups and numerical parameters.
 Read the shared settings
 ------------------------
 
-.. list-table:: Recorded calculation settings
+.. list-table:: Shared example input settings
    :header-rows: 1
    :widths: 40 60
 
@@ -137,7 +137,7 @@ Neither the coarse mesh nor one path maps every extremum in the full zone.
 Check the DOS before assigning numbers
 --------------------------------------
 
-The recorded DOS spacings are approximately 0.069 eV. Integrals over the
+The example DOS tables have energy spacings of approximately 0.069 eV. Integrals over the
 saved energy windows give 232.7302 states/cell for pristine and 226.9377 for
 the vacancy. Their computed band counts are 128 and 124, with full
 spin-degenerate spectral weights of 256 and 248 states/cell. Finite windows
@@ -157,30 +157,45 @@ describe orbital character; they do not form a complete partition of total
 DOS or unique atomic charges. In particular, a narrow in-plane p feature
 in this constrained vacancy calculation is not a magnetic-state prediction.
 
-The vacancy spectra also reproduce the independent ``graphene-neutral`` run
-in :doc:`graphene-gpaw-charge`: the maximum band difference is below
-5.4e-12 eV, total-DOS difference below 2.5e-8 states/(eV cell), and aggregate
-PDOS difference below 3.1e-8 states/(eV cell). This is a repeatability check,
-not a parameter-convergence study.
+Repeated calculations using the same geometry and numerical inputs should
+produce compatible band, DOS and projected-DOS tables. This tests
+**repeatability**, not whether the chosen cutoff, k mesh, basis and
+relaxation constraints are physically converged.
 
-What to retain from this exercise
----------------------------------
+Plan a reliable defect study
+----------------------------
 
-Use the example to practice selecting a structure with ``-g``, reading
-separate output directories, checking the actual KPath metadata, and comparing
-spectra with explicit units and references. Before quantitative materials
-claims, test the electronic mesh, DOS sampling, basis/grid, cell size/vacuum
-and relaxation constraints. A defect formation energy additionally requires
-a defined carbon reservoir and consistent total-energy treatment.
+A defect supercell must be large enough to reduce artificial
+interactions between repeated images of the vacancy. Refine the
+in-plane k mesh, real-space grid or basis and vacuum independently
+while comparing the **same physical observable**. For a low-dimensional
+system, check whether the symmetry path actually visits the relevant
+band extrema; a sampled SCF gap is not automatically the material gap.
 
-The density-export stages were produced by these runs, but their CUBEs were
-not numerically audited in this comparison. No density-based defect-charge
-or localization conclusion is made here.
+When studying an isolated vacancy, consider both spin-polarized and
+non-spin-polarized starting configurations and allow possible
+symmetry-breaking reconstructions. Fixing symmetry and disabling spin
+can exclude physically lower-energy states. The present input does not
+test those alternatives.
+
+To calculate a defect formation energy, compare consistently relaxed
+pristine and defective cells and define the appropriate atom reservoir;
+when cells contain different numbers of atoms, raw total-energy
+subtraction alone is insufficient. Charged defects additionally
+require charge-reference alignment and electrostatic finite-size
+corrections (see :doc:`graphene-gpaw-charge`).
+
+Keep the input structures, final structures, SCF and optimizer logs,
+k-path metadata and numerical results together. When comparing
+different systems, identify whether the DOS is given per **cell**
+or per **atom**, and document the chosen electronic energy zero.
+The density exports in this example are not analyzed here, so no
+density-based defect charge or localization is inferred.
 
 Reference data
 --------------
 
-:download:`Download the recorded spectral tables and checks <../_static/examples/graphene-gpaw-vacancy-reference.zip>`.
+:download:`Download the example spectral tables and numerical checks <../_static/examples/graphene-gpaw-vacancy-reference.zip>`.
 The archive contains both active inputs, starting/final CIFs, original
 band/DOS/PDOS tables, band State metadata, two figures and SHA256SUMS.
 Its optional ``plot_graphene_comparison.py`` script checks long/XYYY/State
