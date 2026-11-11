@@ -42,7 +42,8 @@ First calculations
 ------------------
 
 Learn the input, preflight, calculation and result sequence with silicon or
-Fe. Follow the convergence exercise before choosing research parameters.
+Fe. Follow the convergence exercise and learn how to adapt an example
+to your own material before choosing research parameters.
 
 .. raw:: html
 
@@ -56,6 +57,7 @@ Fe. Follow the convergence exercise before choosing research parameters.
    tutorials/silicon-gpaw
    tutorials/fe-qe-spin
    tutorials/silicon-convergence
+   tutorials/adapt-a-material
 
 .. figure:: _static/examples/tutorial-si-gpaw-band.png
    :alt: Recorded silicon GPAW band structure used in the introductory tutorial.
