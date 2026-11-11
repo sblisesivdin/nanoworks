@@ -1,5 +1,5 @@
 Silicon phonons with native Quantum ESPRESSO DFPT
-==================================================
+=================================================
 
 .. note::
 
@@ -137,7 +137,7 @@ path. This cannot establish stability over all
 wave vectors or fully converged phonons.
 
 Check DOS normalization and reproducibility
-------------------------------------------
+-------------------------------------------
 
 The example total/atom-projected DOS table has 505 rows and four columns. Its total DOS integrates to
 **5.99279538 modes per primitive cell**,
