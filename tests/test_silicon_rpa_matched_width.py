@@ -161,7 +161,11 @@ class MatchedWidthComparatorTests(unittest.TestCase):
         for text, pattern in (
             (_dat((0, 1, 1), (1, 2, 3)), "not increasing"),
             (_dat((0, 1, 2), (1, float("nan"), 3)), "non-finite"),
-            ("Energy(eV) Eps_img(1)\n0.0 1.0\n", "expected 7"),
+            ("Energy(eV) Eps_img(1)\n0.0 1.0\n", "header"),
+            (_dat((0, 1, 2), (1, 2, 3)).replace(
+                "Eps_real(1) Eps_img(1)", "Eps_img(1) Eps_real(1)"
+            ), "column order"),
+            (_dat((-1, 0, 1), (0, 1, 0)), "negative photon energy"),
         ):
             self.dat.write_text(text, encoding="utf-8")
             with self.assertRaisesRegex(ValueError, pattern):
