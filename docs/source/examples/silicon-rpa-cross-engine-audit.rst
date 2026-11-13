@@ -310,6 +310,16 @@ spectrum to a new grid.
      - 0.271871
      - 0.74
 
+.. figure:: ../_static/examples/silicon-rpa-frequency-resolution.svg
+   :alt: Nominal linewidth divided by largest energy step in the 0.001 to 8 eV window. QE staged 2.50, GPAW NLFC staged 0.73, QE combined 1.00 and GPAW NLFC combined 0.74.
+   :width: 100%
+
+   Sampling diagnostic from the original optical tables. The dashed line
+   marks one grid interval per *estimated isolated-transition FWHM*.
+   Larger ratios indicate more frequency samples per nominal width,
+   but they do not establish convergence or an actual Si peak linewidth.
+   GPAW LFC shares its corresponding NLFC frequency grid.
+
 The sampled QE/GPAW NLFC first-moment ratios are about **1.19**
 for both staged and combined runs. These finite-window values are
 *diagnostic quantities*, not f-sum-rule evaluations; incomplete
@@ -458,6 +468,10 @@ the minimum nominal FWHM-to-step ratio drops below five; that threshold
 is only a *sampling heuristic*, not a physical convergence criterion.
 The default interval is 0.001--8 eV, and the optional
 ``--min-grid-ratio`` changes the warning threshold.
+The reported peaks are selected **within the chosen energy window**,
+so they correspond to the same interval as the two finite-window moments.
+A maximum on the analysis-window boundary causes an explicit error
+rather than silently reporting an unresolved or out-of-window peak.
 Standard CSV output contains one unit-labelled header, one row per engine
 and SHA-256 identifiers for the exact input files. The separate
 human-readable notes, QE/GPAW ratios and sampling warnings are written
