@@ -8,6 +8,7 @@ import importlib.util
 import io
 from pathlib import Path
 import sys
+import tempfile
 import unittest
 from unittest.mock import patch
 from zipfile import ZipFile
@@ -72,6 +73,28 @@ class SiliconRPAAuditTests(unittest.TestCase):
             self.assertGreater(float(row["integral_E_epsilon2_dE_eV2"]), 0.0)
         self.assertIn("first_moment=", diagnostics.getvalue())
         self.assertIn("staged: peak=", diagnostics.getvalue())
+
+    def test_failed_archive_does_not_emit_partial_csv(self):
+        # The first QE case exists but contains only three points instead of
+        # the 1001 required for the published reference. A redirected CSV
+        # must not contain even a header from an unsuccessful audit.
+        with tempfile.TemporaryDirectory() as directory:
+            qe = Path(directory) / "qe.zip"
+            gpaw = Path(directory) / "gpaw.zip"
+            with ZipFile(qe, "w") as archive:
+                archive.writestr("staged/optical-x.dat", _dat())
+            with ZipFile(gpaw, "w"):
+                pass
+            stdout = io.StringIO()
+            with (
+                patch.object(sys, "argv",
+                             ["check_silicon_rpa.py", str(qe), str(gpaw)]),
+                contextlib.redirect_stdout(stdout),
+                contextlib.redirect_stderr(io.StringIO()),
+            ):
+                with self.assertRaisesRegex(ValueError, "expected 1001 rows"):
+                    _audit.main()
+            self.assertEqual(stdout.getvalue(), "")
 
     def test_original_qe_zip_names_are_selected_by_case(self):
         with _zip([
