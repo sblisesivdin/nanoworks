@@ -21,13 +21,22 @@ from pathlib import Path
 import sys
 
 
+OPTICAL_COLUMNS = (
+    "Energy(eV)", "Eps_real(1)", "Eps_img(1)", "Refractive_Index(1)",
+    "Extinction_Index(1)", "Absorption(1/cm)", "Reflectivity(1)",
+)
+
+
 def read_table(path: Path) -> list[tuple[float, float]]:
     """Read the energy and imaginary-dielectric columns of a Nanoworks DAT."""
     rows: list[tuple[float, float]] = []
     with path.open("r", encoding="utf-8-sig") as file:
         header = file.readline()
-        if "Energy(eV)" not in header or "Eps_img(1)" not in header:
-            raise ValueError(f"{path}: unsupported optical DAT header")
+        if tuple(header.split()) != OPTICAL_COLUMNS:
+            raise ValueError(
+                f"{path}: unexpected optical DAT header or column order; "
+                "expected the seven named Nanoworks optical columns"
+            )
         for number, line in enumerate(file, start=2):
             if not line.strip():
                 continue
@@ -38,6 +47,8 @@ def read_table(path: Path) -> list[tuple[float, float]]:
             if not all(math.isfinite(item) for item in values):
                 raise ValueError(f"{path}:{number}: non-finite optical value")
             energy, eps2 = values[0], values[2]
+            if energy < 0.0:
+                raise ValueError(f"{path}:{number}: negative photon energy")
             if rows and energy <= rows[-1][0]:
                 raise ValueError(f"{path}:{number}: energy grid not increasing")
             rows.append((energy, eps2))
@@ -47,11 +58,11 @@ def read_table(path: Path) -> list[tuple[float, float]]:
 
 
 def value_at(rows: list[tuple[float, float]], energy: float) -> float:
-    """Linear interpolation at endpoints only; never extrapolate."""
-    if energy < rows[0][0] - 1e-10 or energy > rows[-1][0] + 1e-10:
+    """Linearly interpolate within the provided energy grid; never extrapolate."""
+    if not math.isfinite(energy) or energy < rows[0][0] or energy > rows[-1][0]:
         raise ValueError("Requested integration window exceeds a data grid")
     for (left_e, left_y), (right_e, right_y) in zip(rows, rows[1:]):
-        if left_e - 1e-10 <= energy <= right_e + 1e-10:
+        if left_e <= energy <= right_e:
             fraction = (energy - left_e) / (right_e - left_e)
             return left_y + (right_y - left_y) * fraction
     return rows[-1][1]
