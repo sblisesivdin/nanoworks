@@ -128,9 +128,20 @@ class SiliconRPAAuditTests(unittest.TestCase):
             _audit.parse_table(_dat(
                 ((0.001, 0.0), (4.0, float("nan")), (8.0, 0.0))
             ))
-        with self.assertRaisesRegex(ValueError, "seven columns"):
+        with self.assertRaisesRegex(ValueError, "header"):
             _audit.parse_table(
                 b"Energy(eV) Eps_img(1)\n0.0 1.0\n"
+            )
+        with self.assertRaisesRegex(ValueError, "column order"):
+            _audit.parse_table(
+                _dat().replace(
+                    b"Eps_real(1) Eps_img(1)",
+                    b"Eps_img(1) Eps_real(1)",
+                )
+            )
+        with self.assertRaisesRegex(ValueError, "negative photon energy"):
+            _audit.parse_table(
+                _dat(((-1.0, 0.0), (1.0, 1.0), (2.0, 0.0)))
             )
 
     def test_first_moment_and_global_grid_step_are_not_peak_only(self):
