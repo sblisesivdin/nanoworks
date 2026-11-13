@@ -23,6 +23,8 @@ _DOC = re.compile(r":doc:`(?:[^`<>]*<)?([^`<>]+)>?`", re.DOTALL)
 _DOWNLOAD = re.compile(r":download:`[^`]*?<([^<>]+)>`", re.DOTALL)
 _IMAGE = re.compile(r"^\s*\.\. (?:figure|image)::\s+(\S+)", re.MULTILINE)
 _HTML_PAGE = re.compile(r'\bhref="([^"]+\.html(?:#[^"]*)?)"')
+_RST_LABEL = re.compile(r"^\.\. _([\w.-]+):\s*$", re.MULTILINE)
+_REF = re.compile(r":ref:`([^`]+)`")
 
 
 def _resolve(page: Path, target: str) -> Optional[Path]:
@@ -109,6 +111,32 @@ class DocumentationResourceTests(unittest.TestCase):
                         resolved.with_suffix(".rst").is_file()
                         or resolved.with_suffix(".md").is_file(),
                         f"Missing toctree target: {target}",
+                    )
+
+    def test_sphinx_reference_labels(self):
+        """Catch duplicate RST labels and links to missing explicit anchors."""
+        labels = {}
+        for page, content in _documents():
+            for match in _RST_LABEL.finditer(content):
+                label = match.group(1)
+                with self.subTest(label=label, source=page.relative_to(_SOURCE)):
+                    self.assertNotIn(
+                        label, labels,
+                        f"Duplicate Sphinx label {label!r}: "
+                        f"{labels.get(label)} and {page}",
+                    )
+                labels[label] = page
+
+        for page, content in _documents():
+            for match in _REF.finditer(content):
+                value = match.group(1).strip()
+                # Both :ref:`label` and :ref:`title <label>` are valid.
+                if "<" in value and value.endswith(">"):
+                    value = value.rsplit("<", 1)[1][:-1].strip()
+                with self.subTest(page=page.relative_to(_SOURCE), target=value):
+                    self.assertIn(
+                        value, labels,
+                        f"Missing explicit Sphinx :ref: label: {value}",
                     )
 
     def test_embedded_html_document_links(self):
