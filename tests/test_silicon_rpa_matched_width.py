@@ -139,6 +139,20 @@ class MatchedWidthComparatorTests(unittest.TestCase):
         self.assertAlmostEqual(stats["max_step_in_window_eV"], 0.7)
         self.assertAlmostEqual(stats["min_nominal_FWHM_to_step"], 1/7)
 
+    def test_peak_is_selected_within_the_moment_window(self):
+        # The global maximum is at 4 eV, outside the requested 0--3 eV
+        # comparison window. The reported peak must be the 1 eV maximum.
+        self.dat.write_text(
+            _dat((0, 1, 2, 3, 4, 5), (0, 4, 1, 1, 20, 0)),
+            encoding="utf-8",
+        )
+        stats = _comp.inspect(self.dat, 0.0, 3.0, 0.10)
+        self.assertAlmostEqual(stats["peak_eV"], 1.0)
+        self.assertAlmostEqual(stats["peak_epsilon2"], 4.0)
+        self.assertEqual(stats["points"], 6)
+        with self.assertRaisesRegex(ValueError, "selected window boundary"):
+            _comp.inspect(self.dat, 0.0, 0.5, 0.10)
+
     def test_invalid_tables_and_uncovered_window_fail(self):
         with self.assertRaisesRegex(ValueError, "exceeds a data grid"):
             _comp.moments(_comp.read_table(self.dat), 0.0, 8.0)
