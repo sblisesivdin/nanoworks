@@ -96,19 +96,25 @@ def window_max_step(rows, lower: float, upper: float) -> float:
 
 def inspect(path: Path, lower: float, upper: float, width: float) -> dict:
     rows = read_table(path)
-    peak_index = max(range(len(rows)), key=lambda index: rows[index][1])
-    if peak_index in (0, len(rows) - 1):
-        raise ValueError(f"{path}: peak at grid boundary, extend frequency range")
+    # Report the peak in the SAME window used for the finite-window moments.
+    # Otherwise a large high-energy maximum outside --emax may be mistaken
+    # for a peak belonging to the compared energy interval.
+    selected = samples_in_window(rows, lower, upper)
+    peak_index = max(range(len(selected)), key=lambda index: selected[index][1])
+    if peak_index in (0, len(selected) - 1):
+        raise ValueError(
+            f"{path}: peak at selected window boundary; widen --emin/--emax"
+        )
     spacing = max(
-        rows[peak_index][0] - rows[peak_index - 1][0],
-        rows[peak_index + 1][0] - rows[peak_index][0],
+        selected[peak_index][0] - selected[peak_index - 1][0],
+        selected[peak_index + 1][0] - selected[peak_index][0],
     )
     area, weighted = moments(rows, lower, upper)
     max_step = window_max_step(rows, lower, upper)
     return {
         "points": len(rows),
-        "peak_eV": rows[peak_index][0],
-        "peak_epsilon2": rows[peak_index][1],
+        "peak_eV": selected[peak_index][0],
+        "peak_epsilon2": selected[peak_index][1],
         "integral_epsilon2_eV": area,
         "integral_E_epsilon2_eV2": weighted,
         "peak_step_eV": spacing,
@@ -143,7 +149,7 @@ def main() -> None:
         "QE": inspect(args.qe_dat, args.emin, args.emax, args.fwhm),
         "GPAW_NLFC": inspect(args.gpaw_nlfc_dat, args.emin, args.emax, args.fwhm),
     }
-    print("Observed peaks and native-grid integrals; no amplitude scaling.", file=sys.stderr)
+    print("Peaks and native-grid integrals use the same selected energy window; no amplitude scaling.", file=sys.stderr)
     print("Nominal FWHM is an isolated-line estimate, not a fitted width.", file=sys.stderr)
     print("E*epsilon2 integrates the piecewise-linear response exactly.", file=sys.stderr)
     print("Grid warnings are heuristics, not convergence tests.", file=sys.stderr)
