@@ -48,6 +48,25 @@ The tutorial pages are separate from the numerical-validation and
 troubleshooting references. Keep that distinction when adding or updating
 pages; do not add a new documentation build workflow to enforce these rules.
 
+For documentation changes, run the local, DFT-free resource checks from
+the repository root:
+
+```console
+python -m unittest tests/test_documentation_resources.py
+```
+
+When Sphinx and the packages in ``docs/requirements.txt`` are available,
+also build the HTML locally:
+
+```console
+python -m sphinx -b html -n docs/source docs/_build/html
+```
+
+The resource tests verify file targets and explicit RST labels; a complete
+Sphinx build is still needed to catch parser, theme, extension and
+cross-reference warnings. Neither step runs QE or GPAW. No new CI/CD
+workflow is required.
+
 Being Respectful
 ----------------
 Please show empathy and kindness towards other people, software, and communities working diligently to develop other tools.
