@@ -176,10 +176,11 @@ def main() -> None:
     parser.add_argument("gpaw_zip", type=Path, help="GPAW RPA silicon reference ZIP")
     args = parser.parse_args()
     results = {}
+    csv_rows = []
     with ZipFile(args.qe_zip) as qe, ZipFile(args.gpaw_zip) as gpaw:
         print("Original x-direction RPA data; integration range 0.001--8.0 eV.", file=sys.stderr)
         print("Nominal isolated-line FWHM is only a sampling diagnostic.", file=sys.stderr)
-        print("case,engine,treatment,points,peak_energy_eV,peak_epsilon2_1,integral_epsilon2_dE_eV,integral_E_epsilon2_dE_eV2,adjacent_step_eV,max_window_step_eV,nominal_FWHM_eV,min_FWHM_over_window_step,source_sha256")
+        csv_rows.append("case,engine,treatment,points,peak_energy_eV,peak_epsilon2_1,integral_epsilon2_dE_eV,integral_E_epsilon2_dE_eV2,adjacent_step_eV,max_window_step_eV,nominal_FWHM_eV,min_FWHM_over_window_step,source_sha256")
         for case, engine, kind, count, ex, ey, ea, em, es in CASES:
             filename, source, rows = read_case(
                 qe if engine == "QE" else gpaw, case, engine, kind, count
@@ -196,13 +197,17 @@ def main() -> None:
             check_close(first_moment, em, f"{case} {engine} first moment")
             check_close(max_step, es, f"{case} {engine} max grid step")
             results[(case, engine, kind)] = (peak[2], area, first_moment)
-            print(
+            csv_rows.append(
                 f"{case},{engine},{kind or 'epsilon.x'},{count},"
                 f"{peak[0]:.6f},{peak[2]:.6f},{area:.6f},"
                 f"{first_moment:.6f},{step:.6f},{max_step:.6f},"
                 f"{width:.6f},{width / max_step:.3f},"
                 f"{hashlib.sha256(source).hexdigest()}"
             )
+    # Do not emit a seemingly valid but incomplete CSV when any table
+    # fails its structure, sampling, or numerical reference checks.
+    for row in csv_rows:
+        print(row)
     print("QE/GPAW_NLFC peak and finite-window area ratios:", file=sys.stderr)
     for case in ("staged", "combined"):
         qe_peak, qe_area, qe_moment = results[(case, "QE", "")]
