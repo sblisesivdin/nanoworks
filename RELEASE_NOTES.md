@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Add offline documentation-resource checks and clarify finite-window Si RPA peaks and frequency sampling.
+
 - Separate tutorial workflows from validation references; add material-adaptation guidance and clarify phonon, SOC and defect checks.
 
 - Add Si QE/GPAW matched-linewidth examples, reproducible optical diagnostics and clean CSV exports.
