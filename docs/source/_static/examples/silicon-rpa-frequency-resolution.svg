@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: Sefer Bora Lisesivdin and Beyza Lisesivdin -->
+<!-- SPDX-License-Identifier: MIT -->
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="490" viewBox="0 0 960 490" role="img" aria-labelledby="title description">
+  <title id="title">Frequency sampling in archived silicon QE and GPAW optical spectra</title>
+  <desc id="description">Horizontal bars show nominal isolated-line FWHM divided by the largest energy step within 0.001 to 8 eV, from the original RPA data: QE staged 2.50; GPAW NLFC staged 0.73; QE combined 1.00; GPAW NLFC combined 0.74. Values near or below one indicate coarse sampling relative to an estimated linewidth, not a convergence assessment.</desc>
+  <rect width="960" height="490" fill="white"/>
+  <text x="34" y="36" font-size="22" font-weight="600" fill="#111">Si RPA: linewidth versus largest frequency step</text>
+  <text x="34" y="65" font-size="15" fill="#444">Original x-direction optical tables, integration window 0.001–8 eV</text>
+  <line x1="320" y1="106" x2="320" y2="402" stroke="#ddd" stroke-width="1" stroke-dasharray="2 6"/>
+  <text x="320" y="427" font-size="14" fill="#333" text-anchor="middle">0</text>
+  <line x1="480" y1="106" x2="480" y2="402" stroke="#444" stroke-width="1.5" stroke-dasharray="5 5"/>
+  <text x="480" y="427" font-size="14" fill="#333" text-anchor="middle">1</text>
+  <line x1="640" y1="106" x2="640" y2="402" stroke="#ddd" stroke-width="1" stroke-dasharray="2 6"/>
+  <text x="640" y="427" font-size="14" fill="#333" text-anchor="middle">2</text>
+  <line x1="800" y1="106" x2="800" y2="402" stroke="#ddd" stroke-width="1" stroke-dasharray="2 6"/>
+  <text x="800" y="427" font-size="14" fill="#333" text-anchor="middle">3</text>
+  <text x="300" y="151" font-size="16" text-anchor="end" fill="#191919">QE, 4x4x4</text>
+  <rect x="320" y="130" width="400.02" height="30" fill="#171717"/>
+  <text x="732.02" y="152" font-size="16" fill="#161616" font-weight="600">2.50</text>
+  <text x="300" y="215" font-size="16" text-anchor="end" fill="#191919">GPAW NLFC, 4x4x4</text>
+  <rect x="320" y="194" width="116.90" height="30" fill="#777777"/>
+  <text x="448.90" y="216" font-size="16" fill="#161616" font-weight="600">0.73</text>
+  <text x="300" y="279" font-size="16" text-anchor="end" fill="#191919">QE, 2x2x2</text>
+  <rect x="320" y="258" width="160.02" height="30" fill="#171717"/>
+  <text x="492.02" y="280" font-size="16" fill="#161616" font-weight="600">1.00</text>
+  <text x="300" y="343" font-size="16" text-anchor="end" fill="#191919">GPAW NLFC, 2x2x2</text>
+  <rect x="320" y="322" width="117.70" height="30" fill="#777777"/>
+  <text x="449.70" y="344" font-size="16" fill="#161616" font-weight="600">0.74</text>
+  <text x="560" y="461" text-anchor="middle" font-size="15" fill="#222">Nominal isolated-transition FWHM / maximum interval</text>
+  <text x="34" y="476" font-size="12" fill="#666">Estimated widths; no fitted lineshapes or convergence claims</text>
+</svg>
