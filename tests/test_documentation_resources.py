@@ -11,6 +11,7 @@ External web links and generated HTML anchor IDs remain out of scope.
 """
 
 from pathlib import Path
+from typing import Optional
 import re
 import unittest
 
@@ -24,7 +25,7 @@ _IMAGE = re.compile(r"^\s*\.\. (?:figure|image)::\s+(\S+)", re.MULTILINE)
 _HTML_PAGE = re.compile(r'\bhref="([^"]+\.html(?:#[^"]*)?)"')
 
 
-def _resolve(page: Path, target: str) -> Path | None:
+def _resolve(page: Path, target: str) -> Optional[Path]:
     """Return a local resource path; leave external and special refs alone."""
     target = target.strip()
     if (not target or target == "self" or "://" in target
@@ -59,7 +60,7 @@ class DocumentationResourceTests(unittest.TestCase):
     def test_local_document_roles(self):
         for page, text in _documents():
             for match in _DOC.finditer(text):
-                target = match.group(1).strip().removesuffix(">")
+                target = match.group(1).strip().rstrip(">")
                 if target.startswith("~"):
                     target = target.lstrip("~")
                 resolved = _resolve(page, target)
