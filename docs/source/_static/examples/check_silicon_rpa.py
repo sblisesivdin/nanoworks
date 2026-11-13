@@ -23,6 +23,12 @@ import sys
 from zipfile import ZipFile
 
 
+OPTICAL_COLUMNS = (
+    "Energy(eV)", "Eps_real(1)", "Eps_img(1)", "Refractive_Index(1)",
+    "Extinction_Index(1)", "Absorption(1/cm)", "Reflectivity(1)",
+)
+
+
 # These records refer to the actual staged/ and combined/ reference ZIP
 # layouts. QE tables are named optical-x.dat in its archive; GPAW tables
 # retain the full structure-prefixed AllData_xdirection.dat names.
@@ -41,8 +47,11 @@ def parse_table(data: bytes) -> list[tuple[float, ...]]:
     """Read unmodified seven-column Nanoworks output; reject malformed data."""
     lines = io.StringIO(data.decode("utf-8-sig"))
     header = next(lines, "")
-    if "Energy(eV)" not in header or "Eps_img(1)" not in header:
-        raise ValueError("Missing expected optical table header")
+    if tuple(header.split()) != OPTICAL_COLUMNS:
+        raise ValueError(
+            "Unexpected optical DAT header or column order; "
+            "expected the seven named Nanoworks optical columns"
+        )
     rows: list[tuple[float, ...]] = []
     for number, line in enumerate(lines, start=2):
         if not line.strip():
@@ -53,6 +62,8 @@ def parse_table(data: bytes) -> list[tuple[float, ...]]:
         row = tuple(float(x) for x in parts)
         if not all(map(math.isfinite, row)):
             raise ValueError(f"Line {number}: non-finite optical value")
+        if row[0] < 0.0:
+            raise ValueError(f"Line {number}: negative photon energy")
         if rows and row[0] <= rows[-1][0]:
             raise ValueError(f"Line {number}: non-increasing photon energy")
         rows.append(row)
