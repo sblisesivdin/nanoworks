@@ -4,6 +4,10 @@
 
 """Engine-neutral SCF settings and backend adapters."""
 
+import math
+import operator
+
+
 SCF_ACCURACY_LEVELS = (
     'loose',
     'normal',
@@ -43,19 +47,31 @@ def validate_scf_settings(
         )
 
     if max_steps is not None:
-        max_steps = int(max_steps)
-
-        if max_steps <= 0:
+        if isinstance(max_steps, bool):
+            raise ValueError("SCF_max_steps must be a positive integer.")
+        try:
+            max_steps = operator.index(max_steps)
+        except TypeError as exc:
             raise ValueError(
                 "SCF_max_steps must be a positive integer."
-            )
+            ) from exc
+        if max_steps <= 0:
+            raise ValueError("SCF_max_steps must be a positive integer.")
 
     if mixing is not None:
-        mixing = float(mixing)
-
-        if not 0.0 < mixing <= 1.0:
+        if isinstance(mixing, bool):
             raise ValueError(
-                "SCF_mixing must be greater than zero and at most one."
+                "SCF_mixing must be finite, greater than zero and at most one."
+            )
+        try:
+            mixing = float(mixing)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError(
+                "SCF_mixing must be finite, greater than zero and at most one."
+            ) from exc
+        if not math.isfinite(mixing) or not 0.0 < mixing <= 1.0:
+            raise ValueError(
+                "SCF_mixing must be finite, greater than zero and at most one."
             )
 
     return {
@@ -126,7 +142,16 @@ def resolve_gpaw_scf_settings(**settings):
 
 def qe_conv_thr_to_accuracy(conv_thr):
     """Map a native QE threshold to the nearest portable accuracy profile."""
-    conv_thr = float(conv_thr)
+    if isinstance(conv_thr, bool):
+        raise ValueError("QE conv_thr must be finite and greater than zero.")
+    try:
+        conv_thr = float(conv_thr)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError(
+            "QE conv_thr must be finite and greater than zero."
+        ) from exc
+    if not math.isfinite(conv_thr) or conv_thr <= 0.0:
+        raise ValueError("QE conv_thr must be finite and greater than zero.")
 
     if conv_thr <= 1.0e-10:
         return 'very-tight'
