@@ -27,7 +27,9 @@ def table_header(columns):
         columns = next(csv.reader([columns])) if ',' in columns else columns.split()
     tokens = []
     for column in columns:
-        column = str(column).strip().removeprefix('#').strip()
+        column = str(column).strip()
+        if column.startswith('#'):
+            column = column[1:].strip()
         column = _UNITS.get(column, column)
         if column.endswith('_GPa'):
             column = column[:-4] + '(GPa)'
