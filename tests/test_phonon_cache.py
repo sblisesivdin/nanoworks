@@ -57,6 +57,12 @@ class TestPhononCache(unittest.TestCase):
                 metadata_path.write_text(json.dumps(record), encoding='utf-8')
                 self.assertIsNone(load_verified_force(
                     self.path, 'settings-A', 2))
+        for not_an_object in (None, [], [1], 0, 'invalid'):
+            with self.subTest(non_dict=not_an_object):
+                metadata_path.write_text(
+                    json.dumps(not_an_object), encoding='utf-8')
+                self.assertIsNone(load_verified_force(
+                    self.path, 'settings-A', 2))
         metadata_path.write_text(json.dumps(valid), encoding='utf-8')
         np.testing.assert_array_equal(
             load_verified_force(self.path, 'settings-A', 2), self.forces)
@@ -134,6 +140,12 @@ class TestPhononCache(unittest.TestCase):
                 else:
                     changed['schema'] = version
                 metadata.write_text(json.dumps(changed), encoding='utf-8')
+                self.assertIsNone(load_verified_force_constants(
+                    self.path, metadata, settings, 2, 4))
+        for not_an_object in (None, [], [1], 0, 'invalid'):
+            with self.subTest(non_dict=not_an_object):
+                metadata.write_text(
+                    json.dumps(not_an_object), encoding='utf-8')
                 self.assertIsNone(load_verified_force_constants(
                     self.path, metadata, settings, 2, 4))
         metadata.write_text(json.dumps(record), encoding='utf-8')
