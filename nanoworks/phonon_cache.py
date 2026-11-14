@@ -46,7 +46,8 @@ def load_verified_force(path, signature, natoms):
     """Return None for missing, truncated, stale or altered force records."""
     try:
         record = json.loads(Path(str(path) + '.json').read_text(encoding='utf-8'))
-        if record['signature'] != signature or record['units'] != 'eV/Angstrom':
+        if (record['schema'] != 1 or record['signature'] != signature
+                or record['units'] != 'eV/Angstrom'):
             return None
         forces = np.asarray(np.load(path, allow_pickle=False), dtype=float)
         if (forces.shape == (natoms, 3) and np.isfinite(forces).all()
