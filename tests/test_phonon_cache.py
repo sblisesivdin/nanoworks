@@ -42,6 +42,25 @@ class TestPhononCache(unittest.TestCase):
         Path(str(self.path) + '.json').write_text('{ interrupted metadata')
         self.assertIsNone(load_verified_force(self.path, 'settings-A', 2))
 
+    def test_displacement_force_schema_is_required_and_versioned(self):
+        save_verified_force(self.path, self.forces, 'settings-A', 2)
+        metadata_path = Path(str(self.path) + '.json')
+        valid = json.loads(metadata_path.read_text(encoding='utf-8'))
+        self.assertEqual(valid['schema'], 1)
+        for version in (None, 2, True, 1.0, '1'):
+            with self.subTest(schema=version):
+                record = dict(valid)
+                if version is None:
+                    del record['schema']
+                else:
+                    record['schema'] = version
+                metadata_path.write_text(json.dumps(record), encoding='utf-8')
+                self.assertIsNone(load_verified_force(
+                    self.path, 'settings-A', 2))
+        metadata_path.write_text(json.dumps(valid), encoding='utf-8')
+        np.testing.assert_array_equal(
+            load_verified_force(self.path, 'settings-A', 2), self.forces)
+
     def test_altered_force_contents_and_wrong_shapes_are_rejected(self):
         save_verified_force(self.path, self.forces, 'settings-A', 2)
         np.save(self.path, self.forces * 2)
@@ -98,6 +117,28 @@ class TestPhononCache(unittest.TestCase):
                     self.path, metadata, dict(settings, cutoff=600), 2, 4))
                 self.assertIsNone(load_verified_force_constants(
                     self.path, metadata, dict(settings, masses=[62, 62]), 2, 4))
+
+    def test_force_constants_require_integer_schema_version(self):
+        metadata = self.path.with_suffix('.json')
+        settings = {'cutoff': 500}
+        constants = np.ones((2, 4, 3, 3))
+        save_verified_force_constants(
+            self.path, metadata, constants, settings, 2, 4)
+        record = json.loads(metadata.read_text(encoding='utf-8'))
+        self.assertEqual(record['schema'], 1)
+        for version in (None, 2, True, 1.0, '1'):
+            with self.subTest(schema=version):
+                changed = dict(record)
+                if version is None:
+                    del changed['schema']
+                else:
+                    changed['schema'] = version
+                metadata.write_text(json.dumps(changed), encoding='utf-8')
+                self.assertIsNone(load_verified_force_constants(
+                    self.path, metadata, settings, 2, 4))
+        metadata.write_text(json.dumps(record), encoding='utf-8')
+        np.testing.assert_array_equal(load_verified_force_constants(
+            self.path, metadata, settings, 2, 4), constants)
 
     def test_altered_finite_constants_do_not_invalidate_displacement_forces(self):
         metadata = self.path.with_suffix('.json')
