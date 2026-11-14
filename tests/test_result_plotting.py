@@ -197,6 +197,64 @@ class TestSavedResultPlotting(unittest.TestCase):
             path.write_text('Energy(eV) DOS(states/eV)\n-3 1\n2 4\n')
             np.testing.assert_array_equal(load_dos_table(path), [[-3, 1], [2, 4]])
 
+    def test_hash_prefixed_saved_headers_are_read_consistently(self):
+        from nanoworks.optical import OPTICAL_TABLE_HEADER
+        from nanoworks.result_plotting import load_optical_table
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            band = folder / 'Si-BAND-QE-Result-Band.dat'
+            band.write_text(
+                '# KPointIndex(1) Energy(eV)\n0 -1\n1 2\n',
+                encoding='utf-8',
+            )
+            np.testing.assert_array_equal(
+                load_band_table(band)[1], [[-1], [2]])
+
+            wide = folder / 'Si-BAND-QE-Result-Band-XYYY.dat'
+            wide.write_text(
+                '# KPointIndex(1) Band_1(eV) Band_2(eV)\n'
+                '0 -1 2\n1 -0.5 3\n',
+                encoding='utf-8',
+            )
+            np.testing.assert_array_equal(
+                load_band_table(wide)[1], [[-1, 2], [-0.5, 3]])
+
+            dos = folder / 'Si-DOS-QE-Result-DOS.dat'
+            dos.write_text(
+                '# Energy(eV) DOS(states/eV)\n-1 1\n1 2\n',
+                encoding='utf-8',
+            )
+            np.testing.assert_array_equal(
+                load_dos_table(dos), [[-1, 1], [1, 2]])
+
+            pdos = folder / 'Si-DOS-QE-Result-PDOS.dat'
+            pdos.write_text(
+                '# Energy(eV) s-total(states/eV)\n-1 1\n1 2\n',
+                encoding='utf-8',
+            )
+            self.assertEqual(
+                load_pdos_table(pdos)[0],
+                ['Energy(eV)', 's-total(states/eV)'],
+            )
+
+            legacy = pdos.with_suffix('.csv')
+            legacy.write_text(
+                '# Energy,s-total,p_j0.5,TOTAL\n-1,1,2,3\n1,2,3,5\n',
+                encoding='utf-8',
+            )
+            self.assertEqual(load_pdos_table(legacy)[0], [
+                'Energy(eV)', 's-total(states/eV)',
+                'p_j0.5(states/eV)', 'TOTAL(states/eV)',
+            ])
+
+            optical = folder / 'Si-OPTICAL-QE-Result-AllData.dat'
+            optical.write_text(
+                '# ' + OPTICAL_TABLE_HEADER + '\n'
+                '0 3 4 2 1 0 0.2\n1 3 4 2 1 100 0.2\n',
+                encoding='utf-8',
+            )
+            self.assertEqual(load_optical_table(optical).shape, (2, 7))
+
     def test_standalone_table_plots_without_summary_and_preserves_values(self):
         from nanoworks.optical import OPTICAL_TABLE_HEADER
         with tempfile.TemporaryDirectory() as directory:
