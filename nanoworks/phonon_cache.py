@@ -46,7 +46,8 @@ def load_verified_force(path, signature, natoms):
     """Return None for missing, truncated, stale or altered force records."""
     try:
         record = json.loads(Path(str(path) + '.json').read_text(encoding='utf-8'))
-        if (record['schema'] != 1 or record['signature'] != signature
+        if (type(record.get('schema')) is not int or record['schema'] != 1
+                or record['signature'] != signature
                 or record['units'] != 'eV/Angstrom'):
             return None
         forces = np.asarray(np.load(path, allow_pickle=False), dtype=float)
@@ -93,7 +94,8 @@ def load_verified_force_constants(path, metadata_path, settings, nprimitive, nsu
     """Reuse completed constants only when settings and numerical content match."""
     try:
         record = json.loads(Path(metadata_path).read_text(encoding='utf-8'))
-        if (record['schema'] != 1 or record['units'] != 'eV/Angstrom^2'
+        if (type(record.get('schema')) is not int or record['schema'] != 1
+                or record['units'] != 'eV/Angstrom^2'
                 or record['settings'] != settings):
             return None
         constants = load_force_constants(path, nprimitive, nsupercell)
