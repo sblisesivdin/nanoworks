@@ -11,6 +11,12 @@ from io import StringIO
 import numpy as np
 
 
+def _without_comment_prefix(line):
+    """Strip one optional # marker from DAT/CSV headers (Python 3.8-safe)."""
+    line = line.strip()
+    return (line[1:] if line.startswith('#') else line).strip()
+
+
 def _save_figure(figure, filename):
     """Replace a saved PNG only after Matplotlib finishes writing it."""
     filename = Path(filename)
@@ -27,8 +33,8 @@ def load_band_table(filename):
     filename = Path(filename)
     lines = filename.read_text(encoding='utf-8-sig').splitlines()
     wide = filename.stem.endswith('-XYYY')
-    if lines and lines[0].strip().removeprefix('#').strip().startswith('KPointIndex('):
-        header = lines.pop(0).strip().removeprefix('#').strip().split()
+    if lines and _without_comment_prefix(lines[0]).startswith('KPointIndex('):
+        header = _without_comment_prefix(lines.pop(0)).split()
         if wide:
             if (len(header) < 2 or header[0] != 'KPointIndex(1)'
                     or header[1:] != [f'Band_{i + 1}(eV)' for i in range(len(header) - 1)]):
@@ -126,10 +132,10 @@ def load_pdos_table(filename):
     filename = Path(filename)
     delimiter = ',' if filename.suffix.lower() == '.csv' else None
     with filename.open(encoding='utf-8-sig') as stream:
-        header = stream.readline().strip().removeprefix('#').strip()
+        header = _without_comment_prefix(stream.readline())
         columns = table_header(header).split() if delimiter else header.split()
         if delimiter:
-            columns = [name.removesuffix('(1)') + '(states/eV)'
+            columns = [name[:-3] + '(states/eV)'
                        if re.fullmatch(r'[spdf]_j\d+(?:\.\d+)?\(1\)', name) else name
                        for name in columns]
         if (len(columns) < 2 or columns[0] != 'Energy(eV)' or len(set(columns)) != len(columns)
@@ -195,7 +201,7 @@ def load_optical_table(filename):
     filename = Path(filename)
     delimiter = ',' if filename.suffix.lower() == '.csv' else None
     with filename.open(encoding='utf-8-sig') as stream:
-        header = stream.readline().strip().removeprefix('#').strip()
+        header = _without_comment_prefix(stream.readline())
         columns = [column.strip() for column in header.split(delimiter)]
         if columns not in (OPTICAL_TABLE_HEADER.split(), LEGACY_OPTICAL_TABLE_HEADER.split()):
             raise ValueError('Expected a seven-column optical table with Energy(eV), '
@@ -219,8 +225,8 @@ def load_dos_table(filename):
     filename = Path(filename)
     lines = filename.read_text(encoding='utf-8-sig').splitlines()
     delimiter = ',' if filename.suffix.lower() == '.csv' else None
-    if lines and lines[0].strip().removeprefix('#').strip().startswith('Energy('):
-        columns = lines[0].strip().removeprefix('#').strip().split(delimiter)
+    if lines and _without_comment_prefix(lines[0]).startswith('Energy('):
+        columns = _without_comment_prefix(lines[0]).split(delimiter)
         if [column.strip() for column in columns] != ['Energy(eV)', 'DOS(states/eV)']:
             raise ValueError('DOS table headers must specify Energy(eV) and DOS(states/eV).')
         lines = lines[1:]
