@@ -14,6 +14,17 @@ class TestResultTableContract(unittest.TestCase):
         header = table_header(['Energy', 'Projected DOS(states/eV)', 'Step'])
         self.assertEqual(header.split(), ['Energy(eV)', 'Projected_DOS(states/eV)', 'Step(1)'])
 
+    def test_hash_prefixed_headers_remain_portable_and_single_column(self):
+        # A result header may arrive with an initial "#", for example from
+        # a text exporter. Strip only the first prefix as before.
+        self.assertEqual(
+            table_header([' # Energy ', '#spin channel', '#DOS']),
+            'Energy(eV) spin_channel(1) DOS(states/eV)',
+        )
+        self.assertEqual(table_header(['##flag']), '#flag(1)')
+        with self.assertRaisesRegex(ValueError, 'nonempty'):
+            table_header(['#  '])
+
     def test_missing_and_text_fields_keep_column_positions(self):
         stream = io.StringIO()
         writer = DatWriter(stream)
