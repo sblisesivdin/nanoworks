@@ -55,6 +55,33 @@ def test_qe_threshold_maps_to_portable_profile(conv_thr, accuracy):
     assert qe_conv_thr_to_accuracy(conv_thr) == accuracy
 
 
+@pytest.mark.parametrize('value', [True, False, 0, -1, 2.9, 10.0, '10', float('nan'), float('inf')])
+def test_scf_steps_must_be_positive_integers_without_truncation(value):
+    with pytest.raises(ValueError, match='SCF_max_steps'):
+        validate_scf_settings(max_steps=value)
+
+
+@pytest.mark.parametrize('value', [True, False, None, 0, -0.1, 1.1, float('nan'), float('inf'), 'invalid'])
+def test_scf_mixing_requires_finite_non_boolean_fraction(value):
+    if value is None:
+        assert validate_scf_settings(mixing=None)['mixing'] is None
+    else:
+        with pytest.raises(ValueError, match='SCF_mixing'):
+            validate_scf_settings(mixing=value)
+
+
+@pytest.mark.parametrize('value', [0, -1e-8, True, False, float('nan'), float('inf'), '-inf', 'invalid', None])
+def test_invalid_qe_convergence_threshold_is_not_mapped_to_loose(value):
+    with pytest.raises(ValueError, match='conv_thr'):
+        qe_conv_thr_to_accuracy(value)
+
+
+def test_valid_integer_scf_steps_and_qe_thresholds_still_map():
+    assert validate_scf_settings(max_steps=150, mixing=0.3)['max_steps'] == 150
+    assert validate_scf_settings(max_steps=150, mixing=0.3)['mixing'] == 0.3
+    assert qe_conv_thr_to_accuracy(1e-6) == 'normal'
+
+
 @pytest.mark.parametrize(
     ('keyword', 'value'),
     [
