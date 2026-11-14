@@ -1239,7 +1239,8 @@ backend interpret the settings it supports.
 
     Maximum number of electronic iterations. ``None`` retains the selected
     engine's default. It maps to GPAW ``maxiter`` and QE
-    ``electron_maxstep``.
+    ``electron_maxstep``. Use a positive integer; fractional values
+    and booleans are rejected rather than silently converted.
 
 .. code-block:: python
 
@@ -1252,7 +1253,8 @@ backend interpret the settings it supports.
 
     Portable density-mixing strength in the interval ``(0, 1]``. ``None``
     retains the engine default. A value maps to the GPAW mixer beta and QE
-    ``mixing_beta``.
+    ``mixing_beta``. The value must be finite; booleans are not valid
+    mixing strengths.
 
 .. code-block:: python
 
