@@ -55,6 +55,70 @@ class TestDFTConvergeCLI(unittest.TestCase):
             {'name': 'marzari-vanderbilt', 'width': 0.2},
         )
 
+    def test_qe_backend_uses_managed_pseudos_for_hybrid_without_keywords(self):
+        atoms = Atoms('Si', positions=[[0.0, 0.0, 0.0]])
+        backend_loader = Mock()
+        pseudo_dir = Mock(return_value=Path('/managed/pseudos'))
+        pseudo_resolver = Mock(return_value={'Si': 'Si.upf'})
+        plan = Mock(engine='QE')
+
+        dftconverge._build_backend(
+            {'XC_calc': 'HSE06'},
+            plan,
+            atoms,
+            backend_loader=backend_loader,
+            pseudo_dir_getter=pseudo_dir,
+            pseudo_resolver=pseudo_resolver,
+        )
+        expected = dict(
+            family='pseudodojo', xc='pbe',
+            relativistic='scalar', accuracy='standard',
+        )
+        pseudo_dir.assert_called_once_with(**expected)
+        pseudo_resolver.assert_called_once_with(atoms, **expected)
+        backend_loader.assert_called_once_with(
+            'QE',
+            pseudopotentials={'Si': 'Si.upf'},
+            pseudo_dir=Path('/managed/pseudos'),
+            executable='pw.x',
+        )
+        settings = dftconverge._build_static_energy_settings(
+            {'XC_calc': 'HSE06'}, atoms, 'QE',
+        )
+        self.assertEqual(settings['pseudo_xc'], 'pbe')
+        self.assertEqual(settings['xc_calc'], 'HSE06')
+
+    def test_qe_backend_preserves_legacy_explicit_pseudo_selection(self):
+        atoms = Atoms('Si', positions=[[0.0, 0.0, 0.0]])
+        backend_loader = Mock()
+        pseudo_dir = Mock()
+        pseudo_resolver = Mock()
+        plan = Mock(engine='QE')
+        dftconverge._build_backend(
+            {
+                'XC_calc': 'PBE',
+                'Pseudo_family': 'pseudodojo',
+                'Pseudo_xc': 'pbe',
+                'Pseudo_relativistic': 'full',
+                'Pseudo_accuracy': 'standard',
+                'Pseudo_dir': '/custom',
+                'Pseudopotentials': {'Si': 'my_Si.upf'},
+            },
+            plan,
+            atoms,
+            backend_loader=backend_loader,
+            pseudo_dir_getter=pseudo_dir,
+            pseudo_resolver=pseudo_resolver,
+        )
+        pseudo_dir.assert_not_called()
+        pseudo_resolver.assert_not_called()
+        backend_loader.assert_called_once_with(
+            'QE',
+            pseudopotentials={'Si': 'my_Si.upf'},
+            pseudo_dir='/custom',
+            executable='pw.x',
+        )
+
     def test_check_prints_ordered_plan(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
