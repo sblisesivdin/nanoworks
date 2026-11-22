@@ -263,11 +263,16 @@ UPF pseudopotential sets under:
 
    ~/.nanoworks/pseudos/qe/pseudodojo/pbe/
 
-Native QE workflows use the scalar-relativistic PBE set by default. Set
-``Pseudo_relativistic = 'full'`` in a ``dftsolve`` or ``dftconverge`` input
-to select the fully-relativistic set consistently. This resource selection
-does not itself enable spin-orbit coupling. Enable supported nonmagnetic
-semilocal QE SOC calculations separately with ``SOC_calc=True``.
+Nanoworks selects the pseudopotential set automatically. For ordinary QE
+calculations, specify ``XC_calc`` (PBE or a supported hybrid) and omit
+``Pseudo_*``, ``Pseudo_dir``, and ``Pseudopotentials``. The managed PBE
+scalar-relativistic set is used unless a supported QE calculation requests
+``SOC_calc=True``, which selects the fully-relativistic set. HSE03, HSE06
+and PBE0 use the managed PBE UPFs as their pseudopotential reference.
+
+``dftconverge`` does not yet support SOC; ``SOC_calc=True`` is rejected
+rather than silently ignored. Explicit UPF overrides remain supported for
+specialist calculations, but are unnecessary for normal use.
 
 Quantum ESPRESSO 7.4.1 is the supported version. The supported thermo_pw
 version is 2.1.0.
