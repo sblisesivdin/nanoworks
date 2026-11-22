@@ -1123,6 +1123,17 @@ Electronic Calculations Keywords
 
     EXX_cutoff = 800  # eV
 
+.. note::
+
+    **Ordinary QE inputs do not need any pseudopotential keywords.**
+    Nanoworks selects the installed PseudoDojo PBE library from
+    ``XC_calc`` and chooses scalar- or fully-relativistic resources
+    according to ``SOC_calc``. The supported QE hybrid functionals
+    ``HSE03``, ``HSE06`` and ``PBE0`` use PBE pseudopotentials.
+    The following overrides remain documented for advanced or legacy
+    inputs; they are not required for a standard calculation. GPAW
+    uses its own PAW setup system.
+
 .. describe:: Pseudo_family
 
     :Type: ``string``
@@ -1138,16 +1149,19 @@ Electronic Calculations Keywords
 
 .. describe:: Pseudo_xc
 
-    :Type: ``string``
-    :Default: ``pbe``
+    :Type: ``string`` or ``None``
+    :Default: ``None`` (automatically resolves to the installed PBE family)
 
-    Exchange-correlation family of the selected pseudopotential set. This is
-    checked independently from ``XC_calc``. The managed QE library currently
-    provides PBE pseudopotentials, including for supported hybrid workflows.
+    This is the XC reference of a **pseudopotential**, not the functional
+    used in the electronic calculation. Nanoworks derives it from the
+    supported ``XC_calc`` and managed library; both PBE and supported QE
+    hybrid calculations use the PBE UPFs. Explicit values other than
+    ``pbe`` are rejected by the current QE backend. Do not set this
+    keyword in ordinary input files.
 
 .. code-block:: python
 
-    Pseudo_xc = 'pbe'
+    # Advanced/legacy only: Pseudo_xc = 'pbe'
 
 .. describe:: Pseudo_relativistic
 
@@ -1155,7 +1169,7 @@ Electronic Calculations Keywords
     :Default: ``scalar``
     :Options: ``scalar``, ``full``
 
-    Selects scalar- or fully-relativistic pseudopotential resources. For QE,
+    Advanced override for scalar- or fully-relativistic resources. For QE,
     both managed PseudoDojo sets are installed by
     ``nanoworks --install-qe-pseudos``. Selecting ``full`` alone does not
     enable spin-orbit coupling; ``SOC_calc`` controls that physical workflow.
@@ -1198,9 +1212,11 @@ Electronic Calculations Keywords
         'Si': 'Si.upf',
     }
 
-The pseudopotential keywords deliberately have no engine prefix. A shared
-workflow can therefore express the physical/resource intent once and let each
-backend interpret the settings it supports.
+The pseudopotential keywords deliberately have no engine prefix. They remain
+available to avoid breaking specialist and legacy calculations, but **they
+should normally be omitted**. Do not supply UPF paths unless the managed
+PBE PseudoDojo set is unsuitable for a specific scientific reason; record
+the source and valence configuration of any custom file.
 
 .. describe:: SCF_accuracy
 
