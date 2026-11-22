@@ -265,6 +265,7 @@ from nanoworks.pseudos import (
     get_qe_pseudo_dir,
     read_upf_has_spin_orbit,
     resolve_qe_pseudopotentials,
+    resolve_qe_pseudo_options,
 )
 from nanoworks.occupations import (
     resolve_engine_occupation,
@@ -415,7 +416,7 @@ class DFTConfig:
     # Engine-neutral pseudopotential intent. Backends that do not use
     # external pseudopotential files may ignore these settings.
     Pseudo_family: str = 'pseudodojo'
-    Pseudo_xc: str = 'pbe'
+    Pseudo_xc: Optional[str] = None
     Pseudo_relativistic: str = 'scalar'
     Pseudo_accuracy: str = 'standard'
     Pseudo_dir: Optional[str] = None
@@ -731,7 +732,10 @@ class DFTConfig:
                 hybrid_stages,
             )
         self.Pseudo_family = str(self.Pseudo_family).strip().lower()
-        self.Pseudo_xc = str(self.Pseudo_xc).strip().lower()
+        self.Pseudo_xc = (
+            'pbe' if self.Pseudo_xc is None
+            else str(self.Pseudo_xc).strip().lower()
+        )
         self.Pseudo_relativistic = str(
             self.Pseudo_relativistic
         ).strip().lower()
@@ -745,6 +749,20 @@ class DFTConfig:
             raise ValueError(
                 "Pseudo_relativistic must be 'scalar' or 'full'."
             )
+
+        if self.Engine == 'QE':
+            pseudo_options = resolve_qe_pseudo_options(
+                xc_calc=self.XC_calc,
+                spin_orbit=self.SOC_calc,
+                family=self.Pseudo_family,
+                xc=self.Pseudo_xc,
+                relativistic=self.Pseudo_relativistic,
+                accuracy=self.Pseudo_accuracy,
+            )
+            self.Pseudo_family = pseudo_options['family']
+            self.Pseudo_xc = pseudo_options['xc']
+            self.Pseudo_relativistic = pseudo_options['relativistic']
+            self.Pseudo_accuracy = pseudo_options['accuracy']
 
         if self.Engine == 'QE' and self.SOC_calc:
             self.Pseudo_relativistic = 'full'
@@ -1607,16 +1625,14 @@ class dftsolve:
 
     def _qe_pseudo_configuration(self):
         """Resolve the portable pseudopotential settings for QE."""
-        options = {
-            'family': getattr(self, 'Pseudo_family', 'pseudodojo'),
-            'xc': getattr(self, 'Pseudo_xc', 'pbe'),
-            'relativistic': getattr(
-                self,
-                'Pseudo_relativistic',
-                'scalar',
-            ),
-            'accuracy': getattr(self, 'Pseudo_accuracy', 'standard'),
-        }
+        options = resolve_qe_pseudo_options(
+            xc_calc=getattr(self, 'XC_calc', 'PBE'),
+            spin_orbit=getattr(self, 'SOC_calc', False),
+            family=getattr(self, 'Pseudo_family', None),
+            xc=getattr(self, 'Pseudo_xc', None),
+            relativistic=getattr(self, 'Pseudo_relativistic', None),
+            accuracy=getattr(self, 'Pseudo_accuracy', None),
+        )
         pseudo_dir = getattr(self, 'Pseudo_dir', None)
         if pseudo_dir is None:
             pseudo_dir = get_qe_pseudo_dir(**options)
