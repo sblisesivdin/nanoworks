@@ -413,8 +413,9 @@ class DFTConfig:
     Electronic_solver: str = 'default'
     Occupation_scheme: str = 'fermi-dirac'
     Smearing_width: Optional[float] = 0.05
-    # Engine-neutral pseudopotential intent. Backends that do not use
-    # external pseudopotential files may ignore these settings.
+    # Advanced/legacy pseudopotential overrides. Ordinary QE inputs need
+    # only XC_calc and SOC_calc; Nanoworks selects installed PseudoDojo UPFs.
+    # GPAW uses its own PAW setup mechanism.
     Pseudo_family: str = 'pseudodojo'
     Pseudo_xc: Optional[str] = None
     Pseudo_relativistic: str = 'scalar'
