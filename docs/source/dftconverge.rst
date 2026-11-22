@@ -177,39 +177,27 @@ relativistic PseudoDojo PBE sets:
 
    $ nanoworks --install-qe-pseudos
 
-QE convergence calculations use the scalar-relativistic set by default. The
-pseudopotential keywords are engine-neutral so the same input vocabulary can
-be interpreted by current and future backends. Set ``Pseudo_relativistic``
-explicitly to choose the other installed set:
+Standard QE convergence inputs should specify the physical functional
+through ``XC_calc`` and **omit all ``Pseudo_*`` keywords**. Nanoworks
+resolves the managed scalar-relativistic PBE PseudoDojo set from
+``~/.nanoworks/pseudos/qe/``. PBE, HSE03, HSE06 and PBE0 QE
+calculations all use the managed PBE pseudopotential reference.
+
+The fully-relativistic set is installed as well, but ``dftconverge``
+does not implement SOC and rejects ``SOC_calc = True``. Merely
+selecting fully-relativistic UPFs does not enable SOC.
+
+For compatibility with specialist or older calculations, explicit
+``Pseudo_relativistic``, ``Pseudo_dir`` and ``Pseudopotentials``
+settings remain accepted. A user-supplied UPF must be appropriate
+for the intended element, valence treatment, XC reference and
+scientific model. To use external files deliberately:
 
 .. code-block:: python
 
-   Pseudo_family = 'pseudodojo'
-   Pseudo_xc = 'pbe'
-   Pseudo_relativistic = 'full'
-   Pseudo_accuracy = 'standard'
-
-The supported values for ``Pseudo_relativistic`` are ``'scalar'`` and
-``'full'``. With the standard installation they resolve to:
-
-.. code-block:: text
-
-   ~/.nanoworks/pseudos/qe/pseudodojo/pbe/scalar/standard
-   ~/.nanoworks/pseudos/qe/pseudodojo/pbe/full/standard
-
-Selecting ``'full'`` chooses fully relativistic UPF files, but does not enable
-spin-orbit coupling. ``dftconverge`` does not yet support SOC calculations and
-rejects ``SOC_calc = True`` instead of silently running a non-SOC calculation.
-
-For a manually managed pseudo set, provide both the directory and the
-element-to-file mapping:
-
-.. code-block:: python
-
+   # Advanced override; not needed for managed QE calculations
    Pseudo_dir = '/path/to/upf-files'
-   Pseudopotentials = {
-       'Si': 'Si.upf',
-   }
+   Pseudopotentials = {'Si': 'Si.upf'}
 
 ``Engine_executable`` can override the executable used by a convergence
 backend; for QE its default is ``pw.x``. The former ``QE_pseudo_*``,
