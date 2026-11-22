@@ -34,17 +34,23 @@ from nanoworks.pseudos import (
 class TestPseudopotentials(unittest.TestCase):
 
     def test_xc_and_soc_select_managed_pseudodojo_without_user_keywords(self):
+        # All supported QE hybrid calculations use PBE scalar UPFs.
+        # Hybrid+SOC is not a supported workflow, so test SOC with PBE.
+        expected = {
+            'family': 'pseudodojo',
+            'xc': 'pbe',
+            'relativistic': 'scalar',
+            'accuracy': 'standard',
+        }
         for xc_calc in ('PBE', 'HSE03', 'HSE06', 'PBE0'):
-            for soc in (False, True):
-                with self.subTest(xc_calc=xc_calc, soc=soc):
-                    settings = resolve_qe_pseudo_options(
-                        xc_calc=xc_calc, spin_orbit=soc)
-                    self.assertEqual(settings, {
-                        'family': 'pseudodojo',
-                        'xc': 'pbe',
-                        'relativistic': 'full' if soc else 'scalar',
-                        'accuracy': 'standard',
-                    })
+            with self.subTest(xc_calc=xc_calc):
+                self.assertEqual(
+                    resolve_qe_pseudo_options(xc_calc=xc_calc), expected,
+                )
+        self.assertEqual(
+            resolve_qe_pseudo_options(xc_calc='PBE', spin_orbit=True),
+            dict(expected, relativistic='full'),
+        )
 
     def test_explicit_advanced_pseudo_settings_are_not_removed(self):
         settings = resolve_qe_pseudo_options(
