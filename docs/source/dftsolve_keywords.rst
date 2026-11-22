@@ -711,7 +711,8 @@ Elastic Calculation Keywords
     Explicit k-point mesh used for elastic calculations. If at least
     one component is specified, mesh-based sampling is selected.
     Components left as ``None`` inherit the corresponding ground-state
-    mesh value.
+    mesh value. If the ground mesh uses ``Ground_kpts_density``, missing
+    components are resolved from that density and the final cell.
 
 .. code-block:: python
 
@@ -1416,7 +1417,11 @@ the source and valence configuration of any custom file.
     Explicit k-point mesh for the DOS calculation. If at least one
     component is specified, mesh-based DOS sampling is selected.
     Components left as ``None`` inherit the corresponding ground-state
-    mesh value.
+    mesh value. A density-based ground mesh is resolved for the final cell
+    before filling these components. For example, ``Ground_kpts_density=3``
+    and ``DOS_kpts_z=1`` preserve the density-derived x/y counts; the other
+    axes need not be copied into the input. A stage-specific density still
+    takes precedence over explicit mesh components.
 
     A denser mesh than the ground-state mesh is often useful for
     Brillouin-zone integration in DOS calculations.
@@ -2078,7 +2083,8 @@ Optical Calculations Keywords
     Explicit k-point mesh used when preparing the optical-response
     calculation. If at least one component is specified, mesh-based
     sampling is selected. Missing components inherit the corresponding
-    ground-state values.
+    ground-state values, resolved from ``Ground_kpts_density`` and the
+    final cell when density-based sampling is used.
 
 .. code-block:: python
 

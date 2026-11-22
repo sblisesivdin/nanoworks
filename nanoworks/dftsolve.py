@@ -2433,6 +2433,7 @@ class dftsolve:
                 self.Ground_kpts_z,
             ),
             ground_gamma=ground_gamma,
+            atoms=self.bulk_configuration,
         )
         magnetic_moments = None
 
@@ -2749,6 +2750,7 @@ class dftsolve:
                     self.Ground_kpts_z,
                 ),
                 ground_gamma=ground_gamma,
+                atoms=self.bulk_configuration,
             )
         )
 
@@ -3094,6 +3096,7 @@ class dftsolve:
                     self.Ground_kpts_z,
                 ),
                 ground_gamma=ground_gamma,
+                atoms=self.bulk_configuration,
             )
         )
 
@@ -3546,6 +3549,7 @@ class dftsolve:
                 self.Ground_kpts_z,
             ),
             ground_gamma=ground_gamma,
+            atoms=self.bulk_configuration,
         )
 
         dos_settings = resolve_dos_settings(
@@ -6407,6 +6411,7 @@ class dftsolve:
                 self.Ground_kpts_z,
             ),
             ground_gamma=ground_gamma,
+            atoms=self.bulk_configuration,
         )
         magnetic_moments = None
 
@@ -6605,6 +6610,7 @@ class dftsolve:
                             self.Ground_kpts_z,
                         ),
                         ground_gamma=ground_gamma,
+                        atoms=self.bulk_configuration,
                     )
                 )
 
@@ -8087,6 +8093,7 @@ def prepare_qe_dry_run(
                 config.Ground_kpts_z,
             ),
             ground_gamma=ground_gamma,
+            atoms=atoms,
         )
         elastic_mesh = engine.resolve_qe_kpoint_size(
             atoms,
@@ -8161,6 +8168,7 @@ def prepare_qe_dry_run(
                 config.Ground_kpts_z,
             ),
             ground_gamma=ground_gamma,
+            atoms=atoms,
         )
         dos_mesh = engine.resolve_qe_kpoint_size(
             atoms,
@@ -8651,6 +8659,7 @@ def prepare_qe_dry_run(
                 config.Ground_kpts_z,
             ),
             ground_gamma=ground_gamma,
+            atoms=atoms,
         )
         optical_mesh = engine.resolve_qe_kpoint_size(
             atoms,

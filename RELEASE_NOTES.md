@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Resolve partial stage k-meshes from ground density and the final cell.
+
 - Inherit omitted QE DOS/Band counts from saved states or the planned ground calculation.
 
 - Reload edited inputs without module-name caching.

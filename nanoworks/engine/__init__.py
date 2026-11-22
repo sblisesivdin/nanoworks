@@ -227,6 +227,7 @@ def resolve_stage_kpoint_settings(
     ground_density,
     ground_size,
     ground_gamma,
+    atoms=None,
 ):
     """Resolve stage-specific k-point settings with ground-state fallbacks."""
     gamma = ground_gamma if stage_gamma is None else stage_gamma
@@ -237,8 +238,19 @@ def resolve_stage_kpoint_settings(
 
     # Any explicit stage mesh component selects mesh-based sampling.
     if any(value is not None for value in stage_size):
+        if ground_density is not None and any(value is None for value in stage_size):
+            if atoms is None:
+                raise ValueError(
+                    'Partial stage k-point meshes require the structure to '
+                    'resolve Ground_kpts_density.'
+                )
+            density = float(ground_density)
+            if not math.isfinite(density) or density <= 0:
+                raise ValueError('Ground_kpts_density must be finite and positive.')
+            from ase.calculators.calculator import kptdensity2monkhorstpack
+            ground_size = kptdensity2monkhorstpack(atoms, density, even=None)
         size = tuple(
-            ground if stage is None else stage
+            int(ground) if stage is None else stage
             for stage, ground in zip(stage_size, ground_size)
         )
         return None, size, gamma
