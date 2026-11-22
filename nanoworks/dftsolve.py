@@ -458,7 +458,7 @@ class DFTConfig:
     Phonon_kpts_z: Optional[int] = None
     Phonon_supercell: Any = None
     Phonon_displacement: float = 1e-3
-    Phonon_path: str = 'LGL'
+    Phonon_path: Optional[str] = None
     Phonon_npoints: int = 61
     Phonon_acoustic_sum_rule: bool = True
     Phonon_qpts_x: int = 20
@@ -5951,6 +5951,8 @@ class dftsolve:
             path=self.Phonon_path,
             npoints=self.Phonon_npoints,
         )
+        parprint(f'Phonon path: {band_path["path"]} '
+                 f'({"automatic" if self.Phonon_path is None else "explicit"})')
 
         fildyn = Path(
             self.struct
@@ -6862,8 +6864,10 @@ def get_band_path(atoms, path_str, npoints, path_frac=None, labels=None):
     from phonopy.phonon.band_structure import get_band_qpoints_and_path_connections
 
     atoms = convert_atoms_to_ase(atoms)
-    if path_str is None:
-        path_str = atoms.get_cell().bandpath().path
+    from nanoworks.phonon_settings import resolve_phonon_path
+    automatic = path_str is None
+    path_str = resolve_phonon_path(atoms, path_str)
+    parprint(f'Phonon path: {path_str} ({"automatic" if automatic else "explicit"})')
 
     # Commas are part of ase's supported syntax, but we'll take care of them
     # ourselves to make it easier to get things the way phonopy wants them
@@ -7289,6 +7293,9 @@ def check_dft_configuration(
             add('error', 'phonon-settings', str(exc))
         else:
             add('ok', 'phonon-method', phonon_details['method'])
+            if 'path' in phonon_details:
+                add('ok', 'phonon-path', f'{phonon_details["path"]} '
+                    f'({phonon_details["path_source"]}; re-evaluated after relaxation)')
             add('ok', 'phonon-dos-mesh', ' x '.join(map(str, phonon_details['dos_mesh'])))
             if 'atomic_masses_amu' in phonon_details:
                 masses = phonon_details['atomic_masses_amu']

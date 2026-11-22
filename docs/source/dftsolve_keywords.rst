@@ -1753,10 +1753,15 @@ Phonon Calculations Keywords
 
 .. describe:: Phonon_path
 
-    :Type: ``str``
-    :Default: ``LGL``
+    :Type: ``str`` or ``None``
+    :Default: ``None``
 
-    Band path for phonon calculations.
+    Phonon path selected from the cell symmetry by ASE when omitted or
+    ``None``. The path is resolved again for the final geometry after
+    relaxation. ``--check`` reports the path for the supplied cell.
+    QE DFPT, QE finite-displacement and GPAW use this automatic selection.
+    An explicit path is preserved; unavailable special points produce an
+    error listing the available labels. Commas separate disconnected paths.
 
 .. code-block:: python
 

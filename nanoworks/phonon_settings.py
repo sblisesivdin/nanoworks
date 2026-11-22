@@ -10,6 +10,24 @@ import operator
 import numpy as np
 
 
+def resolve_phonon_path(atoms, path=None):
+    """Resolve a phonon path against the supplied (possibly relaxed) cell."""
+    if path is not None:
+        if not isinstance(path, str) or not path.strip():
+            raise ValueError('Phonon_path must be a nonempty string or None.')
+        path = path.strip()
+    try:
+        return atoms.cell.bandpath(path=path, npoints=0).path
+    except KeyError as exc:
+        automatic = atoms.cell.bandpath(npoints=0)
+        available = ', '.join(sorted(automatic.special_points))
+        raise ValueError(
+            f'Phonon_path {path!r} contains unavailable point {exc.args[0]!r}. '
+            f'Available points: {available}. Use Phonon_path=None for '
+            f'the automatic path ({automatic.path}).'
+        ) from exc
+
+
 def validate_atomic_masses(masses, natoms):
     """Require one finite positive atomic mass per phonon unit-cell site."""
     try:
@@ -111,6 +129,12 @@ def validate_phonon_settings(config, engine=None, validate_structure=True):
         if not np.array_equal(matrix, np.diag(np.diag(matrix))) or np.any(np.diag(matrix) <= 0):
             raise ValueError('Native QE DFPT requires a positive diagonal Phonon_supercell.')
     result = {'Phonon_supercell': matrix}
+    path = getattr(config, 'Phonon_path', None)
+    if path is not None:
+        if not isinstance(path, str) or not path.strip():
+            raise ValueError('Phonon_path must be a nonempty string or None.')
+        path = path.strip()
+    result['Phonon_path'] = path
     for name in ('Phonon_qpts_x', 'Phonon_qpts_y', 'Phonon_qpts_z', 'Phonon_npoints'):
         result[name] = positive_integer(getattr(config, name), name, 2 if name == 'Phonon_npoints' else 1)
     for name in ('Phonon_kpts_x', 'Phonon_kpts_y', 'Phonon_kpts_z'):
@@ -128,6 +152,10 @@ def validate_phonon_settings(config, engine=None, validate_structure=True):
     details = {'method': 'finite-displacement' if finite_displacement else 'DFPT',
         'supercell_matrix': matrix.tolist(), 'dos_mesh': [result[f'Phonon_qpts_{axis}'] for axis in 'xyz'],
         'thermal_enabled': bool(config.Phonon_thermal_calc)}
+    atoms = getattr(config, 'bulk_configuration', None)
+    if validate_structure and atoms is not None and hasattr(atoms, 'cell'):
+        details['path'] = resolve_phonon_path(atoms, path)
+        details['path_source'] = 'automatic' if path is None else 'explicit'
     if finite_displacement:
         details['supercell_multiplier'] = multiplier
         details['displacement_angstrom'] = result['Phonon_displacement']

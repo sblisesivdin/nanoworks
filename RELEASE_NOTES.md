@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Select phonon paths from the final cell when omitted; retain explicit paths and report the selection.
+
 - Infer omitted QE density cutoffs from UPF hints; report actual cutoffs and retain explicit ratios.
 
 - Resolve QE PseudoDojo choices from XC/SOC in dftsolve and dftconverge; retain manual UPF overrides.

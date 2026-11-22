@@ -9,10 +9,43 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from nanoworks.phonon_settings import validate_phonon_settings
+from nanoworks.phonon_settings import validate_phonon_settings, resolve_phonon_path
 
 
 class TestPhononSettings(unittest.TestCase):
+    def test_automatic_path_follows_each_cell_and_relaxed_geometry(self):
+        from ase import Atoms
+        from ase.build import bulk
+        cells = [bulk('Si', 'diamond', a=5.4),
+                 Atoms('Si', cell=[4, 4, 4], pbc=True),
+                 Atoms('Si', cell=[[3, 0, 0], [-1.5, 2.598076211, 0], [0, 0, 8]], pbc=True)]
+        for atoms in cells:
+            with self.subTest(cell=atoms.cell):
+                self.assertEqual(resolve_phonon_path(atoms), atoms.cell.bandpath(npoints=0).path)
+        # Cubic cells have no L point: the previous LGL default was invalid.
+        with self.assertRaisesRegex(ValueError, 'Available points:.*Phonon_path=None'):
+            resolve_phonon_path(cells[1], 'LGL')
+        atoms = cells[0].copy()
+        first = resolve_phonon_path(atoms)
+        atoms.set_cell(cells[1].cell)
+        self.assertNotEqual(first, resolve_phonon_path(atoms))
+
+    def test_explicit_path_and_disconnected_segments_are_preserved(self):
+        from ase import Atoms
+        atoms = Atoms('Si', cell=[4, 4, 4], pbc=True)
+        self.assertEqual(resolve_phonon_path(atoms, ' GX,MR '), 'GX,MR')
+        for path in ('', ' ', True, ['G', 'X']):
+            with self.subTest(path=path), self.assertRaisesRegex(ValueError, 'Phonon_path'):
+                resolve_phonon_path(atoms, path)
+
+    def test_path_is_reported_without_freezing_the_automatic_input(self):
+        from ase import Atoms
+        atoms = Atoms('Ni', cell=[4, 4, 4], pbc=True)
+        values, report = validate_phonon_settings(self.config(bulk_configuration=atoms))
+        self.assertIsNone(values['Phonon_path'])
+        self.assertEqual(report['path'], atoms.cell.bandpath(npoints=0).path)
+        self.assertEqual(report['path_source'], 'automatic')
+
     def config(self, **changes):
         values = dict(Engine='GPAW', Hubbard_U=None, Phonon_supercell=[2, 2, 1],
             Phonon_qpts_x=8, Phonon_qpts_y=8, Phonon_qpts_z=1, Phonon_npoints=61,

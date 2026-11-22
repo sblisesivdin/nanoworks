@@ -63,6 +63,13 @@ with patch.object(
 
 
 class TestDFTSolveWorkflow(unittest.TestCase):
+    def test_phonon_paths_default_to_automatic_for_both_engines(self):
+        for engine in ('QE', 'GPAW'):
+            with self.subTest(engine=engine):
+                self.assertIsNone(DFTConfig(Engine=engine, Phonon_calc=True).Phonon_path)
+                self.assertEqual(DFTConfig(Engine=engine, Phonon_calc=True,
+                    Phonon_path='LGL').Phonon_path, 'LGL')
+
     def _qe_elastic_only_solver(self):
         solver = object.__new__(DFTSolver)
         solver.Mode = 'PW'
@@ -3995,6 +4002,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
 
             band_path = {
                 'option': 'crystal',
+                'path': 'GX',
                 'kpoints': [
                     (0.0, 0.0, 0.0),
                     (0.5, 0.0, 0.0),
