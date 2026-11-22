@@ -21,6 +21,7 @@ import os, glob
 import ast
 import gc
 import importlib.util
+import runpy
 import json
 import hashlib
 import math
@@ -1043,15 +1044,14 @@ def struct_from_file(
             + ', '.join(unknown_names)
         )
 
-    # Works like from FILE import *
-    sys.path.append(str(Path(inputfile).parent))
-    inputf = __import__(Path(inputfile).stem, globals(), locals(), ['*'])
-    
-    # Create a config object with loaded parameters
-    config_dict = {}
-    for k in dir(inputf):
-        if not k.startswith('_'):
-            config_dict[k] = getattr(inputf, k)
+    # Read this exact file afresh; module-name caching can otherwise reuse
+    # stale settings from an earlier run or another input with the same name.
+    search_path = sys.path[:]
+    try:
+        sys.path.insert(0, str(Path(inputfile).resolve().parent))
+        config_dict = runpy.run_path(str(Path(inputfile).resolve()))
+    finally:
+        sys.path[:] = search_path
 
     
     # Create DFTConfig instance
@@ -1090,6 +1090,41 @@ def struct_from_file(
     struct = os.path.join(str(structpath), struct)
     return struct, config
 
+def build_auto_input_lines(config, overrides=None):
+    """Write a compact input while retaining nondefault values and overrides."""
+    defaults = DFTConfig(Engine=config.Engine)
+    explicit = set(overrides or {})
+
+    def literal(value):
+        if isinstance(value, np.ndarray):
+            return literal(value.tolist())
+        if isinstance(value, np.generic):
+            return value.item()
+        if isinstance(value, (list, tuple, range)):
+            return [literal(item) for item in value]
+        if isinstance(value, dict):
+            return {key: literal(item) for key, item in value.items()}
+        return value
+
+    lines = [
+        '# SPDX-FileCopyrightText: Sefer Bora Lisesivdin and Beyza Lisesivdin',
+        '# SPDX-License-Identifier: MIT',
+        '# See LICENSE.md in the project root for license terms.',
+        '',
+        '# Generated starting settings; check numerical convergence.',
+        f'Engine = {config.Engine!r}',
+    ]
+    for name in DFTConfig.__dataclass_fields__:
+        if name in ('Engine', 'bulk_configuration'):
+            continue
+        value = literal(getattr(config, name))
+        default = literal(getattr(defaults, name))
+        if name in explicit or value != default:
+            lines.append(f'{name} = {value!r}')
+    lines.extend(['', '# Supply the geometry with dftsolve -g <structure.cif>.'])
+    return lines
+
+
 def struct_from_auto(
     geometryfile,
     write_output=True,
@@ -1108,7 +1143,6 @@ def struct_from_auto(
     config.XC_calc = 'PBE'
     config.Wavefunction_cutoff = 450
     config.Gamma = True
-    config.Geometry_optimizer = 'lbfgs'
     
     # ---------------------------------------------------------
     # 1. Magnetism Detection
@@ -1137,7 +1171,8 @@ def struct_from_auto(
     
     # Target density (pts/A^-1)
     target_density = 3.0
-    kpts = [1, 1, 1]
+    from ase.calculators.calculator import kptdensity2monkhorstpack
+    kpts = kptdensity2monkhorstpack(atoms, target_density, even=None).tolist()
     
     is_vacuum = [False, False, False]
     
@@ -1146,12 +1181,6 @@ def struct_from_auto(
         if cell_lengths[i] > 12.0 and spans[i] < (cell_lengths[i] * 0.5):
             is_vacuum[i] = True
             kpts[i] = 1
-        else:
-            # Calculate k-points based on density
-            # density = N * 2pi / L  => N = density * L / 2pi
-            # We add 0.5 to round nearest, and ensure at least 1
-            n_k = int(target_density * cell_lengths[i] / (2 * np.pi) + 0.5)
-            kpts[i] = max(1, n_k)
             
     config.Ground_kpts_x = kpts[0]
     config.Ground_kpts_y = kpts[1]
@@ -1184,41 +1213,10 @@ def struct_from_auto(
         + '-CONFIG-NANOWORKS-Input-Auto.py'
     )
     if write_output:
-        with open(input_filename, 'w') as f:
-            f.write('# SPDX-FileCopyrightText: Sefer Bora Lisesivdin and Beyza Lisesivdin\n')
-            f.write('# SPDX-License-Identifier: MIT\n')
-            f.write('# See LICENSE.md in the project root for license terms.\n\n')
-            f.write("from ase.io import read\n")
-            f.write("import numpy as np\n\n")
-            f.write(f"Mode = '{config.Mode}'\n")
-            f.write(f"Ground_calc = {config.Ground_calc}\n")
-            f.write(f"XC_calc = {config.XC_calc!r}\n")
-            f.write(f"XC_exx_fraction = {getattr(config, 'XC_exx_fraction', None)}\n")
-            f.write(f"XC_omega = {getattr(config, 'XC_omega', None)}\n")
-            f.write(f"XC_backend = '{getattr(config, 'XC_backend', 'pw')}'\n")
-            f.write(f"EXX_kpoint_density = {config.EXX_kpoint_density}\n")
-            f.write(f"EXX_cutoff = {config.EXX_cutoff}\n")
-            f.write(f"Wavefunction_cutoff = {config.Wavefunction_cutoff}\n")
-            f.write(f"Density_cutoff_ratio = {config.Density_cutoff_ratio}\n")
-            f.write(f"Gamma = {config.Gamma}\n")
-            f.write(
-                "Geometry_optimizer = "
-                f"'{config.Geometry_optimizer}'\n"
-            )
-            f.write(f"Spin_calc = {config.Spin_calc}\n")
-            if config.Spin_calc:
-                f.write(f"Magmom_per_atom = {config.Magmom_per_atom}\n")
-            f.write(f"Ground_kpts_x = {config.Ground_kpts_x}\n")
-            f.write(f"Ground_kpts_y = {config.Ground_kpts_y}\n")
-            f.write(f"Ground_kpts_z = {config.Ground_kpts_z}\n")
-            f.write(f"DOS_calc = {config.DOS_calc}\n")
-            f.write(f"Band_calc = {config.Band_calc}\n")
-            f.write(f"Engine = {config.Engine!r}\n")
-            if overrides:
-                f.write('\n# Command-line overrides applied to this generated input\n')
-                for name, value in sorted(overrides.items()):
-                    f.write(f'{name} = {value!r}\n')
-            f.write(f"\n# Geometry is handled via command line -g or loaded here if needed\n")
+        Path(input_filename).write_text(
+            '\n'.join(build_auto_input_lines(config, overrides)) + '\n',
+            encoding='utf-8',
+        )
 
     if report_structure:
         parprint(f"Auto-configured for {struct_name}: {config.Engine}, {config.XC_calc}, {config.Wavefunction_cutoff}eV, Spin={config.Spin_calc}")

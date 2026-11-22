@@ -2,6 +2,10 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Reload edited inputs without module-name caching.
+
+- Write compact auto inputs and correct automatic k-point meshes to use reciprocal-cell density.
+
 - Inherit ground occupations for optics; infer omitted QE optical band counts and reject occupied-only bases.
 
 - Select phonon paths from the final cell when omitted; retain explicit paths and report the selection.

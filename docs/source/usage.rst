@@ -288,6 +288,20 @@ or with auto mode:
 
    $ dftsolve -p <cores> -g <geometry.cif> -a
 
+Auto mode writes a compact input containing the selected engine, workflow,
+nondefault settings and explicit command-line overrides. Standard pseudo
+selectors and unused hybrid controls need not be repeated. Reuse the saved
+input with the geometry supplied through ``-g``.
+Input files are read afresh on every load, so edits are applied immediately
+and identically named inputs in different directories remain independent.
+Imports from the input's own directory continue to work.
+
+The initial k-point mesh uses ASE's reciprocal-space density conversion
+(3 points per inverse Angstrom), with one point along directions identified
+as vacuum by auto mode. Enlarging a periodic cell reduces its mesh at fixed
+density. These are starting settings; cutoff and k-point convergence still
+need to be checked for the chosen material.
+
 Command-line keyword overrides
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
