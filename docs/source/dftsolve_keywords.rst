@@ -2,6 +2,9 @@ dftsolve Keyword List
 -------------------------
 .. _dftsolve-keyword-list:
 
+Most calculations need only a small part of this reference. See
+:ref:`dftsolve-short-input` for a short QE input and its inherited settings.
+
 General Keywords
 ^^^^^^^^^^^^^^^^
 

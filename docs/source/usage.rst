@@ -302,6 +302,55 @@ as vacuum by auto mode. Enlarging a periodic cell reduces its mesh at fixed
 density. These are starting settings; cutoff and k-point convergence still
 need to be checked for the chosen material.
 
+.. _dftsolve-short-input:
+
+Short QE inputs
+~~~~~~~~~~~~~~~
+
+An input only needs the requested workflow and the numerical settings that
+should differ from the defaults. For a ground-state, DOS and band workflow:
+
+.. code-block:: python
+
+   Engine = 'QE'
+   Ground_calc = True
+   DOS_calc = True
+   Band_calc = True
+   Wavefunction_cutoff = 600  # eV; illustrative starting value
+   Ground_kpts_density = 3.0
+
+Run it with ``dftsolve -i input.py -g structure.cif``. Choose converged cutoff
+and sampling values for the material, for example with ``dftconverge``.
+The example does not imply convergence at 600 eV or this k-point density.
+
+.. list-table:: Settings that can usually be omitted from a QE input
+   :header-rows: 1
+   :widths: 35 65
+
+   * - Setting
+     - Default or inherited choice
+   * - ``Mode``, ``XC_calc``
+     - PW and PBE.
+   * - ``Pseudo_*``, ``Pseudo_dir``, ``Pseudopotentials``
+     - Installed PseudoDojo files selected from XC and SOC.
+   * - ``Density_cutoff_ratio``
+     - UPF-aware density cutoff with a fourfold baseline.
+   * - ``Band_path``, ``Phonon_path``
+     - ASE symmetry path for the final cell.
+   * - DOS, optical and elastic k-point settings
+     - Ground-state sampling, with independent overrides when needed.
+   * - ``DOS_num_of_bands``, ``Band_num_of_bands``
+     - Planned or saved ground-state allocation.
+   * - ``Opt_num_of_bands``
+     - Starting count from UPF valences, including empty bands.
+   * - ``Opt_FD_smearing``
+     - Ground occupation scheme and width.
+
+Add ``Optical_calc=True``, ``Phonon_calc=True`` or ``Elastic_calc=True`` only
+for stages that are wanted and supported by the chosen method. An omitted
+calculation flag remains false. Stage-specific meshes, counts and other
+explicit choices continue to override inherited values.
+
 Command-line keyword overrides
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -566,6 +615,14 @@ qeconverter
 
 ``qeconverter`` converts a Quantum ESPRESSO ``pw.x`` input into a
 Nanoworks Python input and a CIF geometry file.
+
+The generated input contains enabled workflow flags and converted settings;
+it omits redundant PW/PBE defaults and false stage flags. The normal result
+directory uses the CIF stem. Supply ``--outdirname`` for a different directory
+or ``--xc`` for an explicit functional choice; these overrides are retained.
+Numerical source choices and conversion notices remain in the generated
+input, including the native QE fourfold density-cutoff ratio when
+``ecutrho`` was omitted.
 
 .. code-block:: console
 

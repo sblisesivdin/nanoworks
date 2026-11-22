@@ -4,6 +4,7 @@
 
 import tempfile
 import unittest
+import ast
 from pathlib import Path
 from types import SimpleNamespace
 from ase.units import Bohr
@@ -26,6 +27,63 @@ from nanoworks.qeconverter import (
 
 
 class TestQEConverter(unittest.TestCase):
+    def test_compact_inputs_preserve_converted_settings_when_loaded(self):
+        from ase import Atoms
+        from ase.io import write
+        from nanoworks.dftsolve import struct_from_file
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            geometry = root / 'SiliconQE.cif'
+            write(geometry, Atoms('Si2', cell=[5, 5, 5], pbc=True))
+            for calculation in ('scf', 'nscf', 'bands', 'relax', 'vc-relax'):
+                with self.subTest(calculation=calculation):
+                    settings = QEInputSettings(calculation=calculation, ecutwfc=40.,
+                        ecutrho=320., nbands=24, occupations='smearing', smearing='mv',
+                        degauss=.02, k_mesh=[4, 6, 1], k_shift=[0, 0, 0], total_charge=-1.)
+                    text = '\n'.join(build_config_lines('SiliconQE', geometry.name,
+                        settings, SimpleNamespace(outdirname=None, xc=None)))
+                    ast.parse(text)
+                    for keyword in ('Mode', 'Outdirname', 'XC_calc', 'Elastic_calc',
+                                    'Density_calc', 'Optical_calc'):
+                        self.assertNotIn(keyword + ' =', text)
+                    self.assertNotIn('= False', text)
+                    path = root / 'converted.py'
+                    path.write_text(text, encoding='utf-8')
+                    struct, config = struct_from_file(path, geometry,
+                        create_output=False, report_structure=False)
+                    self.assertEqual(Path(struct).parent, root / 'SiliconQE')
+                    self.assertEqual(config.Engine, 'QE')
+                    self.assertEqual(config.Mode, 'PW')
+                    self.assertEqual(config.XC_calc, 'PBE')
+                    self.assertTrue(config.Ground_calc)
+                    self.assertFalse(config.Spin_calc)
+                    self.assertEqual(config.DOS_calc, calculation == 'nscf')
+                    self.assertEqual(config.Band_calc, calculation == 'bands')
+                    self.assertEqual(config.Geo_optim, calculation in ('relax', 'vc-relax'))
+                    self.assertAlmostEqual(config.Wavefunction_cutoff, 40 * RY_TO_EV, delta=.05)
+                    self.assertEqual(config.Density_cutoff_ratio, 8.)
+                    self.assertEqual(config.Occupation_scheme, 'marzari-vanderbilt')
+                    self.assertAlmostEqual(config.Smearing_width, .02 * RY_TO_EV, places=10)
+                    self.assertEqual(config.Total_charge, -1.)
+                    self.assertEqual((config.Ground_kpts_x, config.Ground_kpts_y,
+                                      config.Ground_kpts_z), (4, 6, 1))
+                    band_field = ('DOS_num_of_bands' if calculation == 'nscf' else
+                                  'Band_num_of_bands' if calculation == 'bands' else
+                                  'Ground_num_of_bands')
+                    self.assertEqual(getattr(config, band_field), 24)
+
+    def test_explicit_default_xc_and_quoted_directory_are_preserved(self):
+        text = '\n'.join(build_config_lines('Si', 'Si.cif', QEInputSettings(),
+            SimpleNamespace(outdirname="my 'results'", xc='PBE')))
+        values = {node.targets[0].id: ast.literal_eval(node.value)
+                  for node in ast.parse(text).body if isinstance(node, ast.Assign)}
+        self.assertEqual(values['Outdirname'], "my 'results'")
+        self.assertEqual(values['XC_calc'], 'PBE')
+        # Source QE's omitted ecutrho means 4*ecutwfc. Preserve this explicit
+        # ratio rather than selecting a new UPF-dependent automatic cutoff.
+        self.assertEqual(values['Density_cutoff_ratio'], 4.)
+
 
     def test_parse_qe_input_reads_basic_scf_settings(self):
         input_text = """
@@ -166,20 +224,20 @@ K_POINTS automatic
             lines
         )
 
-        self.assertIn(
-            "Outdirname = 'Silicon-results'",
+        self.assertNotIn(
+            "Outdirname =",
             text,
         )
-        self.assertIn(
-            "Mode = 'PW'",
+        self.assertNotIn(
+            "Mode =",
             text,
         )
         self.assertIn(
             "Ground_calc = True",
             text,
         )
-        self.assertIn(
-            "Geo_optim = False",
+        self.assertNotIn(
+            "Geo_optim =",
             text,
         )
         self.assertIn(
@@ -206,8 +264,8 @@ K_POINTS automatic
             "Ground_gamma = True",
             text,
         )
-        self.assertIn(
-            "XC_calc = 'PBE'",
+        self.assertNotIn(
+            "XC_calc =",
             text,
         )
         self.assertIn(
@@ -746,8 +804,8 @@ K_POINTS automatic
             "DOS_calc = True",
             text,
         )
-        self.assertIn(
-            "Band_calc = False",
+        self.assertNotIn(
+            "Band_calc =",
             text,
         )
         self.assertIn(
@@ -773,8 +831,8 @@ K_POINTS automatic
             "Ground_calc = True",
             text,
         )
-        self.assertIn(
-            "DOS_calc = False",
+        self.assertNotIn(
+            "DOS_calc =",
             text,
         )
         self.assertIn(
@@ -803,16 +861,16 @@ K_POINTS automatic
             "Ground_calc = True",
             text,
         )
-        self.assertIn(
-            "Geo_optim = False",
+        self.assertNotIn(
+            "Geo_optim =",
             text,
         )
-        self.assertIn(
-            "DOS_calc = False",
+        self.assertNotIn(
+            "DOS_calc =",
             text,
         )
-        self.assertIn(
-            "Band_calc = False",
+        self.assertNotIn(
+            "Band_calc =",
             text,
         )
         self.assertIn(
@@ -1487,8 +1545,8 @@ CELL_PARAMETERS angstrom
             "Engine = 'QE'",
             config_text,
         )
-        self.assertIn(
-            "Mode = 'PW'",
+        self.assertNotIn(
+            "Mode =",
             config_text,
         )
         self.assertIn(

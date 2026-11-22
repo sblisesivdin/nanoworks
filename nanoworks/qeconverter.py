@@ -89,8 +89,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--input", type=Path, help="Path to pw.x input file")
     parser.add_argument("--output-dir", type=Path, default=Path.cwd(), help="Directory for generated files")
-    parser.add_argument("--system-name", help="System name used for file stems and Outdirname")
-    parser.add_argument("--outdirname", help="Override Outdirname value inside the generated input")
+    parser.add_argument("--system-name", help="System name used for file stems and the default result directory")
+    parser.add_argument("--outdirname", help="Override the result directory (default: CIF stem)")
     parser.add_argument("--input-filename", help="Override dftsolve.py input filename")
     parser.add_argument("--xc", help="Optional XC functional override (default PBE)")
     parser.add_argument("-v", "--version", action='store_true', help="Show version information")
@@ -533,9 +533,7 @@ def _build_magnetic_lines(
 ) -> List[str]:
     """Convert QE starting magnetizations to Nanoworks moments."""
     if settings.nspin != 2:
-        return [
-            'Spin_calc = False',
-        ]
+        return []
 
     lines = [
         'Spin_calc = True',
@@ -1040,15 +1038,11 @@ def _build_workflow_lines(
             "is enabled as the fallback."
         )
 
-    lines = [
-        f"Ground_calc = {ground_calc}",
-        f"Geo_optim = {geo_optim}",
-        "Elastic_calc = False",
-        f"DOS_calc = {dos_calc}",
-        f"Band_calc = {band_calc}",
-        "Density_calc = False",
-        "Optical_calc = False",
-    ]
+    # Omitted workflow flags already default to False in DFTConfig.
+    lines = [f'{name} = True' for name, enabled in (
+        ('Ground_calc', ground_calc), ('Geo_optim', geo_optim),
+        ('DOS_calc', dos_calc), ('Band_calc', band_calc),
+    ) if enabled]
 
     lines.extend(
         "# NOTICE: "
@@ -1998,8 +1992,6 @@ def build_config_lines(
     args: argparse.Namespace,
 ) -> List[str]:
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    outdirname = args.outdirname or f"{name}-results"
-    xc = args.xc or "PBE"
 
     workflow_lines = (
         _build_workflow_lines(
@@ -2009,13 +2001,10 @@ def build_config_lines(
 
     lines: List[str] = [
         f"# Auto-generated on {timestamp} by qeconverter.py",
-        f"Outdirname = '{outdirname}'",
-        "",
-        "Engine = 'QE'",
-        "Mode = 'PW'",
-        *workflow_lines,
-        "",
     ]
+    if args.outdirname is not None:
+        lines.append(f'Outdirname = {args.outdirname!r}')
+    lines.extend(['', "Engine = 'QE'", *workflow_lines, ''])
 
     relaxation_lines = (
         _build_relaxation_lines(
@@ -2061,7 +2050,8 @@ def build_config_lines(
         )
     )
 
-    lines.append(f"XC_calc = '{xc}'")
+    if args.xc is not None:
+        lines.append(f'XC_calc = {args.xc!r}')
 
     lines.extend(
         _build_occupation_lines(
