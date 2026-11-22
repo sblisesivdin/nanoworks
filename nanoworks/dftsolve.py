@@ -254,7 +254,8 @@ from nanoworks.band_results import write_band_path_table, write_band_energy_tabl
 from nanoworks.optical import (
     validate_optical_settings, validate_optical_table, run_optical_exports,
     derive_optical_table, write_optical_table, write_optical_summary,
-    generate_optical_figures,
+    generate_optical_figures, resolve_optical_occupation,
+    optical_engine_occupation, resolve_qe_optical_bands,
 )
 from nanoworks.dos import (
     ensure_gpaw_soc_dos_weights,
@@ -323,6 +324,7 @@ import numpy as np
 
 DFT_ENGINE_DEFAULTS = {
     'GPAW': {
+        'Opt_num_of_bands': 8,
         'XC_calc': 'LDA',
         'Opt_calc_type': 'BSE',
         'Fix_symmetry': False,
@@ -480,13 +482,13 @@ class DFTConfig:
     Opt_min_en: Optional[float] = None
     Opt_max_en: Optional[float] = None
     Opt_num_of_data: Optional[int] = None
-    Opt_num_of_bands: int = 8
+    Opt_num_of_bands: Optional[int] = None
     Opt_kpts_density: Optional[float] = None
     Opt_kpts_x: Optional[int] = None
     Opt_kpts_y: Optional[int] = None
     Opt_kpts_z: Optional[int] = None
     Opt_gamma: Optional[bool] = None
-    Opt_FD_smearing: float = 0.05
+    Opt_FD_smearing: Optional[float] = None
     Opt_eta: float = 0.05
     Opt_domega0: float = 0.05
     Opt_omega2: float = 5.0
@@ -6360,6 +6362,17 @@ class dftsolve:
 
         pseudo_dir, pseudopotentials = self._qe_pseudo_configuration(
         )
+        optical_bands = resolve_qe_optical_bands(
+            self.bulk_configuration, pseudopotentials, pseudo_dir,
+            nbands=self.Opt_num_of_bands, total_charge=self.Total_charge,
+            spinpol=self.Spin_calc,
+        )
+        self._resolved_optical_bands = optical_bands
+        occupation = resolve_optical_occupation(self)
+        parprint(f'Optical bands: {optical_bands["nbands"]} '
+                 f'({optical_bands["source"]}; check optical convergence)')
+        parprint(f'Optical occupation: {occupation["scheme"]}, '
+                 f'width={occupation["width"]} eV ({occupation["source"]})')
         ground_gamma = (
             self.Gamma
             if self.Ground_gamma is None
@@ -6415,17 +6428,14 @@ class dftsolve:
             kpoint_size=optical_kpoint_size,
             gamma=optical_gamma,
             total_charge=self.Total_charge,
-            nbands=self.Opt_num_of_bands,
+            nbands=optical_bands['nbands'],
             spinpol=self.Spin_calc,
             magnetic_moments=magnetic_moments,
             hubbard_u=self.Hubbard_U,
             xc_calc=self.XC_calc,
             exx_fraction=self.XC_exx_fraction,
             omega=self.XC_omega,
-            occupation={
-                'name': 'fermi-dirac',
-                'width': self.Opt_FD_smearing,
-            },
+            occupation=optical_engine_occupation(self),
             **self._qe_scf_settings(),
             **self._qe_electrostatic_settings(),
             **self._qe_dispersion_settings(),
@@ -6600,6 +6610,7 @@ class dftsolve:
                     txt=self.struct+'-OPTICAL-GPAW-Log-Calculation.txt',
                     nbands=self.Opt_num_of_bands,
                     smearing=self.Opt_FD_smearing,
+                    occupation=optical_engine_occupation(self),
                     spinpol=self.Spin_calc,
                     kpoint_density=opt_kpoint_density,
                     kpoint_size=opt_kpoint_size,
@@ -7282,8 +7293,12 @@ def check_dft_configuration(
     if config.Optical_calc:
         try:
             validate_optical_settings(config)
+            occupation = resolve_optical_occupation(config)
         except (TypeError, ValueError) as exc:
             add('error', 'optical-settings', str(exc))
+        else:
+            add('ok', 'optical-occupation', f'{occupation["scheme"]}, '
+                f'width={occupation["width"]} eV ({occupation["source"]})')
 
     phonon_details = None
     if config.Phonon_calc:
@@ -7500,6 +7515,19 @@ def check_dft_configuration(
                         f'{cutoffs["density_ratio"]:g} ({cutoffs["source"]})')
                     for notice in cutoffs['notices']:
                         add('warning', 'cutoff-recommendation', notice)
+                if config.Optical_calc:
+                    try:
+                        optical_bands = resolve_qe_optical_bands(
+                            config.bulk_configuration, pseudopotentials, pseudo_dir,
+                            nbands=config.Opt_num_of_bands, total_charge=config.Total_charge,
+                            spinpol=config.Spin_calc,
+                        )
+                    except (KeyError, OSError, TypeError, ValueError) as exc:
+                        add('error', 'optical-bands', str(exc))
+                    else:
+                        add('ok', 'optical-bands', f'{optical_bands["nbands"]} bands, '
+                            f'{optical_bands["electrons"]:g} electrons '
+                            f'({optical_bands["source"]}; check optical convergence)')
 
         if (
             check_saved_state
@@ -8611,10 +8639,11 @@ def prepare_qe_dry_run(
             density=optical_density,
             size=optical_size,
         )
-        optical_occupation = engine.resolve_qe_occupation({
-            'name': 'fermi-dirac',
-            'width': config.Opt_FD_smearing,
-        })
+        optical_occupation = engine.resolve_qe_occupation(optical_engine_occupation(config))
+        optical_bands = resolve_qe_optical_bands(
+            atoms, pseudopotentials, pseudo_dir, nbands=config.Opt_num_of_bands,
+            total_charge=config.Total_charge, spinpol=config.Spin_calc,
+        )
         add_job(
             'optical-nscf',
             'optical',
@@ -8625,7 +8654,7 @@ def prepare_qe_dry_run(
                 **common_pw,
                 kpoint_size=optical_mesh,
                 gamma=optical_gamma,
-                nbands=config.Opt_num_of_bands,
+                nbands=optical_bands['nbands'],
                 occupations=optical_occupation['occupations'],
                 smearing=optical_occupation['smearing'],
                 width_ev=optical_occupation['width_ev'],
@@ -8633,6 +8662,7 @@ def prepare_qe_dry_run(
                 noinv=True,
             ),
             depends_on=ground_dependency,
+            metadata={'bands': optical_bands, 'occupation': resolve_optical_occupation(config)},
         )
         optical_result_dir = Path(
             str(struct) + '-OPTICAL-QE-Result-Raw'

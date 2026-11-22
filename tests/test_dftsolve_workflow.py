@@ -1330,6 +1330,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         )
 
         with (
+            patch('nanoworks.pseudos.read_upf_z_valence', return_value=4.),
             patch(
                 'nanoworks.dftsolve.shutil.which',
                 side_effect=lambda name: f'/usr/bin/{name}',
@@ -1773,6 +1774,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             )
 
             with (
+                patch('nanoworks.pseudos.read_upf_z_valence', return_value=4.),
                 patch(
                     'nanoworks.dftsolve.get_qe_pseudo_dir',
                     return_value=Path('/pseudos'),
@@ -2916,6 +2918,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             )
 
             with (
+                patch('nanoworks.pseudos.read_upf_z_valence', return_value=4.),
                 patch(
                     'nanoworks.dftsolve.get_qe_pseudo_dir',
                     return_value=Path('pseudos'),

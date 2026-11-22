@@ -1987,10 +1987,25 @@ Optical Calculations Keywords
 
 .. describe:: Opt_num_of_bands
 
-    :Type: ``int``
-    :Default: ``8``
+    :Type: ``int`` or ``None``
+    :Default: ``None`` (QE automatic), ``8`` (GPAW)
 
-    Number of bands used in optical calculations; must be a positive integer.
+    Number of bands used in optical calculations. Explicit counts must be
+    positive integers and are preserved. QE also checks the electron count
+    from the selected UPF valences and ``Total_charge``: the count must
+    exceed ``ceil(electrons / 2)`` to leave room for empty optical bands.
+    For collinear spin calculations this is a necessary lower bound; the
+    occupied bands in each channel depend on the converged magnetization.
+
+    With ``None`` or an omitted count, QE uses the larger of 8 bands,
+    occupied bands plus 4, or 120% of the occupied bands (rounded up).
+    The automatic occupied-band bound is ``ceil(electrons / 2)`` without
+    spin polarization, or ``ceil(electrons)`` when the final spin populations
+    are unknown. This is a starting size: optical spectra still require
+    convergence with empty-band count, k-point mesh and spectral window.
+    Missing UPF valence data produce an error rather than a guessed count.
+    ``--check``, ``--dry-run`` and normal QE execution use the same policy.
+
     GPAW RPA/BSE and QE use the same dielectric-to-optical conversion and
     physical constants for refractive index, extinction, absorption (1/cm)
     and reflectivity. The existing nonnegative extinction convention is
@@ -2075,11 +2090,21 @@ Optical Calculations Keywords
 
 .. describe:: Opt_FD_smearing
 
-    :Type: ``float``
-    :Default: ``0.05``
+    :Type: ``float`` or ``None``
+    :Default: ``None``
 
-    Fermi-Dirac smearing for optical calculations. Native QE uses this width
-    for the optical NSCF calculation.
+    When omitted or ``None``, the optical electronic stage inherits
+    ``Occupation_scheme`` and ``Smearing_width`` from the ground-state
+    settings, including fixed occupations. DOS tetrahedron integration is
+    independent of this choice.
+
+    An explicit width selects Fermi-Dirac occupations for the optical stage,
+    preserving existing inputs. QE requires a positive width in eV; GPAW
+    also accepts an explicit zero width. Native QE applies this choice to
+    the optical NSCF input. Non-hybrid GPAW applies it in ``fixed_density``;
+    the existing GPAW hybrid optical path reads the saved ground state.
+    ``Opt_eta`` continues to control spectral broadening independently.
+    Preflight and optical summaries record the resolved occupation intent.
 
 .. code-block:: python
 

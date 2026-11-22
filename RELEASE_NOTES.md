@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Inherit ground occupations for optics; infer omitted QE optical band counts and reject occupied-only bases.
+
 - Select phonon paths from the final cell when omitted; retain explicit paths and report the selection.
 
 - Infer omitted QE density cutoffs from UPF hints; report actual cutoffs and retain explicit ratios.

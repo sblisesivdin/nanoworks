@@ -17,6 +17,70 @@ from numbers import Integral, Real
 import numpy as np
 
 
+def resolve_optical_occupation(config):
+    """Inherit the ground occupation unless an optical FD width is supplied."""
+    from nanoworks.occupations import validate_occupation_settings
+
+    width = getattr(config, 'Opt_FD_smearing', None)
+    if width is None:
+        settings = validate_occupation_settings(
+            scheme=getattr(config, 'Occupation_scheme', 'fermi-dirac'),
+            width=getattr(config, 'Smearing_width', 0.05),
+        )
+        return dict(settings, source='ground occupation')
+    if (isinstance(width, (bool, np.bool_)) or not isinstance(width, Real)
+            or not math.isfinite(width) or width < 0
+            or (config.Engine == 'QE' and width == 0)):
+        raise ValueError('Opt_FD_smearing is outside its finite supported range.')
+    return {'scheme': 'fermi-dirac', 'width': float(width), 'source': 'Opt_FD_smearing'}
+
+
+def optical_engine_occupation(config):
+    """Translate the resolved optical occupation to the existing engine API."""
+    settings = resolve_optical_occupation(config)
+    if settings['scheme'] == 'fixed':
+        return 'fixed' if config.Engine == 'QE' else {'name': 'fixed-uniform'}
+    return {'name': settings['scheme'], 'width': settings['width']}
+
+
+def resolve_qe_optical_bands(atoms, pseudopotentials, pseudo_dir, nbands=None,
+                             total_charge=0., spinpol=False):
+    """Ensure empty optical bands using UPF valence counts, without running QE.
+
+    The automatic count is a starting size, not a converged optical basis.
+    For unknown collinear spin populations the automatic count accommodates
+    full polarization; explicit counts are checked against the necessary
+    electron-capacity lower bound, without guessing the final magnetization.
+    """
+    from nanoworks.pseudos import read_upf_z_valence
+
+    valences = {}
+    for symbol in set(atoms.get_chemical_symbols()):
+        path = Path(pseudopotentials[symbol]).expanduser()
+        if not path.is_absolute():
+            path = Path(pseudo_dir or '.').expanduser() / path
+        valences[symbol] = read_upf_z_valence(path)
+    electrons = sum(valences[symbol] for symbol in atoms.get_chemical_symbols()) - total_charge
+    if not math.isfinite(electrons) or electrons <= 0:
+        raise ValueError('QE optical calculations require a finite positive electron count.')
+    occupied_minimum = math.ceil(electrons / 2.)
+    if nbands is None:
+        occupied_bound = math.ceil(electrons if spinpol else electrons / 2.)
+        nbands = max(8, occupied_bound + 4, math.ceil(1.2 * occupied_bound))
+        source = 'automatic UPF valence count'
+    else:
+        if (isinstance(nbands, (bool, np.bool_)) or not isinstance(nbands, Integral)
+                or nbands <= occupied_minimum):
+            raise ValueError(
+                f'Opt_num_of_bands must exceed {occupied_minimum} for {electrons:g} '
+                'electrons to include empty optical bands. Use None for an '
+                'automatic starting count, then check optical convergence.'
+            )
+        source = 'explicit Opt_num_of_bands'
+    return {'nbands': int(nbands), 'electrons': electrons,
+            'occupied_minimum': occupied_minimum, 'source': source}
+
+
 def validate_gpaw_optical_workflow(config):
     """Reject unsupported GPAW response workflows before preparing wavefunctions."""
     method = str(config.Opt_calc_type).strip().upper()
@@ -54,7 +118,10 @@ def validate_optical_settings(config):
             raise ValueError(f'{name} must be an integer >= {minimum}.')
         result[name] = int(value)
 
-    count('Opt_num_of_bands', 1)
+    if config.Engine == 'QE' and config.Opt_num_of_bands is None:
+        result['Opt_num_of_bands'] = None  # Resolved when the UPFs are available.
+    else:
+        count('Opt_num_of_bands', 1)
     if config.Engine == 'GPAW' and method == 'BSE':
         for name in ('Opt_BSE_valence', 'Opt_BSE_conduction'):
             bands = getattr(config, name)
@@ -76,7 +143,11 @@ def validate_optical_settings(config):
                 raise ValueError(f'{name} must not contain duplicate band indices.')
             result[name] = indices
     number('Opt_eta', 0., strict=config.Engine == 'QE')
-    number('Opt_FD_smearing', 0., strict=config.Engine == 'QE')
+    if config.Opt_FD_smearing is None:
+        resolve_optical_occupation(config)
+        result['Opt_FD_smearing'] = None
+    else:
+        number('Opt_FD_smearing', 0., strict=config.Engine == 'QE')
     if config.Engine == 'QE' or method == 'BSE':
         number('Opt_min_en', 0.)
         number('Opt_max_en', 0., strict=True)
@@ -184,6 +255,9 @@ def write_optical_summary(path, config, table_files):
     """Archive active settings and validated table identities after optical exports."""
     from nanoworks.phonon_cache import write_json_atomic
     settings = validate_optical_settings(config)
+    settings['occupation'] = resolve_optical_occupation(config)
+    if hasattr(config, '_resolved_optical_bands'):
+        settings['resolved_bands'] = dict(config._resolved_optical_bands)
     path = Path(path).resolve()
     tables = {}
     if not table_files:
