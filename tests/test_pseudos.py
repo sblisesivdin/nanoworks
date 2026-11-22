@@ -24,6 +24,7 @@ from nanoworks.pseudos import (
     load_qe_pseudo_manifest,
     install_qe_pseudopotentials,
     resolve_qe_pseudopotentials,
+    resolve_qe_pseudo_options,
     read_upf_has_spin_orbit,
     read_upf_z_valence,
     read_upf_atomic_manifolds,
@@ -31,6 +32,46 @@ from nanoworks.pseudos import (
 
 
 class TestPseudopotentials(unittest.TestCase):
+
+    def test_xc_and_soc_select_managed_pseudodojo_without_user_keywords(self):
+        for xc_calc in ('PBE', 'HSE03', 'HSE06', 'PBE0'):
+            for soc in (False, True):
+                with self.subTest(xc_calc=xc_calc, soc=soc):
+                    settings = resolve_qe_pseudo_options(
+                        xc_calc=xc_calc, spin_orbit=soc)
+                    self.assertEqual(settings, {
+                        'family': 'pseudodojo',
+                        'xc': 'pbe',
+                        'relativistic': 'full' if soc else 'scalar',
+                        'accuracy': 'standard',
+                    })
+
+    def test_explicit_advanced_pseudo_settings_are_not_removed(self):
+        settings = resolve_qe_pseudo_options(
+            xc_calc='PBE', family=' Custom ', xc=' PBE ',
+            relativistic='FULL', accuracy=' Precise ',
+        )
+        self.assertEqual(settings, {
+            'family': 'custom',
+            'xc': 'pbe',
+            'relativistic': 'full',
+            'accuracy': 'precise',
+        })
+        self.assertEqual(
+            resolve_qe_pseudo_options(
+                xc_calc='PBE', spin_orbit=True,
+                relativistic='scalar',
+            )['relativistic'],
+            'full',
+        )
+
+    def test_pseudopotential_xc_conflicts_fail_instead_of_silently_mixing(self):
+        with self.assertRaisesRegex(ValueError, 'PBE pseudopotentials'):
+            resolve_qe_pseudo_options(xc_calc='HSE06', xc='lda')
+        with self.assertRaisesRegex(ValueError, 'current Nanoworks QE backend'):
+            resolve_qe_pseudo_options(xc_calc='LDA')
+        with self.assertRaisesRegex(ValueError, 'Pseudo_relativistic'):
+            resolve_qe_pseudo_options(xc_calc='PBE', relativistic='wrong')
 
     @patch('nanoworks.pseudos.Path.home')
     def test_invalid_manifests_report_the_repair_command(self, home):
