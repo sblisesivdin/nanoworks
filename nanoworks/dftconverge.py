@@ -35,6 +35,7 @@ from nanoworks.convergence_backends import load_convergence_backend
 from nanoworks.engine import resolve_initial_magnetic_moments
 from nanoworks.occupations import resolve_engine_occupation
 from nanoworks.cutoffs import validate_cutoff_settings
+from nanoworks.pseudos import resolve_qe_pseudo_options
 from nanoworks.hybrids import (
     resolve_hybrid_settings,
     validate_exx_cutoff,
@@ -540,13 +541,13 @@ def validate_convergence_config(config, plan):
         )
 
     if plan.engine == 'QE':
-        relativistic = str(
-            config.get('Pseudo_relativistic', 'scalar')
-        ).strip().lower()
-        if relativistic not in ('scalar', 'full'):
-            raise ValueError(
-                "Pseudo_relativistic must be 'scalar' or 'full'."
-            )
+        resolve_qe_pseudo_options(
+            xc_calc=config.get('XC_calc', 'PBE'),
+            family=config.get('Pseudo_family'),
+            xc=config.get('Pseudo_xc'),
+            relativistic=config.get('Pseudo_relativistic'),
+            accuracy=config.get('Pseudo_accuracy'),
+        )
 
     if not isinstance(config.get('Convergence_plot', True), bool):
         raise TypeError('Convergence_plot must be a boolean.')
@@ -615,7 +616,13 @@ def _build_static_energy_settings(config, atoms, engine):
             4.0,
         ),
         'xc_calc': xc_calc,
-        'pseudo_xc': config.get('Pseudo_xc', 'pbe'),
+        'pseudo_xc': (
+            resolve_qe_pseudo_options(
+                xc_calc=xc_calc,
+                xc=config.get('Pseudo_xc'),
+            )['xc'] if engine == 'QE'
+            else config.get('Pseudo_xc', 'pbe')
+        ),
         'exx_fraction': (
             None if hybrid_settings is None
             else hybrid_settings['exx_fraction']
@@ -666,18 +673,13 @@ def _build_backend(
         pseudo_dir_getter = get_qe_pseudo_dir
         pseudo_resolver = resolve_qe_pseudopotentials
 
-    pseudo_options = {
-        'family': str(
-            config.get('Pseudo_family', 'pseudodojo')
-        ).strip().lower(),
-        'xc': str(config.get('Pseudo_xc', 'pbe')).strip().lower(),
-        'relativistic': str(
-            config.get('Pseudo_relativistic', 'scalar')
-        ).strip().lower(),
-        'accuracy': str(
-            config.get('Pseudo_accuracy', 'standard')
-        ).strip().lower(),
-    }
+    pseudo_options = resolve_qe_pseudo_options(
+        xc_calc=config.get('XC_calc', 'PBE'),
+        family=config.get('Pseudo_family'),
+        xc=config.get('Pseudo_xc'),
+        relativistic=config.get('Pseudo_relativistic'),
+        accuracy=config.get('Pseudo_accuracy'),
+    )
     pseudo_dir = config.get('Pseudo_dir')
     if pseudo_dir is None:
         pseudo_dir = pseudo_dir_getter(**pseudo_options)
