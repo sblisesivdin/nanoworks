@@ -7302,10 +7302,6 @@ def check_dft_configuration(
             'Energy_max must be greater than Energy_min.',
         )
 
-    engine = load_engine_module(
-        config.Engine
-    )
-
     if config.Optical_calc:
         try:
             validate_optical_settings(config)
@@ -7378,6 +7374,7 @@ def check_dft_configuration(
         )
 
     if config.Engine == 'QE':
+        engine = load_engine_module('QE')
         if config.Phonon_calc and config.Hubbard_U:
             if importlib.util.find_spec('phonopy') is None:
                 add('error', 'python:phonopy', 'phonopy is required for QE Hubbard-U phonons.')

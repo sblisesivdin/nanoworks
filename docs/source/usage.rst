@@ -353,6 +353,10 @@ dependencies. It also rejects unsupported engine/stage combinations before a
 job is submitted. A ready workflow exits with status ``0``; a blocked workflow
 exits with status ``2``.
 
+GPAW dependency checks do not import the numerical GPAW engine. If the
+package is missing, ``--check`` reports it as a blocked dependency in the
+same text or JSON report instead of stopping with an import traceback.
+
 Use ``--json`` with ``--check`` for a versioned machine-readable report suitable
 for CI and job-submission scripts:
 

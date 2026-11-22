@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Report missing GPAW dependencies in preflight without importing the numerical engine.
+
 - Resolve partial stage k-meshes from ground density and the final cell.
 
 - Inherit omitted QE DOS/Band counts from saved states or the planned ground calculation.

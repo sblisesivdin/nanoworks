@@ -63,6 +63,20 @@ with patch.object(
 
 
 class TestDFTSolveWorkflow(unittest.TestCase):
+    def test_gpaw_preflight_reports_missing_package_without_importing_engine(self):
+        config = DFTConfig(Engine='GPAW', Ground_calc=True,
+            bulk_configuration=Atoms('Si', cell=[5, 5, 5], pbc=True))
+        with patch('nanoworks.dftsolve.load_engine_module',
+                   side_effect=AssertionError('Preflight must not import GPAW')) as load, patch(
+                   'nanoworks.dftsolve.importlib.util.find_spec', return_value=None):
+            report = check_dft_configuration(config, 'unused', check_saved_state=False)
+            self.assertFalse(report['ok'])
+            self.assertTrue(any(error['name'] == 'python:gpaw' for error in report['errors']))
+            unchecked = check_dft_configuration(config, 'unused',
+                check_executables=False, check_saved_state=False)
+            self.assertTrue(unchecked['ok'])
+        load.assert_not_called()
+
     def test_phonon_paths_default_to_automatic_for_both_engines(self):
         for engine in ('QE', 'GPAW'):
             with self.subTest(engine=engine):
@@ -3131,6 +3145,10 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 solver.struct = str(Path(tmpdir) / 'sample')
                 solver.engine = SimpleNamespace(is_hybrid=Mock(return_value=False),
                                                  prepare_optical_calc=Mock(return_value=Mock()))
+                solver.config = config
+                prepared = solver.engine.prepare_optical_calc.return_value
+                prepared.get_atoms.return_value = Atoms('Si2', cell=[5, 5, 5], pbc=True)
+                prepared.get_number_of_spins.return_value = 1
                 solver._export_gpaw_optical_tables = Mock()
                 solver._plot_optical_results = Mock()
                 solver._write_optical_summary = Mock()
@@ -3235,6 +3253,10 @@ class TestDFTSolveWorkflow(unittest.TestCase):
         solver.struct = 'sample'
         solver.engine = Mock()
         solver.engine.is_hybrid.return_value = False
+        solver.config = config
+        prepared = solver.engine.prepare_optical_calc.return_value
+        prepared.get_atoms.return_value = Atoms('Si2', cell=[5, 5, 5], pbc=True)
+        prepared.get_number_of_spins.return_value = 1
         response = Mock(side_effect=RuntimeError('response constructor reached'))
         with patch.dict(sys.modules, {'gpaw.response.df': SimpleNamespace(DielectricFunction=response)}):
             with patch('nanoworks.dftsolve.world', SimpleNamespace(size=4)):
