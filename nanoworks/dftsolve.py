@@ -765,8 +765,7 @@ class DFTConfig:
             self.Pseudo_accuracy = pseudo_options['accuracy']
 
         if self.Engine == 'QE' and self.SOC_calc:
-            self.Pseudo_relativistic = 'full'
-
+            # The shared QE pseudo resolver already selected 'full'.
             if self.Spin_calc:
                 raise NotImplementedError(
                     'QE magnetic spin-orbit workflows are not supported '
