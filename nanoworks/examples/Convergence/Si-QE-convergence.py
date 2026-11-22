@@ -27,7 +27,6 @@ Convergence_plot = True
 Ground_kpts_density = 3.0
 Ground_gamma = True
 
-# 'scalar' is the default. Use 'full' to select the installed fully
-# relativistic PseudoDojo set. This selects pseudopotentials; it does not
-# enable an SOC calculation.
-Pseudo_relativistic = 'scalar'
+# QE automatically uses the installed PBE PseudoDojo set.
+# No Pseudo_* keywords or UPF filenames are required.
+# This convergence workflow does not currently support SOC.
