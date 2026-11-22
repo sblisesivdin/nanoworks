@@ -21,6 +21,12 @@ Requires QE, thermo_pw and the managed pseudopotentials.
 Results
 -------
 
+.. note::
+
+   This example is a qualitative demonstration. For reliable quantitative
+   results, optimize the structure where appropriate and converge the
+   numerical settings.
+
 Results are in ``Si-QE-elastic-smoke-results/``. Read the 6 x 6 tensor in
 GPa and its bulk and shear moduli. Compare Cij and Cji: the archived coarse
 calculation has a maximum 1.462 GPa mismatch, so it is not a converged tensor.
@@ -33,7 +39,5 @@ Increase the elastic mesh independently with ``Elastic_kpts_x/y/z`` or
    :width: 100%
 
    Recorded example output.
-
-These example settings need convergence tests before quantitative use.
 
 :doc:`Detailed recorded results <../validation/si-qe-elastic-smoke>`.

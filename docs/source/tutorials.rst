@@ -19,38 +19,38 @@ installed version; keep the selected engine and potentials installed.
 .. toctree::
    :maxdepth: 1
 
-   tutorials/silicon-gpaw
+   examples/wse2-qe-soc
+   examples/wse2-gpaw-soc
    tutorials/fe-qe-spin
-   examples/gaas-gpaw
-   examples/cr2o-gpaw-spin
    examples/graphene-gpaw-vacancy
    examples/graphene-gpaw-charge
-   examples/mos2-gpaw-reference
-   tutorials/mos2-qe-d3
-   examples/zno-gpaw-hubbard
-   examples/zno-qe-hubbard
-   examples/wse2-gpaw-soc
-   examples/wse2-qe-soc
-   examples/si-hse-gpaw-dos
-   tutorials/si-hse-qe
+   examples/silicon-qe-optics
    examples/silicon-gpaw-rpa
    examples/silicon-gpaw-bse
-   examples/silicon-qe-optics
-   tutorials/silicon-rpa-matched-width
-   examples/al-gpaw-phonons
+   examples/gaas-gpaw
+   tutorials/silicon-gpaw
+   examples/mos2-gpaw-reference
+   examples/si-qe-dfpt-phonons
    examples/al-qe-dfpt-phonons
    examples/si-gpaw-phonons
-   examples/si-qe-dfpt-phonons
+   examples/al-gpaw-phonons
+   examples/si-hse-gpaw-dos
+   examples/cr2o-gpaw-spin
+   examples/zno-qe-hubbard
+   examples/zno-gpaw-hubbard
    examples/nio-qe-hubbard-phonons
-   examples/si-qe-elastic-smoke
-   examples/tic-gpaw
    tutorials/silicon-convergence
    tutorials/silicon-convergence-gpaw
-   tutorials/argon-md
-   tutorials/graphene-ml
    tutorials/cu-ml-eos
-   tutorials/cu-ml-elastic
    tutorials/cu-ml-phonon
+   tutorials/cu-ml-elastic
+   tutorials/graphene-ml
+   tutorials/si-hse-qe
+   tutorials/silicon-rpa-matched-width
+   tutorials/argon-md
+   examples/tic-gpaw
+   examples/si-qe-elastic-smoke
+   tutorials/mos2-qe-d3
    tutorials/qe-conversion
    tutorials/vasp-conversion
    tutorials/slurm

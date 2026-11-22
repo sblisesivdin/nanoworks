@@ -21,6 +21,12 @@ Requires GPAW and its PAW datasets.
 Results
 -------
 
+.. note::
+
+   This example is a qualitative demonstration. For reliable quantitative
+   results, optimize the structure where appropriate and converge the
+   numerical settings.
+
 The result directory has the CIF stem ``Cr2O_mp-1206821_primitive``.
 Up and Down bands differ because the solution is spin polarized. Compare
 Cr-d and O-p projections to identify orbital contributions near Ef.
@@ -32,7 +38,5 @@ metallic behavior and do not establish a half-metal.
    :width: 100%
 
    Recorded example output.
-
-These example settings need convergence tests before quantitative use.
 
 :doc:`Detailed recorded results <../validation/cr2o-gpaw-spin>`.

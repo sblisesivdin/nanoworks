@@ -23,6 +23,12 @@ GPAW uses Phonopy displacements; QE uses native DFPT for this shared input.
 Results
 -------
 
+.. note::
+
+   This example is a qualitative demonstration. For reliable quantitative
+   results, optimize the structure where appropriate and converge the
+   numerical settings.
+
 The result directory uses the CIF stem. Read frequency against path
 distance in the band table and frequency against mode count in the phonon DOS.
 A two-atom primitive cell has three acoustic and three optical branches. Negative
@@ -35,7 +41,5 @@ The recorded highest Gamma optical mode is about 15.09 THz after ASR.
    :width: 100%
 
    Recorded example output.
-
-These example settings need convergence tests before quantitative use.
 
 :doc:`Detailed recorded results <../validation/si-qe-dfpt-phonons>`.

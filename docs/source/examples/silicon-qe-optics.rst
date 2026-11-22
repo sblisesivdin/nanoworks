@@ -33,6 +33,12 @@ Run the ground input first, then reuse its saved state for optics. ``-E QE`` sel
 Results
 -------
 
+.. note::
+
+   This example is a qualitative demonstration. For reliable quantitative
+   results, optimize the structure where appropriate and converge the
+   numerical settings.
+
 Results are in ``Si-results/``. Read the real and imaginary dielectric
 functions against photon energy. The imaginary part marks optical absorption;
 its peaks correspond to transitions, not the DOS itself. The seven-column
@@ -45,7 +51,5 @@ k mesh, empty bands and frequency grid before comparing peak positions.
    :width: 100%
 
    Recorded example output.
-
-These example settings need convergence tests before quantitative use.
 
 :doc:`Detailed recorded results <../validation/silicon-qe-optics>`.

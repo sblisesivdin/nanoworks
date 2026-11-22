@@ -21,6 +21,12 @@ Requires GPAW and its PAW datasets.
 Results
 -------
 
+.. note::
+
+   This example is a qualitative demonstration. For reliable quantitative
+   results, optimize the structure where appropriate and converge the
+   numerical settings.
+
 Results are in ``MoS2-wo-vdW/``. The recorded calculation gives a 1.239335 eV
 indirect gap along the sampled Gamma-M-K-Gamma path. The relaxed c parameter
 increases from 12.29 to 13.329097 angstrom. This input has no dispersion
@@ -32,7 +38,5 @@ properties as a model of bulk MoS2.
    :width: 100%
 
    Recorded example output.
-
-These example settings need convergence tests before quantitative use.
 
 :doc:`Detailed recorded results <../validation/mos2-gpaw-reference>`.

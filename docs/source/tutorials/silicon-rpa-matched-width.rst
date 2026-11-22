@@ -31,11 +31,15 @@ Requires QE, GPAW and their potentials.
 Results
 -------
 
+.. note::
+
+   This example is a qualitative demonstration. For reliable quantitative
+   results, optimize the structure where appropriate and converge the
+   numerical settings.
+
 Compare the two result directories given by ``Outdirname``. Both inputs
 match physical sampling and a 0.10 eV full linewidth. QE and GPAW use
 different ``Opt_eta`` conventions, so their numbers differ intentionally.
 Compare converged peak shapes and spectral weight using the DAT tables.
 No newly calculated matched-width spectra are bundled.
 See :doc:`../examples/silicon-rpa-cross-engine-audit` for the earlier diagnostic.
-
-These example settings need convergence tests before quantitative use.

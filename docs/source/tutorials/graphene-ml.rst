@@ -31,10 +31,14 @@ Requires the SevenNet model.
 Results
 -------
 
+.. note::
+
+   This example is a qualitative demonstration. For reliable quantitative
+   results, optimize the structure where appropriate and converge the
+   numerical settings.
+
 Inspect each optimization log and ``optimized.cif``. Forces should reach
 the requested threshold before comparing structures. The pristine input
 allows cell relaxation; the vacancy input keeps the cell fixed. Their raw
 energy difference alone is not a vacancy formation energy.
 No validated numerical result or plot is bundled here.
-
-These example settings need convergence tests before quantitative use.

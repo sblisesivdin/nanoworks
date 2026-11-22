@@ -22,10 +22,14 @@ Requires the MACE model.
 Results
 -------
 
+.. note::
+
+   This example is a qualitative demonstration. For reliable quantitative
+   results, optimize the structure where appropriate and converge the
+   numerical settings.
+
 Read signed phonon frequencies in the ``Cu-phonon/`` DAT files and figure.
 Negative frequencies represent imaginary modes. The four-atom conventional
 cell gives folded bands; compare equivalent cells when checking another
 method. Converge the displacement size and supercell before diagnosing
 instability. No reference phonon plot is bundled on this page.
-
-These example settings need convergence tests before quantitative use.

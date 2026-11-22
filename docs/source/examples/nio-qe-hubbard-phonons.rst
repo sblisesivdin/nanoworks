@@ -21,6 +21,12 @@ Requires QE and the managed pseudopotentials.
 Results
 -------
 
+.. note::
+
+   This example is a qualitative demonstration. For reliable quantitative
+   results, optimize the structure where appropriate and converge the
+   numerical settings.
+
 Results are in ``NiO-QE-phonon-results/``. First verify that opposite Ni
 layers keep opposite magnetic moments after SCF. Read phonon bands and DOS
 only for that magnetic state. The finite-displacement supercell has
@@ -32,7 +38,5 @@ force, displacement and supercell convergence checks.
    :width: 100%
 
    Recorded example output.
-
-These example settings need convergence tests before quantitative use.
 
 :doc:`Detailed recorded results <../validation/nio-qe-hubbard-phonons>`.

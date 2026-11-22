@@ -23,6 +23,12 @@ Requires QE and the managed pseudopotentials.
 Results
 -------
 
+.. note::
+
+   This example is a qualitative demonstration. For reliable quantitative
+   results, optimize the structure where appropriate and converge the
+   numerical settings.
+
 Results are in ``Fe-QE-spin-smoke-results/``. Compare Up and Down bands and
 DOS to see the spin asymmetry. The downward DOS curve is a plotting convention.
 The larger projected-band markers indicate greater Fe orbital weight.
@@ -40,7 +46,5 @@ magnetization from the SCF log. CUBE files contain the charge and spin densities
    :width: 100%
 
    Recorded example output.
-
-These example settings need convergence tests before quantitative use.
 
 :doc:`Detailed recorded results <../validation/fe-qe-spin>`.

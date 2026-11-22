@@ -35,6 +35,12 @@ Run the ground input first, then reuse its saved state for optics.
 Results
 -------
 
+.. note::
+
+   This example is a qualitative demonstration. For reliable quantitative
+   results, optimize the structure where appropriate and converge the
+   numerical settings.
+
 Results are in ``Si-results/``. Read the real and imaginary dielectric
 functions against photon energy. The imaginary part marks optical absorption;
 its peaks correspond to transitions, not the DOS itself. Compare NLFC and
@@ -46,7 +52,5 @@ empty bands, response cutoff and frequency grid before comparing peaks.
    :width: 100%
 
    Recorded example output.
-
-These example settings need convergence tests before quantitative use.
 
 :doc:`Detailed recorded results <../validation/silicon-gpaw-rpa>`.

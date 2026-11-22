@@ -31,10 +31,14 @@ Requires the MACE model.
 Results
 -------
 
+.. note::
+
+   This example is a qualitative demonstration. For reliable quantitative
+   results, optimize the structure where appropriate and converge the
+   numerical settings.
+
 Read ``Cu-elastic/optimized-ML-ELASTIC-Tensor.dat`` and the summary.
 The 6 x 6 stiffness tensor is in GPa. Check residual reference stress,
 Cij-Cji differences and fit errors before using bulk/shear moduli.
 An unconverged starting structure prevents a zero-stress interpretation.
 No reference numerical tensor is bundled on this page.
-
-These example settings need convergence tests before quantitative use.

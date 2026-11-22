@@ -22,6 +22,12 @@ Requires GPAW and its PAW datasets.
 Results
 -------
 
+.. note::
+
+   This example is a qualitative demonstration. For reliable quantitative
+   results, optimize the structure where appropriate and converge the
+   numerical settings.
+
 The two CIF stems give separate result directories. Compare the pristine
 and vacancy bands and DOS near Ef. The vacancy changes the near-Fermi states.
 These are folded supercell bands. The apparent 1.239 eV gap printed on the
@@ -33,7 +39,5 @@ The sampled path reaches K and shows nearly touching bands.
    :width: 100%
 
    Recorded example output.
-
-These example settings need convergence tests before quantitative use.
 
 :doc:`Detailed recorded results <../validation/graphene-gpaw-vacancy>`.

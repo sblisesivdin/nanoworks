@@ -31,6 +31,12 @@ Requires GPAW and its PAW datasets.
 Results
 -------
 
+.. note::
+
+   This example is a qualitative demonstration. For reliable quantitative
+   results, optimize the structure where appropriate and converge the
+   numerical settings.
+
 The two inputs write separate ZnO result directories. Compare the O-p and
 Zn-d projected DOS and the sampled band edges. Hubbard U changes their
 relative positions. A comparison of U alone requires matched numerical
@@ -42,7 +48,5 @@ The recorded comparison uses different cutoffs and is illustrative.
    :width: 100%
 
    Recorded example output.
-
-These example settings need convergence tests before quantitative use.
 
 :doc:`Detailed recorded results <../validation/zno-gpaw-hubbard>`.

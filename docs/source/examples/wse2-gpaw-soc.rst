@@ -31,6 +31,12 @@ Requires GPAW and its PAW datasets.
 Results
 -------
 
+.. note::
+
+   This example is a qualitative demonstration. For reliable quantitative
+   results, optimize the structure where appropriate and converge the
+   numerical settings.
+
 Compare bands in ``WSe2-wo-SOC/`` and ``WSe2-with-SOC/`` at the same K point.
 The recorded SOC valence splitting is about 0.5012 eV. Measure splitting
 within one spectrum; separate Fermi zeros do not align the two spectra absolutely.
@@ -42,7 +48,5 @@ a separately evaluated spinor DOS.
    :width: 100%
 
    Recorded example output.
-
-These example settings need convergence tests before quantitative use.
 
 :doc:`Detailed recorded results <../validation/wse2-gpaw-soc>`.

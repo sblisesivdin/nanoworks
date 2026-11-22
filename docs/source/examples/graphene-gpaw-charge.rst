@@ -31,6 +31,12 @@ Requires GPAW and its PAW datasets.
 Results
 -------
 
+.. note::
+
+   This example is a qualitative demonstration. For reliable quantitative
+   results, optimize the structure where appropriate and converge the
+   numerical settings.
+
 Compare the neutral and charged result directories specified by the inputs.
 ``Total_charge=1`` removes one electron. The near-Fermi bands and DOS change
 with charge and relaxation. Each plot uses its own Ef as zero, so the
@@ -42,7 +48,5 @@ A quantitative charged-sheet study also needs electrostatic size and vacuum conv
    :width: 100%
 
    Recorded example output.
-
-These example settings need convergence tests before quantitative use.
 
 :doc:`Detailed recorded results <../validation/graphene-gpaw-charge>`.

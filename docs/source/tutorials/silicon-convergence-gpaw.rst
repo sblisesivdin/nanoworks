@@ -21,6 +21,12 @@ Requires GPAW and its PAW datasets.
 Results
 -------
 
+.. note::
+
+   This example is a qualitative demonstration. For reliable quantitative
+   results, optimize the structure where appropriate and converge the
+   numerical settings.
+
 Results are in ``Si-GPAW-convergence-results/``. Read the cutoff and
 k-sampling curves to see when energy changes fall below 0.01 eV/atom.
 The k-point candidates are reciprocal-space densities, not 2 x 2 x 2 meshes.
@@ -33,5 +39,3 @@ edge of the interval is not a reliable equilibrium fit.
    :width: 100%
 
    Recorded example output.
-
-These example settings need convergence tests before quantitative use.

@@ -25,6 +25,12 @@ GPAW uses Phonopy displacements; QE uses native DFPT for this shared input.
 Results
 -------
 
+.. note::
+
+   This example is a qualitative demonstration. For reliable quantitative
+   results, optimize the structure where appropriate and converge the
+   numerical settings.
+
 The result directory uses the CIF stem. Read frequency against path
 distance in the band table and frequency against mode count in the phonon DOS.
 A one-atom primitive cell has three acoustic branches. Negative
@@ -37,7 +43,5 @@ The thermal tables give harmonic free energy, entropy and heat capacity.
    :width: 100%
 
    Recorded example output.
-
-These example settings need convergence tests before quantitative use.
 
 :doc:`Detailed recorded results <../validation/al-gpaw-phonons>`.

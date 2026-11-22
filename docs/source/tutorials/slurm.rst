@@ -29,6 +29,12 @@ The profile supplies scheduler settings; the Python input supplies the physics.
 Results
 -------
 
+.. note::
+
+   This example is a qualitative demonstration. For reliable quantitative
+   results, optimize the structure where appropriate and converge the
+   numerical settings.
+
 Read the submitted job's status and logs, then interpret its numerical
 results as for a local calculation. Submission alone does not establish
 that the calculation completed. The bundled profile README describes

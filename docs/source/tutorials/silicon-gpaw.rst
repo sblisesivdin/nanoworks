@@ -23,6 +23,12 @@ Requires GPAW and its PAW datasets.
 Results
 -------
 
+.. note::
+
+   This example is a qualitative demonstration. For reliable quantitative
+   results, optimize the structure where appropriate and converge the
+   numerical settings.
+
 Results are in ``Si-results/``. The band figure shows the occupied and empty
 states along G-X-W-K-L. The DOS shows how many states occur at each energy;
 its Gaussian tails can extend into the band gap. Both plots use Ef as zero.
@@ -40,7 +46,5 @@ The DAT files contain the numerical values; the GPW file saves the ground state.
    :width: 100%
 
    Recorded example output.
-
-These example settings need convergence tests before quantitative use.
 
 :doc:`Detailed recorded results <../validation/silicon-gpaw>`.

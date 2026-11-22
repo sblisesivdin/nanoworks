@@ -24,6 +24,12 @@ Run
 Results
 -------
 
+.. note::
+
+   This example is a qualitative demonstration. For reliable quantitative
+   results, optimize the structure where appropriate and converge the
+   numerical settings.
+
 The converter writes ``Silicon.py`` and ``Silicon.cif``. Read any NOTICE
 comments to identify approximate mappings. The final command runs the
 converted calculation; the converter itself does not calculate an energy.

@@ -24,18 +24,21 @@ The first command uses the shared non-SOC input with QE selected explicitly.
 Results
 -------
 
+.. note::
+
+   This example is a qualitative demonstration. For reliable quantitative
+   results, optimize the structure where appropriate and converge the
+   numerical settings.
+
 Compare the scalar and SOC band tables at K. The recorded SOC valence
 splitting is 0.5034 eV and the conduction splitting is 7.0 meV.
 The projected bands distinguish the selected angular-momentum components.
-Measure splittings within the same calculation and converge the k mesh
-and cutoff before interpreting small energy differences.
+Measure splittings within the same calculation.
 
 .. figure:: ../_static/examples/wse2-qe-band-edge-comparison.svg
    :alt: WSe2: spinor bands and orbital weights (QE) recorded result.
    :width: 100%
 
    Recorded example output.
-
-These example settings need convergence tests before quantitative use.
 
 :doc:`Detailed recorded results <../validation/wse2-qe-soc>`.

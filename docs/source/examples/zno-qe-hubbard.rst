@@ -23,6 +23,12 @@ The figure below is from archived relaxed comparison runs, not a new run of this
 Results
 -------
 
+.. note::
+
+   This example is a qualitative demonstration. For reliable quantitative
+   results, optimize the structure where appropriate and converge the
+   numerical settings.
+
 Results are in ``ZnO-QE-withHubbard-results/``. The DOS uses a denser
 7 x 7 x 7 mesh than the 5 x 5 x 5 ground mesh. Compare Zn-d and O-p
 contributions and read the band edges on the same ground-state energy reference.
@@ -34,7 +40,5 @@ For a controlled U comparison, repeat the same input with an empty
    :width: 100%
 
    Recorded example output.
-
-These example settings need convergence tests before quantitative use.
 
 :doc:`Detailed recorded results <../validation/zno-qe-hubbard>`.
