@@ -2,26 +2,19 @@
 # SPDX-License-Identifier: MIT
 # See LICENSE.md in the project root for license terms.
 
-"""Native QE HSE06 ground state, DOS and hybrid bands at fixed geometry."""
-
-Engine = 'QE'
-Ground_calc = True
-DOS_calc = True
-Band_calc = True
-
-# Coarse demonstration settings; converge before quantitative use.
-XC_calc = 'HSE06'
-Wavefunction_cutoff = 400
-Ground_kpts_x = 3
-Ground_kpts_y = 3
-Ground_kpts_z = 3
-SCF_accuracy = 'loose'
-Occupation_scheme = 'fermi-dirac'
-Smearing_width = 0.2
-DOS_npoints = 301
-Energy_min = -5
-Energy_max = 5
-
-DOS_integration = 'tetrahedron'
-Band_path = 'GXWKGLUWLK'
-Band_npoints = 61
+Engine = 'QE'  # Choose the calculation engine.
+Ground_calc = True  # Calculate the electronic ground state.
+DOS_calc = True  # Calculate the density of electronic states.
+Band_calc = True  # Calculate bands along a symmetry path.
+XC_calc = 'HSE06'  # Choose the exchange-correlation functional.
+Wavefunction_cutoff = 400  # Set the plane-wave basis cutoff (eV).
+Ground_kpts_x = 3  # Sample ground state along reciprocal x.
+Ground_kpts_y = 3  # Sample ground state along reciprocal y.
+Ground_kpts_z = 3  # Sample ground state along reciprocal z.
+SCF_accuracy = 'loose'  # Set electronic convergence accuracy.
+Occupation_scheme = 'fermi-dirac'  # Choose how electronic states are occupied.
+Smearing_width = 0.2  # Set occupation broadening (eV).
+DOS_npoints = 301  # Set the number of DOS energy samples.
+DOS_integration = 'tetrahedron'  # Choose how to integrate electronic states.
+Band_path = 'GXWKGLUWLK'  # Choose the band-structure symmetry path.
+Band_npoints = 61  # Sample this many points along the path.

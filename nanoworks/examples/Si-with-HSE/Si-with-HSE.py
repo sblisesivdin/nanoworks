@@ -2,24 +2,17 @@
 # SPDX-License-Identifier: MIT
 # See LICENSE.md in the project root for license terms.
 
-"""GPAW HSE06 ground state and DOS at fixed geometry."""
-
-Engine = 'GPAW'
-Ground_calc = True
-DOS_calc = True
-
-# Coarse demonstration settings; converge before quantitative use.
-XC_calc = 'HSE06'
-Wavefunction_cutoff = 400
-Ground_kpts_x = 3
-Ground_kpts_y = 3
-Ground_kpts_z = 3
-SCF_accuracy = 'loose'
-Occupation_scheme = 'fermi-dirac'
-Smearing_width = 0.2
-DOS_npoints = 301
-Energy_min = -5
-Energy_max = 5
-
-DOS_integration = 'smearing'
-DOS_width = 0.2
+Engine = 'GPAW'  # Choose the calculation engine.
+Ground_calc = True  # Calculate the electronic ground state.
+DOS_calc = True  # Calculate the density of electronic states.
+XC_calc = 'HSE06'  # Choose the exchange-correlation functional.
+Wavefunction_cutoff = 400  # Set the plane-wave basis cutoff (eV).
+Ground_kpts_x = 3  # Sample ground state along reciprocal x.
+Ground_kpts_y = 3  # Sample ground state along reciprocal y.
+Ground_kpts_z = 3  # Sample ground state along reciprocal z.
+SCF_accuracy = 'loose'  # Set electronic convergence accuracy.
+Occupation_scheme = 'fermi-dirac'  # Choose how electronic states are occupied.
+Smearing_width = 0.2  # Set occupation broadening (eV).
+DOS_npoints = 301  # Set the number of DOS energy samples.
+DOS_integration = 'smearing'  # Choose how to integrate electronic states.
+DOS_width = 0.2  # Set Gaussian DOS broadening (eV).

@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Present one flat tutorial list with annotated bundled inputs, direct run commands and concise result explanations.
+
 - Simplify bundled DFT inputs and tutorial guidance; separate GPAW/QE HSE examples and correct conversion commands.
 
 - Generate shorter qeconverter inputs with standard result directories; add a concise QE input guide.

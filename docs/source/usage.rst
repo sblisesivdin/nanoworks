@@ -594,9 +594,9 @@ A helper CLI to locate package resources, install examples and install the defau
 
     (.venv-nw) $ nanoworks
     usage: nanoworks [-h] [-v] [--install-examples] [--install-qe-pseudos]
-    
+
     Nanoworks CLI tool
-    
+
     options:
       -h, --help          show this help message and exit
       -v, --version       Show version and detailed library information
@@ -684,7 +684,7 @@ The ``nanoworks`` package provides a comprehensive set of examples demonstrating
 .. code-block:: console
 
     $ source ~/.venv_nw/bin/activate
-    
+
 then install examples with nanoworks command:
 
 .. code-block:: console
@@ -692,3 +692,11 @@ then install examples with nanoworks command:
     (.venv_nw) $ nanoworks --install-examples
 
 Now your example folder is located in the ``~/.nanoworks/examples/``. For more information, please visit `Examples <https://nanoworks.readthedocs.io/en/latest/examples.html>`_ webpage.
+
+Adapting inputs
+---------------
+
+.. toctree::
+   :maxdepth: 1
+
+   tutorials/adapt-a-material

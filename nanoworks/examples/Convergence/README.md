@@ -3,7 +3,7 @@
 The GPAW and Quantum ESPRESSO inputs run the same ordered cutoff, k-point,
 and lattice-scale workflow for bulk silicon.
 
-Follow the [convergence tutorial](https://nanoworks.readthedocs.io/en/latest/tutorials.html#tutorial-convergence)
+Follow the [convergence tutorial](https://nanoworks.readthedocs.io/en/latest/tutorials/silicon-convergence.html)
 for the installed example directory, parameter propagation and output interpretation.
 The [recorded GPAW analysis](https://nanoworks.readthedocs.io/en/latest/tutorials/silicon-convergence.html#tutorial-convergence-gpaw)
 includes checked selection windows, actual meshes and energy-volume fit residuals.

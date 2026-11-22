@@ -2,51 +2,27 @@
 # SPDX-License-Identifier: MIT
 # See LICENSE.md in the project root for license terms.
 
-# -------------------------------------------------------------
-Ground_calc = True     # Ground state calculations
-Geo_optim = True       # Geometric optimization with LFBGS
-Elastic_calc = True    # Elastic calculation
-DOS_calc = True         # DOS calculation
-Band_calc = True        # Band structure calculation
-
-# -------------------------------------------------------------
-# Parameters
-# -------------------------------------------------------------
-# GEOMETRY
-Geometry_optimizer = 'QuasiNewton'     # QuasiNewton, GPMin, LBFGS or FIRE
-Geometry_force_tolerance = 0.0005 	# Maximum force tolerance in LBFGS geometry optimization. Unit is eV/Ang.
-Geometry_max_step = 0.1          # How far is a single atom allowed to move. Default is 0.2 Ang.
-Fix_symmetry = False    # True for preserving the spacegroup symmetry during optimisation
-# Which components of strain will be relaxed: EpsX, EpsY, EpsZ, ShearYZ, ShearXZ, ShearXY
-# Example: For a x-y 2D nanosheet only first 2 component will be true
-Relax_cell = [True, True, True, False, False, False]
-Hydrostatic_pressure=0.0 #GPa
-
-# ELECTRONIC
-Wavefunction_cutoff = 700 	# eV
-#Ground_kpts_density = 2.5     # pts per Å^-1  If the user prefers to use this, kpts_x,y,z will not be used automatically.
-Ground_kpts_x = 21 			    # kpoints in x direction
-Ground_kpts_y = 21				# kpoints in y direction
-Ground_kpts_z = 21				# kpoints in z direction
-Gamma = True
-Band_path = 'LGWXK'	    # Brillouin zone high symmetry points
-Band_npoints = 40		# Number of points between high symmetry points
-Hubbard_U = {}            # Can be used like {'N-2p': 6.0}, for none use {}
-
-XC_calc = 'PBE'         # Exchange-Correlation, choose one: LDA, PBE, GLLBSCM, HSE06, HSE03, revPBE, RPBE, PBE0, EXX, B3LYP
-
-SCF_accuracy = 'very-tight'  # Portable across GPAW and QE
-Occupation_scheme = 'fermi-dirac'
-Smearing_width = 0.05
-
-DOS_npoints = 301        # Number of points
-DOS_integration = 'smearing'
-DOS_width = 0.1          # Gaussian DOS broadening in eV
-
-Magmom_per_atom = 1.0    # Magnetic moment per atom
-Refine_grid = 4             # refine grid for all electron density (1, 2 [=default] and 4)
-Total_charge = 0.0       # Total charge. Normally 0.0 for a neutral system.
-
-#GENERAL
-Energy_min = -5 		# eV. It is the minimum energy value for band structure and DOS figures.
-Energy_max = 5  		# eV. It is the maximum energy value for band structure and DOS figures.
+Engine = 'GPAW'  # Choose the calculation engine.
+Ground_calc = True  # Calculate the electronic ground state.
+Geo_optim = True  # Relax the structure before calculating properties.
+Elastic_calc = True  # Calculate the elastic tensor.
+DOS_calc = True  # Calculate the density of electronic states.
+Band_calc = True  # Calculate bands along a symmetry path.
+Geometry_optimizer = 'QuasiNewton'  # Choose the relaxation algorithm.
+Geometry_force_tolerance = 0.0005  # Stop relaxation at this force tolerance (eV/angstrom).
+Geometry_max_step = 0.1  # Limit each atomic displacement (angstrom).
+Fix_symmetry = False  # Control symmetry during relaxation.
+Relax_cell = [True, True, True, False, False, False]  # Relax normal strains; keep shear strains fixed.
+Wavefunction_cutoff = 700  # Set the plane-wave basis cutoff (eV).
+Ground_kpts_x = 21  # Sample ground state along reciprocal x.
+Ground_kpts_y = 21  # Sample ground state along reciprocal y.
+Ground_kpts_z = 21  # Sample ground state along reciprocal z.
+Band_path = 'LGWXK'  # Choose the band-structure symmetry path.
+Band_npoints = 40  # Sample this many points along the path.
+XC_calc = 'PBE'  # Choose the exchange-correlation functional.
+SCF_accuracy = 'very-tight'  # Set electronic convergence accuracy.
+Occupation_scheme = 'fermi-dirac'  # Choose how electronic states are occupied.
+Smearing_width = 0.05  # Set occupation broadening (eV).
+DOS_npoints = 301  # Set the number of DOS energy samples.
+DOS_integration = 'smearing'  # Choose how to integrate electronic states.
+DOS_width = 0.1  # Set Gaussian DOS broadening (eV).

@@ -1,196 +1,38 @@
-Bulk MoS2: a PBE reference without dispersion correction
-========================================================
+Bulk MoS2: relaxation and electronic structure (GPAW)
+=====================================================
 
-.. note::
+.. literalinclude:: ../../../nanoworks/examples/Bulk-MoS2-vdW/MoS2-wo-vdW.py
+   :language: python
+   :lines: 5-
+   :caption: MoS2-wo-vdW.py
 
-   These settings are chosen to demonstrate the Nanoworks workflow with a
-   short runtime. The numerical results are illustrative; quantitative
-   materials predictions require appropriate convergence tests and validation
-   of the physical model.
+:download:`Download MoS2-wo-vdW.py <../../../nanoworks/examples/Bulk-MoS2-vdW/MoS2-wo-vdW.py>`.
 
-This example demonstrates cell relaxation, electronic bands and atom-resolved
-orbital projections for a six-atom bulk MoS2 cell. This is
-a three-dimensional layered crystal, not an isolated monolayer with vacuum.
-The calculation uses PBE with no dispersion correction and no SOC.
+Run
+---
 
-Prepare and run
----------------
+Requires GPAW and its PAW datasets.
 
-Use Nanoworks with GPAW and its PAW datasets installed;
-see :doc:`../installation`.
-Open the installed example folder shown below. If needed, install the
-examples first with ``nanoworks --install-examples``; see
-:ref:`tutorial-examples-setup`.
+.. code-block:: bash
 
-.. code-block:: console
+   cd ~/.nanoworks/examples/Bulk-MoS2-vdW
+   dftsolve -p 4 -i MoS2-wo-vdW.py -g Bulk_MoS2.cif
 
-   $ cd ~/.nanoworks/examples/Bulk-MoS2-vdW
-   $ dftsolve -E GPAW -p 8 -i MoS2-wo-vdW.py -g Bulk_MoS2.cif --check
-   $ dftsolve -E GPAW -p 8 -i MoS2-wo-vdW.py -g Bulk_MoS2.cif
+Results
+-------
 
-Adapt the process count to your machine. ``Outdirname='MoS2-wo-vdW'`` selects
-the output directory; the starting CIF supplies the ``Bulk_MoS2`` prefix.
-When adapting the workflow to another material, save the starting geometry,
-input settings and PAW dataset versions with the results.
-
-Read the input and relaxed structure
-------------------------------------
-
-.. list-table:: Example settings and outputs
-   :header-rows: 1
-   :widths: 42 58
-
-   * - Quantity
-     - Value
-   * - Cell contents
-     - 2 Mo and 4 S atoms; initial P6_3/mmc structure
-   * - Electronic representation
-     - Plane waves, 400 eV cutoff, PBE
-   * - Ground and DOS electronic grid
-     - Gamma-centred 6 x 6 x 4
-   * - Occupations
-     - Fermi–Dirac, width 0.05 eV
-   * - Dispersion / SOC / spin
-     - ``vdW_calc='None'``; SOC off; non-spin-polarized solution
-   * - Relaxation
-     - LBFGS; normal cell strains enabled, shear strains fixed; symmetry preserved
-   * - Optimizer stopping threshold
-     - 0.05 eV/angstrom; final optimizer fmax 0.019182
-   * - Band path
-     - Gamma–M–K–Gamma, 61 total points, kz=0
-   * - Electronic exports
-     - 52 bands; 501 DOS energy samples
-
-The input leaves several plotting and DOS controls at their defaults. The
-inspected source defaults to 61 band-path points and tetrahedron DOS
-integration; the saved outputs confirm the point counts. The exact run source
-commit was not recorded, and the text log does not independently name the DOS
-integration algorithm. Ground-state occupation smearing is a separate setting
-from the DOS integration method.
-
-The geometry optimizer ends after step 11 and the final ground SCF converges
-in 11 electronic steps. Its fmax includes the geometry filter's cell degrees
-of freedom; it should not be read as a stress tolerance in GPa. The final
-printed diagonal stresses are approximately +0.000010, +0.000010 and
--0.000485 eV/angstrom cubed. Tighter force/stress and basis/sampling checks
-are needed before treating the lattice constants as equilibrium predictions.
-
-.. list-table:: Starting and final cell lengths
-   :header-rows: 1
-
-   * - Quantity
-     - Starting (angstrom)
-     - Final (angstrom)
-     - Change
-   * - a=b
-     - 3.160000
-     - 3.179361
-     - +0.613%
-   * - c
-     - 12.290000
-     - 13.329097
-     - +8.455%
-
-The cell angles remain 90, 90 and 120 degrees. The c-axis change is relative
-to the starting CIF, not an error measured against experiment. Because this
-is bulk material, c describes the crystal repeat and must not be interpreted
-as a vacuum thickness. The exported final CIF uses P1 serialization; that
-label alone does not establish a broken structural symmetry.
-
-Read the band extrema and energy reference
-------------------------------------------
+Results are in ``MoS2-wo-vdW/``. The recorded calculation gives a 1.239335 eV
+indirect gap along the sampled Gamma-M-K-Gamma path. The relaxed c parameter
+increases from 12.29 to 13.329097 angstrom. This input has no dispersion
+correction, so inspect the interlayer spacing before using its electronic
+properties as a model of bulk MoS2.
 
 .. figure:: ../_static/examples/mos2-gpaw-reference.png
-   :alt: Recorded bulk MoS2 bands along Gamma M K Gamma and total DOS, with energies relative to the saved Fermi reference.
+   :alt: Bulk MoS2: relaxation and electronic structure (GPAW) recorded result.
    :width: 100%
 
-   The highlighted band edges lie at Gamma and K on the saved kz=0 path.
-   The DOS is plotted directly from the original table without extra smoothing.
+   Recorded example output.
 
-The long band table, XYYY table and band State record contain identical
-energies. KPath metadata place M at index 21, K at 33 and the final Gamma
-at 60. With 52 valence electrons, bands 26 and 27 in one-based numbering
-bracket the occupied/unoccupied separation. The path gives:
+These example settings need convergence tests before quantitative use.
 
-.. list-table:: Band-edge values on the saved path
-   :header-rows: 1
-
-   * - Quantity
-     - Value (eV)
-   * - VBM at Gamma, relative to Ef
-     - -0.552863
-   * - CBM at K, relative to Ef
-     - +0.686472
-   * - Indirect path gap, Gamma to K
-     - 1.239335
-   * - Minimum direct path gap, at K
-     - 1.640390
-
-The ground mesh reports 1.239 and 1.640 eV respectively, consistent with
-these path results at its printed precision. This agreement is an internal
-check. The path does not include kz other than zero or all possible off-path
-extrema, and no denser-mesh study was performed. These numbers are not
-established as converged full-zone or experimental gaps. They are also not
-optical excitation energies; no optical or excitonic calculation is included.
-
-The saved band energies are already relative to Ef. Do not subtract the
-ground log's printed Fermi level again. The position of zero within this gap
-is the calculation's energy reference, not a work-function measurement.
-
-Inspect DOS and orbital projections
------------------------------------
-
-.. figure:: ../_static/examples/mos2-gpaw-orbitals.png
-   :alt: Bulk MoS2 orbital projections, summed over the two molybdenum and four sulfur atoms separately.
-   :width: 100%
-
-   Both panels use states per eV per six-atom cell. Mo and S sums contain
-   different numbers of atoms, so these are not per-atom comparisons.
-
-The Mo d and S p curves help identify orbital character in the plotted energy
-range. The projections are qualitative weights and do not completely
-partition total DOS or define unique atomic charges. The Mo setup includes
-14 valence electrons per atom, including semicore states; the S setup has
-6. Thus the six-atom cell has 52 valence electrons, not the count obtained
-by treating Mo as a six-valence-electron setup. Record the PAW dataset
-versions when reproducing this calculation.
-
-The original atom-resolved PDOS has six groups of 501 rows. Their sum
-reproduces the combined table exactly at stored precision; p, d and total
-orbital component sums also agree. All electronic tables are finite, and
-DOS/projection values are nonnegative.
-
-The DOS energy spacing is approximately 0.155 eV. Its finite-window integral
-is 100.1447 states/cell, compared with the full spin-degenerate spectral weight
-of 104 for 52 bands. This unweighted integral is not an electron count and
-should not be compared with the 52 occupied electrons. Finite-window and
-energy-sampling effects are unresolved. Interpolation at Ef gives zero in
-this table, consistent with a gap, but numerical DOS amplitudes and precise
-onsets require convergence checks.
-
-How to compare dispersion corrections
--------------------------------------
-
-For bulk layered materials, compare PBE and PBE+D3 **with the same**
-geometry protocol, pseudopotentials, electronic cutoff and k-point
-sampling. Run both optimizations to the specified force and stress
-tolerances, then check the **final SCF** independently. Compare
-interlayer distances, total energies and electronic properties only
-after both configurations satisfy these checks.
-
-The presence of a D3 correction in an input is not, by itself,
-evidence that a calculation completed. Failed MPI initialization
-or an incomplete relaxation cannot establish a physical dispersion
-effect. See :doc:`mos2-qe-d3-audit` for a worked example of
-diagnosing an unvalidated relaxation.
-
-Reference data
---------------
-
-:download:`Download the original inputs, spectral tables and redraw package <../_static/examples/mos2-gpaw-reference.zip>`.
-It includes the starting/final CIFs, band/DOS/PDOS data, band State record,
-figures, SHA256SUMS and an optional ``plot_mos2.py`` script. The script checks
-export consistency and regenerates both figures and ``checks.dat`` using
-NumPy 2 or newer and Matplotlib, without running GPAW. Large GPW files and
-machine-specific logs are omitted. No density, phonon or optical results
-are claimed for this example.
+:doc:`Detailed recorded results <../validation/mos2-gpaw-reference>`.

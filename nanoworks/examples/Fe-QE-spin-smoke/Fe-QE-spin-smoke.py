@@ -2,66 +2,31 @@
 # SPDX-License-Identifier: MIT
 # See LICENSE.md in the project root for license terms.
 
-"""Small native QE smoke input for a combined collinear-spin workflow."""
+from ase.build import bulk  # Build the structure or supercell.
 
-from ase.build import bulk
-
-
-Engine = 'QE'
-Outdirname = 'Fe-QE-spin-smoke-results'
-
-bulk_configuration = bulk(
-    'Fe',
-    'bcc',
-    a=2.87,
-)
-
-# Exercise the complete spin-resolved electronic workflow in one command.
-Ground_calc = True
-DOS_calc = True
-Band_calc = True
-Projected_band_plot = True
-Density_calc = True
-
-# Ground state. These deliberately small settings are suitable only for
-# checking the workflow, not for converged scientific results.
-XC_calc = 'PBE'
-Wavefunction_cutoff = 500
-Ground_kpts_x = 4
-Ground_kpts_y = 4
-Ground_kpts_z = 4
-Ground_num_of_bands = 16
-Gamma = True
-Occupation_scheme = 'fermi-dirac'
-Smearing_width = 0.10
-
-# Collinear ferromagnetic initialization in Bohr magnetons per Fe atom.
-Spin_calc = True
-Magmom_per_atom = 2.2
-Total_charge = 0.0
-
-# DOS inherits the ground mesh and band count; increase DOS_kpts_* or
-# DOS_num_of_bands independently when testing convergence.
-DOS_integration = 'tetrahedron'
-DOS_npoints = 101
-
-# Spin-resolved bands and Fe orbital-projected fat bands.
-Band_path = 'GHNGPH'
-Band_npoints = 16
-Projections = [
-    {
-        'atoms': [0],
-        'orbital': 'd',
-        'color': 'red',
-        'label': 'Fe-d',
-    },
-    {
-        'atoms': [0],
-        'orbital': 's',
-        'color': 'orange',
-        'label': 'Fe-s',
-    },
-]
-
-Energy_min = -8
-Energy_max = 8
+Engine = 'QE'  # Choose the calculation engine.
+Outdirname = 'Fe-QE-spin-smoke-results'  # Keep the output in this directory.
+bulk_configuration = bulk('Fe', 'bcc', a=2.87)  # Build the atomic structure without a CIF.
+Ground_calc = True  # Calculate the electronic ground state.
+DOS_calc = True  # Calculate the density of electronic states.
+Band_calc = True  # Calculate bands along a symmetry path.
+Projected_band_plot = True  # Show orbital weights on the bands.
+Density_calc = True  # Export the electron density.
+XC_calc = 'PBE'  # Choose the exchange-correlation functional.
+Wavefunction_cutoff = 500  # Set the plane-wave basis cutoff (eV).
+Ground_kpts_x = 4  # Sample ground state along reciprocal x.
+Ground_kpts_y = 4  # Sample ground state along reciprocal y.
+Ground_kpts_z = 4  # Sample ground state along reciprocal z.
+Ground_num_of_bands = 16  # Include this many electronic bands.
+Occupation_scheme = 'fermi-dirac'  # Choose how electronic states are occupied.
+Smearing_width = 0.1  # Set occupation broadening (eV).
+Spin_calc = True  # Allow different up- and down-spin states.
+Magmom_per_atom = 2.2  # Set initial atomic moments (Bohr magnetons).
+DOS_integration = 'tetrahedron'  # Choose how to integrate electronic states.
+DOS_npoints = 101  # Set the number of DOS energy samples.
+Band_path = 'GHNGPH'  # Choose the band-structure symmetry path.
+Band_npoints = 16  # Sample this many points along the path.
+Projections = [{'atoms': [0], 'orbital': 'd', 'color': 'red', 'label': 'Fe-d'},  # Select atoms and orbitals for band weights (zero-based atoms).
+ {'atoms': [0], 'orbital': 's', 'color': 'orange', 'label': 'Fe-s'}]
+Energy_min = -8  # Set the lower plot energy (eV relative to Ef).
+Energy_max = 8  # Set the upper plot energy (eV relative to Ef).

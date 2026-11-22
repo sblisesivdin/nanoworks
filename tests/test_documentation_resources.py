@@ -22,6 +22,7 @@ _RST = tuple(sorted(_SOURCE.rglob("*.rst")))
 _DOC = re.compile(r":doc:`(?:[^`<>]*<)?([^`<>]+)>?`", re.DOTALL)
 _DOWNLOAD = re.compile(r":download:`[^`]*?<([^<>]+)>`", re.DOTALL)
 _IMAGE = re.compile(r"^\s*\.\. (?:figure|image)::\s+(\S+)", re.MULTILINE)
+_LITERAL_INCLUDE = re.compile(r"^\s*\.\. literalinclude::\s+(\S+)", re.MULTILINE)
 _HTML_PAGE = re.compile(r'\bhref="([^"]+\.html(?:#[^"]*)?)"')
 _RST_LABEL = re.compile(r"^\.\. _([\w.-]+):\s*$", re.MULTILINE)
 _REF = re.compile(r":ref:`([^`]+)`")
@@ -59,6 +60,35 @@ def _toc_entries(text: str):
 
 
 class DocumentationResourceTests(unittest.TestCase):
+    def test_included_source_files(self):
+        for page, text in _documents():
+            for match in _LITERAL_INCLUDE.finditer(text):
+                target = match.group(1)
+                resolved = _resolve(page, target)
+                if resolved is not None:
+                    with self.subTest(page=page.relative_to(_SOURCE), target=target):
+                        self.assertTrue(resolved.is_file(), f"Missing included source: {target}")
+
+    def test_tutorials_show_bundled_input_run_and_results(self):
+        index = (_SOURCE / 'tutorials.rst').read_text(encoding='utf-8')
+        self.assertEqual(index.count('.. toctree::'), 1)
+        entries = list(_toc_entries(index))
+        self.assertEqual(len(entries), len(set(entries)))
+        bundled = (_SOURCE.parent.parent / 'nanoworks' / 'examples').resolve()
+        for entry in entries:
+            page = (_SOURCE / entry).with_suffix('.rst')
+            text = page.read_text(encoding='utf-8')
+            with self.subTest(page=entry):
+                include = _LITERAL_INCLUDE.search(text)
+                self.assertIsNotNone(include)
+                self.assertLess(include.start(), text.index('\nRun\n'))
+                self.assertLess(text.index('\nRun\n'), text.index('\nResults\n'))
+                self.assertNotIn('--check', text)
+                for match in _LITERAL_INCLUDE.finditer(text):
+                    path = _resolve(page, match.group(1))
+                    self.assertIsNotNone(path)
+                    self.assertIn(bundled, path.parents)
+
     def test_local_document_roles(self):
         for page, text in _documents():
             for match in _DOC.finditer(text):

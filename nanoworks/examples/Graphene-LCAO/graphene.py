@@ -2,56 +2,26 @@
 # SPDX-License-Identifier: MIT
 # See LICENSE.md in the project root for license terms.
 
-# -------------------------------------------------------------
-Mode = 'LCAO'             # Use PW, PW-GW, LCAO, FD  (PW is more accurate, LCAO is quicker mostly.)
-# -------------------------------------------------------------
-Ground_calc = True     # Ground state calculations
-Geo_optim = True       # Geometric optimization with LFBGS
-DOS_calc = True         # DOS calculation
-Band_calc = True        # Band structure calculation
-Density_calc = True    # Calculate the all-electron density?
-
-# -------------------------------------------------------------
-# Parameters
-# -------------------------------------------------------------
-# GEOMETRY
-Geometry_optimizer = 'LBFGS'     # QuasiNewton, GPMin, LBFGS or FIRE
-Geometry_force_tolerance = 0.05 	# Maximum force tolerance in LBFGS geometry optimization. Unit is eV/Ang.
-Geometry_max_step = 0.1          # How far is a single atom allowed to move. Default is 0.2 Ang.
-Fix_symmetry = True    # True for preserving the spacegroup symmetry during optimisation
-# Which components of strain will be relaxed: EpsX, EpsY, EpsZ, ShearYZ, ShearXZ, ShearXY
-# Example: For a x-y 2D nanosheet only first 2 component will be true
-Relax_cell = [False, False, False, False, False, False]
-Hydrostatic_pressure=0.0 #GPa
-
-# ELECTRONIC
-Wavefunction_cutoff = 340 	# eV
-#Ground_kpts_density = 2.5     # pts per Å^-1  If the user prefers to use this, kpts_x,y,z will not be used automatically.
-Ground_kpts_x = 4 			    # kpoints in x direction
-Ground_kpts_y = 4				# kpoints in y direction
-Ground_kpts_z = 1				# kpoints in z direction
-Ground_gpts_density = 0.2      # (for LCAO) Unit is Å. If the user prefers to use this, gpts_x,y,z will not be used automatically.
-Ground_gpts_x = 8              # grid points in x direction (for LCAO)
-Ground_gpts_y = 8              # grid points in y direction (for LCAO)
-Ground_gpts_z = 8              # grid points in z direction (for LCAO)
-Gamma = True
-Band_path = 'GKMG'	    # Brillouin zone high symmetry points
-Band_npoints = 40		# Number of points between high symmetry points
-Hubbard_U = {}            # Can be used like {'N-2p': 6.0}, for none use {}
-
-XC_calc = 'LDA'         # Exchange-Correlation, choose one: LDA, PBE, GLLBSCM, HSE06, HSE03, revPBE, RPBE, PBE0, EXX, B3LYP
-
-SCF_accuracy = 'normal'  # Portable across GPAW and QE
-Occupation_scheme = 'fermi-dirac'
-Smearing_width = 0.05
-
-DOS_npoints = 501        # Number of points
-DOS_integration = 'tetrahedron'
-
-Magmom_per_atom = 1.0    # Magnetic moment per atom
-Refine_grid = 4             # refine grid for all electron density (1, 2 [=default] and 4)
-Total_charge = 0.0       # Total charge. Normally 0.0 for a neutral system.
-
-#GENERAL
-Energy_min = -5 		# eV. It is the minimum energy value for band structure and DOS figures.
-Energy_max = 5  		# eV. It is the maximum energy value for band structure and DOS figures.
+Engine = 'GPAW'  # Choose the calculation engine.
+Mode = 'LCAO'  # Use localized atomic orbitals for speed.
+Ground_calc = True  # Calculate the electronic ground state.
+Geo_optim = True  # Relax the structure before calculating properties.
+DOS_calc = True  # Calculate the density of electronic states.
+Band_calc = True  # Calculate bands along a symmetry path.
+Density_calc = True  # Export the electron density.
+Geometry_optimizer = 'LBFGS'  # Choose the relaxation algorithm.
+Geometry_force_tolerance = 0.05  # Stop relaxation at this force tolerance (eV/angstrom).
+Geometry_max_step = 0.1  # Limit each atomic displacement (angstrom).
+Fix_symmetry = True  # Control symmetry during relaxation.
+Relax_cell = [False, False, False, False, False, False]  # Keep the cell fixed during atomic relaxation.
+Ground_kpts_x = 4  # Sample ground state along reciprocal x.
+Ground_kpts_y = 4  # Sample ground state along reciprocal y.
+Ground_kpts_z = 1  # Sample ground state along reciprocal z.
+Ground_gpts_density = 0.2  # Set the real-space grid spacing (angstrom).
+Band_path = 'GKMG'  # Choose the band-structure symmetry path.
+Band_npoints = 40  # Sample this many points along the path.
+XC_calc = 'LDA'  # Choose the exchange-correlation functional.
+Occupation_scheme = 'fermi-dirac'  # Choose how electronic states are occupied.
+Smearing_width = 0.05  # Set occupation broadening (eV).
+DOS_npoints = 501  # Set the number of DOS energy samples.
+DOS_integration = 'tetrahedron'  # Choose how to integrate electronic states.

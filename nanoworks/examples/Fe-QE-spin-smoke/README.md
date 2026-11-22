@@ -13,7 +13,7 @@ input file:
 The structure is created in the Python input, so a separate geometry file is
 not required. Run this configuration with `dftsolve`, not `python`. Copy it
 to a fresh working folder before editing. The detailed
-[Fe tutorial](https://nanoworks.readthedocs.io/en/latest/tutorials.html#tutorial-fe-spin)
+[Fe tutorial](https://nanoworks.readthedocs.io/en/latest/tutorials/fe-qe-spin.html)
 explains each stage and how to read the results.
 
 QE 7.4.1 must be installed externally. Ensure `pw.x`, `dos.x`, `projwfc.x`,

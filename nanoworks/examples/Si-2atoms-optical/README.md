@@ -24,7 +24,7 @@ are `E - Ef`. These small settings require convergence before research use.
 The input is a configuration: `python Si-Step1-ground_dos_band.py` does not
 run the Nanoworks calculation.
 
-Follow the [silicon tutorial](https://nanoworks.readthedocs.io/en/latest/tutorials.html#tutorial-silicon)
+Follow the [silicon tutorial](https://nanoworks.readthedocs.io/en/latest/tutorials/silicon-gpaw.html)
 for the output-file map, saved-state DOS rerun and result interpretation.
 The optical exercises below are later steps; a completed ground run alone does
 not establish optical convergence or sufficient memory for a larger BSE run.

@@ -190,7 +190,7 @@ Documentation
      </article>
      <article class="nw-card nw-link-card">
        <h3><a href="tutorials.html">Follow a DFT Tutorial</a></h3>
-       <p>Prepare silicon or magnetic Fe, check the input, and read numerical results.</p>
+       <p>Choose an example, read its input, run it, and interpret the results.</p>
      </article>
      <article class="nw-card nw-link-card">
        <h3><a href="input_file_keywords.html">Browse Input Keywords</a></h3>
