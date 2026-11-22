@@ -9,17 +9,10 @@ electronic sampling: this is a response-grid diagnostic, not converged Si.
 """
 
 Engine = 'GPAW'
-Mode = 'PW'
 Outdirname = 'Si-GPAW-RPA-matched-width-results'
 
 # Rebuild the ground state in this distinct output directory.
 Ground_calc = True
-Geo_optim = False
-Elastic_calc = False
-DOS_calc = False
-Band_calc = False
-Density_calc = False
-Phonon_calc = False
 Optical_calc = True
 
 XC_calc = 'PBE'
@@ -30,8 +23,6 @@ Ground_kpts_z = 2
 Gamma = True
 Occupation_scheme = 'fermi-dirac'
 Smearing_width = 0.05
-Spin_calc = False
-SOC_calc = False
 Total_charge = 0.0
 
 Opt_calc_type = 'RPA'
@@ -51,5 +42,3 @@ Opt_omega2 = 20.0
 # This is a response cutoff, not the electronic PW cutoff.
 Opt_cut_of_energy = 30
 Opt_nblocks = None
-
-Localization = 'en_UK'

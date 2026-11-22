@@ -11,15 +11,10 @@ Outdirname = 'ZnO-QE-reference-results'
 bulk_configuration = bulk('ZnO', 'wurtzite', a=3.25, c=5.2)
 
 # -------------------------------------------------------------
-Mode = 'PW'             # Use PW, PW-GW, LCAO, FD  (PW is more accurate, LCAO is quicker mostly.)
-# -------------------------------------------------------------
 Ground_calc = True     # Ground state calculations
 Geo_optim = True       # Geometric optimization with LFBGS
-Elastic_calc = False    # Elastic calculation
 DOS_calc = True         # DOS calculation
 Band_calc = True        # Band structure calculation
-Density_calc = False    # Calculate the all-electron density?
-Optical_calc = False     # Calculate the optical properties
 
 # -------------------------------------------------------------
 # Parameters
@@ -57,7 +52,6 @@ DOS_npoints = 501        # Number of points
 DOS_integration = 'tetrahedron'
 DOS_width = 0.1          # Gaussian DOS broadening in eV
 
-Spin_calc = False        # Spin polarized calculation?
 Magmom_per_atom = 1.0    # Magnetic moment per atom
 Refine_grid = 4          # refine grid for all electron density (1, 2 [=default] and 4)
 Total_charge = 0.0       # Total charge. Normally 0.0 for a neutral system.
@@ -65,4 +59,3 @@ Total_charge = 0.0       # Total charge. Normally 0.0 for a neutral system.
 #GENERAL
 Energy_min = -5 		# eV. It is the minimum energy value for band structure and DOS figures.
 Energy_max = 5  		# eV. It is the maximum energy value for band structure and DOS figures.
-Localization = "en_UK"  # Localization setting for figures. en_UK is default.

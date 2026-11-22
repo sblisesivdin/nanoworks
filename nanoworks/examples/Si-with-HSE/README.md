@@ -1,8 +1,10 @@
 # Example: HSE calculations of Silicon
 
-This example uses GPAW with hybrid XC HSE06 for ground-state and DOS
-calculations. Exclude the legacy GPAW band stage as described below. Native QE also supports HSE06, HSE03, and PBE0 for
-ground-state, DOS/PDOS, band, projected-band, and density calculations. QE
+This folder contains two HSE06 inputs: `Si-with-HSE.py` for GPAW ground
+state and DOS, and `Si-QE-HSE.py` for native QE ground state, DOS and hybrid
+bands. Each input enables the stages supported by its engine. Native QE
+also supports HSE03 and PBE0 for ground-state, DOS/PDOS, band, projected-band,
+and density calculations. QE
 hybrid geometry, elastic, phonon, and optical workflows are not supported.
 The input uses deliberately coarse settings to finish a demonstration quickly.
 Use convergence tests and an appropriate physical model before interpreting
@@ -10,19 +12,18 @@ quantitative material properties.
 
 You can run this example with:
 
-    dftsolve -E GPAW -p 4 -i Si-with-HSE.py -g Si_mp-149_primitive.cif -s Band_calc=False
+    dftsolve -E GPAW -p 4 -i Si-with-HSE.py -g Si_mp-149_primitive.cif
 
 Normally, prior to HSE calculations, you can prefer to do PBE calculations with structure optimization. Then you can continue to use HSE.
 
 ## GPAW ground-state/DOS tutorial and band limitation
 
-For the GPAW example, run ground state and DOS with the legacy band stage
-excluded:
+The GPAW input enables only ground state and DOS. Check and run it with:
 
 ```bash
 cd ~/.nanoworks/examples/Si-with-HSE
-dftsolve -E GPAW -p 4 -i Si-with-HSE.py -g Si_mp-149_primitive.cif -s Band_calc=False --check
-dftsolve -E GPAW -p 4 -i Si-with-HSE.py -g Si_mp-149_primitive.cif -s Band_calc=False
+dftsolve -E GPAW -p 4 -i Si-with-HSE.py -g Si_mp-149_primitive.cif --check
+dftsolve -E GPAW -p 4 -i Si-with-HSE.py -g Si_mp-149_primitive.cif
 ```
 
 The recorded legacy GPAW hybrid band branch restarted SCF on the line-path
@@ -31,9 +32,9 @@ than evaluating the original uniform-mesh hybrid Hamiltonian along a path.
 Do not combine those bands with the saved ground-state DOS or report them as
 a validated hybrid dispersion. A supported hybrid path-eigenvalue workflow
 still needs implementation and real-engine validation. GPAW hybrid band
-requests are now rejected before execution; use `Band_calc=False` as above.
-This finding concerns
-the GPAW branch, not the separate native QE hybrid band workflow below.
+requests are rejected before execution. The supplied GPAW input leaves
+`Band_calc` omitted (false), so no command-line workaround is needed.
+This limitation does not apply to the native QE hybrid band workflow below.
 
 See the illustrated [HSE06 ground-state/DOS tutorial](https://nanoworks.readthedocs.io/en/latest/examples/si-hse-gpaw-dos.html)
 for the recorded settings, verified DOS reconstruction and full caveat.
@@ -48,7 +49,7 @@ for the recorded settings, verified DOS reconstruction and full caveat.
 
 ## QE smoke-test occupation setting
 
-The shared input uses Fermi-Dirac occupations for both engines. With QE 7.4.1,
+Both inputs use Fermi-Dirac occupations. With QE 7.4.1,
 Marzari-Vanderbilt cold smearing can accept a Fermi-energy solution whose
 charge error is below 0.01 electrons, while the subsequent SCF charge check
 rejects a relative error above 0.001. In the recorded silicon smoke run,
@@ -64,7 +65,8 @@ QE execution after this occupation correction and the hybrid band-point fix.
 The band continuation used 61 path points; no converged gap is claimed.
 
 This ground-state occupation setting is independent of `DOS_integration`.
-The smoke runner can continue to request tetrahedron DOS integration.
+The QE input selects tetrahedron DOS integration; the GPAW input retains
+Gaussian DOS broadening of 0.2 eV for the recorded DOS exercise.
 
 ## QE hybrid band k-points
 
@@ -78,18 +80,18 @@ weighted SCF mesh. Nanoworks uses that range for both band energies and
 projected-band data, excluding the SCF mesh and shifted EXX helper blocks.
 The same path-only card is used by dry-run inputs.
 
-The input now defaults to `Band_npoints=61`, matching the successful band
+The QE input sets `Band_npoints=61`, matching the successful band
 continuation. This replaces the previous 401-point path to keep the hybrid
 smoke example short; the EXX q-point grid and electronic settings are retained.
-If ground-state and DOS stages already completed in the same case directory,
+If ground-state and DOS stages already completed in the same output directory,
 rerun the band stage with `Ground_calc=False` and `DOS_calc=False`, keeping
 the saved ground state and the original structure/input settings.
 
 Run the QE example with tetrahedron DOS using:
 
 ```bash
-dftsolve -E QE -p 8 -i Si-with-HSE.py -g Si_mp-149_primitive.cif \
-  -s DOS_integration=tetrahedron
+dftsolve -p 4 -i Si-QE-HSE.py -g Si_mp-149_primitive.cif --check
+dftsolve -p 4 -i Si-QE-HSE.py -g Si_mp-149_primitive.cif
 ```
 
 For a fresh full run, keep `Ground_calc=True` and `DOS_calc=True` as in the

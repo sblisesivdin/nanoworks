@@ -6,7 +6,6 @@ from ase.build import bulk
 
 
 Engine = 'QE'
-Mode = 'PW'
 
 Outdirname = 'ZnO-QE-withHubbard-results'
 
@@ -19,15 +18,9 @@ bulk_configuration = bulk(
 
 # Calculations
 Ground_calc = True
-Geo_optim = False
 DOS_calc = True
 Band_calc = True
-Density_calc = False
 
-Elastic_calc = False
-Phonon_calc = False
-Optical_calc = False
-SOC_calc = False
 
 # Geometry optimization
 Geometry_optimizer = 'LBFGS'
@@ -74,18 +67,14 @@ DOS_kpts_x = 7
 DOS_kpts_y = 7
 DOS_kpts_z = 7
 DOS_gamma = True
-DOS_num_of_bands = 40
 DOS_integration = 'tetrahedron'
 DOS_npoints = 501
 
 # Band structure
 Band_path = 'ALMGAHKG'
 Band_npoints = 40
-Band_num_of_bands = 40
 
-Spin_calc = False
 Total_charge = 0.0
 
 Energy_min = -10
 Energy_max = 10
-Localization = 'en_UK'

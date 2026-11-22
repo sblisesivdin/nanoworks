@@ -33,6 +33,10 @@ The example uses an intentionally coarse cutoff and k-point mesh. It is only
 for checking the workflow. Production elastic constants require independent
 cutoff, density-cutoff, k-point, SCF, and structural convergence.
 
+Elastic sampling inherits the ground mesh (2 x 2 x 2) and Gamma centering.
+`Ground_calc` need not be enabled: thermo_pw runs its own SCFs. For a denser
+elastic mesh, set `Elastic_kpts_density` or `Elastic_kpts_x/y/z` independently.
+
 The generated `thermo_control` keeps the input `ibrav=0` cell using
 `continue_zero_ibrav=.true.` and the `standard` stress-strain algorithm.
 This avoids the setup-only stop and preserves the input Cartesian axes

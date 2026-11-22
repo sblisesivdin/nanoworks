@@ -5,16 +5,10 @@
 Outdirname = 'MoS2-with-vdW'
 
 # -------------------------------------------------------------
-Mode = 'PW'             # Use PW, PW-GW, LCAO, FD  (PW is more accurate, LCAO is quicker mostly.)
-# -------------------------------------------------------------
 Ground_calc = True     # Ground state calculations
 Geo_optim = True       # Geometric optimization with LFBGS
-Elastic_calc = False    # Elastic calculation
 DOS_calc = True         # DOS calculation
 Band_calc = True        # Band structure calculation
-Density_calc = False    # Calculate the all-electron density?
-Optical_calc = False     # Calculate the optical properties
-SOC_calc = False              # Calculate Spin Orbit Coupling Effects
 vdW_calc = 'D3'        # Calculate with vdW correction. 'D3' for Grimme-D3 or 'None' for none.
 # -------------------------------------------------------------
 # Parameters

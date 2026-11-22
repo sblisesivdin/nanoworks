@@ -31,6 +31,20 @@ are written into the output subdirectories specified by the inputs. Use
 ``dftsolve -i input.py`` to run a DFT input; executing the Python file alone
 does not start the Nanoworks workflow.
 
+Keep inputs short
+-----------------
+
+Start with :ref:`dftsolve-short-input` for a compact QE input. Enable only
+the calculation stages you need; omitted stage flags are false. PW mode
+is the default, and QE selects the managed pseudopotentials from XC and SOC.
+
+DOS, optical and elastic k-point meshes inherit ground-state sampling when
+omitted. Each stage still accepts its own ``*_kpts_density`` or
+``*_kpts_x/y/z`` settings for independent convergence tests. QE DOS and band
+counts also inherit the saved or planned ground-state count when omitted.
+Recorded comparison inputs retain explicit numerical settings where needed
+to reproduce their figures; see each tutorial's parameter table.
+
 .. note::
 
    These settings are chosen to demonstrate the Nanoworks workflow with a

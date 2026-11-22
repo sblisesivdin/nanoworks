@@ -9,16 +9,9 @@ Outdirname = 'WSe2-wo-SOC'
 bulk_configuration = mx2(formula='WSe2', kind='2H', a=3.28, thickness=3.14, size=(1, 1, 1), vacuum=15)
 
 # -------------------------------------------------------------
-Mode = 'PW'             # Use PW, PW-GW, LCAO, FD  (PW is more accurate, LCAO is quicker mostly.)
-# -------------------------------------------------------------
 Ground_calc = True     # Ground state calculations
-Geo_optim = False       # Geometric optimization with LFBGS
-Elastic_calc = False    # Elastic calculation
 DOS_calc = True         # DOS calculation
 Band_calc = True        # Band structure calculation
-Density_calc = False    # Calculate the all-electron density?
-Optical_calc = False     # Calculate the optical properties
-SOC_calc = False              # Calculate Spin Orbit Coupling Effects
 # -------------------------------------------------------------
 # Parameters
 # -------------------------------------------------------------
@@ -52,7 +45,6 @@ DOS_npoints = 501        # Number of points
 DOS_integration = 'smearing'
 DOS_width = 0.1          # Gaussian DOS broadening in eV
 
-Spin_calc = False        # Spin polarized calculation?
 Magmom_per_atom = 1.0    # Magnetic moment per atom
 Refine_grid = 4             # refine grid for all electron density (1, 2 [=default] and 4)
 Total_charge = 0.0       # Total charge. Normally 0.0 for a neutral system.

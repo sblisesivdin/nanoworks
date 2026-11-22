@@ -50,9 +50,17 @@ machine. Do not wrap these commands in another MPI launcher. ``--check``
 checks prerequisites without running DFT.
 
 The output folder is ``Si-results/``. Keep its ground-state directory between
-the two commands. ``Ground_calc=False`` in the second input reuses that state;
-it does not remove the need for a completed first calculation. This fixed-cell
+the two commands. The second input omits ``Ground_calc`` (false), reusing that
+state; a completed first calculation is required. This fixed-cell
 exercise does not optimize the supplied geometry.
+
+For all stages in one command, the same folder also provides
+``Si-QE-Combined-RPA-smoke.py``. Its DOS and optical meshes inherit the
+ground mesh. To increase optical sampling independently, set
+``Opt_kpts_density`` or ``Opt_kpts_x/y/z``; see :ref:`dftsolve-short-input`.
+The staged and matched-linewidth comparison inputs keep their explicit
+optical meshes, band counts and widths so their numerical choices remain
+visible.
 
 Read the actual optical settings
 --------------------------------

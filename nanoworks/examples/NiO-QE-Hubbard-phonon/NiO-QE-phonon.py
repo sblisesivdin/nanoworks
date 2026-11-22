@@ -6,7 +6,6 @@ import numpy as np
 from ase.build import bulk, make_supercell
 
 Engine = 'QE'
-Mode = 'PW'
 Outdirname = 'NiO-QE-phonon-results'
 
 # Doubled rocksalt primitive cell with alternating (111) Ni layers.
@@ -24,11 +23,6 @@ Magmom_per_atom = [
 Hubbard_U = {'Ni-3d': 6.0}
 XC_calc = 'PBE'
 Ground_calc = True
-Geo_optim = False
-DOS_calc = False
-Band_calc = False
-Density_calc = False
-Optical_calc = False
 Phonon_calc = True
 Wavefunction_cutoff = 600
 Ground_kpts_x = 4

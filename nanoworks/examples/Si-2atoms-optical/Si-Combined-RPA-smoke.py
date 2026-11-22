@@ -5,18 +5,14 @@
 """Small GPAW smoke input for the combined electronic and optical workflow."""
 
 Engine = 'GPAW'
-Mode = 'PW'
 Outdirname = 'Si-combined-RPA-smoke-results'
 
 # Run every lightweight electronic stage from one input.  Phonons and
 # elasticity are intentionally omitted from this optical smoke test.
 Ground_calc = True
-Geo_optim = False
-Elastic_calc = False
 DOS_calc = True
 Band_calc = True
 Density_calc = True
-Phonon_calc = False
 Optical_calc = True
 
 # Ground state
@@ -49,4 +45,3 @@ Opt_cut_of_energy = 30
 
 Energy_min = -5
 Energy_max = 5
-Localization = 'en_UK'

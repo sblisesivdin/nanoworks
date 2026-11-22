@@ -3,15 +3,10 @@
 # See LICENSE.md in the project root for license terms.
 
 # -------------------------------------------------------------
-Mode = 'PW'             # Use PW, PW-GW, LCAO, FD  (PW is more accurate, LCAO is quicker mostly.)
-# -------------------------------------------------------------
 Ground_calc = True     # Ground state calculations
-Geo_optim = False       # Geometric optimization with LFBGS
-Elastic_calc = False    # Elastic calculation
 DOS_calc = True         # DOS calculation
 Band_calc = True        # Band structure calculation
 Density_calc = True    # Calculate the all-electron density?
-Optical_calc = False     # Calculate the optical properties
 
 # -------------------------------------------------------------
 # Parameters
@@ -76,4 +71,3 @@ Projections = [
 #GENERAL
 Energy_min = -5 		# eV. It is the minimum energy value for band structure and DOS figures.
 Energy_max = 5  		# eV. It is the maximum energy value for band structure and DOS figures.
-Localization = "en_UK"  # Localization setting for figures. en_UK is default.

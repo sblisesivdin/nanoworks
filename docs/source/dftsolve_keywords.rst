@@ -737,7 +737,7 @@ Elastic Calculation Keywords
     Elastic_gamma = True
 
 Electronic Calculations Keywords
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. describe:: Wavefunction_cutoff
 
@@ -995,16 +995,16 @@ Electronic Calculations Keywords
         'Zn-3d': 10.0,
     }
 
-    Nanoworks converts this portable form to GPAW setup strings such as
-    ``':p,7.0'`` and to QE manifolds such as ``O-2p``. The principal
-    quantum number is required so that the QE mapping is unambiguous.
-    The requested manifold is checked against the selected UPF file.
+Nanoworks converts this portable form to GPAW setup strings such as
+``':p,7.0'`` and to QE manifolds such as ``O-2p``. The principal
+quantum number is required so that the QE mapping is unambiguous.
+The requested manifold is checked against the selected UPF file.
 
-    QE 7.4.1 inputs use an ``HUBBARD (ortho-atomic)`` card. The correction
-    is propagated consistently to ground-state, geometry-optimization,
-    DOS NSCF, and band calculations. If magnetic moments cause one
-    element to be represented by multiple internal QE species, the
-    correction is applied to each corresponding species.
+QE 7.4.1 inputs use an ``HUBBARD (ortho-atomic)`` card. The correction
+is propagated consistently to ground-state, geometry-optimization,
+DOS NSCF, and band calculations. If magnetic moments cause one
+element to be represented by multiple internal QE species, the
+correction is applied to each corresponding species.
 
 .. note::
 
@@ -1704,7 +1704,7 @@ the source and valence configuration of any custom file.
     Refine_grid = 4
 
 Phonon Calculations Keywords
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. describe:: Phonon_PW_cutoff
 
@@ -1866,7 +1866,7 @@ Phonon Calculations Keywords
     Phonon_T_step = 10.0
 
 Optical Calculations Keywords
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. note::
 

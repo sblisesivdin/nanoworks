@@ -14,6 +14,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from nanoworks.dftsolve import DFTConfig
+
 
 _ROOT = Path(__file__).resolve().parents[1]
 _EXAMPLE = _ROOT / "nanoworks/examples/Si-2atoms-optical"
@@ -32,7 +34,7 @@ def _input_settings(name):
             target = node.targets[0]
             if isinstance(target, ast.Name):
                 settings[target.id] = ast.literal_eval(node.value)
-    return settings
+    return vars(DFTConfig(**settings))
 
 
 def _dat(energies, images):

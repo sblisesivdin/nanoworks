@@ -19,6 +19,20 @@ argument. It sets ``Engine='QE'``, ``Spin_calc=True`` and an initial moment of
 magnetization. It selects ground, DOS/PDOS, band, projected-band and density
 stages. It does not request SOC, optics, phonons, elasticity or relaxation.
 
+The input defines one 4 x 4 x 4 ground mesh and 16 bands. DOS inherits that
+mesh; DOS and band stages inherit the ground band count. To converge DOS
+sampling independently, add, for example:
+
+.. code-block:: python
+
+   DOS_kpts_x = 8
+   DOS_kpts_y = 8
+   DOS_kpts_z = 8
+
+``DOS_kpts_density`` is an alternative to specifying all three axes. These
+overrides change DOS sampling without changing the ground mesh. See
+:ref:`dftsolve-short-input` for the same controls in optics and elasticity.
+
 Before calculation, ensure ``pw.x``, ``dos.x``, ``projwfc.x``, ``bands.x`` and
 ``pp.x`` are on ``PATH`` and the scalar-relativistic QE PBE UPFs are installed.
 

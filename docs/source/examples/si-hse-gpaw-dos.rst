@@ -23,13 +23,15 @@ the examples following :ref:`tutorial-examples-setup`, then run:
 .. code-block:: console
 
    $ cd ~/.nanoworks/examples/Si-with-HSE
-   $ dftsolve -E GPAW -p 8 -i Si-with-HSE.py -g Si_mp-149_primitive.cif -s Band_calc=False --check
-   $ dftsolve -E GPAW -p 8 -i Si-with-HSE.py -g Si_mp-149_primitive.cif -s Band_calc=False
+   $ dftsolve -E GPAW -p 8 -i Si-with-HSE.py -g Si_mp-149_primitive.cif --check
+   $ dftsolve -E GPAW -p 8 -i Si-with-HSE.py -g Si_mp-149_primitive.cif
 
-Adapt the process count to your computer. The shared input enables bands by
-default; the explicit override excludes that stage for this GPAW tutorial
-without editing the original input. This caveat concerns the inspected GPAW
-hybrid path and does not establish a failure of the separate QE hybrid path.
+The input enables only ground state and DOS. Omitted ``Band_calc`` is false.
+For QE ground state, DOS and hybrid bands, use the separate
+``Si-QE-HSE.py`` in the same folder; its README provides the commands.
+
+Adapt the process count to your computer. The hybrid-band caveat below
+concerns the legacy GPAW path; the native QE example uses a separate method.
 Outputs use ``Si_mp-149_primitive/`` and the same filename prefix.
 
 Record the GPAW and PAW dataset versions when repeating the example.
@@ -144,8 +146,8 @@ The `GPAW hybrid-band documentation
 <https://gpaw.readthedocs.io/tutorialsexercises/electronic/bandstructures/bandstructures.html#non-self-consistent-and-self-consistent-hse06>`_
 discusses suitable approaches. Nanoworks currently rejects unsupported
 GPAW hybrid band-stage requests with a ``Band_calc=False`` hint.
-The command above therefore disables the band stage explicitly and
-teaches only the ground-state and DOS workflow. Do not substitute a
+The bundled GPAW input enables only the ground-state and DOS workflow.
+Do not substitute a
 self-consistent path run for a converged HSE band structure.
 
 Reference data
@@ -155,7 +157,8 @@ Reference data
 It preserves the active input, starting/final CIFs and original DOS/PDOS
 tables, together with a derived table of ground-state eigenvalues, weights
 and occupations, two figures, checks and SHA256SUMS. The original input
-still has ``Band_calc=True``; use the override in the commands above.
+still has ``Band_calc=True``. If using that archived input rather than the
+installed example, add ``-s Band_calc=False`` to the GPAW command.
 
 The optional ``plot_si_hse.py`` script reproduces the figures and checks
 using NumPy 2 or newer and Matplotlib. ``extract_ground.py`` can verify the

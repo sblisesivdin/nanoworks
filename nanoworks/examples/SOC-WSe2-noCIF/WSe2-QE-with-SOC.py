@@ -16,16 +16,11 @@ bulk_configuration = mx2(
     vacuum=15,
 )
 
-Mode = 'PW'
 Ground_calc = True
-Geo_optim = False
-Elastic_calc = False
 DOS_calc = True
 Band_calc = True
 Projected_band_plot = True
 Density_calc = True
-Phonon_calc = False
-Optical_calc = False
 SOC_calc = True
 
 Wavefunction_cutoff = 400
@@ -43,7 +38,6 @@ Smearing_width = 0.05
 DOS_npoints = 501
 DOS_integration = 'tetrahedron'
 
-Spin_calc = False
 Energy_min = -5
 Energy_max = 5
 

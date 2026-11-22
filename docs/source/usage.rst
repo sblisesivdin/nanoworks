@@ -168,7 +168,7 @@ released. With ``-p``, both processes use the requested MPI process count.
 .. _phonon-recovery:
 
 Phonon recovery and analysis
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For GPAW and QE Hubbard-U finite-displacement phonons, keep the output
 directory and repeat the original command to resume compatible force records.

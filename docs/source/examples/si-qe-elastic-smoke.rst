@@ -37,6 +37,12 @@ changed for the local workstation.
 Read the physical and numerical input
 -------------------------------------
 
+The compact input defines a 2 x 2 x 2 ground sampling mesh. The elastic
+stage inherits it even though ``Ground_calc`` is omitted (false): thermo_pw
+performs the required SCFs. To test a denser elastic mesh independently,
+set ``Elastic_kpts_density`` or all three ``Elastic_kpts_x/y/z`` values.
+See :ref:`dftsolve-short-input` for an override example.
+
 The input uses a **two-atom primitive diamond Si** cell generated
 by ASE from a cubic reference parameter ``a = 5.43`` angstrom,
 without geometric relaxation. The workflow uses:

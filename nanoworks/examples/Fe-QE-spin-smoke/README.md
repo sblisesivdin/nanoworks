@@ -53,6 +53,11 @@ The main spin-resolved outputs are written below
 The k-point meshes, band count, and DOS grid are intentionally small. This is
 a workflow smoke test, not a converged setup for scientific production.
 
+The ground mesh is defined once (4 x 4 x 4); DOS inherits it. DOS and band
+stages inherit the ground count of 16 bands. Set `DOS_kpts_density` or
+`DOS_kpts_x/y/z` for a denser DOS mesh, and `DOS_num_of_bands` or
+`Band_num_of_bands` to override those counts independently.
+
 ## Interpreting the calculation
 
 Read the ground-state SCF log and final magnetization before interpreting the

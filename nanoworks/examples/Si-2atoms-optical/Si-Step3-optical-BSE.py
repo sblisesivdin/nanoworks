@@ -4,11 +4,8 @@
 
 # Optical-only rerun: first run Si-Step1-ground_dos_band.py.
 Engine = 'GPAW'
-Mode = 'PW'
 Outdirname = 'Si-results'
-Ground_calc = False
 Optical_calc = True
-Spin_calc = False
 XC_calc = 'PBE'
 
 Opt_calc_type = 'BSE'
@@ -29,4 +26,3 @@ Opt_kpts_x = 4
 Opt_kpts_y = 4
 Opt_kpts_z = 4
 Opt_gamma = True
-Localization = 'en_UK'

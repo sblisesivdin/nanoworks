@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Simplify bundled DFT inputs and tutorial guidance; separate GPAW/QE HSE examples and correct conversion commands.
+
 - Generate shorter qeconverter inputs with standard result directories; add a concise QE input guide.
 
 - Report missing GPAW dependencies in preflight without importing the numerical engine.

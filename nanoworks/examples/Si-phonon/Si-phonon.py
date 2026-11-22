@@ -6,16 +6,10 @@ import numpy as np
 
 # -------------------------------------------------------------
 Engine = 'GPAW'
-Mode = 'PW'             # Use PW, PW-GW, LCAO, FD  (PW is more accurate, LCAO is quicker mostly.)
 # -------------------------------------------------------------
 Ground_calc = True     # Ground state calculations
 Geo_optim = True       # Geometric optimization with LFBGS
-Elastic_calc = False    # Elastic calculation
-DOS_calc = False         # DOS calculation
-Band_calc = False        # Band structure calculation
-Density_calc = False    # Calculate the all-electron density?
 Phonon_calc = True
-Optical_calc = False     # Calculate the optical properties
 
 # -------------------------------------------------------------
 # Parameters
@@ -62,4 +56,3 @@ Phonon_acoustic_sum_rule = True
 #GENERAL
 Energy_min = -5 		# eV. It is the minimum energy value for band structure and DOS figures.
 Energy_max = 5  		# eV. It is the maximum energy value for band structure and DOS figures.
-Localization = "en_UK"  # Localization setting for figures. en_UK is default.

@@ -9,17 +9,10 @@ electronic sampling: this is a response-grid diagnostic, not converged Si.
 """
 
 Engine = 'QE'
-Mode = 'PW'
 Outdirname = 'Si-QE-RPA-matched-width-results'
 
 # Rebuild the ground state in this distinct output directory.
 Ground_calc = True
-Geo_optim = False
-Elastic_calc = False
-DOS_calc = False
-Band_calc = False
-Density_calc = False
-Phonon_calc = False
 Optical_calc = True
 
 XC_calc = 'PBE'
@@ -31,8 +24,6 @@ Ground_num_of_bands = 8
 Gamma = True
 Occupation_scheme = 'fermi-dirac'
 Smearing_width = 0.05
-Spin_calc = False
-SOC_calc = False
 Total_charge = 0.0
 
 Opt_calc_type = 'RPA'
@@ -50,5 +41,3 @@ Opt_max_en = 10.0
 # when the smearing occupation branch is treated as metallic).
 Opt_num_of_data = 1001
 Opt_shift_en = 0.0
-
-Localization = 'en_UK'

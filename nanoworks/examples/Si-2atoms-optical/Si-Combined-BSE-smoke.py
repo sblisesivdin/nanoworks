@@ -4,11 +4,9 @@
 
 # Workflow exercise only: converge cutoffs, k-mesh and band windows for research.
 Engine = 'GPAW'
-Mode = 'PW'
 Outdirname = 'Si-BSE-smoke-results'
 Ground_calc = True
 Optical_calc = True
-Spin_calc = False
 XC_calc = 'PBE'
 Wavefunction_cutoff = 250
 Ground_kpts_x = 2

@@ -2,66 +2,24 @@
 # SPDX-License-Identifier: MIT
 # See LICENSE.md in the project root for license terms.
 
-# -------------------------------------------------------------
-Mode = 'PW'             # Use PW, PW-GW, LCAO, FD  (PW is more accurate, LCAO is quicker mostly.)
-# -------------------------------------------------------------
-Ground_calc = True     # Ground state calculations
-Geo_optim = False       # Geometric optimization with LFBGS
-Elastic_calc = False    # Elastic calculation
-DOS_calc = True         # DOS calculation
-Band_calc = True        # Band structure calculation
-Density_calc = False    # Calculate the all-electron density?
-Optical_calc = False     # Calculate the optical properties
+"""GPAW HSE06 ground state and DOS at fixed geometry."""
 
-# -------------------------------------------------------------
-# Parameters
-# -------------------------------------------------------------
-# GEOMETRY
-Geometry_optimizer = 'LBFGS'     # QuasiNewton, GPMin, LBFGS or FIRE
-Geometry_force_tolerance = 0.05 			# Maximum force tolerance in LBFGS geometry optimization. Unit is eV/Ang.
-Geometry_max_step = 0.1          # How far is a single atom allowed to move. Default is 0.2 Ang.
-Fix_symmetry = True    # True for preserving the spacegroup symmetry during optimisation
-# Which components of strain will be relaxed: EpsX, EpsY, EpsZ, ShearYZ, ShearXZ, ShearXY
-# Example: For a x-y 2D nanosheet only first 2 component will be true
-Relax_cell = [False, False, False, False, False, False]
-Hydrostatic_pressure=0.0 #GPa
+Engine = 'GPAW'
+Ground_calc = True
+DOS_calc = True
 
-# ELECTRONIC
-Wavefunction_cutoff = 400 	# eV
-#Ground_kpts_density = 3.0     # pts per Å^-1  If the user prefers to use this, kpts_x,y,z will not be used automatically.
-Ground_kpts_x = 3 			    # kpoints in x direction
-Ground_kpts_y = 3				# kpoints in y direction
-Ground_kpts_z = 3				# kpoints in z direction
-Gamma = True
-Band_path = 'GXWKGLUWLK'	    # Brillouin zone high symmetry points
-Band_npoints = 61         # Total path points for the short hybrid smoke example
-Hubbard_U = {}            # Can be used like {'N-2p': 6.0}, for none use {}
-
-XC_calc = 'HSE06'       # Exchange-Correlation, choose one: LDA, PBE, GLLBSCM, HSE06, HSE03, revPBE, RPBE, PBE0, EXX, B3LYP
-# Optional hybrid tuning. Leave as None to use GPAW defaults (HSE06: 25% exact exchange, omega=0.11 1/Bohr).
-XC_exx_fraction = None  # Exact-exchange fraction (alpha). e.g. 0.25 for HSE06/PBE0
-XC_omega = None         # Screening parameter (1/Bohr) for screened hybrids. e.g. 0.11 for HSE06
-XC_backend = 'pw'       # Backend for hybrid evaluation (plane-wave)
-
-# These convergence values listed below kept low for this example to finish the calculation quicker.
-# Otherwise HSE calculations are much more slower than standard PBE calculations (Sometimes few thousand times slower).
-# Please use proper convergence values and always use HPC for your HSE calculations :)
-
-SCF_accuracy = 'loose'  # Portable choices: loose, normal, tight, very-tight
-# Fermi-Dirac avoids the QE 7.4.1 cold-smearing charge-search failure.
+# Coarse demonstration settings; converge before quantitative use.
+XC_calc = 'HSE06'
+Wavefunction_cutoff = 400
+Ground_kpts_x = 3
+Ground_kpts_y = 3
+Ground_kpts_z = 3
+SCF_accuracy = 'loose'
 Occupation_scheme = 'fermi-dirac'
 Smearing_width = 0.2
+DOS_npoints = 301
+Energy_min = -5
+Energy_max = 5
 
-DOS_npoints = 301        # Number of points
 DOS_integration = 'smearing'
-DOS_width = 0.2          # Gaussian DOS broadening in eV
-
-Spin_calc = False        # Spin polarized calculation?
-Magmom_per_atom = 1.0    # Magnetic moment per atom
-Refine_grid = 4             # refine grid for all electron density (1, 2 [=default] and 4)
-Total_charge = 0.0       # Total charge. Normally 0.0 for a neutral system.
-
-#GENERAL
-Energy_min = -5 		# eV. It is the minimum energy value for band structure and DOS figures.
-Energy_max = 5  		# eV. It is the maximum energy value for band structure and DOS figures.
-Localization = "en_UK"  # Localization setting for figures. en_UK is default.
+DOS_width = 0.2

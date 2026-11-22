@@ -1,6 +1,16 @@
 # Examples
 
-There are some example calculations given with different usage scenarios. Please send us more calculations to include here.
+Install the bundled inputs with `nanoworks --install-examples`, enter an
+example folder, and follow its README. Start with the
+[tutorials](https://nanoworks.readthedocs.io/en/latest/tutorials.html) and
+[short QE input guide](https://nanoworks.readthedocs.io/en/latest/dftsolve_keywords.html#dftsolve-short-input).
+Check a DFT input with `dftsolve -i input.py --check` before running it.
+
+Omitted calculation flags are false. DOS, optical and elastic meshes inherit
+ground-state sampling unless their own mesh or density is provided; those
+overrides remain available for convergence tests. Explicit numerical settings
+are retained in comparison inputs. Existing installed examples are preserved
+when Nanoworks is upgraded; installation does not overwrite your copies.
 
 ## Queue the DFT examples with GPAW and QE
 
@@ -14,7 +24,7 @@ tsp
 ```
 
 The script can also be called by absolute path from another working directory.
-It queues 43 DFT cases, including heavy optical, hybrid, elastic and phonon
+It queues 41 DFT cases, including heavy optical, hybrid, elastic and phonon
 calculations. Each calculation requests four processes (`CORENUMBER` at the
 top of the script). A single task-spooler slot prevents different cases from
 competing for memory. GPAW needs its PAW datasets; QE needs its UPFs and the
@@ -34,7 +44,8 @@ for the managed PBE pseudopotentials and the QE backend. These overrides are
 recorded in the commands; changed setups should not be interpreted as a
 controlled numerical comparison between engines. WSe2 SOC uses the dedicated
 QE input, and the native QE Fe, Si elasticity, NiO phonon and ZnO inputs are
-included as additional cases.
+included as additional cases. HSE uses separate inputs: GPAW ground/DOS and
+QE ground/DOS/bands.
 
 `jobs.dat` lists the task-spooler job IDs and case names. Each case contains
 `run-case.sh`, `status.txt`, the numerical outputs, and per-stage
@@ -62,7 +73,7 @@ together when sharing results for diagnosis.
 | NiO-QE-Hubbard-phonon | Collinear AFM NiO with QE spin/U finite-displacement phonons |
 | ZnO with DFT+U    | Wurtzite ZnO calculation with DFT+U. Positions are given with the Bulk object. Hubbard params are: O-p: 7eV, Zn-d: 10eV|
 | TiC-elastic-electronic | Elastic (EoS and Elastic Tensor) and Electronic Properties of Rocksalt TiC |
-| Si-with-HSE | Ground state, DOS, and band structure of Si with HSE06 Hybrid XC |
+| Si-with-HSE | HSE06 ground/DOS with GPAW; separate QE input also runs hybrid bands |
 | Si-qe       | Example for QE to Nanoworks conversion with qeconverter |
 | Si-vasp       | Example for VASP to Nanoworks conversion with vaspconverter |
 | SOC-WSe2-noCIF | GPAW and QE examples for the spin-orbit coupling effect on 2D WSe2 |

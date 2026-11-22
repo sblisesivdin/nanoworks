@@ -163,8 +163,8 @@ dftsolve \
   -g Si_mp-149_primitive_Example.cif
 ```
 
-Run Step 1 once; Step 2 and Step 3 both use `Ground_calc=False` and the
-same `Si-results` directory. They require the corresponding ground-state
+Run Step 1 once; Step 2 and Step 3 both omit `Ground_calc` (false) and use
+the same `Si-results` directory. They require the corresponding ground-state
 file, including matching spin channels. BSE does not use `Opt_nblocks` or
 the RPA nonlinear-grid parameters. For RPA, leave `Opt_nblocks=None` for
 automatic distribution under the actual optical MPI process count.

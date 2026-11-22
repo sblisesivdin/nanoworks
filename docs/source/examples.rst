@@ -7,6 +7,10 @@ This catalog lists the example inputs bundled in ``~/.nanoworks/examples``
 by topic. Start with :doc:`tutorials` for guided calculations and
 :doc:`reference_cases` for numerical validation and troubleshooting.
 
+For a minimal QE input and optional denser DOS, optical or elastic meshes,
+see :ref:`dftsolve-short-input`. The bundled inputs enable only their
+requested stages. Numerical comparison inputs retain their explicit settings.
+
 Cluster Execution
 -----------------
 
@@ -83,10 +87,10 @@ Advanced DFT Methods & Corrections
   Cube files from one input. (Folder: ``Fe-QE-spin-smoke/``)
 
 * **Si with HSE06 Hybrid Functional:**
-  An advanced GPAW example showing how to apply the HSE06 hybrid functional
-  for more accurate band gap predictions in Silicon. Native QE also supports
-  HSE06, HSE03, and PBE0 for ground-state, DOS/PDOS, band, projected-band,
-  and density calculations. (Folder: ``Si-with-HSE/``)
+  ``Si-with-HSE.py`` runs GPAW ground state and DOS; ``Si-QE-HSE.py`` runs
+  native QE ground state, DOS and hybrid bands. The GPAW input excludes its
+  unsupported hybrid band stage. See :doc:`examples/si-hse-gpaw-dos` for
+  the recorded DOS and band limitation. (Folder: ``Si-with-HSE/``)
 
 * **Charged Graphene:**
   Shows how to calculate the properties of a supercell (e.g., defective graphene) with an explicitly added or removed background charge. (Folder: ``Graphene-charged/``)

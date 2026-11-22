@@ -18,15 +18,10 @@ bulk_configuration = Atoms(
     )
 
 # -------------------------------------------------------------
-Mode = 'PW'             # Use PW, PW-GW, LCAO, FD  (PW is more accurate, LCAO is quicker mostly.)
-# -------------------------------------------------------------
 Ground_calc = True     # Ground state calculations
 Geo_optim = True       # Geometric optimization with LFBGS
-Elastic_calc = False    # Elastic calculation
 DOS_calc = True         # DOS calculation
 Band_calc = True        # Band structure calculation
-Density_calc = False    # Calculate the all-electron density?
-Optical_calc = False     # Calculate the optical properties
 
 # -------------------------------------------------------------
 # Parameters
@@ -62,7 +57,6 @@ DOS_npoints = 501        # Number of points
 DOS_integration = 'smearing'
 DOS_width = 0.1          # Gaussian DOS broadening in eV
 
-Spin_calc = False        # Spin polarized calculation?
 Magmom_per_atom = 1.0    # Magnetic moment per atom
 Refine_grid = 4             # refine grid for all electron density (1, 2 [=default] and 4)
 Total_charge = 0.0       # Total charge. Normally 0.0 for a neutral system.
