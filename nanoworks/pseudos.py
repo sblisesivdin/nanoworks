@@ -46,6 +46,67 @@ PSEUDODOJO_SETS = {
 }
 
 
+def resolve_qe_pseudo_options(
+    xc_calc='PBE',
+    spin_orbit=False,
+    family=None,
+    xc=None,
+    relativistic=None,
+    accuracy=None,
+):
+    """Resolve QE pseudopotential choices from the physical calculation.
+
+    Managed PseudoDojo files currently have a PBE XC reference even when
+    the *calculation* uses HSE03, HSE06, or PBE0. These are distinct
+    concepts: selecting a hybrid does not imply hybrid-generated UPFs.
+
+    Explicit settings remain accepted for advanced/legacy workflows.
+    Ordinary inputs only need XC_calc and SOC_calc.
+    """
+    # Lazy import avoids a module cycle: QE reads UPF helpers from here.
+    from nanoworks.engine.qe import resolve_qe_xc_settings
+
+    family = (
+        DEFAULT_PSEUDO_FAMILY if family is None else str(family).strip().lower()
+    )
+    xc = DEFAULT_PSEUDO_XC if xc is None else str(xc).strip().lower()
+    accuracy = (
+        DEFAULT_PSEUDO_ACCURACY
+        if accuracy is None else str(accuracy).strip().lower()
+    )
+    relativistic = (
+        DEFAULT_PSEUDO_RELATIVISTIC
+        if relativistic is None else str(relativistic).strip().lower()
+    )
+
+    for name, value in (
+        ('Pseudo_family', family),
+        ('Pseudo_xc', xc),
+        ('Pseudo_accuracy', accuracy),
+    ):
+        if not value:
+            raise ValueError(f'{name} cannot be empty.')
+
+    # Reuse the QE functional/pseudo compatibility validator instead of
+    # maintaining a second, potentially divergent list of XC methods.
+    resolve_qe_xc_settings(
+        xc_calc='PBE' if xc_calc is None else xc_calc,
+        pseudo_xc=xc,
+    )
+
+    if relativistic not in ('scalar', 'full'):
+        raise ValueError("Pseudo_relativistic must be 'scalar' or 'full'.")
+    if spin_orbit:
+        relativistic = 'full'
+
+    return {
+        'family': family,
+        'xc': xc,
+        'relativistic': relativistic,
+        'accuracy': accuracy,
+    }
+
+
 def get_nanoworks_data_dir():
     """Return the user-specific Nanoworks data directory."""
     return Path.home() / '.nanoworks'
