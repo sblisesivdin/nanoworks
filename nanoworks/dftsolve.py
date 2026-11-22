@@ -277,7 +277,7 @@ from nanoworks.scf import (
     validate_scf_settings,
 )
 from nanoworks.hubbard import normalize_hubbard_u
-from nanoworks.cutoffs import validate_cutoff_settings
+from nanoworks.cutoffs import validate_cutoff_settings, resolve_qe_cutoff_settings
 from nanoworks.electrostatics import (
     resolve_qe_electrostatic_settings,
     validate_electrostatic_settings,
@@ -381,7 +381,7 @@ class DFTConfig:
     
     # Ground state parameters
     Wavefunction_cutoff: float = 340
-    Density_cutoff_ratio: float = 4.0
+    Density_cutoff_ratio: Optional[float] = None
     Electrostatic_boundary: str = 'periodic'
     Electrostatic_normal_axis: str = 'z'
     Dipole_correction: bool = False
@@ -558,7 +558,10 @@ class DFTConfig:
         self.Hubbard_U = normalize_hubbard_u(self.Hubbard_U)
         cutoff_settings = validate_cutoff_settings(
             wavefunction_cutoff=self.Wavefunction_cutoff,
-            density_cutoff_ratio=self.Density_cutoff_ratio,
+            density_cutoff_ratio=(
+                4.0 if self.Engine == 'GPAW' and self.Density_cutoff_ratio is None
+                else self.Density_cutoff_ratio
+            ),
         )
         self.Wavefunction_cutoff = cutoff_settings['wavefunction_ev']
         self.Density_cutoff_ratio = cutoff_settings['density_ratio']
@@ -7474,6 +7477,22 @@ def check_dft_configuration(
                     'pseudopotentials',
                     f'{len(pseudopotentials)} species in {pseudo_dir}',
                 )
+                try:
+                    cutoffs = resolve_qe_cutoff_settings(
+                        config.Wavefunction_cutoff,
+                        {symbol: pseudopotentials[symbol] for symbol in
+                         set(config.bulk_configuration.get_chemical_symbols())},
+                        pseudo_dir=pseudo_dir,
+                        density_cutoff_ratio=config.Density_cutoff_ratio,
+                    )
+                except (KeyError, TypeError, ValueError) as exc:
+                    add('error', 'density-cutoff', str(exc))
+                else:
+                    add('ok', 'density-cutoff',
+                        f'{cutoffs["density_ev"]:g} eV, ratio '
+                        f'{cutoffs["density_ratio"]:g} ({cutoffs["source"]})')
+                    for notice in cutoffs['notices']:
+                        add('warning', 'cutoff-recommendation', notice)
 
         if (
             check_saved_state

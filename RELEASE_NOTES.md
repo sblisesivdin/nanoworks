@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Infer omitted QE density cutoffs from UPF hints; report actual cutoffs and retain explicit ratios.
+
 - Resolve QE PseudoDojo choices from XC/SOC in dftsolve and dftconverge; retain manual UPF overrides.
 
 - Validate phonon cache versions and SCF input ranges; retain Python 3.8 DAT/CSV reader compatibility.

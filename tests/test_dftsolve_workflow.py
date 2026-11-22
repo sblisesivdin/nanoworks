@@ -980,6 +980,8 @@ class TestDFTSolveWorkflow(unittest.TestCase):
                 )
 
     def test_config_normalizes_portable_cutoff_settings(self):
+        self.assertIsNone(DFTConfig(Engine='QE').Density_cutoff_ratio)
+        self.assertEqual(DFTConfig(Engine='GPAW').Density_cutoff_ratio, 4.0)
         config = DFTConfig(
             Wavefunction_cutoff='500',
             Density_cutoff_ratio='8',
@@ -3836,7 +3838,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
     def test_explicit_values_override_engine_defaults(self):
         config = DFTConfig(
             Engine='QE',
-            XC_calc='LDA',
+            XC_calc='HSE06',
             DOS_integration='tetrahedra',
             DOS_width=0.2,
             Fix_symmetry=False,
@@ -3851,7 +3853,7 @@ class TestDFTSolveWorkflow(unittest.TestCase):
 
         self.assertEqual(
             config.XC_calc,
-            'LDA',
+            'HSE06',
         )
         self.assertEqual(config.DOS_integration, 'tetrahedron')
         self.assertEqual(config.DOS_width, 0.0)

@@ -14,6 +14,7 @@ from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import urlretrieve
 import inspect
+import math
 
 DEFAULT_PSEUDO_FAMILY = 'pseudodojo'
 DEFAULT_PSEUDO_XC = 'pbe'
@@ -292,6 +293,46 @@ def _read_upf_element(path):
     raise RuntimeError(
         f"Could not determine element for UPF file '{path}'."
     )
+
+def read_upf_cutoff_metadata(path):
+    """Read optional UPF v2 cutoff hints (Ry) and the pseudopotential type.
+
+    Read only PP_HEADER: numbers in PP_INFO or radial arrays are not
+    cutoff recommendations. Zero, malformed and nonfinite hints are
+    treated as absent. Older UPF formats can therefore return no hints.
+    """
+    with Path(path).open('r', encoding='utf-8', errors='ignore') as stream:
+        text = stream.read(65536)
+    header = re.search(r'<PP_HEADER\b([^>]*?)>', text, re.IGNORECASE | re.DOTALL)
+    attributes = {}
+    if header:
+        attributes = {
+            key.lower(): value.strip()
+            for key, _, value in re.findall(
+                r'([\w]+)\s*=\s*([\"\'])(.*?)\2',
+                header.group(1), re.DOTALL,
+            )
+        }
+
+    result = {}
+    for name in ('wfc_cutoff', 'rho_cutoff'):
+        try:
+            value = float(attributes.get(name, '').replace('D', 'e').replace('d', 'e'))
+        except ValueError:
+            value = None
+        if value is not None and (not math.isfinite(value) or value <= 0):
+            value = None
+        result[name] = value
+
+    pseudo_type = attributes.get('pseudo_type', '').upper()
+    # QE's logical flags take precedence over the descriptive type string.
+    if attributes.get('is_paw', '').strip('.').lower() in ('t', 'true'):
+        pseudo_type = 'PAW'
+    elif attributes.get('is_ultrasoft', '').strip('.').lower() in ('t', 'true'):
+        pseudo_type = 'US'
+    result['pseudo_type'] = pseudo_type
+    return result
+
 
 def read_upf_z_valence(path):
     """Read the valence-electron count from a UPF file."""

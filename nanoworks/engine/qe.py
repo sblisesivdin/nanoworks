@@ -28,7 +28,9 @@ from nanoworks.optical import (
     validate_optical_table, derive_optical_table, write_optical_table,
     REDUCED_PLANCK_EV_SECONDS, SPEED_OF_LIGHT_CM_PER_SECOND,
 )
-from nanoworks.cutoffs import validate_cutoff_settings
+from nanoworks.cutoffs import (
+    validate_cutoff_settings, resolve_qe_cutoff_settings, EV_PER_RYDBERG,
+)
 from nanoworks.electrostatics import resolve_qe_electrostatic_settings
 from nanoworks.hybrids import (
     resolve_hybrid_settings,
@@ -46,7 +48,6 @@ THERMO_PW_SUPPORTED_VERSION = (2, 1, 0)
 THERMO_PW_ELASTIC_DATA_BASENAME = 'nanoworks_elastic_constants.dat'
 
 # CODATA-compatible conversion used by ASE and QE-related workflows.
-EV_PER_RYDBERG = 13.605693122994
 THZ_PER_CM_MINUS_ONE = 0.0299792458
 BOLTZMANN_EV_PER_K = 8.617333262145e-5
 EV_PER_THZ = 4.135667696e-3
@@ -2293,7 +2294,7 @@ def render_pw_input(
     band_path=None,
     exx_additional_kpoints=None,
     relaxation_settings=None,
-    density_cutoff_ratio=4.0,
+    density_cutoff_ratio=None,
     exx_kpoint_density=None,
     exx_cutoff_ev=None,
     electrostatic_boundary='periodic',
@@ -2505,6 +2506,16 @@ def render_pw_input(
         calculate_forces=calculate_forces,
     )
 
+    cutoff_settings = resolve_qe_cutoff_settings(
+        cutoff_ev,
+        {symbol: pseudopotentials[symbol] for symbol in
+         set(atoms.get_chemical_symbols())},
+        pseudo_dir=pseudo_dir,
+        density_cutoff_ratio=density_cutoff_ratio,
+    )
+    for notice in cutoff_settings['notices']:
+        warnings.warn(notice, UserWarning, stacklevel=2)
+
     system = build_system_settings(
         cutoff_ev=cutoff_ev,
         nat=len(atoms),
@@ -2518,7 +2529,7 @@ def render_pw_input(
         exx_fraction=exx_fraction,
         omega=omega,
         exx_qpoint_grid=exx_qpoint_grid,
-        density_cutoff_ratio=density_cutoff_ratio,
+        density_cutoff_ratio=cutoff_settings['density_ratio'],
         exx_cutoff_ev=exx_cutoff_ev,
         electrostatic_boundary=electrostatic_boundary,
         electrostatic_normal_axis=electrostatic_normal_axis,
@@ -2617,7 +2628,11 @@ def render_pw_input(
         render_namelist('CONTROL', control),
         render_namelist('SYSTEM', system),
         render_namelist('ELECTRONS', electrons),
+        f'! Nanoworks cutoffs (eV): wavefunction={cutoff_settings["wavefunction_ev"]:g}, '
+        f'density={cutoff_settings["density_ev"]:g}, '
+        f'ratio={cutoff_settings["density_ratio"]:g} ({cutoff_settings["source"]})',
     ]
+    lines.extend(f'! CUTOFF WARNING: {notice}' for notice in cutoff_settings['notices'])
 
     if ions is not None:
         lines.append(
@@ -2720,7 +2735,7 @@ def render_scf_input(
     electron_maxstep=None,
     diagonalization=None,
     exx_additional_kpoints=None,
-    density_cutoff_ratio=4.0,
+    density_cutoff_ratio=None,
     exx_kpoint_density=None,
     exx_cutoff_ev=None,
     electrostatic_boundary='periodic',
@@ -2797,7 +2812,7 @@ def render_nscf_input(
     electron_maxstep=None,
     diagonalization=None,
     nosym=False,
-    density_cutoff_ratio=4.0,
+    density_cutoff_ratio=None,
     exx_kpoint_density=None,
     exx_cutoff_ev=None,
     electrostatic_boundary='periodic',
@@ -2878,7 +2893,7 @@ def render_relax_input(
     mixing_beta=None,
     electron_maxstep=None,
     diagonalization=None,
-    density_cutoff_ratio=4.0,
+    density_cutoff_ratio=None,
     exx_kpoint_density=None,
     exx_cutoff_ev=None,
     electrostatic_boundary='periodic',
@@ -2960,7 +2975,7 @@ def render_bands_input(
     mixing_beta=None,
     electron_maxstep=None,
     diagonalization=None,
-    density_cutoff_ratio=4.0,
+    density_cutoff_ratio=None,
     exx_kpoint_density=None,
     exx_cutoff_ev=None,
     electrostatic_boundary='periodic',
@@ -8433,7 +8448,7 @@ def run_thermo_pw_elastic(
     parallel_cores=1,
     executable='thermo_pw.x',
     prefix='nanoworks',
-    density_cutoff_ratio=4.0,
+    density_cutoff_ratio=None,
     exx_kpoint_density=None,
     exx_cutoff_ev=None,
     electrostatic_boundary='periodic',
@@ -8615,7 +8630,7 @@ def run_scf(
     executable='pw.x',
     prefix='nanoworks',
     exx_additional_kpoints=None,
-    density_cutoff_ratio=4.0,
+    density_cutoff_ratio=None,
     exx_kpoint_density=None,
     exx_cutoff_ev=None,
     electrostatic_boundary='periodic',
@@ -8777,7 +8792,7 @@ def run_relax(
     parallel_cores=1,
     executable='pw.x',
     prefix='nanoworks',
-    density_cutoff_ratio=4.0,
+    density_cutoff_ratio=None,
     exx_kpoint_density=None,
     exx_cutoff_ev=None,
     electrostatic_boundary='periodic',
@@ -8984,7 +8999,7 @@ def run_nscf(
     parallel_cores=1,
     executable='pw.x',
     prefix='nanoworks',
-    density_cutoff_ratio=4.0,
+    density_cutoff_ratio=None,
     exx_kpoint_density=None,
     exx_cutoff_ev=None,
     electrostatic_boundary='periodic',
@@ -9153,7 +9168,7 @@ def run_bands(
     projection_output_file=None,
     projection_prefix=None,
     projection_executable='projwfc.x',
-    density_cutoff_ratio=4.0,
+    density_cutoff_ratio=None,
     exx_kpoint_density=None,
     exx_cutoff_ev=None,
     electrostatic_boundary='periodic',
@@ -9594,7 +9609,7 @@ def run_hybrid_bands(
     projection_output_file=None,
     projection_prefix=None,
     projection_executable='projwfc.x',
-    density_cutoff_ratio=4.0,
+    density_cutoff_ratio=None,
     exx_kpoint_density=None,
     exx_cutoff_ev=None,
     electrostatic_boundary='periodic',
@@ -9870,7 +9885,7 @@ def run_hybrid_dos(
     dos_executable='dos.x',
     projwfc_executable='projwfc.x',
     prefix='nanoworks',
-    density_cutoff_ratio=4.0,
+    density_cutoff_ratio=None,
     exx_kpoint_density=None,
     exx_cutoff_ev=None,
     electrostatic_boundary='periodic',

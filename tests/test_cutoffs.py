@@ -10,6 +10,11 @@ from nanoworks.cutoffs import validate_cutoff_settings
 
 class TestCutoffSettings(unittest.TestCase):
 
+    def test_automatic_density_cutoff_is_deferred_until_pseudos_are_known(self):
+        settings = validate_cutoff_settings(500, None)
+        self.assertIsNone(settings['density_ratio'])
+        self.assertIsNone(settings['density_ev'])
+
     def test_default_density_cutoff_is_four_times_wavefunction(self):
         settings = validate_cutoff_settings(500)
 

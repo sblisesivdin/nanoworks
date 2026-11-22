@@ -743,6 +743,10 @@ Electronic Calculations Keywords
 
     Engine-neutral wavefunction plane-wave cutoff. GPAW uses this value as
     its PW cutoff; QE converts it from eV to Ry for ``ecutwfc``.
+    The default is a starting value, not a converged choice for every
+    material. With automatic density-cutoff selection, QE reports positive
+    UPF wavefunction recommendations above this value without overriding it.
+    Use ``dftconverge`` to check convergence for the chosen pseudopotentials.
 
 .. code-block:: python
 
@@ -750,14 +754,28 @@ Electronic Calculations Keywords
 
 .. describe:: Density_cutoff_ratio
 
-    :Type: ``float``
-    :Default: ``4.0``
+    :Type: ``float`` or ``None``
+    :Default: ``None`` (automatic for QE)
 
-    Charge-density cutoff divided by ``Wavefunction_cutoff``. QE writes
-    ``ecutrho = Density_cutoff_ratio * Wavefunction_cutoff``. A value of
-    ``4.0`` is QE's default for norm-conserving pseudopotentials; higher
-    ratios are commonly needed for ultrasoft pseudopotentials. GPAW has no
-    separate charge-density cutoff and ignores this setting.
+    Charge-density cutoff divided by ``Wavefunction_cutoff``. An explicit
+    value is preserved, including ``4.0`` in existing inputs.
+
+    When omitted or ``None``, QE keeps a fourfold baseline for the managed
+    norm-conserving PseudoDojo sets. Positive ``PP_HEADER`` cutoff hints in
+    UPF files can raise this value: the density cutoff is at least the
+    largest recommended ``rho_cutoff`` and the largest recommended
+    ``rho_cutoff / wfc_cutoff`` ratio times the chosen wavefunction cutoff.
+    UPF recommendations are read in Ry. This policy also applies to each
+    point in a ``dftconverge`` sweep.
+
+    If an ultrasoft, PAW or unknown UPF lacks usable density hints, Nanoworks
+    reports a warning and uses the fourfold baseline unless another species
+    requires more. Set an explicit ratio and test convergence in that case.
+    A pseudo recommendation is not a convergence guarantee.
+
+    ``--check`` reports the resolved value and warnings. Generated QE input
+    files record both cutoffs in eV and their ratio. GPAW has no separate
+    charge-density cutoff and ignores this setting.
 
 .. code-block:: python
 

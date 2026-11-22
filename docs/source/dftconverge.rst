@@ -94,8 +94,10 @@ Input keywords
 The input is a Python file and reuses normal ``dftsolve`` ground-state
 keywords such as ``Engine``, ``XC_calc``, ``Occupation_scheme``,
 ``Spin_calc``, ``Ground_kpts_*``, ``Wavefunction_cutoff``, and
-``Density_cutoff_ratio``. For QE, the density cutoff defaults to four times
-each fixed or swept wavefunction cutoff.
+``Density_cutoff_ratio``. For QE, an omitted density ratio uses the same
+UPF-aware policy as ``dftsolve``: a fourfold baseline, raised by positive
+UPF density-cutoff and ratio recommendations. An explicit ratio remains
+fixed across the sweep. Generated QE inputs record the actual cutoffs.
 
 ``Convergence_tasks``
    Any subset of ``cutoff``, ``kpoints``, and ``lattice``. The default is all

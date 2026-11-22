@@ -74,7 +74,7 @@ class QEStaticEnergyBackend:
             cutoff_ev=float(cutoff_ev),
             density_cutoff_ratio=settings.get(
                 'density_cutoff_ratio',
-                4.0,
+                None,
             ),
             kpoint_density=kpoint_density,
             kpoint_size=kpoint_size,

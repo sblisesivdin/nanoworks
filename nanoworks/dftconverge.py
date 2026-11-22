@@ -465,7 +465,7 @@ def validate_convergence_config(config, plan):
             wavefunction_cutoff=cutoff_values[0],
             density_cutoff_ratio=config.get(
                 'Density_cutoff_ratio',
-                4.0,
+                None,
             ),
         )
     if 'kpoints' in plan.tasks:
@@ -508,7 +508,7 @@ def validate_convergence_config(config, plan):
             wavefunction_cutoff=cutoff,
             density_cutoff_ratio=config.get(
                 'Density_cutoff_ratio',
-                4.0,
+                None,
             ),
         )
 
@@ -613,7 +613,7 @@ def _build_static_energy_settings(config, atoms, engine):
         'hubbard_u': config.get('Hubbard_U', {}),
         'density_cutoff_ratio': config.get(
             'Density_cutoff_ratio',
-            4.0,
+            None,
         ),
         'xc_calc': xc_calc,
         'pseudo_xc': (
