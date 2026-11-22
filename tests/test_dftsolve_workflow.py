@@ -3644,6 +3644,29 @@ class TestDFTSolveWorkflow(unittest.TestCase):
             (0.0, 20.0, 1001),
         )
 
+    def test_qe_managed_pseudos_follow_xc_and_soc_without_explicit_keywords(self):
+        for xc_calc in ('PBE', 'HSE03', 'HSE06', 'PBE0'):
+            with self.subTest(xc_calc=xc_calc):
+                config = DFTConfig(Engine='QE', XC_calc=xc_calc)
+                self.assertEqual(config.Pseudo_family, 'pseudodojo')
+                self.assertEqual(config.Pseudo_xc, 'pbe')
+                self.assertEqual(config.Pseudo_relativistic, 'scalar')
+                self.assertEqual(config.Pseudo_accuracy, 'standard')
+        soc = DFTConfig(Engine='QE', XC_calc='PBE', SOC_calc=True)
+        self.assertEqual(soc.Pseudo_xc, 'pbe')
+        self.assertEqual(soc.Pseudo_relativistic, 'full')
+
+    def test_legacy_pseudo_inputs_still_work_and_bad_xc_is_rejected(self):
+        explicit = DFTConfig(
+            Engine='QE', XC_calc='PBE',
+            Pseudo_family='pseudodojo',
+            Pseudo_xc='pbe', Pseudo_relativistic='full',
+            Pseudo_accuracy='standard',
+        )
+        self.assertEqual(explicit.Pseudo_relativistic, 'full')
+        with self.assertRaisesRegex(ValueError, 'PBE pseudopotentials'):
+            DFTConfig(Engine='QE', XC_calc='PBE', Pseudo_xc='lda')
+
     def test_pseudopotential_settings_are_validated(self):
         with self.assertRaisesRegex(
             ValueError,
