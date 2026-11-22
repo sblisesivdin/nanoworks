@@ -849,12 +849,14 @@ class DFTConfig:
 
 def resolve_qe_pseudo_configuration(config, atoms):
     """Translate portable pseudopotential settings to QE resources."""
-    options = {
-        'family': config.Pseudo_family,
-        'xc': config.Pseudo_xc,
-        'relativistic': config.Pseudo_relativistic,
-        'accuracy': config.Pseudo_accuracy,
-    }
+    options = resolve_qe_pseudo_options(
+        xc_calc=config.XC_calc,
+        spin_orbit=config.SOC_calc,
+        family=config.Pseudo_family,
+        xc=config.Pseudo_xc,
+        relativistic=config.Pseudo_relativistic,
+        accuracy=config.Pseudo_accuracy,
+    )
     pseudo_dir = config.Pseudo_dir
     if pseudo_dir is None:
         pseudo_dir = get_qe_pseudo_dir(**options)
