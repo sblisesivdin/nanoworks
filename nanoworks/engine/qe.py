@@ -3541,6 +3541,39 @@ def has_qe_state(
     return True
 
 
+def resolve_qe_stage_nbands(nbands=None, state_dir=None, prefix='nanoworks',
+                            ground_nbands=None):
+    """Reuse a saved ground-state band count unless a stage count is explicit.
+
+    Only output metadata describe the bands actually computed. Input nbnd
+    can be absent or differ from the final allocation. Without output band
+    metadata, retain an explicit planned ground count or QE's native default.
+    """
+    if nbands is not None:
+        return nbands
+    if state_dir is not None:
+        schema = Path(state_dir) / f'{prefix}.save' / 'data-file-schema.xml'
+        if schema.is_file():
+            try:
+                root = ET.parse(schema).getroot()
+            except ET.ParseError as exc:
+                raise ValueError(f'QE state schema is not valid XML: {schema}') from exc
+            counts = []
+            for output in root.iter():
+                if str(output.tag).rsplit('}', 1)[-1] != 'output':
+                    continue
+                for element in output.iter():
+                    if str(element.tag).rsplit('}', 1)[-1] not in ('nbnd', 'nbnd_up', 'nbnd_dw'):
+                        continue
+                    text = (element.text or '').strip()
+                    if not text.isdigit() or int(text) < 1:
+                        raise ValueError(f'QE saved band count must be a positive integer: {schema}')
+                    counts.append(int(text))
+            if counts:
+                return max(counts)
+    return ground_nbands
+
+
 def read_qe_state_spin_settings(
     state_dir,
     prefix='nanoworks',
@@ -9048,6 +9081,8 @@ def run_nscf(
         )
     )
 
+    nbands = resolve_qe_stage_nbands(nbands, state_dir, prefix=prefix)
+
     input_text = render_nscf_input(
         atoms=atoms,
         pseudopotentials=pseudopotentials,
@@ -9209,6 +9244,8 @@ def run_bands(
             occupation
         )
     )
+
+    nbands = resolve_qe_stage_nbands(nbands, state_dir, prefix=prefix)
 
     input_text = render_bands_input(
         atoms=atoms,
@@ -9643,6 +9680,8 @@ def run_hybrid_bands(
         )
     )
 
+    nbands = resolve_qe_stage_nbands(nbands, state_dir, prefix=prefix)
+
     scf_workflow = run_scf(
         atoms=atoms,
         input_file=scf_input_file,
@@ -9905,6 +9944,8 @@ def run_hybrid_dos(
         raise ValueError(
             "QE hybrid DOS requires a hybrid functional."
         )
+
+    nbands = resolve_qe_stage_nbands(nbands, state_dir, prefix=prefix)
 
     scf_workflow = run_scf(
         atoms=atoms,

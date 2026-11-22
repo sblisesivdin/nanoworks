@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Inherit omitted QE DOS/Band counts from saved states or the planned ground calculation.
+
 - Reload edited inputs without module-name caching.
 
 - Write compact auto inputs and correct automatic k-point meshes to use reciprocal-cell density.

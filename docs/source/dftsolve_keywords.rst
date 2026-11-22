@@ -858,6 +858,10 @@ Electronic Calculations Keywords
     existing automatic band allocation. For QE, the value is written as
     ``nbnd``; it also controls the dedicated SCF band count used by the
     native hybrid DOS and band workflows.
+    In a combined QE workflow, omitted DOS and Band counts inherit this
+    planned count. When reusing an existing state, its actual output band
+    count is read from ``data-file-schema.xml``. A stage-specific count
+    always takes precedence.
 
 .. code-block:: python
 
@@ -954,6 +958,9 @@ Electronic Calculations Keywords
     Number of electronic bands used for the band-structure calculation.
     When ``None``, the existing ground-state band allocation is
     preserved.
+    QE reads the actual allocation from the saved state, including separate
+    spin-channel counts. A dry-run that creates a new ground state uses
+    ``Ground_num_of_bands`` when supplied, rather than an older saved count.
 
 .. code-block:: python
 
@@ -1375,6 +1382,10 @@ the source and valence configuration of any custom file.
     When ``None``, the band count inherited from the converged
     ground-state calculation is preserved. For a native QE hybrid DOS
     workflow, the value is used for the dedicated hybrid SCF calculation.
+    QE reuses the saved output band count when omitted. In a combined
+    dry-run it inherits an explicit ``Ground_num_of_bands``. Explicit DOS
+    counts are preserved. If no saved allocation or explicit ground count
+    exists, QE retains its native automatic allocation.
 
 .. code-block:: python
 

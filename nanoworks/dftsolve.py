@@ -3496,6 +3496,12 @@ class dftsolve:
             )
             sys.exit(1)
 
+        from nanoworks.engine.qe import resolve_qe_stage_nbands
+        stage_bands = resolve_qe_stage_nbands(
+            self.DOS_num_of_bands, ground_state_dir,
+            ground_nbands=getattr(self, 'Ground_num_of_bands', None),
+        )
+
         state_dir = (
             Path(
                 self.struct
@@ -3604,7 +3610,7 @@ class dftsolve:
                     kpoint_size=dos_kpoint_size,
                     gamma=dos_gamma,
                     total_charge=self.Total_charge,
-                    nbands=self.DOS_num_of_bands,
+                    nbands=stage_bands,
                     spinpol=self.Spin_calc,
                     spin_orbit=getattr(self, 'SOC_calc', False),
                     magnetic_moments=magnetic_moments,
@@ -3751,7 +3757,7 @@ class dftsolve:
                     kpoint_size=dos_kpoint_size,
                     gamma=dos_gamma,
                     total_charge=self.Total_charge,
-                    nbands=self.DOS_num_of_bands,
+                    nbands=stage_bands,
                     spinpol=self.Spin_calc,
                     magnetic_moments=magnetic_moments,
                     hubbard_u=self.Hubbard_U,
@@ -4365,6 +4371,12 @@ class dftsolve:
             )
             sys.exit(1)
 
+        from nanoworks.engine.qe import resolve_qe_stage_nbands
+        stage_bands = resolve_qe_stage_nbands(
+            self.Band_num_of_bands, ground_state_dir,
+            ground_nbands=getattr(self, 'Ground_num_of_bands', None),
+        )
+
         state_dir = (
             Path(
                 self.struct
@@ -4496,7 +4508,7 @@ class dftsolve:
                         kpoint_size=band_mesh,
                         gamma=hybrid_gamma,
                         total_charge=self.Total_charge,
-                        nbands=self.Band_num_of_bands,
+                        nbands=stage_bands,
                         spinpol=self.Spin_calc,
                         magnetic_moments=magnetic_moments,
                         hubbard_u=self.Hubbard_U,
@@ -4555,7 +4567,7 @@ class dftsolve:
                     exx_cutoff_ev=self.EXX_cutoff,
                     band_path=band_path,
                     total_charge=self.Total_charge,
-                    nbands=self.Band_num_of_bands,
+                    nbands=stage_bands,
                     spinpol=self.Spin_calc,
                     spin_orbit=getattr(self, 'SOC_calc', False),
                     magnetic_moments=magnetic_moments,
@@ -7953,6 +7965,14 @@ def prepare_qe_dry_run(
         mixing=config.SCF_mixing,
         solver=config.Electronic_solver,
     )
+    def stage_nbands(requested):
+        # A newly planned Ground calculation replaces any pre-existing state.
+        return engine.resolve_qe_stage_nbands(
+            requested,
+            state_dir=None if config.Ground_calc else ground_state_dir,
+            ground_nbands=config.Ground_num_of_bands,
+        )
+
     common_pw = {
         'atoms': atoms,
         'pseudopotentials': pseudopotentials,
@@ -8189,7 +8209,7 @@ def prepare_qe_dry_run(
                 **dos_pw,
                 kpoint_size=dos_mesh,
                 gamma=dos_gamma,
-                nbands=config.DOS_num_of_bands,
+                nbands=stage_nbands(config.DOS_num_of_bands),
                 occupations=qe_dos_occupation['occupations'],
                 smearing=qe_dos_occupation['smearing'],
                 width_ev=qe_dos_occupation['width_ev'],
@@ -8207,7 +8227,7 @@ def prepare_qe_dry_run(
                 **common_pw,
                 kpoint_size=dos_mesh,
                 gamma=dos_gamma,
-                nbands=config.DOS_num_of_bands,
+                nbands=stage_nbands(config.DOS_num_of_bands),
                 occupations=qe_dos_occupation['occupations'],
                 smearing=qe_dos_occupation['smearing'],
                 width_ev=qe_dos_occupation['width_ev'],
@@ -8363,7 +8383,7 @@ def prepare_qe_dry_run(
                     **band_pw,
                     kpoint_size=band_mesh,
                     gamma=ground_gamma,
-                    nbands=config.Band_num_of_bands,
+                    nbands=stage_nbands(config.Band_num_of_bands),
                     occupations=band_occupation['occupations'],
                     smearing=band_occupation['smearing'],
                     width_ev=band_occupation['width_ev'],
@@ -8417,7 +8437,7 @@ def prepare_qe_dry_run(
                 engine.render_bands_input(
                     **common_pw,
                     band_path=band_path,
-                    nbands=config.Band_num_of_bands,
+                    nbands=stage_nbands(config.Band_num_of_bands),
                     occupations=band_occupation['occupations'],
                     smearing=band_occupation['smearing'],
                     width_ev=band_occupation['width_ev'],
