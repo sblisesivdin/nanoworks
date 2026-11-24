@@ -30,3 +30,12 @@ SOFTWARE.
 
 External engines, Python dependencies, and separately downloaded
 pseudopotentials are not relicensed by Nanoworks and retain their own licenses.
+
+## JTH PAW atomic datasets
+
+The optional JTH v2.0 PBE and LDA-PW UPF tables by F. Jollet, M. Torrent
+and N. Holzwarth are downloaded separately from
+https://github.com/abinit/paw_jth_datasets (upstream GPL-3.0 license).
+They are not bundled or relicensed with Nanoworks. See the upstream
+repository and https://www.abinit.org/atomic_data/paw/ for attribution,
+dataset validation and citation information.

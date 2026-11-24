@@ -74,7 +74,7 @@ class TestPseudopotentials(unittest.TestCase):
     def test_pseudopotential_xc_conflicts_fail_instead_of_silently_mixing(self):
         with self.assertRaisesRegex(ValueError, 'PBE pseudopotentials'):
             resolve_qe_pseudo_options(xc_calc='HSE06', xc='lda')
-        with self.assertRaisesRegex(ValueError, 'current Nanoworks QE backend'):
+        with self.assertRaisesRegex(ValueError, "Pseudo_family='jth'"):
             resolve_qe_pseudo_options(xc_calc='LDA')
         with self.assertRaisesRegex(ValueError, 'Pseudo_relativistic'):
             resolve_qe_pseudo_options(xc_calc='PBE', relativistic='wrong')

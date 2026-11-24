@@ -242,6 +242,7 @@ default Quantum ESPRESSO pseudopotential library.
 ```bash
 $ nanoworks
 usage: nanoworks [-h] [-v] [--install-examples] [--install-qe-pseudos]
+                 [--pseudo-family {pseudodojo,jth}]
 
 Nanoworks CLI tool
 
@@ -250,8 +251,22 @@ options:
   -v, --version       Show version and detailed library information
   --install-examples  Copy example files to ~/.nanoworks/examples
   --install-qe-pseudos
-                      Install the default Quantum ESPRESSO pseudopotential library
+                      Install a managed Quantum ESPRESSO pseudopotential library
+  --pseudo-family {pseudodojo,jth}
+                      Dataset family (default: pseudodojo NC)
 ```
+
+The plain installation command and inputs without `Pseudo_family` continue
+to use PseudoDojo NC. Add JTH v2.0 PBE and LDA-PW PAW datasets with:
+
+```bash
+nanoworks --install-qe-pseudos --pseudo-family jth
+```
+
+Select them with `Pseudo_family = 'jth'` in a QE input. `XC_calc` chooses
+the PBE or LDA-PW table; no extra pseudo keywords are needed. JTH does not
+support SOC or `epsilon.x`/Yambo optical workflows. Recompute the ground
+state in a separate result directory when switching dataset families.
 
 ### 5. qeconverter and vaspconverter
 

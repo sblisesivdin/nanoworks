@@ -15,6 +15,22 @@ from nanoworks.pseudos import install_qe_pseudopotentials
 
 def format_qe_pseudo_installation(results):
     """Render a concise user-facing pseudopotential installation report."""
+    if next(iter(results.values())).get('family') == 'jth':
+        lines = ['Quantum ESPRESSO pseudopotentials are ready.',
+                 'Library: JTH 2.0 scalar-relativistic PAW UPF sets', 'Installed sets:']
+        for name, result in results.items():
+            status = 'already present' if result['skipped'] else 'installed'
+            lines.extend([
+                f'  {name.upper()}: {status}, {result["count"]} datasets',
+                f'    Directory: {result["directory"]}',
+                f'    Manifest: {result["manifest"]}',
+            ])
+        lines.extend([
+            "Use Pseudo_family = 'jth'; XC_calc selects PBE or LDA-PW.",
+            'JTH does not support SOC or epsilon.x/Yambo optical workflows.',
+            'Without Pseudo_family, Nanoworks still uses PseudoDojo NC.',
+        ])
+        return '\n'.join(lines)
     scalar = results['scalar']
     family_value = str(scalar.get('family', 'pseudodojo')).lower()
     family = (
@@ -166,10 +182,14 @@ def main():
     '--install-qe-pseudos',
     action='store_true',
     help=(
-        'Install the default Quantum ESPRESSO '
+        'Install a managed Quantum ESPRESSO '
         'pseudopotential library'
     ),
 )
+    parser.add_argument(
+        '--pseudo-family', choices=('pseudodojo', 'jth'), default='pseudodojo',
+        help='Library for --install-qe-pseudos (default: pseudodojo NC; jth installs PBE and LDA-PW PAW)',
+    )
     
     if len(sys.argv) == 1:
         parser.print_help()
@@ -177,6 +197,8 @@ def main():
     
     # Parse the arguments. Using parse_known_args to avoid exiting on unknown arguments 
     args, unknown = parser.parse_known_args()
+    if args.pseudo_family != 'pseudodojo' and not args.install_qe_pseudos:
+        parser.error('--pseudo-family requires --install-qe-pseudos')
 
     # If the user passes the --install-examples flag, run the function and exit
     if args.install_examples:
@@ -186,7 +208,10 @@ def main():
     if args.install_qe_pseudos:
         print('Installing Quantum ESPRESSO pseudopotentials...')
 
-        results = install_qe_pseudopotentials()
+        try:
+            results = install_qe_pseudopotentials(family=args.pseudo_family)
+        except (RuntimeError, ValueError, OSError) as exc:
+            parser.exit(1, str(exc) + '\n')
         print(format_qe_pseudo_installation(results))
 
         sys.exit(0)

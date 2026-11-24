@@ -1043,6 +1043,11 @@ correction is applied to each corresponding species.
     requested, ``projwfc.x``. Separate QE hybrid NSCF and geometry/phonon
     workflows are not supported.
 
+    With ``Pseudo_family='jth'``, QE also supports ``XC_calc='LDA'`` using
+    the JTH LDA-PW table. It writes ``input_dft='PW'`` to select PW92
+    correlation explicitly. PBE and the supported hybrids use JTH PBE.
+    The default PseudoDojo NC family continues to use PBE datasets.
+
     For GPAW, the hybrid functionals (``HSE06``, ``HSE03``, ``PBE0``,
     ``B3LYP``, ``EXX``) use GPAW's plane-wave hybrid backend. They are
     automatically run with plane-wave parallelisation and a single-iteration
@@ -1168,25 +1173,29 @@ correction is applied to each corresponding species.
     :Type: ``string``
     :Default: ``pseudodojo``
 
-    Engine-neutral pseudopotential-library intent. The QE backend currently
-    resolves the managed PseudoDojo library. GPAW uses its own PAW setup
+    Select ``pseudodojo`` for norm-conserving UPFs or ``jth`` for the JTH
+    v2.0 PAW tables. Installing JTH does not change the default. Install it
+    with ``nanoworks --install-qe-pseudos --pseudo-family jth``. JTH selects
+    PBE or LDA-PW from ``XC_calc`` and supplies scalar-relativistic datasets
+    only. JTH SOC, native QE optics and explicit ``EXX_cutoff`` are rejected.
+    GPAW uses its own PAW setup
     mechanism and does not read external UPF files.
 
 .. code-block:: python
 
-    Pseudo_family = 'pseudodojo'
+    Pseudo_family = 'jth'  # Optional; omit to keep PseudoDojo NC.
 
 .. describe:: Pseudo_xc
 
     :Type: ``string`` or ``None``
-    :Default: ``None`` (automatically resolves to the installed PBE family)
+    :Default: ``None`` (inferred from XC and dataset family)
 
     This is the XC reference of a **pseudopotential**, not the functional
     used in the electronic calculation. Nanoworks derives it from the
     supported ``XC_calc`` and managed library; both PBE and supported QE
-    hybrid calculations use the PBE UPFs. Explicit values other than
-    ``pbe`` are rejected by the current QE backend. Do not set this
-    keyword in ordinary input files.
+    hybrid calculations use PBE UPFs. JTH LDA-PW calculations use ``lda``.
+    An explicit reference incompatible with ``XC_calc`` is rejected.
+    Do not set this keyword in ordinary input files.
 
 .. code-block:: python
 
@@ -1204,6 +1213,7 @@ correction is applied to each corresponding species.
     enable spin-orbit coupling; ``SOC_calc`` controls that physical workflow.
     When QE ``SOC_calc = True``, Nanoworks automatically uses ``full`` for the
     managed set. User-supplied UPF files must advertise ``has_so = T``.
+    JTH v2.0 has no fully-relativistic managed table and rejects this request.
 
 .. code-block:: python
 
@@ -1215,7 +1225,8 @@ correction is applied to each corresponding species.
     :Default: ``standard``
 
     Accuracy/table variant within the pseudopotential library. The managed QE
-    installation currently supplies the ``standard`` PseudoDojo table.
+    installation supplies ``standard`` tables for PseudoDojo and JTH.
+    JTH's optional alternate datasets are not selected automatically.
 
 .. describe:: Pseudo_dir
 

@@ -115,8 +115,46 @@ the QE extra in a separate virtual environment:
     (.venv_nw_qe) $ nanoworks --install-qe-pseudos
     (.venv_nw_qe) $ nanoworks --install-examples
 
-These commands install the cloned source. For a published version, use the
-release route above. Set
+JTH PAW datasets (optional)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Install both JTH v2.0 tables, PBE and LDA-PW, with:
+
+.. code-block:: console
+
+   $ nanoworks --install-qe-pseudos --pseudo-family jth
+
+The installer verifies the archive SHA256 checksums and registers 86 standard
+datasets per table under ``~/.nanoworks/pseudos/qe/jth/``. Optional ``_sp``
+variants are not selected. Repeating the command reuses complete tables and
+repairs missing files. Dataset files are downloaded separately from ABINIT's
+`JTH repository <https://github.com/abinit/paw_jth_datasets>`_.
+
+Select JTH in a QE input with one line:
+
+.. code-block:: python
+
+   Pseudo_family = 'jth'
+
+``XC_calc='PBE'`` (the QE default) selects the PBE table. ``XC_calc='LDA'``
+selects LDA-PW and writes QE's ``input_dft='PW'`` (PW92, not PZ).
+No ``Pseudo_xc``, path or UPF filenames are needed. The same selection works
+with ``dftconverge``. Omitting ``Pseudo_family`` always selects PseudoDojo NC,
+even when JTH is installed; the plain installation command still installs
+PseudoDojo's scalar- and fully-relativistic PBE sets.
+
+JTH is scalar-relativistic PAW. SOC, ``epsilon.x`` optical calculations and
+an explicit ``EXX_cutoff`` are rejected before execution; PAW data also
+cannot be passed to Yambo through ``p2y``. Use NC datasets for that workflow.
+When changing dataset families, use a new result directory and recompute the
+electronic ground state. Converge wavefunction and density cutoffs for PAW;
+the absence of a density-cutoff recommendation in the UPF is reported.
+
+Running QE
+^^^^^^^^^^
+
+The clone-and-pip commands above install the development source. For a
+published version, use the release route above. Set
 ``Engine = 'QE'`` in the input, or override it for one run:
 
 .. code-block:: console

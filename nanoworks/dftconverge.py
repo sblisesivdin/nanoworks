@@ -35,7 +35,7 @@ from nanoworks.convergence_backends import load_convergence_backend
 from nanoworks.engine import resolve_initial_magnetic_moments
 from nanoworks.occupations import resolve_engine_occupation
 from nanoworks.cutoffs import validate_cutoff_settings
-from nanoworks.pseudos import resolve_qe_pseudo_options
+from nanoworks.pseudos import resolve_qe_pseudo_options, validate_qe_pseudo_workflow
 from nanoworks.hybrids import (
     resolve_hybrid_settings,
     validate_exx_cutoff,
@@ -541,6 +541,7 @@ def validate_convergence_config(config, plan):
         )
 
     if plan.engine == 'QE':
+        validate_qe_pseudo_workflow(config)
         resolve_qe_pseudo_options(
             xc_calc=config.get('XC_calc', 'PBE'),
             family=config.get('Pseudo_family'),
@@ -619,6 +620,7 @@ def _build_static_energy_settings(config, atoms, engine):
         'pseudo_xc': (
             resolve_qe_pseudo_options(
                 xc_calc=xc_calc,
+                family=config.get('Pseudo_family'),
                 xc=config.get('Pseudo_xc'),
             )['xc'] if engine == 'QE'
             else config.get('Pseudo_xc', 'pbe')
@@ -664,6 +666,7 @@ def _build_backend(
     if plan.engine == 'GPAW':
         return backend_loader('GPAW')
 
+    validate_qe_pseudo_workflow(config)
     if pseudo_dir_getter is None or pseudo_resolver is None:
         from nanoworks.pseudos import (
             get_qe_pseudo_dir,

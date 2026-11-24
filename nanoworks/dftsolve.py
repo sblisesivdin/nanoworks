@@ -268,6 +268,7 @@ from nanoworks.pseudos import (
     read_upf_has_spin_orbit,
     resolve_qe_pseudopotentials,
     resolve_qe_pseudo_options,
+    validate_qe_pseudo_workflow,
 )
 from nanoworks.occupations import (
     resolve_engine_occupation,
@@ -739,18 +740,17 @@ class DFTConfig:
                 hybrid_stages,
             )
         self.Pseudo_family = str(self.Pseudo_family).strip().lower()
-        self.Pseudo_xc = (
-            'pbe' if self.Pseudo_xc is None
-            else str(self.Pseudo_xc).strip().lower()
-        )
+        self.Pseudo_xc = None if self.Pseudo_xc is None else str(self.Pseudo_xc).strip().lower()
         self.Pseudo_relativistic = str(
             self.Pseudo_relativistic
         ).strip().lower()
         self.Pseudo_accuracy = str(self.Pseudo_accuracy).strip().lower()
 
-        for name in ('Pseudo_family', 'Pseudo_xc', 'Pseudo_accuracy'):
+        for name in ('Pseudo_family', 'Pseudo_accuracy'):
             if not getattr(self, name):
                 raise ValueError(f'{name} cannot be empty.')
+        if self.Pseudo_xc == '':
+            raise ValueError('Pseudo_xc cannot be empty.')
 
         if self.Pseudo_relativistic not in ('scalar', 'full'):
             raise ValueError(
@@ -770,6 +770,9 @@ class DFTConfig:
             self.Pseudo_xc = pseudo_options['xc']
             self.Pseudo_relativistic = pseudo_options['relativistic']
             self.Pseudo_accuracy = pseudo_options['accuracy']
+            validate_qe_pseudo_workflow(self)
+        elif self.Pseudo_xc is None:
+            self.Pseudo_xc = 'pbe'
 
         if self.Engine == 'QE' and self.SOC_calc:
             # The shared QE pseudo resolver already selected 'full'.
@@ -855,6 +858,7 @@ class DFTConfig:
 
 def resolve_qe_pseudo_configuration(config, atoms):
     """Translate portable pseudopotential settings to QE resources."""
+    validate_qe_pseudo_workflow(config)
     options = resolve_qe_pseudo_options(
         xc_calc=config.XC_calc,
         spin_orbit=config.SOC_calc,
@@ -1630,6 +1634,7 @@ class dftsolve:
 
     def _qe_pseudo_configuration(self):
         """Resolve the portable pseudopotential settings for QE."""
+        validate_qe_pseudo_workflow(self)
         options = resolve_qe_pseudo_options(
             xc_calc=getattr(self, 'XC_calc', 'PBE'),
             spin_orbit=getattr(self, 'SOC_calc', False),
@@ -1990,6 +1995,7 @@ class dftsolve:
                     magnetic_moments=magnetic_moments,
                     hubbard_u=self.Hubbard_U,
                     xc_calc=self.XC_calc,
+                    pseudo_xc=getattr(self, 'Pseudo_xc', 'pbe'),
                     exx_fraction=self.XC_exx_fraction,
                     omega=self.XC_omega,
                     occupation=self.Occupation,
@@ -2070,6 +2076,7 @@ class dftsolve:
                     magnetic_moments=magnetic_moments,
                     hubbard_u=self.Hubbard_U,
                     xc_calc=self.XC_calc,
+                    pseudo_xc=getattr(self, 'Pseudo_xc', 'pbe'),
                     exx_fraction=self.XC_exx_fraction,
                     omega=self.XC_omega,
                     occupation=self.Occupation,
@@ -3620,6 +3627,7 @@ class dftsolve:
                     magnetic_moments=magnetic_moments,
                     hubbard_u=self.Hubbard_U,
                     xc_calc=self.XC_calc,
+                    pseudo_xc=getattr(self, 'Pseudo_xc', 'pbe'),
                     exx_fraction=self.XC_exx_fraction,
                     omega=self.XC_omega,
                     occupation=dos_occupation,
@@ -3766,6 +3774,7 @@ class dftsolve:
                     magnetic_moments=magnetic_moments,
                     hubbard_u=self.Hubbard_U,
                     xc_calc=self.XC_calc,
+                    pseudo_xc=getattr(self, 'Pseudo_xc', 'pbe'),
                     exx_fraction=self.XC_exx_fraction,
                     omega=self.XC_omega,
                     occupation=dos_occupation,
@@ -4517,6 +4526,7 @@ class dftsolve:
                         magnetic_moments=magnetic_moments,
                         hubbard_u=self.Hubbard_U,
                         xc_calc=self.XC_calc,
+                        pseudo_xc=getattr(self, 'Pseudo_xc', 'pbe'),
                         exx_fraction=self.XC_exx_fraction,
                         omega=self.XC_omega,
                         occupation=self.Occupation,
@@ -4577,6 +4587,7 @@ class dftsolve:
                     magnetic_moments=magnetic_moments,
                     hubbard_u=self.Hubbard_U,
                     xc_calc=self.XC_calc,
+                    pseudo_xc=getattr(self, 'Pseudo_xc', 'pbe'),
                     exx_fraction=self.XC_exx_fraction,
                     omega=self.XC_omega,
                     occupation=self.Occupation,
@@ -6448,6 +6459,7 @@ class dftsolve:
             magnetic_moments=magnetic_moments,
             hubbard_u=self.Hubbard_U,
             xc_calc=self.XC_calc,
+            pseudo_xc=getattr(self, 'Pseudo_xc', 'pbe'),
             exx_fraction=self.XC_exx_fraction,
             omega=self.XC_omega,
             occupation=optical_engine_occupation(self),
@@ -7991,6 +8003,7 @@ def prepare_qe_dry_run(
         'magnetic_moments': magnetic_moments,
         'hubbard_u': config.Hubbard_U,
         'xc_calc': config.XC_calc,
+        'pseudo_xc': config.Pseudo_xc,
         'exx_fraction': config.XC_exx_fraction,
         'omega': config.XC_omega,
         'exx_kpoint_density': config.EXX_kpoint_density,

@@ -15,6 +15,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import urlretrieve
 import inspect
 import math
+import hashlib
 
 DEFAULT_PSEUDO_FAMILY = 'pseudodojo'
 DEFAULT_PSEUDO_XC = 'pbe'
@@ -46,6 +47,27 @@ PSEUDODOJO_SETS = {
     },
 }
 
+# JTH v2.0 recommended scalar-relativistic PAW tables. Archives also contain
+# optional *_sp variants; register only the canonical recommended file per atom.
+JTH_SETS = {
+    'pbe': {
+        'version': '2.0', 'xc': 'pbe', 'accuracy': 'standard',
+        'relativistic': 'scalar', 'table': 'JTH-PBE-v2.0',
+        'filename_xc': 'GGA_PBE', 'count': 86,
+        'url': 'https://github.com/abinit/paw_jth_datasets/raw/main/pseudos/'
+               'JTH-PBE-v2.0/JTH-v2.0-GGA-PBE-atomicdata-upf.tar.gz',
+        'sha256': 'd0ee75a926f3980e615f9fda479bc72dc5816a5416b79e4519273f770c137916',
+    },
+    'lda': {
+        'version': '2.0', 'xc': 'lda', 'accuracy': 'standard',
+        'relativistic': 'scalar', 'table': 'JTH-LDA-v2.0',
+        'filename_xc': 'LDA_PW', 'count': 86,
+        'url': 'https://github.com/abinit/paw_jth_datasets/raw/main/pseudos/'
+               'JTH-LDA-v2.0/JTH-v2.0-LDA-PW-atomicdata-upf.tar.gz',
+        'sha256': 'f0818defebc4787a8fda7923dfee5161e8ca7449f5a08448028d7eb836a15959',
+    },
+}
+
 
 def resolve_qe_pseudo_options(
     xc_calc='PBE',
@@ -57,12 +79,13 @@ def resolve_qe_pseudo_options(
 ):
     """Resolve QE pseudopotential choices from the physical calculation.
 
-    Managed PseudoDojo files currently have a PBE XC reference even when
+    Managed PseudoDojo files have a PBE XC reference even when
     the *calculation* uses HSE03, HSE06, or PBE0. These are distinct
     concepts: selecting a hybrid does not imply hybrid-generated UPFs.
 
     Explicit settings remain accepted for advanced/legacy workflows.
-    Ordinary inputs only need XC_calc and SOC_calc.
+    Ordinary inputs only need XC_calc and SOC_calc. JTH is opt-in through
+    Pseudo_family and also supplies the LDA-PW reference.
     """
     # Lazy import avoids a module cycle: QE reads UPF helpers from here.
     from nanoworks.engine.qe import resolve_qe_xc_settings
@@ -70,7 +93,13 @@ def resolve_qe_pseudo_options(
     family = (
         DEFAULT_PSEUDO_FAMILY if family is None else str(family).strip().lower()
     )
-    xc = DEFAULT_PSEUDO_XC if xc is None else str(xc).strip().lower()
+    calculation_name = xc_calc.get('name') if isinstance(xc_calc, dict) else xc_calc
+    calculation_name = str(calculation_name).strip().lower().replace('-', '').replace('_', '')
+    inferred_xc = (
+        'lda' if family == 'jth' and calculation_name in ('lda', 'ldapw', 'pw')
+        else DEFAULT_PSEUDO_XC
+    )
+    xc = inferred_xc if xc is None else str(xc).strip().lower()
     accuracy = (
         DEFAULT_PSEUDO_ACCURACY
         if accuracy is None else str(accuracy).strip().lower()
@@ -100,12 +129,42 @@ def resolve_qe_pseudo_options(
     if spin_orbit:
         relativistic = 'full'
 
+    if family == 'jth':
+        if relativistic != 'scalar':
+            raise ValueError('JTH v2.0 supplies scalar-relativistic PAW datasets only; '
+                             'SOC_calc/full requires fully relativistic PseudoDojo NC datasets.')
+        if accuracy != 'standard':
+            raise ValueError("JTH supports Pseudo_accuracy='standard' only.")
+
     return {
         'family': family,
         'xc': xc,
         'relativistic': relativistic,
         'accuracy': accuracy,
     }
+
+
+def validate_qe_pseudo_workflow(config):
+    """Reject unsupported managed PAW workflows before any SCF is launched."""
+    def setting(name, default=None):
+        if isinstance(config, dict):
+            return config.get(name, default)
+        return getattr(config, name, default)
+
+    if str(setting('Pseudo_family', '')).strip().lower() != 'jth':
+        return
+    if setting('Optical_calc', False):
+        raise NotImplementedError(
+            "JTH PAW is not supported by QE epsilon.x optics or p2y/Yambo. "
+            "Use Pseudo_family='pseudodojo' (NC) for the electronic and optical stages.")
+    if setting('EXX_cutoff') is not None:
+        raise NotImplementedError('QE does not support an explicit EXX_cutoff with PAW datasets. '
+                                  'Leave EXX_cutoff=None when using JTH.')
+
+
+def _qe_install_command(family):
+    command = 'nanoworks --install-qe-pseudos'
+    return command + ' --pseudo-family jth' if str(family).strip().lower() == 'jth' else command
 
 
 def get_nanoworks_data_dir():
@@ -209,10 +268,10 @@ def load_qe_pseudo_manifest(
     if not path.exists():
         raise FileNotFoundError(
             f"QE pseudopotential manifest was not found at '{path}'. "
-            "Run 'nanoworks --install-qe-pseudos' first."
+            f"Run '{_qe_install_command(family)}' first."
         )
 
-    repair = "Run 'nanoworks --install-qe-pseudos' to repair the managed set."
+    repair = f"Run '{_qe_install_command(family)}' to repair the managed set."
     try:
         with path.open('r', encoding='utf-8') as fd:
             manifest = json.load(fd)
@@ -225,6 +284,16 @@ def load_qe_pseudo_manifest(
         or any(not isinstance(filename, str) or not filename for filename in files.values())
     ):
         raise ValueError(f"QE pseudopotential manifest '{path}' has an invalid file registry. {repair}")
+    if str(family).strip().lower() == 'jth':
+        spec = JTH_SETS.get(str(xc).strip().lower())
+        if (spec is None or manifest.get('family') != 'jth'
+                or any(manifest.get(key) != spec[key] for key in
+                       ('version', 'xc', 'accuracy', 'relativistic', 'table'))
+                or manifest.get('source_sha256') != spec['sha256']
+                or len(files) != spec['count']
+                or any(filename != f'{symbol}.{spec["filename_xc"]}-JTH.UPF'
+                       for symbol, filename in files.items())):
+            raise ValueError(f"JTH manifest '{path}' does not match the requested table. {repair}")
     return manifest
 
 
@@ -505,13 +574,15 @@ def read_upf_atomic_manifolds(path):
 
     return manifolds
 
-def _load_complete_pseudodojo_manifest(manifest_path, target_dir, spec):
+def _load_complete_managed_manifest(manifest_path, target_dir, spec, family='pseudodojo'):
     """Reuse only the pinned set with all registered, nonempty UPF files."""
     try:
         manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
         if not isinstance(manifest, dict):
             return None
-        expected = {'family': 'pseudodojo', 'format': 'upf'}
+        expected = {'family': family, 'format': 'upf'}
+        if family == 'jth':
+            expected['source_sha256'] = spec['sha256']
         expected.update({key: spec[key] for key in
                          ('version', 'xc', 'accuracy', 'relativistic', 'table')})
         if any(manifest.get(key) != value for key, value in expected.items()):
@@ -519,8 +590,17 @@ def _load_complete_pseudodojo_manifest(manifest_path, target_dir, spec):
         files = manifest.get('files')
         if not isinstance(files, dict) or not files:
             return None
+        if 'count' in spec and len(files) != spec['count']:
+            return None
+        if family == 'jth' and any(
+            filename != f'{symbol}.{spec["filename_xc"]}-JTH.UPF'
+            for symbol, filename in files.items()
+        ):
+            return None
         for filename in files.values():
             if not isinstance(filename, str) or not filename:
+                return None
+            if Path(filename).name != filename:
                 return None
             path = target_dir / filename
             if not path.is_file() or path.stat().st_size == 0:
@@ -554,7 +634,7 @@ def _install_pseudodojo_set(
         target_dir / 'manifest.json'
     )
 
-    manifest = None if overwrite else _load_complete_pseudodojo_manifest(
+    manifest = None if overwrite else _load_complete_managed_manifest(
         manifest_path, target_dir, spec,
     )
     if manifest is not None:
@@ -702,15 +782,87 @@ def _install_pseudodojo_set(
     }
 
 
+def _install_jth_set(xc, overwrite=False):
+    """Install the canonical PAW files from one verified JTH v2.0 archive."""
+    spec = JTH_SETS[xc]
+    target = ensure_qe_pseudo_dir(family='jth', xc=xc)
+    manifest_path = target / 'manifest.json'
+    manifest = None if overwrite else _load_complete_managed_manifest(
+        manifest_path, target, spec, family='jth')
+    skipped = manifest is not None
+    if manifest is None:
+        with tempfile.TemporaryDirectory() as temporary:
+            archive_path = Path(temporary) / 'jth.tar.gz'
+            try:
+                urlretrieve(spec['url'], archive_path)
+            except (HTTPError, URLError) as exc:
+                raise RuntimeError(f'Failed to download JTH {xc.upper()} datasets: {exc}') from exc
+            digest = hashlib.sha256()
+            with archive_path.open('rb') as stream:
+                for block in iter(lambda: stream.read(1024 * 1024), b''):
+                    digest.update(block)
+            if digest.hexdigest() != spec['sha256']:
+                raise RuntimeError(f'JTH {xc.upper()} archive SHA256 mismatch; no datasets installed.')
+            pattern = re.compile(r'([A-Z][a-z]?)\.' + spec['filename_xc'] + r'-JTH\.UPF')
+            files = {}
+            staged = Path(temporary) / 'files'
+            staged.mkdir()
+            try:
+                with tarfile.open(archive_path, 'r:gz') as archive:
+                    for member in archive.getmembers():
+                        name = Path(member.name).name
+                        match = pattern.fullmatch(name)
+                        if match is None:
+                            continue
+                        if not member.isfile() or '..' in Path(member.name).parts or Path(member.name).is_absolute():
+                            raise RuntimeError(f'Unsafe JTH archive entry: {member.name}')
+                        symbol = match.group(1)
+                        if symbol in files:
+                            raise RuntimeError(f'Multiple canonical JTH UPFs for {symbol}.')
+                        with archive.extractfile(member) as source, (staged / name).open('wb') as destination:
+                            shutil.copyfileobj(source, destination)
+                        path = staged / name
+                        if (_read_upf_element(path) != symbol
+                                or read_upf_cutoff_metadata(path)['pseudo_type'] != 'PAW'
+                                or read_upf_has_spin_orbit(path)):
+                            raise RuntimeError(f'Invalid scalar-relativistic JTH PAW dataset: {name}')
+                        files[symbol] = name
+            except (tarfile.TarError, OSError) as exc:
+                raise RuntimeError(f'Failed to unpack JTH {xc.upper()} dataset archive.') from exc
+            if len(files) != spec['count']:
+                raise RuntimeError(f'JTH {xc.upper()} archive has {len(files)} canonical datasets; '
+                                   f"expected {spec['count']}. No datasets installed.")
+            # Validate every dataset and destination before replacing installed files.
+            for filename in files.values():
+                destination = target / filename
+                if destination.exists() and not destination.is_file():
+                    raise RuntimeError(f"UPF destination is not a regular file: '{destination}'.")
+            for filename in files.values():
+                shutil.copy2(staged / filename, target / filename)
+            manifest = {key: spec[key] for key in ('version', 'xc', 'accuracy', 'relativistic', 'table')}
+            manifest.update(family='jth', format='upf', pseudo_type='PAW',
+                            source_url=spec['url'], source_sha256=spec['sha256'],
+                            files=dict(sorted(files.items())))
+            pending = manifest_path.with_suffix('.json.tmp')
+            pending.write_text(json.dumps(manifest, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+            pending.replace(manifest_path)
+    result = {key: manifest[key] for key in ('family', 'version', 'xc', 'accuracy', 'relativistic', 'format', 'table')}
+    result.update(directory=target, manifest=manifest_path, skipped=skipped,
+                  pseudo_type='PAW', count=len(manifest['files']))
+    return result
+
+
 def install_qe_pseudopotentials(
     family=DEFAULT_PSEUDO_FAMILY,
     overwrite=False,
 ):
-    """Install the default Quantum ESPRESSO pseudopotential sets."""
+    """Install managed QE datasets; an omitted family always means PseudoDojo NC."""
     family = str(
         family
     ).strip().lower()
 
+    if family == 'jth':
+        return {xc: _install_jth_set(xc, overwrite=overwrite) for xc in ('pbe', 'lda')}
     if family != 'pseudodojo':
         raise ValueError(
             "Unsupported QE pseudopotential family: "
@@ -777,7 +929,7 @@ def resolve_qe_pseudopotentials(
             raise FileNotFoundError(
                 "No installed QE pseudopotential "
                 f"is registered for {symbol} in "
-                f"'{pseudo_dir}'. Run 'nanoworks --install-qe-pseudos' to repair the managed set."
+                f"'{pseudo_dir}'. Run '{_qe_install_command(family)}' to repair the managed set."
             )
 
         path = (
@@ -788,7 +940,7 @@ def resolve_qe_pseudopotentials(
             raise FileNotFoundError(
                 f"QE pseudopotential '{filename}' for {symbol} is missing, empty "
                 f"or not a regular file in '{pseudo_dir}'. "
-                "Run 'nanoworks --install-qe-pseudos' to repair the managed set."
+                f"Run '{_qe_install_command(family)}' to repair the managed set."
             )
 
         resolved[symbol] = filename

@@ -2,6 +2,8 @@
 
 ### Version 27.2.0rc0 - Development (unreleased)
 
+- Add optional JTH v2.0 PBE/LDA-PW PAW installation and selection; retain PseudoDojo NC as default.
+
 - Order tutorials by result clarity and add concise qualitative-result notes.
 
 - Present one flat tutorial list with annotated bundled inputs, direct run commands and concise result explanations.

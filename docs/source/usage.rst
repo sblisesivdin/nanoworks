@@ -594,6 +594,7 @@ A helper CLI to locate package resources, install examples and install the defau
 
     (.venv-nw) $ nanoworks
     usage: nanoworks [-h] [-v] [--install-examples] [--install-qe-pseudos]
+                     [--pseudo-family {pseudodojo,jth}]
 
     Nanoworks CLI tool
 
@@ -602,13 +603,26 @@ A helper CLI to locate package resources, install examples and install the defau
       -v, --version       Show version and detailed library information
       --install-examples  Copy example files to ~/.nanoworks/examples
       --install-qe-pseudos
-                          Install the default Quantum ESPRESSO pseudopotential library
+                          Install a managed Quantum ESPRESSO pseudopotential library
+      --pseudo-family {pseudodojo,jth}
+                          Dataset family (default: pseudodojo NC)
 
 The QE pseudopotentials can be installed separately with:
 
 .. code-block:: console
 
     (.venv-nw) $ nanoworks --install-qe-pseudos
+
+To add the optional JTH v2.0 PBE and LDA-PW PAW tables:
+
+.. code-block:: console
+
+   $ nanoworks --install-qe-pseudos --pseudo-family jth
+
+Use ``Pseudo_family='jth'`` in the QE input to select them; ``XC_calc``
+selects PBE or LDA-PW. Without that keyword, PseudoDojo NC remains the
+default. JTH does not support SOC or ``epsilon.x``/Yambo optical workflows.
+See :doc:`installation` for installation and cutoff details.
 
 qeconverter
 -----------

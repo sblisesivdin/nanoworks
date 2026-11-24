@@ -991,11 +991,21 @@ def resolve_qe_xc_settings(
     exx_fraction=None,
     omega=None,
 ):
-    """Resolve Nanoworks XC names to QE input_dft hybrid settings."""
-    xc = str(xc_calc).strip().lower().replace('_', '').replace('-', '')
+    """Resolve portable XC names and require a compatible UPF XC reference."""
+    xc_name = xc_calc.get('name') if isinstance(xc_calc, dict) else xc_calc
+    xc = str(xc_name).strip().lower().replace('_', '').replace('-', '')
     pseudo_xc = str(
         pseudo_xc
     ).strip().lower()
+
+    if xc in ('lda', 'ldapw', 'pw'):
+        if pseudo_xc != 'lda':
+            raise ValueError(
+                "QE LDA-PW requires LDA pseudopotentials. Select Pseudo_family='jth' "
+                "for the managed LDA-PW table; PseudoDojo NC remains PBE by default.")
+        # QE's 'LDA' alias means PZ, while JTH uses Perdew-Wang (PW92).
+        return {'name': 'LDA', 'input_dft': 'PW', 'hybrid': False,
+                'exx_fraction': None, 'screening_parameter': None, 'pseudo_xc': 'lda'}
 
     if pseudo_xc != 'pbe':
         raise ValueError(
@@ -1012,7 +1022,7 @@ def resolve_qe_xc_settings(
     if hybrid is None:
         if xc != 'pbe':
             raise ValueError(
-                "The current Nanoworks QE backend supports PBE, "
+                "The current Nanoworks QE backend supports PBE, LDA-PW, "
                 "HSE06, HSE03, and PBE0. "
                 f"Requested XC: {xc_calc}"
             )
